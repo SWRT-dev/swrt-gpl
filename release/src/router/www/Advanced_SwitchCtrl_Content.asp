@@ -19,6 +19,7 @@
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" language="JavaScript" src="/validator.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
+<script type="text/javascript" src="/form.js"></script>
 <style>
 .perNode_app_table{
 	width: 740px;
@@ -50,6 +51,7 @@
 	width: 480px;
 	height: 330px;
 	background: url('images/model_port.png') no-repeat center;
+	background-size: contain;
 }
 
 .port_plugin_img{
@@ -57,6 +59,7 @@
 	width: 480px;
 	height: 330px;
 	background: url('images/wanport_plugin.png') no-repeat center;
+	background-size: contain;
 }
 
 </style>
@@ -65,7 +68,7 @@
 $(document).ready(function(){
 	if(isSupport("BUSINESS") && parent.webWrapper == undefined){
 		$('td[bgcolor="#4D595D"]').css("background", "transparent");
-		$('div[class="formfontdesc"]').css({"background-color": "#ececec", "color": "#262626", "font-weight": "bolder", "background-color": "#ececec", "padding": "15px"});
+		$('div[class="formfontdesc"]').css({"background-color": "#ececec", "color": "#262626", "font-weight": "bolder", "padding": "15px"});
 		$('input[class="button_gen"]').css({"background-color": "#FFF", "color": "#006ce1", "border": "1px solid #CCC", "border-radius": "8px", "height":"50px"});
 		$('a[class="hintstyle"]').addClass("businessStyle");
 	}
@@ -90,10 +93,71 @@ var switch_stb_x_orig = '<% nvram_get("switch_stb_x"); %>';
 var no_jumbo_frame_support = isSupport("no_jumbo_frame");
 var wans_extwan = '<% nvram_get("wans_extwan"); %>';
 var autowan_enable = '<% nvram_get("autowan_enable"); %>';
+const eth_wan_list = httpApi.hookGet("get_ethernet_wan_list", true);
+
 var lacp_ifnames_x = httpApi.nvramGet(["lacp_ifnames_x"], true).lacp_ifnames_x;
 
 const bonding_port_settings = get_bonding_ports(based_modelid);
 var stbPortMappings = [<% get_stbPortMappings();%>][0];
+
+var current_page = window.location.pathname.split("/").pop();
+var faq_index_tmp = get_faq_index(FAQ_List, current_page, 1);
+
+var vlan_port_list = {"access": [], "trunk": []};
+function get_vlan_portlist(){
+	let sdn_maximum = ((isSupport("MaxRule_SDN") == "0") ? 6 : (parseInt(isSupport("MaxRule_SDN")) - 1));//default is sdn 0
+	let nvram_name = "";
+	let label_mac = httpApi.nvramGet(["label_mac"], true)["label_mac"];
+	let nvram_list = [];
+
+	/* Get access port list */
+	for(let i = 0; i  < sdn_maximum ; i++ ){
+		nvram_name = "apg" + i + "_enable";
+		nvram_list.push(nvram_name);
+	}
+
+	let apg_enable_list = httpApi.nvramGet(nvram_list, true);
+	nvram_list.length = 0;
+	$.each(apg_enable_list, function(key){
+		if(apg_enable_list[key] == "1"){
+			let nvram_prfeix = key.substr(0, key.indexOf("enable"));
+			nvram_name = nvram_prfeix + "dut_list";
+			nvram_list.push(nvram_name);
+		}
+	});
+
+	let all_apg_dut_list = httpApi.nvramCharToAscii(nvram_list, true);
+	$.each(all_apg_dut_list, function(key){
+		if(key != "isError"){
+			let dut_list = decodeURIComponent(all_apg_dut_list[key]);
+			if(dut_list != ""){
+				let dut_array = dut_list.split("<");
+				$.each(dut_array, function(index){
+					if(dut_array[index] != ""){
+						let dut_info = dut_array[index].split(">");
+						if(dut_info[0] == label_mac){
+							if(dut_info[2] != ""){
+								let port_array = dut_info[2].split(",");
+								$.each(port_array, function(port_index){
+									vlan_port_list.access.push(port_array[port_index].substr(1,1));
+								});
+							}
+						}
+					}
+				});
+			}
+		}
+	});
+
+	/* Get trunk port list */
+	let vlan_trunk_array = decodeURIComponent(httpApi.nvramCharToAscii(["vlan_trunk_rl"], true)["vlan_trunk_rl"]).split("<");
+	$.each(vlan_trunk_array, function(index){
+		if(vlan_trunk_array[index] != ""){
+			let trunk_info = vlan_trunk_array[index].split(">");
+			vlan_port_list.trunk.push(trunk_info[0]);
+		}
+	});
+}
 
 function disable_lacp_if_conflicts_with_dualwan(){
 	let conflict_lanport_text = "";
@@ -144,7 +208,7 @@ function disable_lacp_if_conflicts_with_dualwan(){
 
 			document.form.lacp_enabled.style.display = "none";
 			document.getElementById("lacp_note").innerHTML = note_str;
-			document.getElementById("setting_link_1").href = "http://"+"<#Web_DOMAIN_NAME#>"+"/Advanced_WANPort_Content.asp";
+			document.getElementById("setting_link_1").href = "/Advanced_WANPort_Content.asp";
 			document.getElementById("lacp_desc").style.display = "";
 			document.form.lacp_enabled.disabled = true;
 		}
@@ -156,7 +220,7 @@ function disable_lacp_if_conflicts_with_dualwan(){
 			$("#disable_first_option_hint").html(note_str);
 			$("#disable_first_option_hint").show();
 			$("#lacp_first_option").css("color", "#848c98");
-			$("#setting_link_3").attr("href", "http://"+"<#Web_DOMAIN_NAME#>"+"/Advanced_WANPort_Content.asp");
+			$("#setting_link_3").attr("href", "/Advanced_WANPort_Content.asp");
 		}
 		else if(disable_two_10g_option){// disable two 10g opton
 			hint_str2 = "<#ChangeSettings_Hint#>".replace("setting_link", "setting_link_4");
@@ -166,7 +230,7 @@ function disable_lacp_if_conflicts_with_dualwan(){
 			$("#disable_two_10g_hint").html(note_str);
 			$("#disable_two_10g_hint").show();
 			$("#two_10g_lacp").css("color", "#848c98");
-			$("#setting_link_4").attr("href", "http://"+"<#Web_DOMAIN_NAME#>"+"/Advanced_WANPort_Content.asp");
+			$("#setting_link_4").attr("href", "/Advanced_WANPort_Content.asp");
 		}
 
 	}
@@ -176,7 +240,7 @@ function disable_lacp_if_conflicts_with_dualwan(){
 
 		document.form.lacp_enabled.style.display = "none";
 		document.getElementById("lacp_note").innerHTML = note_str;
-		document.getElementById("setting_link_1").href = "http://"+"<#Web_DOMAIN_NAME#>"+"/Advanced_WANPort_Content.asp";
+		document.getElementById("setting_link_1").href = "/Advanced_WANPort_Content.asp";
 		document.getElementById("lacp_desc").style.display = "";
 		document.form.lacp_enabled.disabled = true;
 	}
@@ -217,6 +281,45 @@ function disable_lacp_if_conflicts_with_iptv(){
 		document.form.lacp_enabled.style.display = "none";
 		document.getElementById("lacp_note").innerHTML = note_str;
 		document.getElementById("setting_link_2").href = "http://"+"<#Web_DOMAIN_NAME#>"+"/Advanced_IPTV_Content.asp";
+		document.getElementById("lacp_desc").style.display = "";
+		document.form.lacp_enabled.value = "0";
+	}
+}
+
+function disable_lacp_if_conflict_with_vlan(){
+	let hint_str1 = "<#PortConflict_SamePort_Hint#>";
+	let hint_str2 = "";
+	let note_str = "";
+	let disable_lacp = false;
+
+	for(var i = 0; i < bonding_port_settings.length; i++){
+		if(vlan_port_list.access.length > 0){
+			$.each(vlan_port_list.access, function(index){
+				let vlan_port_num = vlan_port_list.access[index];
+				if(vlan_port_num == bonding_port_settings[i].val){
+					disable_lacp = true;
+					return false;
+				}
+			});
+		}
+
+		if(vlan_port_list.trunk.length > 0){
+			$.each(vlan_port_list.trunk, function(index){
+				let vlan_port_num = vlan_port_list.trunk[index];
+				if(vlan_port_num == bonding_port_settings[i].val){
+					disable_lacp = true;
+					return false;
+				}
+			});
+		}
+	}
+
+	if(disable_lacp){
+		hint_str2 = "<#ChangeSettings_Hint#>";
+		note_str = hint_str1.replace("%1$@", "<#NAT_lacp#>").replace("%2$@", "VLAN") + " " + hint_str2
+		document.form.lacp_enabled.style.display = "none";
+		document.getElementById("lacp_note").innerHTML = note_str;
+		document.getElementById("setting_link").href = "http://"+"<#Web_DOMAIN_NAME#>"+"/Advanced_VLAN_Switch_Content.asp";
 		document.getElementById("lacp_desc").style.display = "";
 		document.form.lacp_enabled.value = "0";
 	}
@@ -355,11 +458,13 @@ function initial(){
 	}
 
 	if(lacp_support){
-		disable_lacp_if_conflicts_with_dualwan();
-		if(!is_GTBE_series)
+		if(isSwMode("rt"))
+			disable_lacp_if_conflicts_with_dualwan();
+
+		if(!is_GTBE_series && isSwMode("rt"))
 			disable_lacp_if_conflicts_with_iptv();
 
-		if(based_modelid == "RT-AXE7800" && wan_bonding_support){
+		if(based_modelid == "RT-AXE7800" && wan_bonding_support && isSwMode("rt")){
 			var bond_wan = httpApi.nvramGet(["bond_wan"], true).bond_wan;
 			if(bond_wan == "1"){
 				document.form.lacp_enabled.style.display = "none";
@@ -380,6 +485,11 @@ function initial(){
 					document.form.lacp_port_select[0].checked = true;
 			}
 		}
+
+		if(isSupport("mtlancfg")){
+			get_vlan_portlist();
+			disable_lacp_if_conflict_with_vlan();
+		}
 	}
 
 	if(no_jumbo_frame_support)
@@ -390,7 +500,7 @@ function applyRule(){
 	var setting_changed = false;
 	if((jumbo_frame_enable_ori != document.form.jumbo_frame_enable.value)
 	|| (!document.form.ctf_disable_force.disabled && ctf_disable_force_ori != document.form.ctf_disable_force.value)
-	|| (lacp_enabled_ori != document.form.lacp_enabled.value) || (sfe_enable_ori != document.form.sfe_enable.value)){
+	|| (lacp_support && (lacp_enabled_ori != document.form.lacp_enabled.value)) || (sfe_enable_ori != document.form.sfe_enable.value)){
 		setting_changed = true
 	}
 
@@ -423,15 +533,17 @@ function applyRule(){
 	}
 
 	var wan_lacp_conflict = false;
-	if(is_GTBE_series){
-		if(lacp_support && document.form.lacp_enabled.value == "1"){
+	if(lacp_support && document.form.lacp_enabled.value == "1"){
+		if(is_GTBE_series){
 			if(document.form.lacp_port_select[1].checked){
-				if(isSupport("autowan")){
-					if(autowan_enable == "1" || (autowan_enable == "0" && wans_dualwan_array.indexOf("wan") != -1 && wans_extwan == "0"))
+				if(isSwMode("rt")){
+					if(isSupport("autowan")){
+						if(autowan_enable == "1" || (autowan_enable == "0" && wans_dualwan_array.indexOf("wan") != -1 && wans_extwan == "0"))
+							wan_lacp_conflict = true;
+					}
+					else if(wans_dualwan_array.indexOf("wan") != -1 && wans_extwan == "0"){
 						wan_lacp_conflict = true;
-				}
-				else if(wans_dualwan_array.indexOf("wan") != -1 && wans_extwan == "0"){
-					wan_lacp_conflict = true;
+					}
 				}
 
 				if(lacp_ifnames_x == ""){
@@ -454,38 +566,37 @@ function applyRule(){
 				}
 			}
 		}
-	}
-	else{
-		if(isSupport("autowan") && autowan_enable == "1")
-			wan_lacp_conflict = true;
-	}
-
-	if(!setting_changed){	// only change the bonding policy
-		document.form.action_script.value = "restart_net_and_phy";
-		document.form.action_wait.value = "35";
+		else{
+			if(isSupport("autowan") && autowan_enable == "1" && isSwMode("rt"))
+				wan_lacp_conflict = true;
+		}
 	}
 
 	if(lantiq_support){
 		document.form.action_script.value = "restart_wan_if;restart_firewall";
 		document.form.action_wait.value = "10";
-	
-		if(!setting_changed){	// only change the bonding policy
-			document.form.action_script.value += ";restart_net_and_phy";
-			document.form.action_wait.value = "35";
-		}
+	}
+	else if(!setting_changed){	// only change the bonding policy
+		document.form.action_script.value = "restart_net_and_phy";
+		document.form.action_wait.value = "35";
 	}
 
 	if(wan_lacp_conflict){
-		var hint_str = "To ensure that there are no conflicts, when you enable %1$@, the WAN port will be change to %2$@ only. Please make sure that your WAN cable is correctly plugged into the %2$@. Are you sure to continue?"
+		var hint_str = `<#conflict_function_wanport_hint#>`;
 		var msg = "";
-		if(is_GTBE_series)
+		var wanport_image_src = "images/wanport_plugin.png";
+
+		if(is_GTBE_series){
 			msg = hint_str.replace("%1$@", "<#NAT_lacp#>").replaceAll("%2$@", "2.5G WAN");
+			wanport_image_src = "images/wanport_plugin_2p5g.png";
+			$(".port_plugin_img").css("background-image", "url('images/wanport_plugin_2p5g.png')");
+		}
 		else
 			msg = hint_str.replace("%1$@", "<#NAT_lacp#>").replaceAll("%2$@", get_default_wan_name());
 
 		$("#autowan_hint").html(msg);
 		$("#autowan_hint_div").show();
-		if(check_file_exists('images/model_port.png') && check_file_exists('images/wanport_plugin.png')){
+		if(check_file_exists('images/model_port.png') && check_file_exists(wanport_image_src)){
 			setTimeout(function(){
 					if($(".port_plugin_img").is(":visible"))
 						$(".port_plugin_img").fadeOut(500);
@@ -550,17 +661,17 @@ function confirm_autowan_change(){
 
 	$('<input>').attr({
 		type: 'hidden',
-		name: "autowan_enable",
-		value: "0"
-	}).appendTo('form');
-
-	$('<input>').attr({
-		type: 'hidden',
 		name: "wans_dualwan",
 		value: "wan none"
 	}).appendTo('form');
 
 	if(is_GTBE_series){
+		$('<input>').attr({
+			type: 'hidden',
+			name: "autowan_enable",
+			value: "0"
+		}).appendTo('form');
+
 		$('<input>').attr({
 			type: 'hidden',
 			name: "wans_extwan",
@@ -574,11 +685,23 @@ function confirm_autowan_change(){
 		}).appendTo('form');
 	}
 	else{
-		$('<input>').attr({
-			type: 'hidden',
-			name: "wans_extwan",
-			value: "0"
-		}).appendTo('form');
+		let wan_obj = eth_wan_list["wan"];
+		if(wan_obj.hasOwnProperty("extra_settings")){
+			let extra_settings = wan_obj.extra_settings;
+			$.each(extra_settings, function(key) {
+				if(document.getElementsByName(key).length > 0){
+					document.getElementsByName(key)[0].value = extra_settings[key];
+				}
+				else{
+					$('<input>').attr({
+						type: 'hidden',
+						name: key,
+						value: extra_settings[key]
+					}).appendTo('form');
+
+				}
+			});
+		}
 	}
 
 	setTimeout(function(){
@@ -602,11 +725,10 @@ function isEmpty(obj)
 	}
 
 	return true;
-};
+}
 
 function get_default_wan_name(){
 	var default_wan_name = "WAN";
-	var eth_wan_list = httpApi.hookGet("get_ethernet_wan_list", true);
 
 	if(!isEmpty(eth_wan_list)){
 		default_wan_name = eth_wan_list["wan"].wan_name;
@@ -686,8 +808,11 @@ function get_default_wan_name(){
 							<tbody>
 								<tr>
 				  					<td bgcolor="#4D595D" valign="top">
+				  					<div class="container">
+
 				  						<div>&nbsp;</div>
 				  						<div class="formfonttitle"><#menu5_2#> - <#Switch_itemname#></div>
+										<div class="formfonttitle_help"><i onclick="show_feature_desc(`<#HOWTOSETUP#>`)" class="icon_help"></i></div>
 		      							<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 										<div class="formfontdesc"><#SwitchCtrl_desc#></div>
 										<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
@@ -873,13 +998,17 @@ function get_default_wan_name(){
 										<div class="apply_gen">
 											<input class="button_gen" onclick="applyRule()" type="button" value="<#CTL_apply#>"/>
 										</div>
+
+										</div>	<!-- for .container  -->
+										<div class="popup_container popup_element_second"></div>
+
 									</td>
 								</tr>
 							</tbody>	
 						</table>		
 					</td>
 				</tr>
-			</table>				
+			</table>
 		</td>
 	    <td width="10" align="center" valign="top">&nbsp;</td>
 	</tr>
@@ -888,4 +1017,3 @@ function get_default_wan_name(){
 <div id="footer"></div>
 </body>
 </html>
-

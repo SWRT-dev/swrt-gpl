@@ -568,6 +568,14 @@ int xfrm_output(struct sock *sk, struct sk_buff *skb)
 	struct xfrm_state *x = skb_dst(skb)->xfrm;
 	int err;
 
+	if (x->xso.type == XFRM_DEV_OFFLOAD_PACKET) {
+		if (!xfrm_dev_offload_ok(skb, x)) {
+			secpath_reset(skb);
+			goto sw_path;
+		}
+		return 0;
+	}
+
 	secpath_reset(skb);
 
 	if (xfrm_dev_offload_ok(skb, x)) {
@@ -596,6 +604,7 @@ int xfrm_output(struct sock *sk, struct sk_buff *skb)
 		if (x->xso.dev && x->xso.dev->features & NETIF_F_HW_ESP_TX_CSUM)
 			goto out;
 	} else {
+sw_path:
 		if (skb_is_gso(skb))
 			return xfrm_output_gso(net, sk, skb);
 	}

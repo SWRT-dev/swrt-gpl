@@ -55,6 +55,7 @@ endif
 ifeq ($(RTCONFIG_TRUSTZONE),y)
 LDFLAGS += -L$(TOP)/ateed/ -latee
 endif
+CFLAGS += -D$(SWRT_NAME)
 
 #SHARE_STATIC=y
 

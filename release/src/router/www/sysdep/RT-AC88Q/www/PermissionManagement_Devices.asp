@@ -384,7 +384,7 @@ function add_device(flag, target){
 		code += group_array[i];
 	}
 
-	var group_length = group_array.length;;
+	var group_length = group_array.length;
 	if(group_length == 0)
 		group_length = 1;
 

@@ -1570,17 +1570,19 @@ int chk_proto(int wan_unit){
 #endif // RTCONFIG_USB_MODEM
 
 	// PPPoE detect
-#ifdef RTCONFIG_AUTO_WANPORT
+#if defined(RTCONFIG_AUTO_WANPORT) && !defined(RTCONFIG_BCM_MFG)
+#if 0
 	char *autowan_argv[] = {"autowan", NULL};
 
-	_eval(autowan_argv, NULL, 0, &pid);
-
-#ifdef RTCONFIG_SOFTWIRE46
-	if(isFirstUse){
-		char *auto46det_argv[] = {"auto46det", NULL};
-
-		_eval(auto46det_argv, NULL, 0, &pid);
+	if(pids("autowan")){
+		killall_tk("autowan");
+		nvram_set("autowan_proceeding", "0");
 	}
+
+	_eval(autowan_argv, NULL, 0, &pid);
+#else
+	if(wan_unit == WAN_UNIT_FIRST && (!strcmp(dualwan_wans, "wan none") || !strcmp(dualwan_wans, "wan usb")))
+		notify_rc_after_period_wait("restart_autowan", 1);
 #endif
 #else
 	if(isFirstUse){
@@ -2267,6 +2269,15 @@ _dprintf("# wanduck(%d): if_wan_phyconnected: x_Setting=%d, link_modem=%d, sim_s
 			// WAN port was connected, fire reconnect if armed
 			else if(link_setup[wan_unit]){
 				link_setup[wan_unit] = 0;
+
+#if defined(RTCONFIG_AUTO_WANPORT) && !defined(RTCONFIG_BCM_MFG)
+				if(wan_unit == wan_primary_ifunit()
+#ifdef RTCONFIG_DUALWAN
+						&& strcmp(dualwan_mode, "lb")
+#endif
+						)
+					set_link_internet(wan_unit, 1);
+#endif
 
 				if(!strcmp(wan_proto, "static")){
 					disconn_case[wan_unit] = CASE_OTHERS;
@@ -4953,8 +4964,10 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 					_dprintf("\n# Enable direct rule(C2D)......\n");
 
 #ifdef RTCONFIG_AUTO_WANPORT
-					if(is_auto_wanport_enabled() > 0)
+					if(link_wan[current_wan_unit] == 0 && is_auto_wanport_enabled() == 2){
+						_dprintf("wanduck(C2D): Got the auto-detected WAN was unplugged...\n");
 						restore_auto_wanport();
+					}
 #endif
 				}
 				else
@@ -5007,6 +5020,12 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 #endif
 				}
 			}
+#if defined(RTCONFIG_AUTO_WANPORT) && !defined(RTCONFIG_BCM_MFG)
+			else if(link_wan[current_wan_unit] == 0 && is_auto_wanport_enabled() == 2){
+				_dprintf("wanduck 1: Got the auto-detected WAN was unplugged...\n");
+				restore_auto_wanport();
+			}
+#endif
 
 			handle_wan_line(current_wan_unit, rule_setup);
 		}
@@ -5042,6 +5061,13 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 		 * switch the connect to the other line.
 		 */
 		else if(conn_changed_state[current_wan_unit] == DISCONN){
+#if defined(RTCONFIG_AUTO_WANPORT) && !defined(RTCONFIG_BCM_MFG)
+			if(link_wan[current_wan_unit] == 0 && is_auto_wanport_enabled() == 2){
+				_dprintf("wanduck(DISCONN): Got the auto-detected WAN was unplugged...\n");
+				restore_auto_wanport();
+			}
+#endif
+
 #if defined(RTCONFIG_DUALWAN) || defined(RTCONFIG_USB_MODEM)
 			if(get_dualwan_by_unit(other_wan_unit) != WANS_DUALWAN_IF_NONE
 #ifdef RTCONFIG_USB_MULTIMODEM
@@ -5096,11 +5122,6 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 _dprintf("nat_rule: stop_nat_rules 7.\n");
 				nat_state = stop_nat_rules();
 			}
-#ifdef RTCONFIG_AUTO_WANPORT
-			if(link_wan[current_wan_unit] == 0 && is_auto_wanport_enabled() == 2){
-				restore_auto_wanport();
-			}
-#endif
 
 #if defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_LANWAN_LED) || defined(RTCONFIG_WANRED_LED) || defined(RTCONFIG_FAILOVER_LED)
 			update_wan_leds(current_wan_unit, link_wan[current_wan_unit]);
@@ -5278,4 +5299,5 @@ WANDUCK_SELECT:
 	_dprintf("# wanduck exit error\n");
 	exit(1);
 }
+
 

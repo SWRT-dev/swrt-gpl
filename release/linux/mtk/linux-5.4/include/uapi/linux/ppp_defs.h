@@ -23,6 +23,7 @@
 #define PPP_ADDRESS(p)	(((__u8 *)(p))[0])
 #define PPP_CONTROL(p)	(((__u8 *)(p))[1])
 #define PPP_PROTOCOL(p)	((((__u8 *)(p))[2] << 8) + ((__u8 *)(p))[3])
+#define PPP_PROTOCOL_CTRL(p)	(PPP_PROTOCOL(p) & 0xF000)
 
 /*
  * Significant octet values.

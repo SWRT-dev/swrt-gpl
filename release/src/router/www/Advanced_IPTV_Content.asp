@@ -20,6 +20,7 @@
 <script type="text/javascript" src="validator.js"></script>
 <script type="text/javascript" src="switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
+<script type="text/javascript" src="/form.js"></script>
 
 <style>
 .contentM_connection{
@@ -54,6 +55,7 @@
 	width: 480px;
 	height: 330px;
 	background: url('images/model_port.png') no-repeat center;
+	background-size: contain;
 }
 
 .port_plugin_img{
@@ -61,7 +63,7 @@
 	width: 480px;
 	height: 330px;
 	background: url('images/wanport_plugin.png') no-repeat center;
-	left: 135px;
+	background-size: contain;
 }
 </style>
 
@@ -110,6 +112,66 @@ for(var i = 1; i < MSWAN_List_Pri.length; i++){
 }
 
 var autowan_enable = httpApi.nvramGet(["autowan_enable"], true).autowan_enable;
+const eth_wan_list = httpApi.hookGet("get_ethernet_wan_list", true);
+
+var current_page = window.location.pathname.split("/").pop();
+var faq_index_tmp = get_faq_index(FAQ_List, current_page, 1);
+
+var vlan_port_list = {"access": [], "trunk": []};
+function get_vlan_portlist(){
+	let sdn_maximum = ((isSupport("MaxRule_SDN") == "0") ? 6 : (parseInt(isSupport("MaxRule_SDN")) - 1));//default is sdn 0
+	let nvram_name = "";
+	let label_mac = httpApi.nvramGet(["label_mac"], true)["label_mac"];
+	let nvram_list = [];
+
+	/* Get access port list */
+	for(let i = 0; i  < sdn_maximum ; i++ ){
+		nvram_name = "apg" + i + "_enable";
+		nvram_list.push(nvram_name);
+	}
+
+	let apg_enable_list = httpApi.nvramGet(nvram_list, true);
+	nvram_list.length = 0;
+	$.each(apg_enable_list, function(key){
+		if(apg_enable_list[key] == "1"){
+			let nvram_prfeix = key.substr(0, key.indexOf("enable"));
+			nvram_name = nvram_prfeix + "dut_list";
+			nvram_list.push(nvram_name);
+		}
+	});
+
+	let all_apg_dut_list = httpApi.nvramCharToAscii(nvram_list, true);
+	$.each(all_apg_dut_list, function(key){
+		if(key != "isError"){
+			let dut_list = decodeURIComponent(all_apg_dut_list[key]);
+			if(dut_list != ""){
+				let dut_array = dut_list.split("<");
+				$.each(dut_array, function(index){
+					if(dut_array[index] != ""){
+						let dut_info = dut_array[index].split(">");
+						if(dut_info[0] == label_mac){
+							if(dut_info[2] != ""){
+								let port_array = dut_info[2].split(",");
+								$.each(port_array, function(port_index){
+									vlan_port_list.access.push(port_array[port_index].substr(1,1));
+								});
+							}
+						}
+					}
+				});
+			}
+		}
+	});
+
+	/* Get trunk port list */
+	let vlan_trunk_array = decodeURIComponent(httpApi.nvramCharToAscii(["vlan_trunk_rl"], true)["vlan_trunk_rl"]).split("<");
+	$.each(vlan_trunk_array, function(index){
+		if(vlan_trunk_array[index] != ""){
+			let trunk_info = vlan_trunk_array[index].split(">");
+			vlan_port_list.trunk.push(trunk_info[0]);
+		}
+	});
+}
 
 function initial(){
 	show_menu();
@@ -390,7 +452,7 @@ function isEmpty(obj)
 	}
 
 	return true;
-};
+}
 
 function ISP_Profile_Selection(isp){
 	var isp_settings = get_isp_settings(isp);
@@ -592,10 +654,12 @@ function validForm(){
 }
 
 function check_port_conflicts(){
-	var wan_port_conflict = false;
-	var lacp_port_conflict = false;
-	var iptv_port = document.form.switch_stb_x.value;
-	var iptv_port_settings = document.form.iptv_port_settings.value;
+	let wan_port_conflict = false;
+	let lacp_port_conflict = false;
+	let vlan_port_conflict = false;
+	let iptv_port = document.form.switch_stb_x.value;
+	let iptv_port_settings = document.form.iptv_port_settings.value;
+	let selected_stb_option = $('#switch_stb_x0 :selected').text();
 
 	if(dualWAN_support){	// dualwan LAN port should not be equal to IPTV port
 		var tmp_pri_if = wans_dualwan_orig.split(" ")[0].toUpperCase();
@@ -651,9 +715,7 @@ function check_port_conflicts(){
 		}
 	}
 
-	if(lacp_enabled && document.form.switch_wantag.value == "none"){
-		var selected_stb_option = $('#switch_stb_x0 :selected').text();;
-
+	if(lacp_support && lacp_enabled && document.form.switch_wantag.value == "none"){
 		bonding_port_settings.forEach(function(bonding_value){
 			var bonding_port = bonding_value.text;
 			if(selected_stb_option.indexOf(bonding_port) != -1 || bonding_port.indexOf(selected_stb_option) != -1)
@@ -661,7 +723,30 @@ function check_port_conflicts(){
 		});
 	}
 
-	if(wan_port_conflict || lacp_port_conflict){
+	if(isSupport("mtlancfg")){
+		get_vlan_portlist();
+		if(vlan_port_list.access.length > 0){
+			$.each(vlan_port_list.access, function(index){
+				let vlan_port_text = "LAN" + vlan_port_list.access[index];
+				if(selected_stb_option.indexOf(vlan_port_text) != -1){
+					vlan_port_conflict = true;
+					return false;
+				}
+			});
+		}
+
+		if(vlan_port_list.trunk.length > 0){
+			$.each(vlan_port_list.trunk, function(index){
+				let vlan_port_text = "LAN" + vlan_port_list.trunk[index];
+				if(selected_stb_option.indexOf(vlan_port_text) != -1){
+					vlan_port_conflict = true;
+					return false;
+				}
+			});
+		}
+	}
+
+	if(wan_port_conflict || lacp_port_conflict || vlan_port_conflict){
 		var hint_str1 = "<#PortConflict_SamePort_Hint#>";
 		var hint_str2 = "<#ChooseOthers_Hint#>";
 		var alert_msg = "";
@@ -669,8 +754,11 @@ function check_port_conflicts(){
 		if(wan_port_conflict){
 			alert_msg = hint_str1.replace("%1$@", "WAN").replace("%2$@", "IPTV") + " " + hint_str2;
 		}
-		else{
+		else if(lacp_port_conflict){
 			alert_msg = hint_str1.replace("%1$@", "<#NAT_lacp#>").replace("%2$@", "IPTV") + " " + hint_str2;
+		}
+		else if(vlan_port_conflict){
+			alert_msg = hint_str1.replace("%1$@", "VLAN").replace("%2$@", "IPTV") + " " + hint_str2;
 		}
 
 		alert(alert_msg);
@@ -786,7 +874,7 @@ function applyRule(){
 		}
 
 		if(turn_off_lacp()){
-			var hint_str = "Configure %1$@ as %2$@ will disable \"%3$@\" function, are you sure to continue?";
+			var hint_str = `<#PortConflict_DisableFunc_Check#>`;
 			var msg = "";
 			var port_list = "";
 			var isp_profile = get_isp_settings(document.form.switch_wantag.value);
@@ -824,14 +912,11 @@ function applyRule(){
 				return false;
 		}
 
-		if(((isSupport("autowan") && autowan_enable == "1") || (is_GTBE_series && wans_dualwan_array[0] == "wan" && wans_extwan == "1")) &&
+		if(((isSupport("autowan") && autowan_enable == "1") || !use_single_default_wan()) &&
 			(document.form.switch_stb_x.value != "0" || document.form.switch_wantag.value != "none")){
-			var hint_str = "To ensure that there are no conflicts, when you enable %1$@, the WAN port will be change to %2$@ only. Please make sure that your WAN cable is correctly plugged into the %2$@. Are you sure to continue?"
+			var hint_str = `<#conflict_function_wanport_hint#>`;
 			var msg = "";
-			if(is_GTBE_series)
-				msg = hint_str.replace("%1$@", "IPTV").replaceAll("%2$@", "10G WAN");
-			else
-				msg = hint_str.replace("%1$@", "IPTV").replaceAll("%2$@", get_default_wan_name());
+			msg = hint_str.replace("%1$@", "IPTV").replaceAll("%2$@", get_default_wan_name());
 			$("#autowan_hint").html(msg);
 			$("#autowan_hint_div").show();
 			if(check_file_exists('images/model_port.png') && check_file_exists('images/wanport_plugin.png')){
@@ -1512,21 +1597,31 @@ function close_autowan_hint(){
 }
 
 function confirm_autowan_change(){
+	let wan_obj = eth_wan_list["wan"];
 	let lacp_ifnames_x = httpApi.nvramGet(["lacp_ifnames_x"], true).lacp_ifnames_x;
 
 	$("#autowan_hint_div").hide();
+	if(wan_obj.hasOwnProperty("extra_settings")){
+		let extra_settings = wan_obj.extra_settings;
+		$.each(extra_settings, function(key) {
+			if(document.getElementsByName(key).length > 0){
+				document.getElementsByName(key)[0].value = extra_settings[key];
+			}
+			else{
+				$('<input>').attr({
+					type: 'hidden',
+					name: key,
+					value: extra_settings[key]
+				}).appendTo('form');
 
-	$('<input>').attr({
-		type: 'hidden',
-		name: "autowan_enable",
-		value: "0"
-	}).appendTo('form');
+			}
+		});
+	}
 
-	$('<input>').attr({
-		type: 'hidden',
-		name: "wans_extwan",
-		value: "0"
-	}).appendTo('form');
+	if(wans_dualwan_orig.indexOf("none") == -1){//Disable DualWAN
+		document.form.wans_dualwan.disabled = false;
+		document.form.wans_dualwan.value = "wan none";
+	}
 
 	if(is_GTBE_series){
 		if(lacp_ifnames_x == "eth0 eth3"){
@@ -1562,17 +1657,47 @@ function isEmpty(obj)
 	}
 
 	return true;
-};
+}
 
 function get_default_wan_name(){
 	var default_wan_name = "WAN";
-	var eth_wan_list = httpApi.hookGet("get_ethernet_wan_list", true);
 
 	if(!isEmpty(eth_wan_list)){
 		default_wan_name = eth_wan_list["wan"].wan_name;
 	}
 
 	return default_wan_name;
+}
+
+function use_single_default_wan(){
+	let _use_single_default_wan = true;
+
+	if(wans_dualwan_orig.indexOf("none") == -1)
+		_use_single_default_wan = false;
+	else if(!isEmpty(eth_wan_list)){
+		$.each(eth_wan_list, function(key) {
+			if(key == "wan"){
+				let wan_obj = eth_wan_list[key];
+				if(wan_obj.hasOwnProperty("extra_settings")){
+					let extra_settings = wan_obj.extra_settings;
+					let extra_setting_nvram_list = [];
+					let current_value_list = [];
+
+					extra_setting_nvram_list = Object.keys(extra_settings);
+					current_value_list = httpApi.nvramGet(extra_setting_nvram_list, true);
+					$.each(extra_settings, function(key) {
+						if(current_value_list[key] != extra_settings[key]){
+							_use_single_default_wan = false;
+							return false;
+						}
+					});
+				}
+				return false;
+			}
+		});
+	}
+
+	return _use_single_default_wan;
 }
 </script>
 </head>
@@ -1896,9 +2021,12 @@ function get_default_wan_name(){
   <table width="760px" border="0" cellpadding="5" cellspacing="0" class="FormTitle" id="FormTitle">
 	<tbody>
 	<tr>
-		<td bgcolor="#4D595D" valign="top"  >
+		<td bgcolor="#4D595D" valign="top">
+		<div class="container">
+
 			<div>&nbsp;</div>
 			<div class="formfonttitle"><#menu5_2#> - IPTV</div>
+			<div class="formfonttitle_help"><i onclick="show_feature_desc(`<#HOWTOSETUP#>`)" class="icon_help"></i></div>
 			<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 			<div id="IPTV_desc" class="formfontdesc" style="display:none;"><#LANHostConfig_displayIPTV_sectiondesc#></div>
 			<div id="IPTV_desc_DualWAN" class="formfontdesc" style="display:none;"><#LANHostConfig_displayIPTV_sectiondesc2#></div>
@@ -2070,6 +2198,9 @@ function get_default_wan_name(){
 		<div class="apply_gen">
 			<input class="button_gen" onclick="applyRule()" type="button" value="<#CTL_apply#>"/>
 		</div>
+
+		</div>	<!-- for .container  -->
+		<div class="popup_container popup_element_second"></div>
 		
 	  </td>
 	</tr>
@@ -2080,7 +2211,7 @@ function get_default_wan_name(){
 		</td>
 	</form>					
 				</tr>
-			</table>				
+			</table>
 			<!--===================================End of Main Content===========================================-->
 </td>
 

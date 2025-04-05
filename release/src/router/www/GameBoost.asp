@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -19,9 +19,9 @@
 <script type="text/javascript" src="/help.js"></script>
 <script type="text/javascript" src="/form.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
-<script language="JavaScript" type="text/javascript" src="/js/asus_policy.js"></script>
 <script type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/form.js"></script>
+<script type="text/javascript" src="/js/asus_policy.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
 <style>
 *{
@@ -124,33 +124,48 @@ body{
 window.onresize = function() {
 	cal_panel_block("gameList_block", 0.23);
 }
-var fc_disable_orig = '<% nvram_get("fc_disable"); %>';
-var runner_disable_orig = '<% nvram_get("runner_disable"); %>';
-var ctf_disable = '<% nvram_get("ctf_disable"); %>';
-var ctf_fa_mode = '<% nvram_get("ctf_fa_mode"); %>';
-var bwdpi_app_rulelist = "<% nvram_get("bwdpi_app_rulelist"); %>".replace(/&#60/g, "<");
-var outfox_code = httpApi.nvramGet(["outfox_code"], true).outfox_code;
-var outfox_site = 'https://getoutfox.com/asus?code='+ outfox_code +'&utm_source=asus&utm_medium=affiliate&utm_campaign=' + support_site_modelid + '&utm_content=router_cta';
+const nvram_get_param = httpApi.nvramGet([
+    "fc_disable", "runner_disable", "ctf_disable", "ctf_fa_mode",
+    "bwdpi_game_list", "rog_clientlist",
+    "qos_enable", "qos_type", "rog_enable", "qos_obw", "qos_obw1", "qos_ibw", "qos_ibw1",
+    "lan_hwaddr",
+    "preferred_lang", "firmver", "outfox_code", "label_mac"
+], true);
+
+const fc_disable_orig = nvram_get_param.fc_disable;
+const runner_disable_orig = nvram_get_param.runner_disable;
+const ctf_disable = nvram_get_param.ctf_disable;
+const ctf_fa_mode = nvram_get_param.ctf_fa_mode;
+
+const outfox_code = nvram_get_param.outfox_code;
+const outfox_site = 'https://getoutfox.com/asus?code='+ outfox_code +'&utm_source=asus&utm_medium=affiliate&utm_campaign=' + support_site_modelid + '&utm_content=router_cta';
 
 function initial(){
 	show_menu();
 
-	if(adaptiveqos_support){
-		if(document.form.qos_enable.value == '1' && document.form.qos_type.value == '1'){
-			document.getElementById("game_priority_enable").checked = true;
-		}
-		else{
-			document.getElementById("game_priority_enable").checked = false;
-		}
-	}
-	else{
-		if(document.form.rog_enable.value == '1' && document.form.qos_type.value == '0'){
-			document.getElementById("game_priority_enable").checked = true;
-		}
-		else{
-			document.getElementById("game_priority_enable").checked = false;
-		}
-	}
+	if (adaptiveqos_support) {
+        if (nvram_get_param.qos_enable == '1' && nvram_get_param.qos_type == '1') {
+            document.getElementById("game_priority_enable").checked = true;
+        } else {
+            document.getElementById("game_priority_enable").checked = false;
+        }
+    } else {
+        if (nvram_get_param.rog_enable == '1' && nvram_get_param.qos_type == '0') {
+            document.getElementById("game_priority_enable").checked = true;
+        } else {
+            document.getElementById("game_priority_enable").checked = false;
+        }
+    }
+    document.form.preferred_lang.value = nvram_get_param.preferred_lang;
+    document.form.firmver.value = nvram_get_param.firmver;
+    document.form.qos_enable.value = nvram_get_param.qos_enable;
+    document.form.qos_type.value = nvram_get_param.qos_type;
+    document.form.qos_obw.value = nvram_get_param.qos_obw;
+    document.form.qos_obw1.value = nvram_get_param.qos_obw1;
+    document.form.qos_ibw.value = nvram_get_param.qos_ibw;
+    document.form.qos_ibw1.value = nvram_get_param.qos_ibw1;
+    document.form.bwdpi_game_list.value = nvram_get_param.bwdpi_game_list;
+    document.form.rog_enable.value = nvram_get_param.rog_enable;
 
 	if(is_CN || document.form.preferred_lang.value == 'CN'){
 		$('#android_qr').removeClass('qr_android').addClass('qr_android_cn');
@@ -180,12 +195,6 @@ function initial(){
 	genGameList();
 }
 
-function eula_confirm(){
-	document.form.TM_EULA.value = 1;
-	document.form.action_wait.value = "15";
-	enableGamePriority();
-}
-
 function cancel(){
 	refreshpage();
 }
@@ -213,145 +222,186 @@ function pullLANIPList(obj){
 		hideClients_Block();
 }
 
-if(adaptiveqos_support){
-	var gameList = '<% nvram_get("bwdpi_game_list"); %>'.replace(/&#60/g, "<");;
-}
-else{
-	var gameList = '<% nvram_get("rog_clientlist"); %>'.replace(/&#60/g, "<");
+let gameList = '';
+if (adaptiveqos_support) {
+    gameList = nvram_get_param.bwdpi_game_list.replace(/&#60/g, "<");
+} else {
+    gameList = nvram_get_param.rog_clientlist.replace(/&#60/g, "<");
 }
 
 function genGameList(){
-	var list_array = gameList.split('<');
-	var code = '';
-	code += '<thead><tr><td colspan="4"><#Gear_Accelerator_List#>&nbsp;(<#List_limit#>&nbsp;64)</td></tr></thead>';
-	code += '<tr>';
-	code += '<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,10);"><#Client_Name#> (<#PPPConnection_x_MacAddressForISP_itemname#>)</a></th>';
-	code += '<th><#list_add_delete#></th>';
-	code += '</tr>';
-	code += '<tr>';
-	code += '<td width="40%">';
-    code += '<div style="display: flex; justify-content: center">';
-    code += '<div class="clientlist_dropdown_main">';
-	code += '<input type="text" class="input_20_table" maxlength="17" id="client" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: <% nvram_get("lan_hwaddr"); %>">';
-	code += '<img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_MAC#>">';
-	code += '<div id="ClientList_Block_PC" class="clientlist_dropdown"></div>';
-    code += '</div>';
-    code += '</div>';
-	code += '</td>';
-	code += '<td width="10%">';
-	code += '<div><input type="button" class="add_btn" onClick="addGameList(64);"></div>';
-	code += '</td>';
-	code += '</tr>';
+	const list_array = gameList.split('<');
+    let code = `
+        <thead><tr><td colspan="4"><#Gear_Accelerator_List#> (<#List_limit#> 64)</td></tr></thead>
+        <tr>
+            <th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(5,10);"><#Client_Name#> (<#PPPConnection_x_MacAddressForISP_itemname#>)</a></th>
+            <th><#list_add_delete#></th>
+        </tr>
+        <tr>
+            <td width="40%">
+                <div style="display: flex; justify-content: center">
+                    <div class="clientlist_dropdown_main">
+                        <input type="text" class="input_20_table" maxlength="17" id="client" onKeyPress="return validator.isHWAddr(this,event)" onClick="hideClients_Block();" autocorrect="off" autocapitalize="off" placeholder="ex: ${nvram_get_param.lan_hwaddr}">
+                        <img id="pull_arrow" height="14px;" src="/images/unfold_more.svg" onclick="pullLANIPList(this);" title="<#select_MAC#>">
+                        <div id="ClientList_Block_PC" class="clientlist_dropdown"></div>
+                    </div>
+                </div>
+            </td>
+            <td width="10%">
+                <div><input type="button" class="add_btn" onClick="addGameList(64);"></div>
+            </td>
+        </tr>`;
 		
-	if(list_array == ''){
-		code += '<tr><td colspan="2" style="color:#FFCC00;">No data in table.</td></tr>';
-	}
+	if (list_array == '') {
+        code += `<tr><td colspan="2" style="color:#FFCC00;"><#IPConnection_VSList_Norule#></td></tr>`;
+    }
 	else{
-		for(i=0; i<list_array.length; i++){
-			code += '<tr>';
-			code += '<td>';
-			code += '<div style="display:flex;align-items: center;justify-content: center;padding-left:30px;">';
-			code += '<div style="width:20%;"><div id="clientIcon_3497F683C346" class="clientIcon type34" ></div></div>';
-			code += '<div style="text-align: left;line-height: 18px;width:50%;">';
-			var mac = list_array[i];
-			var name = (clientList[mac] != undefined) ? clientList[mac].name : '';
-			var ip = (clientList[mac] != undefined) ? clientList[mac].ip : '';
-			code += '<div>'+ name +'</div>';		// NAME
-			code += '<div>'+ mac +'</div>';		// MAC
-			code += '<div>'+ ip +'</div>';		// IP
-			code += '</div>';
-			code += '</div>';
-			code += '</td>';
-			code += '<td width="10%">';
-			code += '<div><input type="button" class="remove_btn" onClick="delGameList(\''+ mac +'\')"></div>';
-			code += '</td>';
-			code += '</tr>';
-		}
+		for (let i = 0; i < list_array.length; i++) {
+            const mac = list_array[i];
+            let userIconBase64 = "NoIcon";
+            let clientName, deviceType, deviceVendor, deviceIP;
+            let clientMac = mac.toUpperCase();
+            let clientIconID = "clientIcon_" + clientMac.replace(/\:/g, "");
+            if (clientList[clientMac]) {
+                clientName = (clientList[clientMac].nickName == "") ? clientList[clientMac].name : clientList[clientMac].nickName;
+                deviceType = clientList[clientMac].type;
+                deviceVendor = clientList[clientMac].vendor;
+                deviceIP = clientList[clientMac].ip;
+            } else {
+                clientName = "New device";
+                deviceType = 0;
+                deviceVendor = "";
+                deviceIP = "";
+            }
+
+            let iconCode = "";
+
+            if (typeof clientList[mac] === 'undefined') {
+                iconCode += '<div id="' + clientIconID + '" class="clientIcon type0"></div>';
+            } else {
+                if (usericon_support) {
+                    userIconBase64 = getUploadIcon(clientMac.replace(/\:/g, ""));
+                }
+                if (userIconBase64 !== "NoIcon") {
+                    if (clientList[clientMac].isUserUplaodImg) {
+                        iconCode += `<div id="${clientIconID}" class="clientIcon"><img class="imgUserIcon_card" src="${userIconBase64}"></div>`;
+                    } else {
+                        iconCode += `<div id="${clientIconID}" class="clientIcon"><i class="type" style="--svg:url('${userIconBase64}')"></i></div>`;
+                    }
+                } else if (deviceType != "0" || deviceVendor == "") {
+                    iconCode += `<div id="${clientIconID}" class="clientIcon"><i class="type${deviceType}"></i></div>`;
+                } else if (deviceVendor != "") {
+                    const vendorIconClassName = getVendorIconClassName(deviceVendor.toLowerCase());
+                    if (vendorIconClassName != "" && !downsize_4m_support) {
+                        iconCode += `<div id="${clientIconID}" class="clientIcon"><i class="vendor-icon ${vendorIconClassName}"></i></div>`;
+                    } else {
+                        iconCode += `<div id="${clientIconID}" class="clientIcon"><i class="type${deviceType}"></i></div>`;
+                    }
+                }
+            }
+
+
+            code += `
+                <tr>
+                    <td>
+                        <div style="display:flex;align-items: center;justify-content: center;padding-left:30px;">
+                            <div style="width:20%;">${iconCode}</div>
+                            <div style="text-align: left;line-height: 18px;width:50%;">
+                                <div>${clientName}</div>
+                                <div>${clientName}</div>
+                                <div>${deviceIP}</div>
+                            </div>
+                        </div>
+                    </td>
+                    <td width="10%">
+                        <div><input type="button" class="remove_btn" onClick="delGameList('${mac}')"></div>
+                    </td>
+                </tr>`;
+        }
 	}
 	
 	$('#game_list').html(code);
 }
 
-function addGameList(){
-	var mac = $('#client').val();
-	var list_array = gameList.split('<');
-	var maximum = '64';
-	if(mac == ''){
-		alert("<#JS_fieldblank#>");
-		return false;
-	}
+function addGameList() {
+    const mac = document.querySelector('#client').value;
+    const list_array = gameList.split('<');
+    const maximum = '64';
+    if (mac === '') {
+        alert("<#JS_fieldblank#>");
+        return false;
+    }
 
-	if(list_array.length > maximum){
-		alert("<#JS_itemlimit1#> " + maximum + " <#JS_itemlimit2#>");
-		return false;
-	}
+    if (list_array.length > maximum) {
+        alert(`<#JS_itemlimit1#> ${maximum} <#JS_itemlimit2#>`);
+        return false;
+    }
 
-	// check mac is whether in the list
-	for(i=1; i<list_array.length; i++){
-		if(list_array[i] == mac){
-			alert("<#JS_duplicate#>");
-			return false;
-		}
-	}
+    // check mac is whether in the list
+    for (let i = 1; i < list_array.length; i++) {
+        if (list_array[i] == mac) {
+            alert("<#JS_duplicate#>");
+            return false;
+        }
+    }
 
-	if(gameList === ''){
-		gameList = mac;
-	}
-	else{
-		gameList += '<' + mac ;
-	}
+    if (gameList === '') {
+        gameList = mac;
+    } else {
+        gameList += '<' + mac;
+    }
 
-	if(adaptiveqos_support){
-		genGameList();
-	}
-	else{
-		$.ajax({
-			url: '/rog_first_qos.cgi',
-			dataType: 'json',
-			data: {
-				rog_mac: mac,
-				action: 'add'
-			},
-			error: function(){},
-			success: function(response){
-				genGameList();
-			}
-		});
-	}
+    if (adaptiveqos_support) {
+        genGameList();
+    } else {
+        $.ajax({
+            url: '/rog_first_qos.cgi',
+            dataType: 'json',
+            data: {
+                rog_mac: mac,
+                action: 'add'
+            },
+            error: function () {
+            },
+            success: function (response) {
+                genGameList();
+            }
+        });
+    }
 
-	setTimeout("showDropdownClientList('setClientIP', 'mac', 'all', 'ClientList_Block_PC', 'pull_arrow', 'all');", 500);
+    setTimeout("showDropdownClientList('setClientIP', 'mac', 'all', 'ClientList_Block_PC', 'pull_arrow', 'all');", 500);
 }
 
-function delGameList(target){
-	var mac = target;
-	var list_array = gameList.split('<');
-	var temp = [];
-	for(i=0; i<list_array.length; i++){
-		if(list_array[i] != mac){
-			temp.push(list_array[i]);
-		}	
-	}
+function delGameList(target) {
+    const mac = target;
+    const list_array = gameList.split('<');
+    const temp = [];
+    for (let i = 0; i < list_array.length; i++) {
+        if (list_array[i] != mac) {
+            temp.push(list_array[i]);
+        }
+    }
 
-	gameList = temp.join('<');
-	if(adaptiveqos_support){
-		genGameList();
-	}
-	else{
-		$.ajax({
-			url: '/rog_first_qos.cgi',
-			dataType: 'json',
-			data: {
-				rog_mac: mac,
-				action: 'delete'
-			},
-			error: function(){},
-			success: function(response){
-				genGameList();
-			}
-		});
-	}
-	
-	setTimeout("showDropdownClientList('setClientIP', 'mac', 'all', 'ClientList_Block_PC', 'pull_arrow', 'all');", 500);
+    gameList = temp.join('<');
+    if (adaptiveqos_support) {
+        genGameList();
+    } else {
+        $.ajax({
+            url: '/rog_first_qos.cgi',
+            dataType: 'json',
+            data: {
+                rog_mac: mac,
+                action: 'delete'
+            },
+            error: function () {
+            },
+            success: function (response) {
+                genGameList();
+            }
+        });
+    }
+
+    setTimeout("showDropdownClientList('setClientIP', 'mac', 'all', 'ClientList_Block_PC', 'pull_arrow', 'all');", 500);
 }
 
 function showGameListField(){
@@ -364,49 +414,19 @@ function hideGameListField(){
 }
 
 function enableGamePriority(){
-	if(adaptiveqos_support){
-		if(document.form.qos_enable.value == "0" && document.form.TM_EULA.value == "0"){
-			if(policy_status.TM == 0 || policy_status.TM_time == ''){
-                const policyModal = new PolicyModalComponent({
-                    policy: "TM",
-                    agreeCallback: eula_confirm,
-                    disagreeCallback: cancel
-                });
-                policyModal.show();
-            }else{
-                eula_confirm();
-            }
-		}
-		else{
-			if(document.getElementById("game_priority_enable").checked){
-				document.form.qos_enable.value = '1';
-				document.form.qos_type.value = '1';
-			}
-			else{
-				document.form.qos_enable.value = '0';
-			}
-
-			if(ctf_disable == 1 || (fc_disable_orig != '' && runner_disable_orig != '')){
-				document.form.action_script.value = "restart_qos;restart_firewall";
-			}
-			else{
-				if(ctf_fa_mode == "2"){
-					FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
-				}
-				else{
-					document.form.action_script.value = "restart_qos;restart_firewall";
-				}
-			}
-
-			if(reset_wan_to_fo.change_status)
-				reset_wan_to_fo.change_wan_mode(document.form);
-
-			document.form.bwdpi_game_list.disabled = false;
-			document.form.bwdpi_game_list.value = gameList;
-			document.form.submit();
-		}
-	}
-	else{
+    const default_reboot_time = httpApi.hookGet("get_default_reboot_time");
+	if (adaptiveqos_support) {
+        if (document.form.qos_enable.value == "0" && (policy_status.TM == 0 || policy_status.TM_time == '')) {
+            const policyModal = new PolicyModalComponent({
+                policy: "TM",
+                agreeCallback: eula_confirm,
+                disagreeCallback: cancel
+            });
+            policyModal.show();
+        } else {
+            eula_confirm();
+        }
+    } else{
 		if(document.form.rog_enable.value == '0'){		// OFF -> ON
 			if(isSupport("is_ax5400_i1")) {
 				if(document.form.qos_obw.value == '0' || document.form.qos_obw.value == ''){
@@ -449,7 +469,7 @@ function enableGamePriority(){
 			document.form.action_script.value = 'reboot';
 
 			if(document.form.qos_type.value == 0 && !lantiq_support){
-				FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+				FormActions("start_apply.htm", "apply", "reboot", default_reboot_time);
 			}
 		}
 		else{
@@ -461,11 +481,11 @@ function enableGamePriority(){
 		}
 		else{
 			if(ctf_fa_mode == "2"){
-				FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+				FormActions("start_apply.htm", "apply", "reboot", default_reboot_time);
 			}
 			else{
 				if(document.form.qos_type.value == 0 && !lantiq_support){
-					FormActions("start_apply.htm", "apply", "reboot", "<% get_default_reboot_time(); %>");
+					FormActions("start_apply.htm", "apply", "reboot", default_reboot_time);
 				}	
 				else{
 					document.form.action_script.value = "restart_qos;restart_firewall";
@@ -481,8 +501,30 @@ function enableGamePriority(){
 }
 
 function eula_confirm(){
-	document.form.TM_EULA.value = 1;
-	enableGamePriority();
+    const default_reboot_time = httpApi.hookGet("get_default_reboot_time");
+	if (document.getElementById("game_priority_enable").checked) {
+        document.form.qos_enable.value = '1';
+        document.form.qos_type.value = '1';
+    } else {
+        document.form.qos_enable.value = '0';
+    }
+
+    if (ctf_disable == 1 || (fc_disable_orig != '' && runner_disable_orig != '')) {
+        document.form.action_script.value = "restart_qos;restart_firewall";
+    } else {
+        if (ctf_fa_mode == "2") {
+            FormActions("start_apply.htm", "apply", "reboot", default_reboot_time);
+        } else {
+            document.form.action_script.value = "restart_qos;restart_firewall";
+        }
+    }
+
+    if (reset_wan_to_fo.change_status)
+        reset_wan_to_fo.change_wan_mode(document.form);
+
+    document.form.bwdpi_game_list.disabled = false;
+    document.form.bwdpi_game_list.value = gameList;
+    document.form.submit();
 }
 
 function cancel(){
@@ -529,6 +571,52 @@ function showThirdPartyPolicy(party){
     });
     thirdPartyPolicyModal.show();
 }
+
+function enableGearUp(){
+	if($("#gearup_enable").is(":checked")){
+		$('<input>').attr({
+			type: 'hidden',
+			name: "gearup_enable",
+			value: "1"
+		}).appendTo('form');
+	}
+	else{
+		$('<input>').attr({
+			type: 'hidden',
+			name: "gearup_enable",
+			value: "0"
+		}).appendTo('form');
+	}
+
+	document.form.action_script.value = "restart_gu_service";
+	document.form.submit();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const thirdpartyPolicy = 'WTFast'
+    document.getElementById("thirdparty_pp").innerHTML=`<#Thirdparty_PP_Desc1#>`.replace("%1$@", thirdpartyPolicy).replace("[aa]%2$@[/aa]", `<a onclick="showThirdPartyPolicy('${thirdpartyPolicy}')" style="text-decoration: underline;cursor: pointer;">AAA Internet Publishing Inc. PRIVACY POLICY</a>`);
+})
+
+function showThirdPartyPolicy(party){
+    const thirdPartyPolicyModal = new ThirdPartyPolicyModalComponent({
+        policy: 'THIRDPARTY_PP',
+        party: party
+    });
+    thirdPartyPolicyModal.show();
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+    const thirdpartyPolicy = 'WTFast'
+    document.getElementById("thirdparty_pp").innerHTML=`<#Thirdparty_PP_Desc1#>`.replace("%1$@", thirdpartyPolicy).replace("[aa]%2$@[/aa]", `<a onclick="showThirdPartyPolicy('${thirdpartyPolicy}')" style="text-decoration: underline;cursor: pointer;">AAA Internet Publishing Inc. PRIVACY POLICY</a>`);
+})
+
+function showThirdPartyPolicy(party){
+    const thirdPartyPolicyModal = new ThirdPartyPolicyModalComponent({
+        policy: 'THIRDPARTY_PP',
+        party: party
+    });
+    thirdPartyPolicyModal.show();
+}
 </script>
 </head>
 <body onload="initial();" onunload="unload_body();">
@@ -552,20 +640,19 @@ function showThirdPartyPolicy(party){
 <form method="post" name="form" action="/start_apply.htm" target="hidden_frame">
 <input type="hidden" name="current_page" value="GameBoost.asp">
 <input type="hidden" name="next_page" value="GameBoost.asp">
-<input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
-<input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
+<input type="hidden" name="preferred_lang" id="preferred_lang" value="">
+<input type="hidden" name="firmver" value="">
 <input type="hidden" name="action_mode" value="apply">
 <input type="hidden" name="action_script" value="restart_qos;restart_firewall">
 <input type="hidden" name="action_wait" value="5">
-<input type="hidden" name="qos_enable" value="<% nvram_get("qos_enable"); %>">
-<input type="hidden" name="qos_type" value="<% nvram_get("qos_type"); %>">
-<input type="hidden" name="TM_EULA" value="<% nvram_get("TM_EULA"); %>">
-<input type="hidden" name="qos_obw" value="<% nvram_get("qos_obw"); %>" disabled>
-<input type="hidden" name="qos_ibw" value="<% nvram_get("qos_ibw"); %>" disabled>
-<input type="hidden" name="qos_obw1" value="<% nvram_get("qos_obw1"); %>" disabled>
-<input type="hidden" name="qos_ibw1" value="<% nvram_get("qos_ibw1"); %>" disabled>
-<input type="hidden" name="bwdpi_game_list" value="<% nvram_get("bwdpi_game_list"); %>" disabled>
-<input type="hidden" name="rog_enable" value="<% nvram_get("rog_enable"); %>">
+<input type="hidden" name="qos_enable" value="">
+<input type="hidden" name="qos_type" value="">
+<input type="hidden" name="qos_obw" value="" disabled>
+<input type="hidden" name="qos_ibw" value="" disabled>
+<input type="hidden" name="qos_obw1" value="" disabled>
+<input type="hidden" name="qos_ibw1" value="" disabled>
+<input type="hidden" name="bwdpi_game_list" value="" disabled>
+<input type="hidden" name="rog_enable" value="">
 </form>
 <div>
 	<table class="content" align="center" cellspacing="0" style="margin:auto;">
@@ -657,7 +744,7 @@ function showThirdPartyPolicy(party){
 											<tr>
 												<td align="center">
 													<div style="width:85px;height: 85px;background-image: url('images/New_ui/GameBoost_mobileGame.svg');background-size: 100%;"></div>
-													<!-- <img style="padding-right:10px;;" src="/images/New_ui/GameBoost_WTFast.png" > -->
+													<!-- <img style="padding-right:10px;" src="/images/New_ui/GameBoost_WTFast.png" > -->
 												</td>
 												<td style="width:400px;height:120px;">
 													<div style="font-size:16px;color:#949393;padding-left:10px;"><#GB_mobile_desc1#></div>
@@ -667,7 +754,7 @@ function showThirdPartyPolicy(party){
 														<div style="margin: 0 12px">
 															<div id="android_qr" class="qr_code qr_android"></div>	
 															<a id="android_link" href="https://play.google.com/store/apps/details?id=com.asus.aihome" target="_blank">
-																<div style="width:124px;height:36px;background:url('images/googleplay.png') no-repeat;;background-size:100%;"></div>
+																<div style="width:124px;height:36px;background:url('images/googleplay.png') no-repeat;background-size:100%;"></div>
 															</a>
 															<a id="android_cn_link" style="display:none" href="https://dlcdnets.asus.com/pub/ASUS/LiveUpdate/Release/Wireless/ASUSRouter_Android_Release.apk" target="_blank">
 																<div style="width:124px;height:36px;border:1px solid #BDBDBD;border-radius: 6px;text-align: center;line-height: 36px;font-size:20px;">Android</div>
@@ -729,7 +816,7 @@ function showThirdPartyPolicy(party){
 											</tr>
 											<tr id='wtfast_3' style="display:none">
 												<td align="center" style="width:85px">
-													<img style="padding-right:10px;;" src="/images/New_ui/triLv3_wtfast.png" >
+													<img style="padding-right:10px;" src="/images/New_ui/triLv3_wtfast.png" >
 												</td>
 												<td style="width:400px;height:120px;">
 													<div style="font-size:16px;color:#949393;padding-left:10px; margin-top: 10px;"><#Game_WTFast_desc#></div>

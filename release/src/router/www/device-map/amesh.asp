@@ -543,6 +543,9 @@ function gen_current_onboardinglist(_onboardingList, _wclientlist, _wiredclientl
 					wireless_band = 2;
 					wireless_rssi = client_convRSSI(rssi6g);
 				}
+				else if(connect_type == "512") {
+					wireless_rssi = mlo_convRSSI(get_mlo_quality(_onboardingList[idx]));
+				}
 				else if(connect_type <= 0) {
 					online = 0;
 					wireless_rssi = "wired";
@@ -594,7 +597,8 @@ function gen_current_onboardinglist(_onboardingList, _wclientlist, _wiredclientl
 									code += "<div class='radioIcon radio_" + wireless_rssi + "'></div>";
 									if(connect_type != "1" && connect_type != "16" && connect_type != "32" && connect_type != "64") {
 										var bandClass = (navigator.userAgent.toUpperCase().match(/CHROME\/([\d.]+)/)) ? "band_txt_chrome" : "band_txt";
-										code += "<div class='band_block'><span class=" + bandClass + ">" + wireless_band_array[wireless_band] + "</span></div>";
+										const wl_band_text = (connect_type == "512") ? "MLO" : wireless_band_array[wireless_band];
+										code += `<div class='band_block'><span class=${bandClass}>${wl_band_text}</span></div>`;
 									}
 									code += "</div>";
 								}
@@ -1099,6 +1103,9 @@ function show_connect_msg(_reMac, _newReMac, _node_info) {
 						auth_list["wpa2"] = "WPA2-Enterprise";
 						auth_list["wpawpa2"] = "WPA/WPA2-Enterprise";
 						auth_list["sae"] = "WPA3-Personal";
+						auth_list["wpa3"] = "WPA3-Enterprise";
+						auth_list["wpa2wpa3"] = "WPA2/WPA3-Enterprise";
+						auth_list["suite-b"] = "WPA3-Enterprise 192-bit";
 
 						var current_auth = "";
 						var changeTo_auth = "";
@@ -1124,6 +1131,17 @@ function show_connect_msg(_reMac, _newReMac, _node_info) {
 							//case 2, WPA3-personal and not AX model
 							if(authMode == "sae" && !re_isAX_model){
 								postData["wl" + index + "_auth_mode_x"] = "psk2sae";
+								postData["wl" + index + "_mfp"] = 1;
+								current_auth += set_replace_str(current_auth, authMode, index);
+								changeTo_auth += set_replace_str(changeTo_auth, "psk2sae", index);
+								auth_flag = true;
+							}
+							//case 3, WPA3-Enterprise, WPA2/WPA3-Enterprise, WPA3-Enterprise 192-bit
+							if(authMode == "wpa3" || authMode == "wpa2wpa3" || authMode == "suite-b"){
+								postData["wl" + index + "_auth_mode_x"] = "psk2sae";
+								if(authMode == "suite-b"){
+									postData["wl" + index + "_crypto"] = "aes";
+								}
 								postData["wl" + index + "_mfp"] = 1;
 								current_auth += set_replace_str(current_auth, authMode, index);
 								changeTo_auth += set_replace_str(changeTo_auth, "psk2sae", index);
@@ -1336,6 +1354,15 @@ function show_connect_result(_status, _newReMac, _model_name, _ui_model_name) {
 	$amesh_action_bg.addClass("amesh_action_bg");
 	$connectResultHtml.append($amesh_action_bg);
 
+	$("<input/>")
+		.addClass("button_gen")
+		.attr({"type" : "button", "value" : `<#menu_feedback#>`})
+		.unbind("click").click(function(e){
+			e = e || event;
+			e.stopPropagation();
+			top.location.href = "/Advanced_Feedback.asp?origPage=AiMesh";
+		}).appendTo($amesh_action_bg);
+
 	var $amesh_cancel = $('<input/>');
 	$amesh_cancel.addClass("button_gen");
 	$amesh_cancel.attr({"type" : "button", "value" : "<#CTL_ok#>"});
@@ -1469,7 +1496,7 @@ function download_cloud_icon(model_info, device_id, parent_bg_id) {
 		}
 	};
 
-	if('<% nvram_get("x_Setting"); %>' == '1' && parent.wanConnectStatus && checkCloudIconErrorTimes[cloudModelName] < 5 && !checkCloudIconExist[cloudModelName]) {
+	if((httpApi.isConnected(0) || httpApi.isConnected(1)) && checkCloudIconErrorTimes[cloudModelName] < 5 && !checkCloudIconExist[cloudModelName]) {
 		httpApi.checkCloudModelIcon(
 			model_info,
 			function(src){
@@ -2540,12 +2567,17 @@ function get_connect_type(_node_info) {
 				wireless_band = 2;
 				wireless_rssi = client_convRSSI(_node_info.rssi6g);
 			}
+			else if(_node_info.re_path == "512") {
+				component.text = `MLO`;
+				wireless_rssi = mlo_convRSSI(get_mlo_quality(_node_info));
+			}
 			else {
 				wireless_band = 1;
 				wireless_rssi = client_convRSSI(_node_info.rssi5g);
 			}
 			component.icon = "<div class='radioIcon radio_" + wireless_rssi +"'></div>";
-			component.icon += "<div class='band_block'><span class=" + bandClass + ">" + wireless_band_array[wireless_band]  + "</span></div>";
+			const wl_band_text = (_node_info.re_path == "512") ? "MLO" : wireless_band_array[wireless_band];
+			component.icon += `<div class='band_block'><span class=${bandClass}>${wl_band_text}</span></div>`;
 		}
 	}
 	else{
@@ -2732,6 +2764,66 @@ function gen_conn_priority_select_option(_node_info, _eap_flag){
 function handle_re_path(_re_path){
 	var result = parseInt(_re_path);
 	return ((isNaN(result)) ? 0 : result);
+}
+function get_mlo_quality(_node_info){
+	const mlo_status = _node_info.mlo_status;
+	const product_id = _node_info.product_id;
+	let mlo_rssi = "";
+	if(product_id == "BQ16_PRO"){
+		if(mlo_status.rssi6gl != undefined && mlo_status.rssi5g != undefined && mlo_status.rssi6gh != undefined){//6G-1 > 5G > 6G-2
+			if(mlo_status.rssi6gl != "") mlo_rssi = mlo_status.rssi6gl;
+			else if(mlo_status.rssi5g != "") mlo_rssi = mlo_status.rssi5g;
+			else if(mlo_status.rssi6gh != "") mlo_rssi = mlo_status.rssi6gh;
+		}
+		else if(mlo_status.rssi5g != undefined && mlo_status.rssi6gl != undefined && mlo_status.rssi2g != undefined){//5G > 6G-1 > 2G
+			if(mlo_status.rssi5g != "") mlo_rssi = mlo_status.rssi5g;
+			else if(mlo_status.rssi6gl != "") mlo_rssi = mlo_status.rssi6gl;
+			else if(mlo_status.rssi2g != "") mlo_rssi = mlo_status.rssi2g;
+		}
+	}
+	else{
+		if(mlo_status.rssi6g != undefined && mlo_status.rssi5gh != undefined && mlo_status.rssi5gl != undefined){//6G > 5G-2 > 5G-1
+			if(mlo_status.rssi6g != "") mlo_rssi = mlo_status.rssi6g;
+			else if(mlo_status.rssi5gh != "") mlo_rssi = mlo_status.rssi5gh;
+			else if(mlo_status.rssi5gl != "") mlo_rssi = mlo_status.rssi5gl;
+		}
+		else if(mlo_status.rssi5gh != undefined && mlo_status.rssi6g != undefined && mlo_status.rssi2g != undefined){//5G-2 > 6G > 2G
+			if(mlo_status.rssi5gh != "") mlo_rssi = mlo_status.rssi5gh;
+			else if(mlo_status.rssi6g != "") mlo_rssi = mlo_status.rssi6g;
+			else if(mlo_status.rssi2g != "") mlo_rssi = mlo_status.rssi2g;
+		}
+		else if(mlo_status.rssi5g != undefined && mlo_status.rssi6gl != undefined && mlo_status.rssi6gh != undefined){//5G > 6G-1 > 6G-2
+			if(mlo_status.rssi5g != "") mlo_rssi = mlo_status.rssi5g;
+			else if(mlo_status.rssi6gl != "") mlo_rssi = mlo_status.rssi6gl;
+			else if(mlo_status.rssi6gh != "") mlo_rssi = mlo_status.rssi6gh;
+		}
+		else if(mlo_status.rssi5g != undefined && mlo_status.rssi6g != undefined && mlo_status.rssi2g != undefined){//5G > 6G > 2G
+			if(mlo_status.rssi5g != "") mlo_rssi = mlo_status.rssi5g;
+			else if(mlo_status.rssi6g != "") mlo_rssi = mlo_status.rssi6g;
+			else if(mlo_status.rssi2g != "") mlo_rssi = mlo_status.rssi2g;
+		}
+		else if(mlo_status.rssi5gh != undefined && mlo_status.rssi5gl != undefined && mlo_status.rssi2g != undefined){//5G-2 > 5G-1 > 2G
+			if(mlo_status.rssi5gh != "") mlo_rssi = mlo_status.rssi5gh;
+			else if(mlo_status.rssi5gl != "") mlo_rssi = mlo_status.rssi5gl;
+			else if(mlo_status.rssi2g != "") mlo_rssi = mlo_status.rssi2g;
+		}
+		else if(mlo_status.rssi5g != undefined && mlo_status.rssi2g != undefined){//5G > 2G
+			if(mlo_status.rssi5g != "") mlo_rssi = mlo_status.rssi5g;
+			else if(mlo_status.rssi2g != "") mlo_rssi = mlo_status.rssi2g;
+		}
+	}
+	return mlo_rssi;
+}
+function mlo_convRSSI(rssi){
+	let result = 3;
+	rssi = parseInt(rssi);
+	if(isNaN(rssi)) return result;
+
+	if(rssi > -70) result = 4;
+	else if(rssi <= -70 && rssi >= -80) result = 3;
+	else if(rssi < -80) result = 3;
+
+	return result;
 }
 </script>
 </head>

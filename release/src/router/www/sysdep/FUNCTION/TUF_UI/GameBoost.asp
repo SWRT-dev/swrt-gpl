@@ -24,6 +24,7 @@
 <script type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/form.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
+<script type="text/javascript" src="/md5.js"></script>
 <script>
 window.onresize = function() {
 	cal_panel_block("gameList_block", 0.23);
@@ -34,6 +35,12 @@ var ctf_disable = '<% nvram_get("ctf_disable"); %>';
 var ctf_fa_mode = '<% nvram_get("ctf_fa_mode"); %>';
 var outfox_code = httpApi.nvramGet(["outfox_code"], true).outfox_code;
 var outfox_site = 'https://getoutfox.com/asus?code='+ outfox_code +'&utm_source=asus&utm_medium=affiliate&utm_campaign=' + support_site_modelid + '&utm_content=router_cta';
+
+var label_mac = <% get_label_mac(); %>.toLowerCase();
+var salt = "hb7pNSB6FTB72n6S1EqwM9fjYDiHuNhK";
+var ts = Date.now();
+var token = hexMD5(salt+label_mac+ts).toLowerCase();
+var gu_url = "https://router.booster.gearupportal.com/h5/acce?gwSn="+label_mac+"&type=asuswrt&ts="+ts+"&token="+token;
 
 function initial(){
 	show_menu();
@@ -79,6 +86,19 @@ function initial(){
 		$('#outfox_3').show();
 	}
 
+	if(isSupport("gu_accel")){
+		var orig_gearup_enable = httpApi.nvramGet(["gearup_enable"]).gearup_enable;
+		$("#FormTitle").find(".gearup").show();
+		if(orig_gearup_enable == '1'){
+			$("#gearup_enable").prop('checked', true);
+			$("#gearup_go_mask").hide();
+		}
+		else{
+			$("#gearup_enable").prop('checked', false);
+			$("#gearup_go_mask").show();
+		}
+	}
+
 	setTimeout("showDropdownClientList('setClientIP', 'mac', 'all', 'ClientList_Block_PC', 'pull_arrow', 'all');", 500);
 	genGameList();
 }
@@ -117,7 +137,7 @@ function pullLANIPList(obj){
 }
 
 if(adaptiveqos_support){
-	var gameList = '<% nvram_get("bwdpi_game_list"); %>'.replace(/&#60/g, "<");;
+	var gameList = '<% nvram_get("bwdpi_game_list"); %>'.replace(/&#60/g, "<");
 }
 else{
 	var gameList = '<% nvram_get("rog_clientlist"); %>'.replace(/&#60/g, "<");
@@ -406,7 +426,8 @@ var siteInfo = [faq_fref,
 				'Advanced_WTFast_Content.asp',
 				'QoS_EZQoS.asp',
 				outfox_site,
-				wtfast_v2_go];
+				wtfast_v2_go,
+				gu_url];
 
 function redirectSite(url){
 	if(url == "wtfast"){
@@ -415,6 +436,8 @@ function redirectSite(url){
 		else if(wtfast_support)
 			url = siteInfo[1];
 	}
+	else if(url == "gearup")
+		url = siteInfo[5];
 
 	window.open(url, '_blank');
 }
@@ -430,6 +453,26 @@ function showThirdPartyPolicy(party){
         party: party
     });
     thirdPartyPolicyModal.show();
+}
+
+function enableGearUp(){
+	if($("#gearup_enable").is(":checked")){
+		$('<input>').attr({
+			type: 'hidden',
+			name: "gearup_enable",
+			value: "1"
+		}).appendTo('form');
+	}
+	else{
+		$('<input>').attr({
+			type: 'hidden',
+			name: "gearup_enable",
+			value: "0"
+		}).appendTo('form');
+	}
+
+	document.form.action_script.value = "restart_gu_service";
+	document.form.submit();
 }
 </script>
 </head>
@@ -558,7 +601,7 @@ function showThirdPartyPolicy(party){
 											<tr>
 												<td align="center">
 													<div style="width:85px;height: 85px;background-image: url('images/New_ui/GameBoost_mobileGame.svg');background-size: 100%;"></div>
-													<!-- <img style="padding-right:10px;;" src="/images/New_ui/GameBoost_WTFast.png" > -->
+													<!-- <img style="padding-right:10px;" src="/images/New_ui/GameBoost_WTFast.png" > -->
 												</td>
 												<td style="width:400px;height:120px;">
 													<div class="gB_desc"><#GB_mobile_desc1#></div>
@@ -568,7 +611,7 @@ function showThirdPartyPolicy(party){
 														<div style="margin: 0 12px">
 															<div id="android_qr" class="qr_code qr_android"></div>	
 															<a id="android_link" href="https://play.google.com/store/apps/details?id=com.asus.aihome" target="_blank">
-																<div style="width:124px;height:36px;background:url('images/googleplay.png') no-repeat;;background-size:100%;"></div>
+																<div style="width:124px;height:36px;background:url('images/googleplay.png') no-repeat;background-size:100%;"></div>
 															</a>
 															<a id="android_cn_link" style="display:none" href="https://dlcdnets.asus.com/pub/ASUS/LiveUpdate/Release/Wireless/ASUSRouter_Android_Release.apk" target="_blank">
 																<div class="android_font">Android</div>
@@ -630,7 +673,7 @@ function showThirdPartyPolicy(party){
 											</tr>
 											<tr id='wtfast_3' style="display:none">
 												<td align="center" style="width:85px">
-													<img style="padding-right:10px;;" src="/images/New_ui/triLv3_wtfast.png" >
+													<img style="padding-right:10px;" src="/images/New_ui/triLv3_wtfast.png" >
 												</td>
 												<td style="width:400px;height:120px;">
 													<div class="gB_desc" style="margin-top: 10px;"><#Game_WTFast_desc#></div>
@@ -688,6 +731,48 @@ function showThirdPartyPolicy(party){
 												</td>
 												<td>
 													<div class="btn" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="redirectSite(outfox_site)"><#btn_go#></div>
+												</td>
+											</tr>
+											<!-- GearUp Accerlation-->
+											<tr style="display: none;" class="gearup">
+												<td style="width:200px">
+													<div style="padding: 5px 0;font-size:20px; text-transform:uppercase;"><#Game_Boost_internet#></div>
+												</td>
+												<td colspan="2">
+													<div style="padding: 5px 10px;font-size:20px;color:#FFCC66; text-transform:uppercase;"><#GearUP_Console_Booster#></div>
+												</td>
+											</tr>
+											<tr style="display: none;" class="gearup">
+												<td colspan="3">
+													<div style="width:100%;height:1px;background-color:#D30606"></div>
+												</td>
+											</tr>
+											<tr style="display: none;" class="gearup">
+												<td align="center">
+													<div style="width:158px;height: 78px;background-image: url('images/logo_GearUp_console@1x.png');background-size: 100%;"></div>
+												</td>
+												<td style="width:400px;height:120px;">
+													<div style="font-size:16px;color:#949393;padding-left:10px; margin: 15px 0;"><#GearUP_Desc#></div>
+												</td>
+												<td>
+													<div class="switch" style="margin:auto;width:100px;height:40px;text-align:center;line-height:40px;font-size:18px">
+														<input id="gearup_enable" type="checkbox" onclick="enableGearUp();">
+														<div class="container_gb" style="display:table;border-radius:5px;">
+															<div style="display:table-cell;width:50%;">
+																<div>ON</div>
+															</div>
+															<div style="display:table-cell">
+																<div>OFF</div>
+															</div>
+														</div>
+													</div>
+													<div class="btn" style="margin:10px auto auto auto; width:100px;height:40px;text-align:center;line-height:40px;font-size:18px;cursor:pointer;border-radius:5px;" onclick="redirectSite('gearup');"><#btn_go#></div>
+													<div id="gearup_go_mask" style="background-color: #000000; opacity: 0.5; position: relative; z-index: 999; width: 100px; height: 40px; border-radius: 5px; left: 98px; top: -40px;"></div>
+												</td>
+											</tr>
+											<tr style="display: none;" class="gearup">
+												<td colspan="3">
+													<div><#GearUP_PP_Hint#></div>
 												</td>
 											</tr>
 										</tbody>

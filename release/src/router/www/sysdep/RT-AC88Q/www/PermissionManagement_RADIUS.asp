@@ -258,7 +258,7 @@ function applyRule(_on){
 		code +=  client_active + ">" + client_name + ">" + client_password + ">" + clinet_ipaddr;
 	}
 
-	document.form.radius_serv_list.value = code;;
+	document.form.radius_serv_list.value = code;
 	document.form.submit();
 }
 

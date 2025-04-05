@@ -334,12 +334,18 @@ typedef enum _RT_802_11_PHY_MODE {
 	PHY_11VHT_N_AG_MIXED,
 	PHY_11VHT_N_A_MIXED,// 14
 	PHY_11VHT_N_MIXED,
-	PHY_11AX_24G,
-	PHY_11AX_5G,
-	PHY_11AX_6G,
-	PHY_11AX_24G_6G,
-	PHY_11AX_5G_6G,
-	PHY_11AX_24G_5G_6G,
+	PHY_11AX_24G = 16,
+	PHY_11AX_5G = 17,
+	PHY_11AX_6G = 18,
+	PHY_11AX_24G_6G = 19,
+	PHY_11AX_5G_6G = 20,
+	PHY_11AX_24G_5G_6G = 21,
+	PHY_11BE_24G = 22,
+	PHY_11BE_5G = 23,
+	PHY_11BE_6G = 24,
+	PHY_11BE_24G_6G = 25,
+	PHY_11BE_5G_6G = 26,
+	PHY_11BE_24G_5G_6G = 27,
 	PHY_MODE_MAX
 } RT_802_11_PHY_MODE;
 
@@ -354,7 +360,10 @@ enum WIFI_MODE{
 	WMODE_AX_24G = 1 << 6,
 	WMODE_AX_5G = 1 << 7,
 	WMODE_AX_6G = 1 << 8,
-	WMODE_COMP = 9, /* total types of supported wireless mode, add this value once yow add new type */
+	WMODE_BE_24G = 1 << 9,
+	WMODE_BE_5G = 1 << 10,
+	WMODE_BE_6G = 1 << 11,
+	WMODE_COMP = 12, /* total types of supported wireless mode, add this value once yow add new type */
 };
 
 

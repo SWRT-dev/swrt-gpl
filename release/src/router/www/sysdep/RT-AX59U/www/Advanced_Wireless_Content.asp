@@ -1,1 +1,0 @@
-../../TUF-AX6000/www/Advanced_Wireless_Content.asp

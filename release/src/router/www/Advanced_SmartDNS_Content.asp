@@ -19,6 +19,7 @@
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
+<script type="text/javascript" src="/form.js"></script>
 <script>
 var smartdns_num = '<% nvram_get("smartdns_num"); %>';
 
@@ -183,6 +184,7 @@ function applyRule(){
 							<tbody>
 								<tr>
 									<td bgcolor="#4D595D" valign="top">
+									<div class="container">
 										<div>&nbsp;</div>
 										<div class="formfonttitle" style="margin: 10px;"><#SmartDNS_desc#></br>
 											<a href="https://pymumu.github.io/smartdns/">https://pymumu.github.io/smartdns/</a></div>
@@ -279,6 +281,8 @@ function applyRule(){
 										<div class="apply_gen">
 											<input type="button" name="button" class="button_gen" onclick="applyRule();" value="<#CTL_apply#>"/>
 										</div>
+										</div>	<!-- for .container  -->
+										<div class="popup_container popup_element_second"></div>
 									</td>
 								</tr>
 							</tbody>

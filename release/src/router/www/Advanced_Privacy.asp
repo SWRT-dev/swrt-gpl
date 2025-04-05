@@ -1,4 +1,4 @@
-<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <html xmlns:v>
 <head>
@@ -153,37 +153,38 @@ function check_unregister_result(){
 function show_policy_withdraw(policy_type){
     const policyModal = new PolicyWithdrawModalComponent({
         policy: policy_type,
-        submit_reload: 1
+		knowRiskCallback: function(){
+			location.reload();
+		}
     });
     policyModal.show();
 }
 
 function show_policy(policy_type) {
-    const applyRule = () => {
-        httpApi.privateEula.set("1", function () {
-            httpApi.securityUpdate.set(1);
-            httpApi.nvramSet({
-                "webs_update_enable": 1,
-                "action_mode": "apply",
-                "rc_service": "saveNvram"
-            },()=>{},false);
-        })
-    }
-
-    if (policy_type == 'PP') {
-        const policyModal = new PolicyModalComponent({
-            policy: policy_type,
-            agreeCallback: applyRule,
-            submit_reload: 1
-        });
-        policyModal.show();
-    } else {
-        const policyModal = new PolicyModalComponent({
-            policy: policy_type,
-            submit_reload: 1
-        });
-        policyModal.show();
-    }
+    const policyStatus = PolicyStatus()
+		.then(data => {
+			if (policy_type == 'PP') {
+				const policyModal = new PolicyModalComponent({
+					policy: policy_type,
+					securityUpdate: true,
+					websUpdate: true,
+					policyStatus: data,
+					agreeCallback: function () {
+						location.reload();
+					},
+					knowRiskCallback: function () {
+						location.reload();
+					}
+				});
+				policyModal.show();
+			} else {
+				const policyModal = new PolicyModalComponent({
+					policy: policy_type,
+					policyStatus: data,
+				});
+				policyModal.show();
+			}
+		});
 }
 
 function withdraw_eula(eula_type){

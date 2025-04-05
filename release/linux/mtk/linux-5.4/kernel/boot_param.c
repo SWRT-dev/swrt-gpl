@@ -10,8 +10,11 @@
 
 #define BOOT_PARAM_STR_MAX_LEN			256
 
-static bool dual_boot;
+bool dual_boot;
 module_param(dual_boot, bool, 0444);
+
+static bool reset_boot_count;
+module_param(reset_boot_count, bool, 0444);
 
 static bool no_split_rootfs_data;
 module_param(no_split_rootfs_data, bool, 0444);

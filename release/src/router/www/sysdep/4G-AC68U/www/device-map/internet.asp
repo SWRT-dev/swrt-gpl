@@ -960,10 +960,14 @@ left:-1px;">
 								if(wans_caps.split(" ").indexOf("wan") >= 0 && wans_dualwan_array[0] == "lan"){
 									var cur_parimary_wan = wans_dualwan_array[0].toUpperCase() + " Port " + wans_lanport_orig;
 									var confirm_str = "";
-									if(noWAN_support)
-										confirm_str = "The current primary wan is \"" + cur_parimary_wan + "\". Disable dual wan will change primary wan to \"Mobile Broadband\", are you sure to do it?"; //untranslated
-									else
-										confirm_str = "The current primary wan is \"" + cur_parimary_wan + "\". Disable dual wan will change primary wan to \"Ethernet WAN\", are you sure to do it?"; //untranslated
+									if(noWAN_support){
+										var hint_str = `<#dualwan_disable_hint#>`;
+										var confirm_str = hint_str.replace("%1$@", cur_parimary_wan).replaceAll("%2$@", `<#Mobile_title#>`);
+									}
+									else{
+										var hint_str = `<#dualwan_disable_hint#>`;
+										var confirm_str = hint_str.replace("%1$@", cur_parimary_wan).replaceAll("%2$@", `<#Ethernet_wan#>`);
+									}
 									if(!confirm(confirm_str)){
 										curState = "1";
 										$('#nm_radio_dualwan_enable').find('.iphone_switch').animate({backgroundPosition: -37}, "slow");

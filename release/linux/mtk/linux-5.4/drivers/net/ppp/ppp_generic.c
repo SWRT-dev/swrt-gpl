@@ -75,6 +75,7 @@
 #define MPHDRLEN_SSN	4	/* ditto with short sequence numbers */
 
 #define PPP_PROTO_LEN	2
+#define PPP_LCP_HDRLEN	4
 
 /*
  * An instance of /dev/ppp can be associated with either a ppp
@@ -296,6 +297,9 @@ static void unit_put(struct idr *p, int n);
 static void *unit_find(struct idr *p, int n);
 static void ppp_setup(struct net_device *dev);
 
+struct sock *ppp_netdev_get_sock(struct net_device *dev);
+EXPORT_SYMBOL(ppp_netdev_get_sock);
+
 static const struct net_device_ops ppp_netdev_ops;
 
 static struct class *ppp_class;
@@ -496,6 +500,15 @@ static ssize_t ppp_read(struct file *file, char __user *buf,
 	return ret;
 }
 
+static bool ppp_check_packet(struct sk_buff *skb, size_t count)
+{
+	/* LCP packets must include LCP header which 4 bytes long:
+	 * 1-byte code, 1-byte identifier, and 2-byte length.
+	 */
+	return get_unaligned_be16(skb->data) != PPP_LCP ||
+		count >= PPP_PROTO_LEN + PPP_LCP_HDRLEN;
+}
+
 static ssize_t ppp_write(struct file *file, const char __user *buf,
 			 size_t count, loff_t *ppos)
 {
@@ -515,6 +528,11 @@ static ssize_t ppp_write(struct file *file, const char __user *buf,
 	skb_reserve(skb, pf->hdrlen);
 	ret = -EFAULT;
 	if (copy_from_user(skb_put(skb, count), buf, count)) {
+		kfree_skb(skb);
+		goto out;
+	}
+	ret = -EINVAL;
+	if (unlikely(!ppp_check_packet(skb, count))) {
 		kfree_skb(skb);
 		goto out;
 	}
@@ -1345,6 +1363,8 @@ static int ppp_dev_init(struct net_device *dev)
 {
 	struct ppp *ppp;
 
+	netdev_lockdep_set_classes(dev);
+
 	ppp = netdev_priv(dev);
 	/* Let the netdevice take a reference on the ppp file. This ensures
 	 * that ppp_destroy_interface() won't run before the device gets
@@ -1552,6 +1572,8 @@ ppp_send_frame(struct ppp *ppp, struct sk_buff *skb)
 	int len;
 	unsigned char *cp;
 
+	skb->dev = ppp->dev;
+
 	if (proto < 0x8000) {
 #ifdef CONFIG_PPP_FILTER
 		/* check if we should pass this packet */
@@ -1656,6 +1678,40 @@ ppp_send_frame(struct ppp *ppp, struct sk_buff *skb)
  drop:
 	kfree_skb(skb);
 	++ppp->dev->stats.tx_errors;
+}
+
+struct sock *ppp_netdev_get_sock(struct net_device *dev)
+{
+	struct list_head *list;
+	struct channel *pch;
+	struct ppp *ppp;
+	struct sock *sk;
+
+	if (!dev)
+		return ERR_PTR(-EINVAL);
+
+	ppp = netdev_priv(dev);
+
+	list = &ppp->channels;
+	if (list_empty(list))
+		 /* nowhere to send the packet */
+		return ERR_PTR(-EINVAL);
+
+	if (ppp->flags & SC_MULTILINK)
+		/* not doing multilink: send it down the first channel */
+		return ERR_PTR(-EPERM);
+
+	list = list->next;
+	pch = list_entry(list, struct channel, clist);
+
+	spin_lock(&pch->downl);
+	if (pch->chan)
+		sk = (struct sock *)pch->chan->private;
+	else
+		sk = ERR_PTR(-EINVAL);
+	spin_unlock(&pch->downl);
+
+	return sk;
 }
 
 /*

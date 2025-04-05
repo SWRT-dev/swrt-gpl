@@ -47,7 +47,7 @@ function initial(){
 		delete disk_list_array.health;
 		delete disk_list_array.format;
 	}
-	if(usb_fatfs_mod != "tuxera" && usb_ntfs_mod != "tuxera" && usb_hfs_mod != "tuxera" && usb_ntfs_mod != "open") {
+	if(usb_fatfs_mod != "tuxera" && usb_ntfs_mod != "tuxera" && usb_hfs_mod != "tuxera" && usb_ntfs_mod != "open" && usb_ntfs_mod != "ntfs3") {
 		delete disk_list_array.format;
 	}
 	$('#diskTab').html(parent.gen_tab_menu(disk_list_array, "format"));
@@ -373,7 +373,7 @@ function showLoadingUpdate(){
 				</tr>
 			</table>	
 		</div>
-		<div id="progressBar" style="margin-left:9px;;margin-top:10px;display:none">
+		<div id="progressBar" style="margin-left:9px;margin-top:10px;display:none">
 			<div id="scan_message"></div>
 			<div id="updateProgress_bg">
 				<div>

@@ -267,6 +267,10 @@ char *getAPPhyModebyIface(const char *iface)
 		m = WL_N | WL_G | WL_B;
 	else if (!strncmp(mode, "11ACVHT", 7))
 		m = WL_AC | WL_N | WL_A;
+	else if (!strncmp(mode, "11AHE", 5))
+		m = WL_AX | WL_AC | WL_N | WL_A;
+	else if (!strncmp(mode, "11GHE", 5))
+		m = WL_AX | WL_N | WL_G | WL_B;
 	else if (!strncmp(mode, "11GEHT", 6))
 		m = WL_BE | WL_AX | WL_N | WL_B;
 	else if (!strncmp(mode, "11AEHT", 6))
@@ -275,7 +279,7 @@ char *getAPPhyModebyIface(const char *iface)
 		if (!strcmp(iface, get_staifname(WL_2G_BAND))) {
 			sta = 1;
 			m = WL_N | WL_G | WL_B;
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX)
 			m |= WL_AX;
 #endif
 		}
@@ -289,7 +293,7 @@ char *getAPPhyModebyIface(const char *iface)
 			) {
 			sta = 1;
 			m = WL_AC | WL_N | WL_A;
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX)
 			m |= WL_AX;
 #endif
 		}
@@ -677,6 +681,9 @@ static void getVAPBitRate(int unit, char *ifname, char *buf, size_t buf_len)
 
 static int __getAPBandwidth(const char *ifname, char *buf, size_t buf_len)
 {
+#if defined(RTCONFIG_WIFI7)
+	int band = -1;
+#endif
 	char *m, mode[32] = "";
 
 	if (!ifname || !buf || !buf_len)
@@ -703,9 +710,19 @@ static int __getAPBandwidth(const char *ifname, char *buf, size_t buf_len)
 	 * "11AEHT320"
 	 */
 	strlcpy(mode, m, sizeof(mode));
-	if (strstr(mode, "EHT320"))
-		strlcpy(buf, "320", buf_len);
-	else if (strstr(mode, "HE160") || strstr(mode, "VHT160") || strstr(mode, "EHT160"))
+#if defined(RTCONFIG_WIFI7)
+	if (strstr(mode, "EHT320")) {
+		get_wlif_unit(ifname, &band, NULL);
+		if (is_5g(band))
+			strlcpy(buf, "240", buf_len);
+		else
+			strlcpy(buf, "320", buf_len);
+	}
+	else if (strstr(mode, "EHT240"))
+		strlcpy(buf, "240", buf_len);
+	else
+#endif
+	if (strstr(mode, "HE160") || strstr(mode, "VHT160") || strstr(mode, "EHT160"))
 		strlcpy(buf, "160", buf_len);
 	else if (strstr(mode, "HE80_80") || strstr(mode, "VHT80_80"))
 		strlcpy(buf, "80+80", buf_len);
@@ -890,6 +907,33 @@ long getSTAConnTime(char *ifname, char *bssid)
 	return 0;
 }
 
+#if defined(RTCONFIG_MULTILAN_MWL)
+static int __getSTAInfoSDN(int unit, WIFI_STA_TABLE *sta_info, char *ifname)
+{
+	int subunit;
+	char subunit_str[4] = "0";
+	char *main_iface;
+	int main_iface_len;
+
+	if (absent_band(unit))
+		return -1;
+	if (!ifname || *ifname == '\0')
+		return -1;
+
+	main_iface = get_wififname(unit);
+	main_iface_len = strlen(main_iface);
+	if (memcmp(main_iface, ifname, main_iface_len)==0)
+		subunit = atoi(ifname+main_iface_len);
+	else
+		subunit = 0;
+
+	if (subunit >= 0 && subunit < MAX_NO_MSSID)
+		snprintf(subunit_str, sizeof(subunit_str), "%d", subunit);
+
+	return get_qca_sta_info_by_ifname(ifname, subunit_str[0], sta_info);
+}
+#else
+
 /** Get client list via wlanconfig utility.
  * @unit:
  * @sta_info:
@@ -931,6 +975,7 @@ static int __getSTAInfo(int unit, WIFI_STA_TABLE *sta_info, char *ifname, char i
 
 	return get_qca_sta_info_by_ifname(ifname, subunit_str[0], sta_info);
 }
+#endif
 
 /** Get client list via iw utility.
  * @unit:
@@ -1257,7 +1302,11 @@ static int getSTAInfo(int unit, WIFI_STA_TABLE *sta_info)
 		case WL_2G_BAND:	/* fall-through */
 		case WL_5G_BAND:	/* fall-through */
 		case WL_5G_2_BAND:
+#if defined(RTCONFIG_MULTILAN_MWL)
+			__getSTAInfoSDN(unit, sta_info, ifname);
+#else
 			__getSTAInfo(unit, sta_info, ifname, 0);
+#endif
 			break;
 		case WL_60G_BAND:
 			__getSTAInfoIW(unit, sta_info, ifname, 0);
@@ -1269,9 +1318,11 @@ static int getSTAInfo(int unit, WIFI_STA_TABLE *sta_info)
 	free(wl_ifnames);
 	free(unit_name);
 
+#if !defined(RTCONFIG_MULTILAN_MWL)
 	getFacebookWiFiSTAInfo(unit, sta_info);
 	getCPortalSTAInfo(unit, sta_info);
 	getFreeWiFiSTAInfo(unit, sta_info);
+#endif
 
 	return ret;
 }
@@ -1315,10 +1366,20 @@ show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 	unsigned char mac_addr[ETHER_ADDR_LEN];
 	char tmpstr[1024], cmd[sizeof("iwconfig staXYYYYYY")], prefix[sizeof("wlX_XXX")];
 	char *p, ap_bssid[sizeof("00:00:00:00:00:00XXX")], vphy[IFNAMSIZ];
+#if defined(RTCONFIG_MULTILAN_MWL)
+	char swap_name[64];
+#endif
 
 	if (unit < 0 || !ifname || !op_mode)
 		return 0;
 
+#if defined(RTCONFIG_MULTILAN_MWL)
+	if (!strcmp(get_wififname(unit), ifname)) {
+		/* do not show hidden BACKHAUL infromation */
+		if (get_sdntype_iface("MAINFH", unit, swap_name, sizeof(swap_name)))
+			ifname = swap_name;
+	}
+#endif
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	memset(&mac_addr, 0, sizeof(mac_addr));
 	get_iface_hwaddr(ifname, mac_addr);
@@ -1395,6 +1456,32 @@ show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 	return ret;
 }
 
+#if defined(RTCONFIG_MULTILAN_MWL)
+static char *subid_to_sdn_name(char id)
+{
+	switch (id) {
+		case 'B':
+			return "BackHaul";
+		case 'F':
+			return "Main";
+		case 'I':
+			return "Iot Network";
+		case 'G':
+			return "Guest Network";
+		case 'P':
+			return "Portal";
+		case 'E':
+			return "Employee";
+		case 'K':
+			return "Kids";
+		case 'M':
+			return "MLO";
+		default:
+			return "SDNs";
+	}
+}
+#endif
+
 static int
 wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
@@ -1404,6 +1491,9 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	char subunit_str[20];
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 	char wlc_prefix[] = "wlcXXXXXXXXXX_";
+#endif
+#if defined(RTCONFIG_MULTILAN_MWL)
+	char subid_sdn_type[20];
 #endif
 
 #if defined(RTCONFIG_LYRA_5G_SWAP)
@@ -1527,13 +1617,31 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 		if ((sta_info = malloc(sizeof(*sta_info))) != NULL) {
 #if defined(RTCONFIG_WIFI7)
+#if !defined(RTCONFIG_MULTILAN_MWL)
 			int decrease_idx = iot_exists() ? 1 : 0;
+#endif
 #else
 			int decrease_idx = 0;
 #endif
 			getSTAInfo(unit, sta_info);
+#if defined(RTCONFIG_MULTILAN_MWL)
+			enum_sdn_subid_type(unit, subid_sdn_type, sizeof(subid_sdn_type));
+#endif
 			for(i = 0; i < sta_info->Num; i++) {
 				*subunit_str = '\0';
+
+#if defined(RTCONFIG_MULTILAN_MWL)
+				if (sta_info->Entry[i].subunit_id == 'M') // skip MLO
+					continue;
+				else {
+					int tmp_idx;
+					tmp_idx = sta_info->Entry[i].subunit_id - '0';
+					if (tmp_idx < sizeof(subid_sdn_type))
+						snprintf(subunit_str, sizeof(subunit_str), "%s", subid_to_sdn_name(subid_sdn_type[tmp_idx]));
+					else
+						snprintf(subunit_str, sizeof(subunit_str), "%s", subid_to_sdn_name('O'));
+				}
+#else
 				if (sta_info->Entry[i].subunit_id == '0')
 					strlcpy(subunit_str, "Main", sizeof(subunit_str));
 				else if (isdigit(sta_info->Entry[i].subunit_id))
@@ -1549,6 +1657,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				else {
 					dbg("%s: Unknown subunit_id [%c]\n", sta_info->Entry[i].subunit_id);
 				}
+#endif
 				ret += websWrite(wp, "%-16s %-17s %-15s %4d %7s %7s %12s\n",
 					subunit_str,
 					sta_info->Entry[i].addr,
@@ -2345,31 +2454,372 @@ bypass:
 	return retval;
 }
 
+static const struct g_bw40chanspec_s {
+	uint64_t ch_mask;
+	uint64_t bw_mask;
+	char *tag;
+} g_5gbw40chanspec_tbl[] = {
+	{  CH40_M,  CH36_M |  CH40_M, "u" },
+	{  CH48_M,  CH44_M |  CH48_M, "u" },
+	{  CH56_M,  CH52_M |  CH56_M, "u" },
+	{  CH64_M,  CH60_M |  CH64_M, "u" },
+	{ CH104_M, CH100_M | CH104_M, "u" },
+	{ CH112_M, CH108_M | CH112_M, "u" },
+	{ CH120_M, CH116_M | CH120_M, "u" },
+	{ CH128_M, CH124_M | CH128_M, "u" },
+	{ CH136_M, CH132_M | CH136_M, "u" },
+	{ CH144_M, CH140_M | CH144_M, "u" },
+	{ CH153_M, CH149_M | CH153_M, "u" },
+	{ CH161_M, CH157_M | CH161_M, "u" },
+	{ CH169_M, CH165_M | CH169_M, "u" },
+	{ CH177_M, CH173_M | CH177_M, "u" },
+
+	{  CH36_M,  CH36_M |  CH40_M, "l" },
+	{  CH44_M,  CH44_M |  CH48_M, "l" },
+	{  CH52_M,  CH52_M |  CH56_M, "l" },
+	{  CH60_M,  CH60_M |  CH64_M, "l" },
+	{ CH100_M, CH100_M | CH104_M, "l" },
+	{ CH108_M, CH108_M | CH112_M, "l" },
+	{ CH116_M, CH116_M | CH120_M, "l" },
+	{ CH124_M, CH124_M | CH128_M, "l" },
+	{ CH132_M, CH132_M | CH136_M, "l" },
+	{ CH140_M, CH140_M | CH144_M, "l" },
+	{ CH149_M, CH149_M | CH153_M, "l" },
+	{ CH157_M, CH157_M | CH161_M, "l" },
+	{ CH165_M, CH165_M | CH169_M, "l" },
+	{ CH173_M, CH173_M | CH177_M, "l" },
+
+	{ 0, 0, NULL }
+};
+
+static const struct g_bw80pchanspec_s {
+	uint64_t bw_mask;
+	char *tag;
+} g_5gbw80pchanspec_tbl[] = {
+	{  CH36_M |  CH40_M |  CH44_M |  CH48_M, "/80" },
+	{  CH52_M |  CH56_M |  CH60_M |  CH64_M, "/80" },
+	{ CH100_M | CH104_M | CH108_M | CH112_M, "/80" },
+	{ CH116_M | CH120_M | CH124_M | CH128_M, "/80" },
+	{ CH132_M | CH136_M | CH140_M | CH144_M, "/80" },
+	{ CH149_M | CH153_M | CH157_M | CH161_M, "/80" },
+	{ CH165_M | CH169_M | CH173_M | CH177_M, "/80" },
+#if defined(RTCONFIG_BW160M)
+	{  CH36_M |  CH40_M |  CH44_M |  CH48_M |  CH52_M |  CH56_M |  CH60_M |  CH64_M, "/160" },
+	{ CH100_M | CH104_M | CH108_M | CH112_M | CH116_M | CH120_M | CH124_M | CH128_M, "/160" },
+	{ CH149_M | CH153_M | CH157_M | CH161_M | CH165_M | CH169_M | CH173_M | CH177_M, "/160" },
+#endif
+#if defined(RTCONFIG_BW240M)
+	{ CH100_M | CH104_M | CH108_M | CH112_M | CH116_M | CH120_M | CH124_M | CH128_M | CH132_M | CH136_M | CH140_M | CH144_M, "/240" },
+#endif
+
+	{ 0, NULL },
+#if defined(RTCONFIG_HAS_6G)
+}, g_6gbw40pchanspec_tbl[] = {
+	{   B6GCH1_M |   B6GCH5_M, "/40" },
+	{   B6GCH9_M |  B6GCH13_M, "/40" },
+	{  B6GCH17_M |  B6GCH21_M, "/40" },
+	{  B6GCH25_M |  B6GCH29_M, "/40" },
+	{  B6GCH33_M |  B6GCH37_M, "/40" },
+	{  B6GCH41_M |  B6GCH45_M, "/40" },
+	{  B6GCH49_M |  B6GCH53_M, "/40" },
+	{  B6GCH57_M |  B6GCH61_M, "/40" },
+	{  B6GCH65_M |  B6GCH69_M, "/40" },
+	{  B6GCH73_M |  B6GCH77_M, "/40" },
+	{  B6GCH81_M |  B6GCH85_M, "/40" },
+	{  B6GCH89_M |  B6GCH93_M, "/40" },
+	{  B6GCH97_M | B6GCH101_M, "/40" },
+	{ B6GCH105_M | B6GCH109_M, "/40" },
+	{ B6GCH113_M | B6GCH117_M, "/40" },
+	{ B6GCH121_M | B6GCH125_M, "/40" },
+	{ B6GCH129_M | B6GCH133_M, "/40" },
+	{ B6GCH137_M | B6GCH141_M, "/40" },
+	{ B6GCH145_M | B6GCH149_M, "/40" },
+	{ B6GCH153_M | B6GCH157_M, "/40" },
+	{ B6GCH161_M | B6GCH165_M, "/40" },
+	{ B6GCH169_M | B6GCH173_M, "/40" },
+	{ B6GCH177_M | B6GCH181_M, "/40" },
+	{ B6GCH185_M | B6GCH189_M, "/40" },
+	{ B6GCH193_M | B6GCH197_M, "/40" },
+	{ B6GCH201_M | B6GCH205_M, "/40" },
+	{ B6GCH209_M | B6GCH213_M, "/40" },
+	{ B6GCH217_M | B6GCH221_M, "/40" },
+	{ B6GCH225_M | B6GCH229_M, "/40" },
+
+	{   B6GCH1_M |   B6GCH5_M |   B6GCH9_M |  B6GCH13_M, "/80" },
+	{  B6GCH17_M |  B6GCH21_M |  B6GCH25_M |  B6GCH29_M, "/80" },
+	{  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M, "/80" },
+	{  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M, "/80" },
+	{  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M, "/80" },
+	{  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M, "/80" },
+	{  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M, "/80" },
+	{ B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M, "/80" },
+	{ B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M, "/80" },
+	{ B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M, "/80" },
+	{ B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M, "/80" },
+	{ B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M, "/80" },
+	{ B6GCH193_M | B6GCH197_M | B6GCH201_M | B6GCH205_M, "/80" },
+	{ B6GCH209_M | B6GCH213_M | B6GCH217_M | B6GCH221_M, "/80" },
+
+#if defined(RTCONFIG_BW160M)
+	{   B6GCH1_M |   B6GCH5_M |   B6GCH9_M |  B6GCH13_M |  B6GCH17_M |  B6GCH21_M |  B6GCH25_M |  B6GCH29_M, "/160" },
+	{  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M |  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M, "/160" },
+	{  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M |  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M, "/160" },
+	{  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M | B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M, "/160" },
+	{ B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M | B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M, "/160" },
+	{ B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M | B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M, "/160" },
+	{ B6GCH193_M | B6GCH197_M | B6GCH201_M | B6GCH205_M | B6GCH209_M | B6GCH213_M | B6GCH217_M | B6GCH221_M, "/160" },
+#endif
+
+	{   B6GCH1_M |   B6GCH5_M |   B6GCH9_M |  B6GCH13_M |  B6GCH17_M |  B6GCH21_M |  B6GCH25_M |  B6GCH29_M |  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M |  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M, "/320-1" },
+	{  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M |  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M |  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M |  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M, "/320-2" },
+	{  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M |  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M |  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M | B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M, "/320-1" },
+	{  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M | B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M | B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M | B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M, "/320-2" },
+	{ B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M | B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M | B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M | B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M, "/320-1" },
+	{ B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M | B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M | B6GCH193_M | B6GCH197_M | B6GCH201_M | B6GCH205_M | B6GCH209_M | B6GCH213_M | B6GCH217_M | B6GCH221_M, "/320-2" },
+
+	{ 0, NULL },
+#endif
+};
+
+/* Get chanspec.
+ * GT-AC5300 example:
+ * chanspecs_2g:
+ * [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "5u", "6u", "7u", "8u", "9u", "10u", "11u", "1l", "2l", "3l", "4l", "5l", "6l", "7l" ]
+ * chanspecs_5g:
+ * [ "36", "40", "44", "48", "40u", "48u", "36l", "44l", "36/80", "40/80", "44/80", "48/80" ]
+ * chanspecs_5g_2:
+ * [ "149", "153", "157", "161", "165", "153u", "161u", "149l", "157l", "149/80", "153/80", "157/80", "161/80" ]
+ * chanspecs_6g:
+ * [ "0" ]
+ * RT-BE?? example, EU sku:
+ * chanspecs_2g:
+ * [ "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13",
+ *   "1l", "5u", "2l", "6u", "3l", "7u", "4l", "8u", "5l", "9u", "6l",
+ *   "10u", "7l", "11u", "8l", "12u", "9l", "13u" ]
+ * RT-BE96U example:
+ * chanspecs_6g:
+ * [ "6g1", "6g5", "6g9", "6g13", "6g17", "6g21", "6g25", "6g29", "6g33", "6g37", "6g41", "6g45", "6g49", "6g53", "6g57", "6g61",
+ *   "6g65", "6g69", "6g73", "6g77", "6g81", "6g85", "6g89", "6g93", "6g97", "6g101", "6g105", "6g109", "6g113", "6g117", "6g121",
+ *   "6g125", "6g129", "6g133", "6g137", "6g141", "6g145", "6g149", "6g153", "6g157", "6g161", "6g165", "6g169", "6g173", "6g177",
+ *   "6g181", "6g185", "6g189", "6g193", "6g197", "6g201", "6g205", "6g209", "6g213", "6g217", "6g221", "6g225", "6g229",
+ *   "6g1/40", "6g5/40", "6g9/40", "6g13/40", "6g17/40", "6g21/40", "6g25/40", "6g29/40", "6g33/40", "6g37/40", "6g41/40", "6g45/40",
+ *   "6g49/40", "6g53/40", "6g57/40", "6g61/40", "6g65/40", "6g69/40", "6g73/40", "6g77/40", "6g81/40", "6g85/40", "6g89/40", "6g93/40",
+ *   "6g97/40", "6g101/40", "6g105/40", "6g109/40", "6g113/40", "6g117/40", "6g121/40", "6g125/40", "6g129/40", "6g133/40", "6g137/40", "6g141/40",
+ *   "6g145/40", "6g149/40", "6g153/40", "6g157/40", "6g161/40", "6g165/40", "6g169/40", "6g173/40", "6g177/40", "6g181/40", "6g185/40", "6g189/40",
+ *   "6g193/40", "6g197/40", "6g201/40", "6g205/40", "6g209/40", "6g213/40", "6g217/40", "6g221/40", "6g225/40", "6g229/40",
+ *   "6g1/80", "6g5/80", "6g9/80", "6g13/80", "6g17/80", "6g21/80", "6g25/80", "6g29/80", "6g33/80", "6g37/80", "6g41/80", "6g45/80",
+ *   "6g49/80", "6g53/80", "6g57/80", "6g61/80", "6g65/80", "6g69/80", "6g73/80", "6g77/80", "6g81/80", "6g85/80", "6g89/80", "6g93/80",
+ *   "6g97/80", "6g101/80", "6g105/80", "6g109/80", "6g113/80", "6g117/80", "6g121/80", "6g125/80", "6g129/80", "6g133/80", "6g137/80", "6g141/80",
+ *   "6g145/80", "6g149/80", "6g153/80", "6g157/80", "6g161/80", "6g165/80", "6g169/80", "6g173/80", "6g177/80", "6g181/80", "6g185/80", "6g189/80",
+ *   "6g193/80", "6g197/80", "6g201/80", "6g205/80", "6g209/80", "6g213/80", "6g217/80", "6g221/80",
+ *   "6g1/160", "6g5/160", "6g9/160", "6g13/160", "6g17/160", "6g21/160", "6g25/160", "6g29/160", "6g33/160", "6g37/160", "6g41/160", "6g45/160",
+ *   "6g49/160", "6g53/160", "6g57/160", "6g61/160", "6g65/160", "6g69/160", "6g73/160", "6g77/160", "6g81/160", "6g85/160", "6g89/160", "6g93/160",
+ *   "6g97/160", "6g101/160", "6g105/160", "6g109/160", "6g113/160", "6g117/160", "6g121/160", "6g125/160", "6g129/160", "6g133/160", "6g137/160", "6g141/160",
+ *   "6g145/160", "6g149/160", "6g153/160", "6g157/160", "6g161/160", "6g165/160", "6g169/160", "6g173/160", "6g177/160", "6g181/160", "6g185/160", "6g189/160",
+ *   "6g193/160", "6g197/160", "6g201/160", "6g205/160", "6g209/160", "6g213/160", "6g217/160", "6g221/160",
+ *   "6g1/320-1", "6g5/320-1", "6g9/320-1", "6g13/320-1", "6g17/320-1", "6g21/320-1", "6g25/320-1", "6g29/320-1",
+ *   "6g33/320-1", "6g37/320-1", "6g41/320-1", "6g45/320-1", "6g49/320-1", "6g53/320-1","6g57/320-1", "6g61/320-1",
+ *   "6g33/320-2", "6g37/320-2", "6g41/320-2", "6g45/320-2", "6g49/320-2", "6g53/320-2", "6g57/320-2", "6g61/320-2",
+ *   "6g65/320-2", "6g69/320-2", "6g73/320-2", "6g77/320-2", "6g81/320-2", "6g85/320-2", "6g89/320-2", "6g93/320-2",
+ *   "6g65/320-1", "6g69/320-1", "6g73/320-1", "6g77/320-1", "6g81/320-1", "6g85/320-1", "6g89/320-1", "6g93/320-1",
+ *   "6g97/320-1", "6g101/320-1", "6g105/320-1", "6g109/320-1", "6g113/320-1", "6g117/320-1", "6g121/320-1", "6g125/320-1",
+ *   "6g97/320-2", "6g101/320-2", "6g105/320-2", "6g109/320-2", "6g113/320-2", "6g117/320-2", "6g121/320-2", "6g125/320-2",
+ *   "6g129/320-2", "6g133/320-2", "6g137/320-2", "6g141/320-2", "6g145/320-2", "6g149/320-2", "6g153/320-2", "6g157/320-2",
+ *   "6g129/320-1", "6g133/320-1", "6g137/320-1", "6g141/320-1", "6g145/320-1", "6g149/320-1", "6g153/320-1", "6g157/320-1",
+ *   "6g161/320-1", "6g165/320-1", "6g169/320-1", "6g173/320-1", "6g177/320-1", "6g181/320-1", "6g185/320-1", "6g189/320-1",
+ *   "6g161/320-2", "6g165/320-2", "6g169/320-2", "6g173/320-2", "6g177/320-2", "6g181/320-2", "6g185/320-2", "6g189/320-2",
+ *   "6g193/320-2", "6g197/320-2", "6g201/320-2", "6g205/320-2", "6g209/320-2", "6g213/320-2", "6g217/320-2", "6g221/320-2"
+ * ]
+ * chanspecs_6g_2:
+ * [ "0" ]
+ */
+int ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit)
+{
+	int retval = 0;
+	char *ch_prefix = "";
+	char ch_list[2 * 4 + 3 * 22 + 4 * 34 + 8] = "";
+	char tmp_ch_list[sizeof("6gXXX\", \"") * 59] = "";
+	uint64_t m, c_m, bw_m, chlist_mask = 0;
+	const struct g_bw40chanspec_s *p = NULL;
+	const struct g_bw80pchanspec_s *q = NULL;
+
+	if (unit < 0 || unit >= WL_NR_BANDS)
+		goto exit_ej_wl_chanspecs;
+
+	if (get_channel_list_via_driver(unit, ch_list, sizeof(ch_list)) <= 0)
+		goto exit_ej_wl_chanspecs;
+
+	if (!(chlist_mask = chlist2bitmask(unit, ch_list, ",")))
+		goto exit_ej_wl_chanspecs;
+
+	if (unit == WL_6G_BAND) {
+		ch_prefix = "6g";
+	}
+
+	/* Generate 20MHz channelspecslist. */
+#if defined(RTCONFIG_HAS_6G)
+	if (unit == WL_6G_BAND)
+		__bitmask2chlist(unit, chlist_mask, "\", \"6g", tmp_ch_list, sizeof(tmp_ch_list));
+	else
+#endif
+		__bitmask2chlist(unit, chlist_mask, "\", \"", tmp_ch_list, sizeof(tmp_ch_list));
+	retval += websWrite(wp, "[ \"%s%s", ch_prefix, tmp_ch_list);
+
+	/* Generate 40MHz,u 40MHz,l 80MHz, 160MHz channelspecs. */
+	if (unit == WL_2G_BAND) {
+		/* If ch-4 exist, print ch and append "u".
+		 * If ch+4 exist, print ch and append "l".
+		 */
+		for (m = (1 << 4), c_m = chlist_mask; c_m && m; m <<= 1) {
+			if (!(chlist_mask & m) || !(chlist_mask & (m >> 4)))
+				continue;
+
+			retval += websWrite(wp, "\", \"%su", bitmask2chlist(unit, m, ""));
+			c_m &= ~m;
+		}
+		for (m = 1, c_m = chlist_mask; c_m && m; m <<= 1) {
+			if (!(chlist_mask & m) || !(chlist_mask & (m << 4)))
+				continue;
+
+			retval += websWrite(wp, "\", \"%sl", bitmask2chlist(unit, m, ""));
+			c_m &= ~m;
+		}
+	} else if (unit == WL_5G_BAND
+#if defined(RTCONFIG_HAS_5G_2)
+		|| unit == WL_5G_2_BAND
+#endif
+	) {
+		p = g_5gbw40chanspec_tbl;
+#if defined(RTCONFIG_HAS_6G)
+	} else if (unit == WL_6G_BAND) {
+		p = NULL;	/* u,l format is replaced by /40 */
+#endif
+	} else {
+		_dprintf("%s: 40MHz chanspec of unit %d hasn't been defined!\n", __func__, unit);
+	}
+
+	for (; p && p->ch_mask && p->bw_mask && p->tag; ++p) {
+		if (!(p->ch_mask & chlist_mask))
+			continue;
+		if ((p->bw_mask & chlist_mask) != p->bw_mask)
+			continue;
+
+		retval += websWrite(wp, "\", \"%s%s%s", ch_prefix, bitmask2chlist(unit, p->ch_mask, ""), p->tag);
+	}
+
+	/* Generate 80MHz, 160MHz, 240MHz, 320MHz chanspecs. */
+	if (unit == WL_2G_BAND)
+		q = NULL;
+	else if (unit == WL_5G_BAND
+#if defined(RTCONFIG_HAS_5G_2)
+	      || unit == WL_5G_2_BAND
+#endif
+	) {
+		q = g_5gbw80pchanspec_tbl;
+#if defined(RTCONFIG_HAS_6G)
+	} else if (unit == WL_6G_BAND) {
+		q = g_6gbw40pchanspec_tbl;
+#endif
+	} else {
+		_dprintf("%s: 80+MHz chanspec of unit %d hasn't been defined!\n", __func__, unit);
+	}
+
+	for (; q && q->bw_mask && q->tag; ++q) {
+		if ((chlist_mask & q->bw_mask) != q->bw_mask)
+			continue;
+
+		for (m = 1, bw_m = q->bw_mask; bw_m && m; m <<= 1) {
+			if (!(bw_m & m))
+				continue;
+#if defined(BD4D5) 			
+			if(nvram_match("odmpid","ZenWiFi_BD4") && strstr(q->tag,"240"))
+				continue;
+#endif		
+#if defined(BD4_OD)				
+			if(nvram_match("odmpid","ZenWiFi_BD4_Outdoor") && strstr(q->tag,"240"))
+				continue;
+#endif			
+
+			retval += websWrite(wp, "\", \"%s%s%s", ch_prefix, bitmask2chlist(unit, m, ""), q->tag);
+			bw_m &= ~m;
+		}
+	}
+
+exit_ej_wl_chanspecs:
+	if (!retval)
+		retval += websWrite(wp, "[ \"0\" ]");
+	else
+		retval += websWrite(wp, "\" ]");
+
+	return retval;
+}
 
 int
 ej_wl_channel_list_2g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return ej_wl_channel_list(eid, wp, argc, argv, 0);
+	return ej_wl_channel_list(eid, wp, argc, argv, WL_2G_BAND);
 }
 
 int
 ej_wl_channel_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return ej_wl_channel_list(eid, wp, argc, argv, 1);
+	return ej_wl_channel_list(eid, wp, argc, argv, WL_5G_BAND);
 }
 
 int
 ej_wl_channel_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return ej_wl_channel_list(eid, wp, argc, argv, 2);
+	return ej_wl_channel_list(eid, wp, argc, argv, WL_5G_2_BAND);
+}
+
+int
+ej_wl_channel_list_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_channel_list(eid, wp, argc, argv, WL_6G_BAND);
 }
 
 int
 ej_wl_channel_list_60g(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return ej_wl_channel_list(eid, wp, argc, argv, 3);
+	return ej_wl_channel_list(eid, wp, argc, argv, WL_60G_BAND);
 }
 
+int ej_wl_chanspecs_2g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_2G_BAND);
+}
+
+int ej_wl_chanspecs_5g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_5G_BAND);
+}
+
+int ej_wl_chanspecs_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_5G_2)
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_5G_2_BAND);
+#else
+	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
+#endif
+}
+
+int ej_wl_chanspecs_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_6G)
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_6G_BAND);
+#else
+	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
+#endif
+}
+
+int ej_wl_chanspecs_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_6G_2)
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_6G_2_BAND);
+#else
+	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
+#endif
+}
 
 static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
@@ -2545,7 +2995,7 @@ ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv)
 	return websWrite(wp, "%d", nat_acceleration_status());
 }
 
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX) \
  || defined(RTCONFIG_QCA_AXCHIP)
 /* Hook validate_apply().
  * Sync wl[0~2]_yyy with wlx_yyy if yyy in global_params[].

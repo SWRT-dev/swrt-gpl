@@ -987,7 +987,7 @@ static int rctest_main(int argc, char *argv[])
 		get_usb_modem_status(&phy_list);
 #endif
 
-		for(i=0;i<phy_list.count;i++) {
+		for(i=0;i<port_mapping.count;i++) {
 			fprintf(stderr, " phy_port_id=%d, label_name=%s, cap=%u, cap_name=%s, max_rate=%d, ifname=%s, state=%s, link_rate=%d, duplex=%s, tx_packets=%u, rx_packets=%u, tx_bytes=%" PRIu64 ", rx_bytes=%" PRIu64 ", crc_errors=%u\n",
 				phy_list.phy_info[i].phy_port_id,
 				phy_list.phy_info[i].label_name,
@@ -1935,6 +1935,38 @@ static int rctest_main(int argc, char *argv[])
 			}
 		}
 #endif	/* ASUSCMD */
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+		else if (strcmp(argv[1], "start_wps_pbc") == 0) {
+			if (argc != 3) {
+				fprintf(stderr, "Usage: rc %s <unit>\n", argv[1]);
+				return -1;
+			}
+			start_wps_pbc(atoi(argv[2]));
+		}
+		else if (strcmp(argv[1], "setup_timezone") == 0) {
+			if (argc != 2) {
+				fprintf(stderr, "Usage: rc %s \n", argv[1]);
+				return -1;
+			}
+			setup_timezone();
+		}
+		else if (strcmp(argv[1], "timecheck") == 0) {
+			if (argc != 2) {
+				fprintf(stderr, "Usage: rc %s \n", argv[1]);
+				return -1;
+			}
+			timecheck();
+		}
+#if RTCONFIG_UUPLUGIN
+		else if (strcmp(argv[1], "exec_uu") == 0) {
+			if (argc != 2) {
+				fprintf(stderr, "Usage: rc %s \n", argv[1]);
+				return -1;
+			}
+			exec_uu();
+		}
+#endif /* RTCONFIG_UUPLUGIN */
+#endif /* RTCONFIG_QCA || RTCONFIG_RALINK */
 		else {
 			printf("what?\n");
 		}
@@ -2610,9 +2642,15 @@ static const applets_t applets[] = {
 #if defined(RTCONFIG_DUAL_TRX2)
 	{ "fixdmgfw",			fixdmgfw_main			},
 #endif
+#if defined(RTCONFIG_NFCM)
 	{ "alt_watchdog",		alt_watchdog_main		}, // <-- add by Andrew
+#endif
 	{ "watchdog",			watchdog_main			},
 	{ "check_watchdog",		check_watchdog_main		},
+#if defined(RTCONFIG_IP808AR)
+	{ "poemon",			poemon_main			},
+	{ "poe_init",			poeInit_main			},
+#endif
 #ifdef RTCONFIG_CONNTRACK
 	{ "pctime",			pctime_main			},
 #endif
@@ -2670,10 +2708,10 @@ static const applets_t applets[] = {
 #ifdef RTCONFIG_IPV6
 	{ "dhcp6c",			dhcp6c_wan			},
 #endif
-#if defined(RTCONFIG_CONCURRENTREPEATER) || defined(RTCONFIG_AMAS)
-#if defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_RALINK) \
+ && (defined(RTCONFIG_CONCURRENTREPEATER) || defined(RTCONFIG_AMAS)) \
+ && !defined(RTCONFIG_NL80211)
 	{ "re_wpsc",			re_wpsc_main			},
-#endif
 #endif
 #if defined(RTCONFIG_CONCURRENTREPEATER)
 #if !defined(RPAC68U)
@@ -2754,6 +2792,9 @@ static const applets_t applets[] = {
 #endif
 	{ "disk_remove",		diskremove_main			},
 #endif
+#if defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
+	{ "chgntfsdrv",			chgntfsdrv_main			},
+#endif
 	{ "firmware_check",		firmware_check_main		},
 #if defined(RTCONFIG_FRS_LIVE_UPDATE)
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
@@ -2776,7 +2817,7 @@ static const applets_t applets[] = {
 #ifdef BUILD_READMEM
 	{ "readmem",			readmem_main			},
 #endif
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX) \
  || defined(RTCONFIG_QCA_AXCHIP)
 	{ "stress_pktgen",		stress_pktgen_main		},
 #endif
@@ -3834,6 +3875,13 @@ int main(int argc, char **argv)
 			_dprintf("tmpsta wrap:[%d]/[%s]/[%s]\n", band, argv[2], prefix);
 			create_tmp_sta(band, argv[2], prefix);
 		}
+		return 0;
+	}
+#endif /* RTCONFIG_QCA */
+
+#ifdef RTCONFIG_WIREGUARD
+	if (!strcmp(base, "check_wgc_ep")) {
+		check_wgc_endpoint();
 		return 0;
 	}
 #endif
@@ -5082,6 +5130,12 @@ _dprintf("LED_NOMOBILE=%d, LED_2G_YELLOW=%d, LED_3G_BLUE=%d, LED_4G_WHITE=%d.\n"
 		return 0;
 	}
 #endif
+#ifdef RTCONFIG_IP808AR
+	else if (!strcmp(base, "poe_cap")) {
+		_dprintf("PoE cap: %d\n", get_poeCap());
+		return 0;
+	}
+#endif
 	printf("Unknown applet: %s\n", base);
 	return 0;
 }
@@ -5257,4 +5311,3 @@ err:
 	return ret;
 } /* End of rc_sendEventToRast */
 #endif
-

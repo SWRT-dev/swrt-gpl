@@ -1,8 +1,8 @@
 /*
  * Copyright 2021, ASUS
- * Copyright 2021-2024, SWRTdev
- * Copyright 2021-2024, paldier <paldier@hotmail.com>.
- * Copyright 2021-2024, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2021-2025, SWRTdev
+ * Copyright 2021-2025, paldier <paldier@hotmail.com>.
+ * Copyright 2021-2025, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  */
 

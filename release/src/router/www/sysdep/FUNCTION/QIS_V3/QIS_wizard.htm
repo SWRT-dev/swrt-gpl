@@ -20,6 +20,7 @@
 		<script type="text/javascript" src="./mobile/js/handler.js"></script>
 		<script type="text/javascript" src="./mobile/js/login_state.js"></script>
 		<script type="text/javascript" src="./js/https_redirect/https_redirect.js"></script>
+		<script type="text/javascript" src="./md5.js"></script>
 		<script type="text/javascript" src="./js/asus_policy.js"></script>
 		<script>
 			let urlParameter = new URLSearchParams(window.location.search);
@@ -67,7 +68,8 @@
 						"ASUS_NEW_EULA",
 						"sw_mode",
 						"wlc_psta", 
-						"wl_ifnames", 
+						"wl_ifnames",
+						"wlnband_list", 
 						"wl_version", 
 						"productid", 
 						"rc_support", 
@@ -97,6 +99,7 @@
 					]);
 
 					systemVariable.historyPage = [];
+					systemVariable.restart_wan_if = false;//flag used to record excution of "restart_wan_if"
 
 					if(isSupport("BUSINESS")){
 						$('<script />', { type : 'text/javascript', src : "./js/qrcode/jquery.qrcode.min.js"}).appendTo('head');
@@ -132,10 +135,8 @@
 							}
 							systemVariable.wanDnsenable = initNvram.dsl0_dnsenable;
 						}
-
 					}
 					else{
-
 						systemVariable.originWanType = initWanNvram.wan_proto;
 						if(systemVariable.originWanType == "pppoe" || systemVariable.originWanType == "pptp" || systemVariable.originWanType == "l2tp"){
 							systemVariable.originPppAccount.username = initWanNvram.wan_pppoe_username;
@@ -143,22 +144,11 @@
 						}
 						systemVariable.wanDnsenable = initWanNvram.wan_dnsenable_x;
 					}
-					systemVariable.originOpMode = (function(){
-						if(initNvram.sw_mode == "2" && (initNvram.wlc_psta == "0" || initNvram.wlc_psta == "") && (initNvram.wlc_dpsta == "0" || initNvram.wlc_dpsta == "")) return "RP";
-						else if(initNvram.sw_mode == "3" && initNvram.wlc_psta == "2" && (initNvram.wlc_dpsta == "0" || initNvram.wlc_dpsta == "")) return "RP";
-						else if(initNvram.sw_mode == "3" && initNvram.wlc_psta == "2" && initNvram.wlc_dpsta == "1") return "RP";
-						else if(initNvram.sw_mode == "3" && initNvram.wlc_psta == "2" && initNvram.wlc_dpsta == "2") return "RP";
-						else if(initNvram.sw_mode == "3" && (initNvram.wlc_psta == "0" || initNvram.wlc_psta == "") && (initNvram.wlc_dpsta == "0" || initNvram.wlc_dpsta == "")) return "AP";
-						else if(initNvram.sw_mode == "2" && initNvram.wlc_psta == "1" && (initNvram.wlc_dpsta == "0" || initNvram.wlc_dpsta == "")) return "MB";
-						else if(initNvram.sw_mode == "3" && initNvram.wlc_psta == "1" && (initNvram.wlc_dpsta == "0" || initNvram.wlc_dpsta == "")) return "MB";
-						else if(initNvram.sw_mode == "1" && initNvram.wlc_band != "") return "WISP";
-						else if(initNvram.sw_mode == "1" && isSupport("noRouter")) return "AP";
-						else return "RT";
-					})();
-
+					
+					systemVariable.originOpMode = (httpApi.hookGet("get_operation_mode") || "RT").toUpperCase();
 					systemVariable.qisSession = "qis"+Date.now();
 					systemVariable.opMode = systemVariable.originOpMode;
-					systemVariable.wirelessBand = initNvram.wl_ifnames.split(" ").length;
+					systemVariable.wirelessBand = initNvram.wlnband_list.split("&#60").length;
 					systemVariable.sdkVersion = initNvram.wl_version.split(".")[0];
 					systemVariable.productid = initNvram.productid;
 					systemVariable.rcSupport = initNvram.rc_support;
@@ -192,7 +182,7 @@
 
 					$("#switchWanTagContainer").append(Get_Component_ISPSelect);
 					$("#switch_wantag").attr("class", "optionInput");
-					getCloudProfiles();
+					// setTimeout(getCloudProfiles, 1000);
 
 					var allWlArray =  getAllWlArray();
 					for(var i = 0; i < allWlArray.length; i += 1){
@@ -202,6 +192,7 @@
 					}
 
 					systemVariable.get_feat_def = httpApi.hookGet("get_feat_def") || {};
+
 					systemVariable.scMode = "SC_all";
 					if(systemVariable.get_feat_def.smart_connect_opt){
 						if( 
@@ -216,6 +207,9 @@
 					if(dwb_mode == "1" && systemVariable.scMode == "SC_all")
 						systemVariable.scMode = "SC_dwb_mode";
 
+					if(isSupport("mlo"))
+						systemVariable.scMode = "SC_all";
+
 					systemVariable.mloSetup = (function(){
 						if(isSupport("mlo")){
 							return systemVariable.isDefault
@@ -225,9 +219,6 @@
 						else
 							return false;
 					})()
-
-					if(systemVariable.mloSetup)
-						systemVariable.scMode = "SC_all";
 					
 					systemVariable.eth_wan_list = httpApi.hookGet("get_ethernet_wan_list", true);
 					if(Object.keys(systemVariable.eth_wan_list).length > 1){
@@ -247,77 +238,72 @@
 						set_cfg_pause();
 					}
 
-					httpApi.newEula.get()
-							.then(data => {
-								if (data.ASUS_NEW_EULA == 0 || data.ASUS_NEW_EULA_time == "") {
-									goTo.EULA();
-								} else {
-									httpApi.privateEula.get()
-											.then(data => {
-												if (data.ASUS_PP == 0 && data.ASUS_PP_time == "") {
-													goTo.PP();
-												} else {
-													switch (urlParameter.get("flag") || "") {
-														case "sitesurvey_rep":
-															goTo.rpMode();
-															break;
-														case "lanip":
-															goTo.apMode();
-															break;
-														case "sitesurvey_mb":
-															goTo.mbMode();
-															break;
-														case "manual":
-															goTo.opMode();
-															break;
-														case "pppoe":
-															goTo.PPPoE();
-															break;
-														case "wireless":
-															goTo.Wireless();
-															break;
-														case "amasrole_page":
-															goTo.chooseRole();
-															break;
-														case "amasnode_page":
-															goTo.asNode();
-															break;
-														case "amas_addNode":
-															systemVariable.amas_newWindow_addNode = true;
-															setTimeout(goTo.amassearch, 50);
-															break;
-														case "site2site":
-															goTo.site2site();
-															break;
-														case "changePass":
-															goTo.Login();
-															break;
-														case "EULA":
-															goTo.EULA();
-															break;
-														case "PP":
-															systemVariable.onlyReSignPP = true;
-															goTo.PP();
-															break;
-														case "rtMode":
-															systemVariable.advSetting = true;
-															goTo.rtMode();
-															break;
-														case "wispMode":
-															systemVariable.advSetting = true;
-															goTo.wispMode();
-															break;
-														case "mlo":
-															goTo.Wireless();
-															break;
-														default:
-															goTo.Welcome();
-															break;
-													}
-												}
-											});
-								}
-							});
+                    const policyStatus = PolicyStatus()
+                        .then(data => {
+                            if (data.EULA == "0" || data.EULA_time == "") {
+                                goTo.EULA();
+                            } else if (data.EULA == 1 && ((data.PP == 1 && data.PP_time != "") || (data.PP == 0 && data.PP_time == ""))) {
+                                goTo.PP();
+                            } else {
+                                switch (urlParameter.get("flag") || "") {
+                                    case "sitesurvey_rep":
+                                        goTo.rpMode();
+                                        break;
+                                    case "lanip":
+                                        goTo.apMode();
+                                        break;
+                                    case "sitesurvey_mb":
+                                        goTo.mbMode();
+                                        break;
+                                    case "manual":
+                                        goTo.opMode();
+                                        break;
+                                    case "pppoe":
+                                        goTo.PPPoE();
+                                        break;
+                                    case "wireless":
+                                        goTo.Wireless();
+                                        break;
+                                    case "amasrole_page":
+                                        goTo.chooseRole();
+                                        break;
+                                    case "amasnode_page":
+                                        goTo.asNode();
+                                        break;
+                                    case "amas_addNode":
+                                        systemVariable.amas_newWindow_addNode = true;
+                                        setTimeout(goTo.amassearch, 50);
+                                        break;
+                                    case "site2site":
+                                        goTo.site2site();
+                                        break;
+                                    case "changePass":
+                                        goTo.Login();
+                                        break;
+                                    case "EULA":
+                                        goTo.EULA();
+                                        break;
+                                    case "PP":
+                                        systemVariable.onlyReSignPP = true;
+                                        goTo.PP();
+                                        break;
+                                    case "rtMode":
+                                        systemVariable.advSetting = true;
+                                        goTo.rtMode();
+                                        break;
+                                    case "wispMode":
+                                        systemVariable.advSetting = true;
+                                        goTo.wispMode();
+                                        break;
+                                    case "mlo":
+                                        goTo.Wireless();
+                                        break;
+                                    default:
+                                        goTo.Welcome();
+                                        break;
+                                }
+                            }
+                        });
 
 					if(initNvram.isError) setTimeout(arguments.callee, 1000);
 				}, 500);
@@ -357,6 +343,9 @@
 		</script>
 	</head>
 	<body>
+		<!-- Policy -->
+		<div id="policy_page" data-role="page" class="qisBackground"></div>
+
 		<!-- Welcome Page -->
 		<div id="welcome" data-role="page" class="qisBackgroundIndex NotInBusiness">
 			<div class="headerBarIndex">
@@ -982,10 +971,10 @@
 						<div id="noWanContainer">
 							<div style="width: 504px; height: 100%">
 								<div><img id="noWanPic" width="504" src="/images/WANunplug.png"></div>
-								<div><img id="noWanDsl" width="504" src="/images/WANunplug_dsl.png"></div>
+								<div><img id="noWanDsl" width="504" src=""></div>
 								<div><img id="noWanEth" width="504" src="/images/WANunplug_eth.png"></div>
-								<div><img id="noWanUsb" width="504" src="/images/WANunplug_usb.png"></div>
-								<div><img id="noWanEth2" width="504" src="/images/WANunplug_eth_2.png"></div>
+								<div><img id="noWanUsb" width="504" src=""></div>
+								<div><img id="noWanEth2" width="504" src=""></div>
 							</div>
 						</div>
 						<!-- Action Button -->
@@ -1206,6 +1195,14 @@
 									</div>
 								</div>
 							</div>
+							<div class="selectorContainer v6option">
+								<div class="selectorContainerDiv">
+									<div class="selectBar" onclick="goTo.V6OPT()"><#IPv6_opt#></div>
+									<div class="narrowContainer">
+										<div class="icon_arrow_right" style="width:20px;height:32px;"></div>
+									</div>
+								</div>
+							</div>
 							<div class="selectorContainer dailIP vpnClient">
 								<div class="selectorContainerDiv">
 									<div class="selectBar" onclick="goTo.PPTP()">
@@ -1237,7 +1234,7 @@
 						</div>
 						<div id= "wan_iptv_checkbox">
 							<div id="iptv_check_container" class="labelContainer iptv">
-								<label for="iptv_checkbox" class="labelInput"><#PPPConnection_x_HostNameForISP_sectionname#></label>
+								<label for="iptv_checkbox" class="labelInput"><#PPPConnection_x_HostNameForISP_sectionname#>  <span style="color:#FF0000"><#PPPConnection_x_certain_WAN#></span></label>
 								<input type="checkbox" id="iptv_checkbox" value="1" data-mini="true" />
 							</div>
 						</div>
@@ -2497,13 +2494,14 @@
 					<div class="table_td">
 						<div class="pageDesc"><#qis_wireless_setting#></div>
 
-						<div id="wlTitleField" class="inputTitleContainer mloSupport"><div class="inputTitle ap_ssid_hover moreBold" style="margin-bottom: -30px;">WiFi7 Network</div></div>
+						<!--div id="wlTitleField" class="inputTitleContainer mloSupport">
+							<div class="inputTitle ap_ssid_hover moreBold" style="margin-bottom: -30px;">WiFi7 Network</div>
+						</div-->
 						<div id="wlInputField"></div>
 
-						<div id="wlTitleField_MLO" class="inputTitleContainer mloSupport"><div class="inputTitle ap_ssid_hover moreBold" style="margin-bottom: -30px;">IoT Network</div></div>
 						<div class="mloSupport" id="wlInputField_MLO"></div>
 
-						<div class="labelContainer dualbandSupport bandStreeringSupport">
+						<div class="labelContainer dualbandSupport bandStreeringSupport checkboxUnderTextInput">
 							<label for="wireless_checkbox" class="labelInput"><#qis_wireless_setting_separate#></label>
 							<input type="checkbox" id="wireless_checkbox" data-mini="true"/>
 						</div>
@@ -2825,129 +2823,6 @@
 					</div>
 				</div>
 			</div>			
-		</div>
-
-		<!-- Policy -->
-		<div id="policy_page" data-role="page" class="qisBackground">
-			<div class="headerBar">
-				<table style="width:100%">
-					<tr>
-						<td style="padding:0;width:17px;">
-							<div style="margin-right:20px;">
-								<a href="#navigation">
-									<div class="icon_menu" style="width:17px;height:17px;display:none"></div>
-								</a>
-							</div>
-						</td>
-						<td style="padding:0;width:130px;">
-							<div>
-								<div class="icon_logo"></div>
-							</div>
-						</td>
-						<td style="padding:0;">
-							<div class="model_welcome"></div>
-						</td>
-					</tr>
-				</table>
-			</div>
-			<div class="tableContainer">
-				<div class="desktop_left_field">
-					<div>
-						<div class="titleMain"></div>
-						<div class="titleSub"></div>
-					</div>
-				</div>
-				<div class="table_td">
-					<div style="display: flex; flex-direction: column; gap: 1em; height: 75vh;">
-						<style>
-
-							.footer {
-								display: flex;
-								flex-direction: row;
-    							justify-content: space-around;
-								position: fixed;
-								bottom: 0;
-								margin-top: 20px;
-								width: 100%;
-								height: 102px;
-								background: #FFF;
-								z-index: 2;
-								border-top: 3px solid #007AFF;
-							}
-
-							.mobileAbort.disabled .mobile_abortBtn {
-								color: #FFFFFF;
-							}
-
-							#ppAbort{
-								background: #FFFFFF;
-								color: #007AFF;
-							}
-
-							.ppBtn{
-								text-align: center;
-								display: flex;
-								align-items: center;
-								justify-content: center;
-								font-family: HelveticaNeueW10-45Ligh, Helvetica W01 Light, Arial;
-								font-size:1.875em;
-								color: #FFF;
-								cursor:pointer;
-								width: 100%;
-								background: #007AFF;
-							}
-
-							.ppBtn.disabled, .ppBtn.disabled {
-								background: #808080 !important;
-								border: 2px solid #FFFFFF;
-								cursor: not-allowed;
-								color: #FFFFFF !important;
-							}
-
-							@media screen and (min-aspect-ratio: 11/13){
-								.footer{
-									border: 0;
-									background: unset;
-									position: relative;
-									display: flex;
-									justify-content: space-around;
-									margin: 0;
-									gap: 1em;
-								}
-
-								#ppAbort{
-									border: 2px solid #007AFF;
-								}
-
-								#ppAbort.disabled{
-									background: #808080 !important;
-									border: 2px solid #FFFFFF;
-								}
-
-								.footer .ppBtn{
-									max-width: 300px;
-									width: 40%;
-									height: 66px;
-									line-height: 66px;
-									margin: 0 20px;
-									font-size: 1.5em;
-									border-radius: 35px;
-								}
-							}
-
-						</style>
-						<div class="pageDesc"></div>
-						<div id="policyContainer">
-						</div>
-						<!-- Action Button -->
-						<div class="footer">
-							<div id="ppAbort" class="ppBtn disabled" style="display: none;"><#CTL_Disagree#></div>
-							<div id="ppApply" class="ppBtn disabled" style="display: none;"><#CTL_Agree#></div>
-							<div id="eulaApply" class="ppBtn disabled" style="display: none;"><#CTL_Agree#></div>
-						</div>
-					</div>
-				</div>
-			</div>
 		</div>
 
 		<!-- AMAS Search -->
@@ -3319,6 +3194,72 @@
 			</div>
 		</div>
 
+		<!-- SDN IoT -->
+		<div id="SDN_IoT_setting" data-role="page" class="qisBackground">
+			<div class="qis_container">
+				<div class="headerBar"></div>
+				<div class="tableContainer">
+					<div class="desktop_left_field">
+						<div class="titleMain"><#GuestNetwork_IoT#></div>
+						<div class="titleSub"><#Settings#></div>
+					</div>
+					<div class="table_td">
+						<div class="pageDesc">
+							<#qis_wireless_set_done#>
+							<br><#qis_SDN_IoT_setting_desc1#>
+							<br><#qis_SDN_IoT_setting_desc2#>
+						</div>
+
+						<div id="wlTitleField_SDN_IoT" class="inputTitleContainer mloSupport">
+							<div class="inputTitle ap_ssid_hover moreBold" style="margin-bottom: -30px;"><#GuestNetwork_IoT#></div>
+						</div>
+						<div class="mloSupport" id="wlInputField_SDN_IoT"></div>
+						<div class="labelContainer checkboxUnderTextInput">
+							<label for="sdn_iot_checkbox" class="labelInput"><#Maybe_Later#></label>
+							<input type="checkbox" id="sdn_iot_checkbox" data-mini="true"/>
+						</div>
+
+						<!-- Action Button -->
+						<div class="footer_desktop">
+							<div class="desktop_abortBtn" onclick='abort.SDN_IoT();'><#CTL_prev#></div>
+							<div class="desktop_applyBtn btn_SDN_apply" onclick="apply.SDN_IoT();"><#CTL_apply#></div>
+						</div>
+						<div class="footer_mobile">
+							<table style="width:100%;" cellpadding="0" cellspacing="0">
+								<tr>
+									<td class="mobileAbort" style="width:50%" onclick='abort.SDN_IoT();'>
+										<div class="mobile_abortBtn"><#CTL_prev#></div>
+									</td>
+									<td class="mobileApply" onclick="apply.SDN_IoT();">
+										<div class="mobile_applyBtn btn_SDN_apply"><#CTL_apply#></div>
+									</td>
+								</tr>
+							</table>
+						</div>
+					</div>
+				</div>
+			</div>
+			<div class="hidden_mask popup_element"></div>
+			<div class="popup_container popup_element defpass qisView">
+				<div>
+					<div class="title_container">
+						<div class="title">WiFi Connection</div><!-- untranslated -->
+						<div id="wifi_conn_guideline_close" class="icon_close_btn"></div>
+					</div>
+					<div class="content_container">
+						<div class="defpass_guideline_container">
+							<div class="image_container">
+								<div class="image_wifi_conn"></div>
+							</div>
+							<div class="desc_container">
+								<div id="wifi_conn_guideline_desc"></div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
 		<!-- SDN Scenarios -->
 		<div id="SDN_Scenarios_page" data-role="page" class="qisBackground">
 			<div class="qis_container">
@@ -3335,7 +3276,7 @@
 						<!-- Action Button -->
 						<div class="footer_desktop">
 							<div class="desktop_abortBtn" onclick='abort.SDN_Scenarios()'><#CTL_prev#></div>
-							<div class="desktop_applyBtn btn_SDN_apply" onclick='apply.SDN_Scenarios();'>Maybe Later</div><!-- untranslated -->
+							<div class="desktop_applyBtn btn_SDN_apply" onclick='apply.SDN_Scenarios();'><#Maybe_Later#></div>
 						</div>
 						<div class="footer_mobile">
 							<table style="width:100%;" cellpadding="0" cellspacing="0">
@@ -3344,7 +3285,7 @@
 										<div class="mobile_abortBtn"><#CTL_prev#></div>
 									</td>
 									<td class="mobileApply" style="width:50%" onclick='apply.SDN_Scenarios();'>
-										<div class="mobile_applyBtn btn_SDN_apply">Maybe Later</div><!-- untranslated -->
+										<div class="mobile_applyBtn btn_SDN_apply"><#Maybe_Later#></div>
 									</td>
 								</tr>
 							</table>

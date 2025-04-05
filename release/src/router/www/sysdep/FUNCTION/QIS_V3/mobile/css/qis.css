@@ -1,4 +1,17 @@
-﻿body{
+﻿html::-webkit-scrollbar{
+    display: block;
+    width: 4px;
+    height: 4px;
+    padding: 2px;
+}
+html::-webkit-scrollbar-thumb{
+    background-color: #248DFF !important;   
+    border-radius: 50px;
+}
+html::-webkit-scrollbar-track{
+    background-color: #192229 !important;
+}
+body{
 	background:url('./qis_background_downsize.png') repeat;
 	background-color: #111 !important;
 /*
@@ -395,12 +408,10 @@ a{
 	width: 100%;
 	padding-left: 12px;
 	cursor: pointer;
-	color: #111;
 }
 .selectBar > label{
 	font-family: HelveticaNeueW10-45Ligh,Helvetica,Arial;
 	font-size: 36px;
-	color: #DBDBDB	
 }
 .icon_logo{
 	width: 130px;
@@ -550,9 +561,6 @@ a{
 .footHeight{
 	height: 100px;
 }
-#wlInputField{
-	margin-bottom: -30px;
-}
 #noWanContainer{
     height: 504px;
 	display: flex;
@@ -582,15 +590,16 @@ a{
 	position: absolute;
 	width: 480px;
 	height: 330px;
-	background: url('../../images/GT-BExx_port.png') no-repeat center;
+	background: url('../../images/model_port.png') no-repeat center;
+	background-size: cover;
 }
 
 .port_plugin_img{
 	position: absolute;
 	width: 480px;
 	height: 330px;
-	background: url('../../images/GT-BExx_plugin.png') no-repeat center;
-	right: 215px;
+	background: url('../../images/wanport_plugin.png') no-repeat center;
+	background-size: cover;
 }
 
 .green{
@@ -855,6 +864,9 @@ a{
 }
 .bandStreeringSupport{
 	display: none;
+}
+.checkboxUnderTextInput{
+	margin-top: -30px;
 }
 .titleMain{
 	font-size: 60px;
@@ -1213,7 +1225,7 @@ a{
 	.defpass_guideline_container .desc_container{
 		font-size: 1.6em !important;
 	}
-	@media screen and (max-height: 1000px){
+	@media screen and (max-height: 1200px){
 		.tableContainerIndex{ 
 			transform: scale(0.8, 0.8);
 			transform-origin: top;
@@ -1946,4 +1958,7 @@ a{
 }
 .moreBold{
 	font-weight: bolder;
+}
+.qisBackground {
+	height: 100%;
 }

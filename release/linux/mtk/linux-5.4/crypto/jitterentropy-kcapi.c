@@ -44,13 +44,11 @@
 #include <linux/crypto.h>
 #include <crypto/internal/rng.h>
 
-struct rand_data;
-int jent_read_entropy(struct rand_data *ec, unsigned char *data,
-		      unsigned int len);
-int jent_entropy_init(void);
-struct rand_data *jent_entropy_collector_alloc(unsigned int osr,
-					       unsigned int flags);
-void jent_entropy_collector_free(struct rand_data *entropy_collector);
+#include "jitterentropy.h"
+
+#ifdef CONFIG_CRYPTO_CPU_JITTERENTROPY_DEBUG
+#include "jitterentropy-dbg.h"
+#endif
 
 /***************************************************************************
  * Helper function
@@ -148,7 +146,31 @@ static int jent_kcapi_random(struct crypto_rng *tfm,
 	int ret = 0;
 
 	spin_lock(&rng->jent_lock);
+
 	ret = jent_read_entropy(rng->entropy_collector, rdata, dlen);
+
+	if (ret == -3) {
+		/* Handle permanent health test error */
+		/*
+		 * If the kernel was booted with fips=1, it implies that
+		 * the entire kernel acts as a FIPS 140 module. In this case
+		 * an SP800-90B permanent health test error is treated as
+		 * a FIPS module error.
+		 */
+		if (fips_enabled)
+			panic("Jitter RNG permanent health test failure\n");
+
+		pr_err("Jitter RNG permanent health test failure\n");
+		ret = -EFAULT;
+	} else if (ret == -2) {
+		/* Handle intermittent health test error */
+		pr_warn_ratelimited("Reset Jitter RNG due to intermittent health test failure\n");
+		ret = -EAGAIN;
+	} else if (ret == -1) {
+		/* Handle other errors */
+		ret = -EINVAL;
+	}
+
 	spin_unlock(&rng->jent_lock);
 
 	return ret;
@@ -182,15 +204,31 @@ static int __init jent_mod_init(void)
 
 	ret = jent_entropy_init();
 	if (ret) {
+		/* Handle permanent health test error */
+		if (fips_enabled)
+			panic("jitterentropy: Initialization failed with host not compliant with requirements: %d\n", ret);
+
 		pr_info("jitterentropy: Initialization failed with host not compliant with requirements: %d\n", ret);
 		return -EFAULT;
 	}
+
+#ifdef CONFIG_CRYPTO_CPU_JITTERENTROPY_DEBUG
+	ret = jent_dbg_init();
+#endif
+	if(ret)
+		return ret;
+	printk("Debug interface error\n");
 	return crypto_register_rng(&jent_alg);
+
 }
 
 static void __exit jent_mod_exit(void)
 {
 	crypto_unregister_rng(&jent_alg);
+
+#ifdef CONFIG_CRYPTO_CPU_JITTERENTROPY_DEBUG
+	jent_dbg_exit();
+#endif
 }
 
 module_init(jent_mod_init);

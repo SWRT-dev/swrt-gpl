@@ -154,6 +154,18 @@
 	background-position: 1px -290px;
 }
 
+.label_W_bg .port_icon:before{
+    position: absolute;
+    content: "";
+    width: 16px;
+    height: 16px;
+    background-image: url(/images/New_ui/amesh/port_status.svg);
+    background-size: 70px;
+    right: -5px;
+    bottom: -5px;
+    background-position: 0px -179px;
+}
+
 .port_name{
 	height: 20px;
 	font-size: 14px;
@@ -315,8 +327,8 @@ function init(){
 
 var DNSService = new Object;
 function updatDNSListOnline(){
-
-	$.getJSON("/ajax/DNS_List.json", function(local_data){
+	const extendno = httpApi.nvramCharToAscii(["extendno"]).extendno;
+	$.getJSON("/ajax/DNS_List.json?v="+extendno+"", function(local_data){
 		DNSService = Object.keys(local_data).map(function(e){
 				return local_data[e];
 		});
@@ -370,7 +382,18 @@ function get_wan_options(){
 		$.each(port_info, function(label){
 			$.each(port_info[label], function(index, port_item){
 					var option_obj = {};
-					option_obj.text = port_item.label_port_name;
+				let port_name = "";
+				if(port_item.ui_display != undefined && port_item.ui_display != ""){
+					port_name = port_item.ui_display;
+				}
+				else if(port_item.special_port_name != ""){
+					port_name = port_item.special_port_name;
+				}
+				else{
+					port_name = port_item.label_port_name;
+				}
+
+				option_obj.text = port_name;
 					option_obj.value = port_item.label + port_item.label_idx;
 					wan_options.push(option_obj);
 			});
@@ -1679,13 +1702,25 @@ function show_port_status(){
 
 		$.each(port_info, function(label){
 			$.each(port_info[label], function(index, port_item){
+				let port_idx = port_item.label_idx;
+				let port_name = "";
+				if(port_item.ui_display != undefined && port_item.ui_display != ""){
+					port_name = port_item.ui_display;
+				}
+				else if(port_item.special_port_name != ""){
+					port_name = port_item.special_port_name;
+				}
+				else{
+					port_name = port_item.label_port_name;
+				}
+
 				if(label == "WAN"){
 					var $port_container = $("<div>")
 						.addClass("port_container")
 						.appendTo($wan_usb_container);
 
 					var $port_icon_container = $("<div>")
-						.addClass("port_icon_container")
+						.addClass("label_W_bg port_icon_container")
 						.appendTo($port_container);
 
 					var $port_icon = $("<div>")
@@ -1697,21 +1732,20 @@ function show_port_status(){
 						.appendTo($port_icon_container);
 
 					$("<div>")
-						.addClass("wan_icon")
 						.appendTo($port_icon);
 
 					$("<div>")
-						.html(port_item.label_port_name)
+						.html(port_name)
 						.addClass("port_name")
 						.appendTo($port_container);
+
+					if(port_idx != "" && !port_item.cap_support.USB)
+						$("<div>").addClass("lan_idx").html(htmlEnDeCode.htmlEncode(port_idx)).appendTo($port_icon);
 				}
 				else if(label == "LAN"){
 					var $port_container = $("<div>")
 						.addClass("port_container");
 
-					//if(port_item.cap_support.USB)
-					//	$port_container.appendTo($wan_usb_container);
-					//else
 						$port_container.appendTo($wan_usb_container);
 
 					var $port_icon_container = $("<div>")
@@ -1732,10 +1766,9 @@ function show_port_status(){
 							.appendTo($port_icon);
 					}
 
-					//if(port_item.label != "L")
 					{
 						$("<div>")
-							.html(port_item.label_port_name)
+							.html(port_name)
 							.addClass("port_name")
 							.appendTo($port_container);
 					}

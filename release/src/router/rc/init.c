@@ -21934,7 +21934,9 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 #endif
 
 #ifdef RTCONFIG_NTFS
+#if !defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
 	nvram_set("usb_ntfs_mod", "");
+#endif
 #if defined(RTCONFIG_OPENPLUSPARAGON_NTFS) || defined(RTCONFIG_OPENPLUSTUXERA_NTFS)
 #if defined(RTAC58U)
 	if(!strncmp(nvram_safe_get("odmpid"), "RT-ACRH", 7))
@@ -21949,6 +21951,14 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 	else
 		nvram_set("usb_ntfs_mod", "tuxera");
 #endif
+#elif defined(RTCONFIG_KERNEL_NTFS3)
+#if defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
+	add_rc_support("ntfs3+open");
+	if (!nvram_match("usb_ntfs_mod", "open"))
+		nvram_set("usb_ntfs_mod", "ntfs3");
+#else
+	nvram_set("usb_ntfs_mod", "ntfs3");
+#endif	/* RTCONFIG_OPENPLUSKERNEL_NTFS3 */
 #else
 #ifdef RTCONFIG_OPEN_NTFS3G
 	nvram_set("usb_ntfs_mod", "open");
@@ -26323,4 +26333,3 @@ void reconfig_manual_wan_ifnames(void) {
 	}
 }
 #endif
-

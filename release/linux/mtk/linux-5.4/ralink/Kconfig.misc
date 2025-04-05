@@ -1,112 +1,131 @@
 menu "ASUS Miscellaneous options"
 
 config  SINGLE_SKU_IN_DRIVER
-        bool "Single sku in driver, not file"
-        default n
+	bool "Single sku in driver, not file"
+	default n
 
 #config  MTD_JFFS2_LEN
 #        hex "MTD JFFS2 Partition Length (Unit:Bytes)"
 #        default 0x0
 
 config  MODEL_RTACRH18
-        bool "RT-ACRH18"
-        default n
+	bool "RT-ACRH18"
+	default n
 
 config  MODEL_RT4GAX56
-        bool "RT-4GAX56"
-        default n
+	bool "RT-4GAX56"
+	default n
 
 config  MODEL_RTAX53U
-        bool "RT-AX53U"
-        default n
+	bool "RT-AX53U"
+	default n
 
 config  MODEL_RTAX54
-        bool "RT-AX54"
-        default n
+	bool "RT-AX54"
+	default n
 
 config  MODEL_RT4GAC86U
-        bool "4G-AC86U"
-        default n
+	bool "4G-AC86U"
+	default n
 
 config  MODEL_RTAC85U
-        bool "RT-AC85U"
-        default n
+	bool "RT-AC85U"
+	default n
 
 config  MODEL_RTAC85P
-        bool "RT-AC85P"
-        default n
+	bool "RT-AC85P"
+	default n
 
 config  MODEL_R6800
-        bool "R6800"
-        default n
+	bool "R6800"
+	default n
 
 config  MODEL_RMAC2100
-        bool "RMAC2100"
-        default n
+	bool "RMAC2100"
+	default n
 
 config  MODEL_PGBM1
-        bool "PGBM1"
-        default n
+	bool "PGBM1"
+	default n
 
 config  MODEL_JCGQ10PRO
-        bool "JCG-Q10PRO"
-        default n
+	bool "JCG-Q10PRO"
+	default n
 
 config  MODEL_H3CTX1801
-        bool "H3C-TX1801"
-        default n
+	bool "H3C-TX1801"
+	default n
 
 config  MODEL_RMAX6000
-        bool "Redmi AX6000"
-        default n
+	bool "Redmi AX6000"
+	default n
 
 config  MODEL_SWRT360T7
-        bool "360T7"
-        default n
+	bool "360T7"
+	default n
 
 config MODEL_PANTHERA
-		bool "Panther porting on PantherA RFB"
-        default n
+	bool "Panther porting on PantherA RFB"
+	default n
 
 config MODEL_PANTHERB
-		bool "Panther porting on PantherB RFB"
-        default n
+	bool "Panther porting on PantherB RFB"
+	default n
 
 config MODEL_CHEETAH
-		bool "Cheetah porting on Cheetah RFB"
-        default n
+	bool "Cheetah porting on Cheetah RFB"
+	default n
 
 config MODEL_TUFAX4200
-		bool "Panther TUF-AX4200/TUF-AX4200Q"
-        default n
+	bool "Panther TUF-AX4200/TUF-AX4200Q"
+	default n
 
 config MODEL_TUFAX6000
-		bool "Panther TUF-AX6000"
-        default n
+	bool "Panther TUF-AX6000"
+	default n
 
 config MODEL_RTAX59U
-		bool "Panther RT-AX59U"
-        default n
+	bool "Panther RT-AX59U"
+	default n
 
 config MODEL_PRTAX57_GO
 	bool "Cheetah PRT-AX57_GO"
+	default n
 
 config MODEL_RTAX52
 	bool "Cheetah RT-AX52"
+	default n
 
 config MODEL_RTAX57M
 	bool "Cheetah RT-AX57M"
+	default n
+
+config MODEL_BT8
+	bool "Zenwifi BT8"
+	default n
+
+config MODEL_BT6
+	bool "Zenwifi BT6"
+	default n
+
+config MODEL_BT8P
+	bool "Zenwifi BT8P"
+	default n
+
+config MODEL_GS7
+	bool "GS7/GS-BE7200"
+	default n
 
 config  ASUS_EXT
-        bool "ASUS_EXT"
-        default n
+	bool "ASUS_EXT"
+	default n
 
 config  MTK_NAND_BLOCK2
-        bool "For MTK nand using 2 block"
-        default n
+	bool "For MTK nand using 2 block"
+	default n
 
 config  FIBOCOM_FG621
-        bool "LTE module FIBOCOM FG621"
-        default n
+	bool "LTE module FIBOCOM FG621"
+	default n
 
 endmenu        

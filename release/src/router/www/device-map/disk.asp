@@ -186,7 +186,7 @@ function switchUSBType(){
   </tr>
 
   <tr id="mediaserver_hyperlink">
-    <td style="padding:10px 15px 0px 15px;;">
+    <td style="padding:10px 15px 0px 15px;">
     	<p class="formfonttitle_nwm" style="float:left;width:138px;"><#UPnPMediaServer#>:</p>
       <input type="button" class="button_gen" onclick="goUPnP();" value="<#btn_go#>" >
 		<div style="margin-top:5px;" class="line_horizontal"></div>
@@ -269,4 +269,3 @@ function switchUSBType(){
 </form>
 </body>
 </html>
-

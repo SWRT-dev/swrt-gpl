@@ -27,6 +27,7 @@
 <script language="JavaScript" type="text/javascript" src="/js/html5kellycolorpicker.min.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/md5.js"></script>
+<script type="text/javascript" src="/js/asus_clientlist.js"></script>
 <style>
 .traffic_bar{
 	width: 0%;
@@ -262,7 +263,7 @@
 .event-cancel{
 	width: 20px;
 	height: 20px;
-	background: url('images/gameprofile/cancel.svg') no-repeat center;;
+	background: url('images/gameprofile/cancel.svg') no-repeat center;
 	border: 1px solid #842500;
 	background-color:#262626;
 	border-radius: 50%;
@@ -281,6 +282,9 @@
 }
 #wan_state, #sw_mode_desc {
 	font-family: Xolonium;
+}
+.titledown, #ssidTitle{
+	visibility: hidden !important;
 }
 </style>
 <script>
@@ -379,7 +383,7 @@ function initial(){
 
 	if(isSupport("ledg")){
 		$("#aura_field").show();
-		$("#light_effect_bg").show();
+		$("#light_effect_container").show();
 		$("#aura_rgb_bg").hide();
 	}
 
@@ -1127,6 +1131,11 @@ function uuRegister(mac){
 	var _mac = mac.toLowerCase();
 	window.open('https://router.uu.163.com/asus/pc.html#/acce?gwSn=' + _mac + '&type=asuswrt', '_blank');
 }
+
+function showClientlistModal() {
+	const clientlistModal = new ClientlistModel();
+	clientlistModal.show();
+}
 </script>
 </head>
 
@@ -1199,7 +1208,7 @@ function uuRegister(mac){
 											</div>
 											<div style="margin-top: 40px;text-align:center;color:#BFBFBF;">
 												<div class="rog-title" style="text-transform: uppercase;"><#Full_Clients#></div>
-												<div style="margin-top:15px;font-family: Xolonium;">
+												<div style="cursor:pointer;margin-top:15px;font-family: Xolonium;" onclick="showClientlistModal()">
 													<span id="client_count" style="font-size: 20px;padding:0 10px;color:#57BDBA"></span>
 													<span style="font-size: 14px;color:#57BDBA;text-transform: uppercase;"><#Clientlist_Online#></span>
 												</div>	
@@ -1293,7 +1302,7 @@ function uuRegister(mac){
 										$("#pingMap").load("/cards/pingMap.html");
 									</script>
 									<div id="aura_field" style="width:345px;height:425px;margin:-360px 0 0 390px;display:none;position: relative">
-										<div id="light_effect_bg" style="width:100%;height:100%;">
+										<div id="light_effect_container" style="width:100%;height:100%;">
 											<iframe id="light_effect_iframe" class="light_effect_iframe" frameborder="0"></iframe>
 											<script>
 												if(isSupport("ledg")){
@@ -1342,7 +1351,7 @@ function uuRegister(mac){
 												</div>
 												<div style="margin-left:12px;">
 													<div>
-														<li style="font-size: 14px;font-weight: bold;;"><#Game_Boost#></li>
+														<li style="font-size: 14px;font-weight: bold;"><#Game_Boost#></li>
 														<div style="margin: 0 0 6px 0;color:#BFBFBF"><#AURA_Event_Boost_desc#></div>
 													</div>
 													<div>
@@ -1362,7 +1371,7 @@ function uuRegister(mac){
 												</div>
 											</div>
 
-											<div style="display:flex;align-items: center;justify-content: space-around;;">
+											<div style="display:flex;align-items: center;justify-content: space-around;">
 												<div class="rog-title" style="height:65px;"><#BoostKey_Aura_RGB#></div>
 												<div style="width: 68px;height:68px;margin-top:10px;background: url('./images/New_ui/img-aurasync-logo.png')"></div>
 											</div>

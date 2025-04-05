@@ -110,6 +110,9 @@ window.onresize = function() {
 var dms_dir_x_array = '<% nvram_get("dms_dir_x"); %>';
 var dms_dir_type_x_array = '<% nvram_get("dms_dir_type_x"); %>';
 
+var current_page = window.location.pathname.split("/").pop();
+var faq_index_tmp = get_faq_index(FAQ_List, current_page, 1);
+
 function dlna_path_display(){
 	if("<% nvram_get("dms_enable"); %>" == 1){
 		document.form.dms_friendly_name.parentNode.parentNode.parentNode.style.display = "";
@@ -178,6 +181,13 @@ function initial(){
 
 		let intervalId = setInterval(setupWhiteThemeWrapper, 100);
 		setTimeout(function(){clearInterval(intervalId);}, 2000);
+	}
+
+	if(top.webWrapper){
+		$(".icon_help").css({"top":"40px", "right":"42px"});
+	}
+	else{
+		$(".icon_help").css({"top":"30px", "right":"72px"});
 	}
 }
 
@@ -342,9 +352,6 @@ function get_layer_items(layer_order){
 	$.ajax({
     		url: '/gettree.asp?layer_order='+layer_order,
     		dataType: 'script',
-    		error: function(xhr){
-    			;
-    		},
     		success: function(){
 				get_tree_items(treeitems);
   			}
@@ -844,6 +851,8 @@ function set_dms_dir(obj){
 
 <!--=====Beginning of Main Content=====-->
 <div id="FormTitle" align="left" border="0" cellpadding="0" cellspacing="0" style="display: none;">
+
+<div class="container">
 <table width="98%" border="0" align="left" cellpadding="0" cellspacing="0">
   <tr>
   	<td>
@@ -853,6 +862,7 @@ function set_dms_dir(obj){
 				<img id="returnBtn" onclick="go_setting('/APP_Installation.asp')" align="right" title="<#Menu_usb_application#>" src="/images/backprev.png" onMouseOver="this.src='/images/backprevclick.png'" onMouseOut="this.src='/images/backprev.png'">
 			</span>
 		</div>
+		<div class="formfonttitle_help"><i onclick="show_feature_desc(`<#HOWTOSETUP#>`)" class="icon_help"></i></div>
 		<div id="splitLine" class="splitLine"></div>
 		<div id="upnp_desc_id" class="formfontdesc" style="margin-top: 10px; margin-left: 8px;"><#upnp_Desc#></div>
 	</td>
@@ -977,8 +987,8 @@ function set_dms_dir(obj){
       	</div>
 		<div id="apply_btn">
            		<input type="button" class="button_gen" onclick="applyRule()" value="<#CTL_apply#>"/>
-       </div>      	
-    	</td> 
+       </div>
+       </td> 
   </tr>    
   
   <tr>
@@ -987,7 +997,10 @@ function set_dms_dir(obj){
   	</td>
   </tr>
 </table>
+       </div>	<!-- for .container  -->
+	   <div class="popup_container popup_element_second"></div>
 </div>
+
 <!--=====End of Main Content=====-->
 		</td>
 

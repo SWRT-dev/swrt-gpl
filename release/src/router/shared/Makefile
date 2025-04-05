@@ -221,6 +221,11 @@ else
 OBJS += rtkswitch.o
 endif
 
+ifeq ($(RTCONFIG_NL80211),y)
+OBJS += nl80211-ralink.o $(STAGEDIR)/usr/lib/libnl-tiny.a
+CFLAGS += -I$(STAGEDIR)/usr/include/libnl-tiny
+CFLAGS += -I$(LINUXDIR)/include/uapi/linux/mtk_nl80211_inc
+endif
 else ifeq ($(RTCONFIG_QCA),y)
 # Qualcomm Atheros
 OBJS += $(TOP)/wireless_tools$(WTOOL_SUFFIX)/iwlib.o

@@ -43,6 +43,9 @@ struct phylink_link_state;
 #define DSA_TAG_PROTO_SJA1105_VALUE		13
 #define DSA_TAG_PROTO_KSZ8795_VALUE		14
 #define DSA_TAG_PROTO_RTL4_A_VALUE		17
+#define DSA_TAG_PROTO_ARHT_VALUE		28
+#define DSA_TAG_PROTO_MXL862_VALUE		29
+#define DSA_TAG_PROTO_MXL862_8021Q_VALUE	30
 
 enum dsa_tag_protocol {
 	DSA_TAG_PROTO_NONE		= DSA_TAG_PROTO_NONE_VALUE,
@@ -61,6 +64,9 @@ enum dsa_tag_protocol {
 	DSA_TAG_PROTO_SJA1105		= DSA_TAG_PROTO_SJA1105_VALUE,
 	DSA_TAG_PROTO_KSZ8795		= DSA_TAG_PROTO_KSZ8795_VALUE,
 	DSA_TAG_PROTO_RTL4_A		= DSA_TAG_PROTO_RTL4_A_VALUE,
+	DSA_TAG_PROTO_ARHT		= DSA_TAG_PROTO_ARHT_VALUE,
+	DSA_TAG_PROTO_MXL862		= DSA_TAG_PROTO_MXL862_VALUE,
+	DSA_TAG_PROTO_MXL862_8021Q	= DSA_TAG_PROTO_MXL862_8021Q_VALUE,
 };
 
 struct packet_type;
@@ -565,6 +571,8 @@ struct dsa_switch_ops {
 					  struct sk_buff *skb);
 };
 
+struct dsa_port *dsa_port_from_netdev(struct net_device *netdev);
+
 struct dsa_switch_driver {
 	struct list_head	list;
 	const struct dsa_switch_ops *ops;
@@ -657,6 +665,14 @@ static inline int call_dsa_notifiers(unsigned long val, struct net_device *dev,
 #define BRCM_TAG_GET_PORT(v)		((v) >> 8)
 #define BRCM_TAG_GET_QUEUE(v)		((v) & 0xff)
 
+#if IS_ENABLED(CONFIG_NET_DSA)
+bool dsa_slave_dev_check(const struct net_device *dev);
+#else
+static inline bool dsa_slave_dev_check(const struct net_device *dev)
+{
+	return false;
+}
+#endif
 
 netdev_tx_t dsa_enqueue_skb(struct sk_buff *skb, struct net_device *dev);
 int dsa_port_get_phy_strings(struct dsa_port *dp, uint8_t *data);

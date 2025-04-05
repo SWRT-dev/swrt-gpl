@@ -30,5 +30,5 @@ cflags-$(CONFIG_SOC_MT7620)	+= -I$(srctree)/arch/mips/include/asm/mach-ralink/mt
 
 # Ralink MT7621
 #
-load-$(CONFIG_SOC_MT7621)	+= 0xffffffff80001000+$(CONFIG_MIPS_ER35_RESERVED_SPACE)
+load-$(CONFIG_SOC_MT7621)	+= 0xffffffff80001000
 cflags-$(CONFIG_SOC_MT7621)	+= -I$(srctree)/arch/mips/include/asm/mach-ralink/mt7621

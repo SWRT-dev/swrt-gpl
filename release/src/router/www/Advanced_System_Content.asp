@@ -23,6 +23,7 @@
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script language="JavaScript" type="text/javascript" src="/validator.js"></script>
 <script language="JavaScript" type="text/javascript" src="/md5.js"></script>
+<script type="text/javascript" src="/form.js"></script>
 <style>
 .cancel{
 	border: 2px solid #898989;
@@ -140,6 +141,7 @@ dstoffset = '<% nvram_get("time_zone_dstoff"); %>';
 cfg_master = '<% nvram_get("cfg_master"); %>';
 ncb_enable = '<% nvram_get("ncb_enable"); %>';
 wifison = '<% nvram_get("wifison_ready"); %>';
+var usb_ntfs_mod_orig = '<% nvram_get("usb_ntfs_mod"); %>';
 
 var orig_shell_timeout_x = Math.floor(parseInt("<% nvram_get("shell_timeout"); %>")/60);
 var orig_enable_acc_restriction = '<% nvram_get("enable_acc_restriction"); %>';
@@ -164,6 +166,7 @@ if(sw_mode == 3 || (sw_mode == 4))
 
 var ddns_enable_x = '<% nvram_get("ddns_enable_x"); %>';
 var ddns_hostname_x_t = '<% nvram_get("ddns_hostname_x"); %>';
+var wan0_proto = '<% nvram_get("wan0_proto"); %>';
 var wan_unit = '<% get_wan_unit(); %>';
 if(wan_unit == "0")
 	var wan_ipaddr = '<% nvram_get("wan0_ipaddr"); %>';
@@ -181,6 +184,9 @@ var max_pwd_length = isSupport("MaxLen_http_passwd");
 
 var faq_href1 = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=105";
 var faq_href2 = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang="+ui_lang+"&kw=&num=111";
+
+var current_page = window.location.pathname.split("/").pop();
+var faq_index_tmp = get_faq_index(FAQ_List, current_page, 1);
 
 function initial(){	
 	//parse nvram to array
@@ -304,7 +310,7 @@ function initial(){
 	}
 	else{
 
-		if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+		if((wan0_proto == "v6plus" || wan0_proto == "ocnvc" || wan0_proto == "v6opt") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			$(".setup_info_icon.https").show();
 			$(".setup_info_icon.https").click(
 				function() {
@@ -329,7 +335,7 @@ function initial(){
 	if(ssh_support){
 		check_sshd_enable('<% nvram_get("sshd_enable"); %>');
 
-		if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+		if((wan0_proto == "v6plus" || wan0_proto == "ocnvc" || wan0_proto == "v6opt") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 			$(".setup_info_icon.ssh").show();
 			$(".setup_info_icon.ssh").click(
 				function() {
@@ -399,6 +405,14 @@ function initial(){
 		document.form.pagecache_ratio.disabled = true;
 	}
 
+	if (ntfs3plusopen_support) {
+		document.getElementById("ntfs_driver_tr").style.display = "";
+		document.form.usb_ntfs_mod.disabled = false;
+	} else {
+		document.getElementById("ntfs_driver_tr").style.display = "none";
+		document.form.usb_ntfs_mod.disabled = true;
+	}
+
 	if(hdspindown_support) {
 		$("#hdd_spindown_table").css("display", "");
 		if($("#usb_idle_enable_tr").css("display") != "none"){
@@ -433,8 +447,27 @@ function initial(){
 		document.form.bcm_overclock[0].disabled = false;
 		document.form.bcm_overclock[1].disabled = false;
 	}
-
-	$("#https_download_cert").css("display", (le_enable == "0" && orig_http_enable != "0")? "": "none");
+	$("#https_download_cert").css("display", (orig_http_enable != "0")? "": "none");
+	if(orig_http_enable != "0"){
+		if(le_enable == "1"){
+			$("#download_cert_btn").css("display", "");
+			$("#clear_cert_btn").css("display", "none");
+			$("#download_cacert_btn").css("display", "none");
+			$("#clear_cacert_btn").css("display", "none");
+			$("#download_cacert_desc").css("display", "none");
+		}else if(le_enable == "2"){
+			$("#download_cert_btn").css("display", "");
+			if(document.form.casignedcert.value != "1"){
+				$("#clear_cert_btn").css("display", "none");
+				$("#download_cacert_btn").css("display", "none");
+			}else{
+				$("#clear_cert_btn").css("display", "");
+				$("#download_cacert_btn").css("display", "");
+			}
+			$("#clear_cacert_btn").css("display", "none");
+			$("#download_cacert_desc").css("display", "");
+		}
+	}
 
 	$("#login_captcha_tr").css("display", captcha_support? "": "none");
 
@@ -668,6 +701,8 @@ function applyRule(){
 			action_script_tmp += "pwrsave;";
 		if(pagecache_ratio_support)
 			action_script_tmp += "pagecache_ratio;";
+		if (ntfs3plusopen_support && usb_ntfs_mod_orig != document.form.usb_ntfs_mod.value)
+			action_script_tmp += "chgntfsdrv;";
 
 		if(isSupport("bcm470x")){
 			if ('<% nvram_get("bcm_overclock"); %>' != document.form.bcm_overclock.value)
@@ -727,7 +762,7 @@ function validForm(){
 			return false;
 		}
 
-		if((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1 && document.form.sshd_enable.value == 1){
+		if((wan0_proto == "v6plus" || wan0_proto == "ocnvc" || wan0_proto == "v6opt") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1 && document.form.sshd_enable.value == 1){
 			if (!validator.range_s46_ports(document.form.sshd_port, "none")){
 				if(!confirm(port_confirm)){
 					document.form.sshd_port.focus();
@@ -756,7 +791,7 @@ function validForm(){
 			if (!validator.range(document.form.misc_httpsport_x, 1024, 65535))
 				return false;
 
-			if ((wan_proto == "v6plus" || wan_proto == "ocnvc") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
+			if ((wan0_proto == "v6plus" || wan0_proto == "ocnvc" || wan0_proto == "v6opt") && s46_ports_check_flag && array_ipv6_s46_ports.length > 1){
 				if (!validator.range_s46_ports(document.form.misc_httpsport_x, "none")){
 					if(!confirm(port_confirm)){
 						document.form.misc_httpsport_x.focus();
@@ -898,13 +933,13 @@ var timezones = [
 	["UTC4_1",	"(GMT-04:00) <#TZ18#>"],
 	["UTC4_2",	"(GMT-04:00) <#TZ18_1#>"],
 	["UTC4DST_2",	"(GMT-04:00) <#TZ19#>"],
-	["UTC4DST_3",	"(GMT-04:00) <#TZ19_1#>"],
 	["NST3.30DST",	"(GMT-03:30) <#TZ20#>"],
 	["EBST3",	"(GMT-03:00) <#TZ21#>"],	//EBST3DST_1
 	["UTC3",	"(GMT-03:00) <#TZ22#>"],
+	["UTC3_1",   "(GMT-03:00) <#TZ19_1#>"],		//UTC4DST_3
 	["UTC3DST",     "(GMT-03:00) <#TZ87#>"],        //UTC2DST
-	["UTC2_1",	"(GMT-02:00) <#TZ23#>"],	//EBST3DST_2
 	["UTC2",	"(GMT-02:00) <#TZ24#>"],
+	["UTC2DST_1",  "(GMT-02:00) <#TZ23#>"],    //UTC2_1 //EBST3DST_2
 	["EUT1DST",	"(GMT-01:00) <#TZ25#>"],
 	["UTC1",	"(GMT-01:00) <#TZ26#>"],
 	["GMT0",	"(GMT) <#TZ27#>"],
@@ -944,12 +979,12 @@ var timezones = [
 	["UTC-4.30",	"(GMT+04:30) <#TZ52#>"],
 	["UTC-5",	"(GMT+05:00) <#TZ54#>"],
 	["UTC-5_1",	"(GMT+05:00) <#TZ53#>"],
+	["UTC-5_2",   "(GMT+05:00) <#TZ60#>, <#TZ58_2#>"],	//RFT-6
 	["UTC-5.30_2",	"(GMT+05:30) <#TZ55#>"],
 	["UTC-5.30_1",	"(GMT+05:30) <#TZ56#>"],
 	["UTC-5.30",	"(GMT+05:30) <#TZ59#>"],
 	["UTC-5.45",	"(GMT+05:45) <#TZ57#>"],
-	["RFT-6",	"(GMT+06:00) <#TZ60#>"],
-	["UTC-6",	"(GMT+06:00) <#TZ58#>"],
+	["UTC-6",	"(GMT+06:00) <#TZ58_1#>"],
 	["UTC-6.30",	"(GMT+06:30) <#TZ61#>"],
 	["UTC-7",	"(GMT+07:00) <#TZ62#>"],
 	["UTC-7_2",	"(GMT+07:00) <#TZ63#>"],
@@ -1076,11 +1111,10 @@ function hide_https_lanport(_value){
 		return false;
 	}
 
+	document.getElementById("https_lanport_tr").style.display = (_value == "0") ? "none" : "";
+	document.form.https_lanport.disabled = (_value == "0") ? true : false;
 	if(sw_mode == '1' || sw_mode == '2'){
 		var https_lanport_num = "<% nvram_get("https_lanport"); %>";
-		document.getElementById("https_lanport").style.display = (_value == "0") ? "none" : "";
-		document.form.https_lanport.disabled = (_value == "0") ? true : false;
-		document.form.https_lanport.value = "<% nvram_get("https_lanport"); %>";
 		document.getElementById("https_access_page").innerHTML = "<#https_access_url#> ";
 		document.getElementById("https_access_page").innerHTML += "<a href=\"https://"+theUrl+":"+https_lanport_num+"\" target=\"_blank\" style=\"color:#FC0;text-decoration: underline; font-family:Lucida Console;\">http<span>s</span>://"+theUrl+"<span>:"+https_lanport_num+"</span></a>";
 		document.getElementById("https_access_page").style.display = (_value == "0") ? "none" : "";
@@ -1089,33 +1123,37 @@ function hide_https_lanport(_value){
 		document.getElementById("https_access_page").style.display = 'none';
 	}
 
-
-	if(le_enable != "1" && _value != "0"){
+	if(_value != "0"){
 		$("#https_download_cert").css("display", "");
-		if(orig_http_enable == "0"){
-			$("#download_cert_btn").css("display", "none");
-			$("#clear_server_cert_btn").css("display", "none");
+		if(le_enable == "1"){
+			$("#download_cert_btn").css("display", "");
 			$("#clear_cert_btn").css("display", "none");
-			$("#download_cert_desc").css("display", "");
-		}
-		else{
-			if (le_enable == "0") {
-				$("#download_cert_btn").css("display", "");
-				$("#clear_server_cert_btn").css("display", "");
-				$("#clear_cert_btn").css("display", "");
-				if(top.webWrapper){
-					$("#clear_server_cert_btn").css({"margin-left":"8px","margin-right":"10px"});
-				}
-				$("#download_cert_desc").css("display", "");
-			} else {
-				$("#download_cert_btn").css("display", "none");
-				$("#clear_server_cert_btn").css("display", "none");
+			$("#download_cacert_btn").css("display", "none");
+			$("#clear_cacert_btn").css("display", "none");
+			$("#download_cacert_desc").css("display", "none");
+		}else if (le_enable == "2"){
+			$("#download_cert_btn").css("display", "");
+			if(document.form.casignedcert.value != "1"){
 				$("#clear_cert_btn").css("display", "none");
-				$("#download_cert_desc").css("display", "none");
+				$("#download_cacert_btn").css("display", "none");
+			}else{
+				$("#clear_cert_btn").css("display", "");
+				$("#download_cacert_btn").css("display", "");
 			}
+			$("#clear_cacert_btn").css("display", "none");
+			$("#download_cacert_desc").css("display", "");
+		}else{
+			$("#download_cert_btn").css("display", "");
+			$("#clear_cert_btn").css("display", "");
+			$("#download_cacert_btn").css("display", "");
+			$("#clear_cacert_btn").css("display", "");
+			$("#download_cacert_desc").css("display", "");
 		}
-	}
-	else{
+		if(orig_http_enable == "0"){
+			$("#clear_cert_btn").css("display", "none");
+			$("#clear_cacert_btn").css("display", "none");
+		}
+	}else{
 		$("#https_download_cert").css("display", "none");
 	}
 }
@@ -1650,8 +1688,8 @@ function create_DNSlist_view(){
 
 var DNSService = new Object;
 function updatDNSListOnline(){
-
-	$.getJSON("/ajax/DNS_List.json", function(local_data){
+	const extendno = httpApi.nvramCharToAscii(["extendno"]).extendno;
+	$.getJSON("/ajax/DNS_List.json?v="+extendno+"", function(local_data){
 		DNSService = Object.keys(local_data).map(function(e){
 				return local_data[e];
 		});
@@ -1702,8 +1740,12 @@ function reset_portconflict_hint(){
 	$("#port_conflict_httpslanport").hide();
 }
 
-function save_cert_key(){
+function save_cacert_key(){
 	location.href = "cert.crt";
+}
+
+function save_cert_key(){
+	location.href = "cert_key.tar";
 }
 
 function clear_server_cert_key(){
@@ -2166,6 +2208,7 @@ function check_password_length(obj){
 <input type="hidden" name="reboot_schedule_enable" value="<% nvram_get("reboot_schedule_enable"); %>">
 <input type="hidden" name="shell_timeout" value="<% nvram_get("shell_timeout"); %>">
 <input type="hidden" name="http_lanport" value="<% nvram_get("http_lanport"); %>">
+<input type="hidden" name="casignedcert" value="<% nvram_get("casignedcert"); %>" disabled>
 <input type="hidden" name="sw_mode" value="<% nvram_get("sw_mode"); %>">
 <input type="hidden" name="ncb_enable" value="<% nvram_get("ncb_enable"); %>">
 <input type="hidden" name="dns_probe" value="<% nvram_get("dns_probe"); %>">
@@ -2191,6 +2234,8 @@ function check_password_length(obj){
 	<tbody>
 	<tr>
 		<td bgcolor="#4D595D" valign="top">
+		<div class="container">
+
 			<div>&nbsp;</div>
 			<div class="formfonttitle"><#menu5_6#> - <#menu5_6_2#></div>
 			<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
@@ -2291,6 +2336,15 @@ function check_password_length(obj){
 								})
 							}
 						</script>
+					</td>
+				</tr>
+				<tr id="ntfs_driver_tr" style="display:none;">
+					<th align="right"><a class="hintstyle" href="javascript:void(0);" onClick="overlib('Choose kernel-space ntfs3 driver or user-space ntfs-3g driver. It will be used at next-mount.');" onmouseout="nd();">NTFS driver</th><!--untranslated-->
+					<td>
+						<select name="usb_ntfs_mod" class="input_option">
+							<option value="ntfs3" <% nvram_match("usb_ntfs_mod", "ntfs3","selected"); %> >ntfs3</option>
+							<option value="open" <% nvram_match("usb_ntfs_mod", "open","selected"); %> >ntfs-3g</option>
+						</select>
 					</td>
 				</tr>
 			</table>
@@ -2530,7 +2584,12 @@ function check_password_length(obj){
 					</tr>
 				</thead>
 				<tr>
-					<th><#Enable_Telnet#></th>
+					<th width="40%">
+						<div>
+							<#Enable_Telnet#>
+							<i onclick="show_feature_desc(`<#HOWTOSETUP#>`)" class="icon_th_help"></i>
+						</div>
+					</th>
 					<td>
 						<input type="radio" name="telnetd_enable" value="1" onchange="telnet_enable(this.value);" <% nvram_match_x("LANHostConfig", "telnetd_enable", "1", "checked"); %>><#checkbox_Yes#>
 						<input type="radio" name="telnetd_enable" value="0" onchange="telnet_enable(this.value);" <% nvram_match_x("LANHostConfig", "telnetd_enable", "0", "checked"); %>><#checkbox_No#>
@@ -2608,10 +2667,10 @@ function check_password_length(obj){
 					}
 				</script>
 		
-				<tr id="https_lanport">
+				<tr id="https_lanport_tr">
 					<th><#System_HTTPS_LAN_Port#></th>
 					<td>
-						<input type="text" maxlength="5" class="input_6_table" id="https_lanport_input" name="https_lanport" value="<% nvram_get("https_lanport"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_lan');" autocorrect="off" autocapitalize="off" onkeydown="reset_portconflict_hint();" disabled>
+						<input type="text" maxlength="5" class="input_6_table" id="https_lanport_input" name="https_lanport" value="<% nvram_get("https_lanport"); %>" onKeyPress="return validator.isNumber(this,event);" onBlur="change_url(this.value, 'https_lan');" autocorrect="off" autocapitalize="off" onkeydown="reset_portconflict_hint();">
 						<span id="port_conflict_httpslanport" style="color: #e68282; display: none;">Port Conflict</span>
 						<div id="https_access_page" style="color: #FFCC00;"></div>
 						<div style="color: #FFCC00;">* <#HttpsLanport_Hint#></div>
@@ -2621,12 +2680,15 @@ function check_password_length(obj){
 				<tr id="https_download_cert" style="display: none;">
 					<th><#Local_access_certificate_download#></th>
 					<td>
-					    <div style="display: flex;">
-                            <input id="download_cert_btn" class="button_gen buttonInTable" onclick="save_cert_key();" type="button" value="<#btn_Export#>" />
-                            <input id="clear_server_cert_btn" class="button_gen buttonInTable" style="margin-left:10px" onclick="clear_server_cert_key();" type="button" value="<#CTL_renew#> <#vpn_openvpn_KC_SA#>" /><!-- untranslated -->
-                            <input id="clear_cert_btn" class="button_gen buttonInTable" style="margin-left:10px" onclick="clear_cert_key();" type="button" value="<#CTL_renew#> Root Certificate" /><!-- untranslated -->
+						<div style="display: flex;">
+							<input id="download_cert_btn" class="button_gen buttonInTable" onclick="save_cert_key();" type="button" value="<#btn_Export#> <#vpn_openvpn_KC_SA#>" />
+							<input id="clear_cert_btn" class="button_gen buttonInTable" style="margin-left:10px" onclick="clear_server_cert_key();" type="button" value="<#CTL_renew#> <#vpn_openvpn_KC_SA#>" /><!-- untranslated -->
 						</div>
-						<span id="download_cert_desc"><#Local_access_certificate_desc#></span><a id="creat_cert_link" href="" style="font-family:Lucida Console;text-decoration:underline;color:#FFCC00; margin-left: 5px;" target="_blank">FAQ</a>
+						<div style="display: flex;">
+							<input id="download_cacert_btn" class="button_gen buttonInTable" style="margin-top:10px" onclick="save_cacert_key();" type="button" value="<#btn_Export#> Root Certificate" />
+							<input id="clear_cacert_btn" class="button_gen buttonInTable" style="margin-left:10px;margin-top:10px" onclick="clear_cert_key();" type="button" value="<#CTL_renew#> Root Certificate" /><!-- untranslated -->
+						</div>
+						<span id="download_cacert_desc"><#Local_access_certificate_desc#></span><a id="creat_cert_link" href="" style="font-family:Lucida Console;text-decoration:underline;color:#FFCC00; margin-left: 5px;" target="_blank">FAQ</a>
 					</td>
 				</tr>
 			</table>
@@ -2706,6 +2768,10 @@ function check_password_length(obj){
 			<div class="apply_gen">
 				<input name="button" type="button" class="button_gen" onclick="applyRule();" value="<#CTL_apply#>"/>
 			</div>
+
+			</div>	<!-- for .container  -->
+			<div class="popup_container popup_element_second"></div>
+
 		</td>
 	</tr>
 </tbody>
@@ -2723,4 +2789,3 @@ function check_password_length(obj){
 <div id="footer"></div>
 </body>
 </html>
-

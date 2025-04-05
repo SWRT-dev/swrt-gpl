@@ -2207,6 +2207,9 @@ define RouterOptions
 				elif [ "$(findstring tuxera, $(NTFS))" = "tuxera" ]; then \
 					sed -i "/RTCONFIG_OPENPLUSTUXERA_NTFS/d" $(1); \
 					echo "RTCONFIG_OPENPLUSTUXERA_NTFS=y" >>$(1); \
+				elif [ "$(findstring ntfs3, $(NTFS))" = "ntfs3" ]; then \
+					sed -i "/RTCONFIG_OPENPLUSKERNEL_NTFS3/d" $(1); \
+					echo "RTCONFIG_OPENPLUSKERNEL_NTFS3=y" >>$(1); \
 				fi; \
 				if [ "$(findstring 2016, $(NTFS))" = "2016" ]; then \
 					sed -i "/RTCONFIG_OPEN_NTFS3G_2016/d" $(1); \
@@ -2224,8 +2227,8 @@ define RouterOptions
 				echo "RTCONFIG_TUXERA_NTFS=y" >>$(1); \
 			fi; \
 			if [ "$(findstring ntfs3, $(NTFS))" = "ntfs3" ]; then \
-				sed -i "/RTCONFIG_NTFS3/d" $(1); \
-				echo "RTCONFIG_NTFS3=y" >>$(1); \
+				sed -i "/RTCONFIG_KERNEL_NTFS3/d" $(1); \
+				echo "RTCONFIG_KERNEL_NTFS3=y" >>$(1); \
 			fi; \
 		fi; \
 		if [ "$(HFS)" != "" ]; then \
@@ -2894,11 +2897,40 @@ define RouterOptions
 	fi;
 	sed -i "/RTCONFIG_ROG_UI/d" $(1); \
 	if [ "$(ROG_UI)" = "y" ]; then \
+		sed -i "/RTCONFIG_ROG_UI/d" $(1); \
 		echo "RTCONFIG_ROG_UI=y" >>$(1); \
 		sed -i "/RTCONFIG_OPEN_NAT/d" $(1); \
 		echo "RTCONFIG_OPEN_NAT=y" >>$(1); \
+		sed -i "/RTCONFIG_NETOOL/d" $(1); \
+		echo "RTCONFIG_NETOOL=y" >>$(1); \
+		if [ "$(MTLANCFG)" = "y" ] && [ "$(WIFI7)" = "y" ]; then \
+			sed -i "/RTCONFIG_SDN_PRIORITY/d" $(1); \
+			echo "RTCONFIG_SDN_PRIORITY=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_SDN_PRIORITY/d" $(1); \
+			echo "# RTCONFIG_SDN_PRIORITY is not set" >> $(1); \
+		fi; \
 	else \
 		echo "# RTCONFIG_ROG_UI is not set" >>$(1); \
+	fi;
+	if [ "$(GS_UI)" = "y" ]; then \
+		sed -i "/RTCONFIG_GS_UI/d" $(1); \
+		echo "RTCONFIG_GS_UI=y" >>$(1); \
+		sed -i "/RTCONFIG_ROG_UI/d" $(1); \
+		echo "RTCONFIG_ROG_UI=y" >>$(1); \
+		sed -i "/RTCONFIG_OPEN_NAT/d" $(1); \
+		echo "RTCONFIG_OPEN_NAT=y" >>$(1); \
+		sed -i "/RTCONFIG_NETOOL/d" $(1); \
+		echo "RTCONFIG_NETOOL=y" >>$(1); \
+		sed -i "/RTCONFIG_GAME_MODE/d" $(1); \
+		echo "RTCONFIG_GAME_MODE=y" >>$(1); \
+		if [ "$(MTLANCFG)" = "y" ] && [ "$(WIFI7)" = "y" ]; then \
+			sed -i "/RTCONFIG_SDN_PRIORITY/d" $(1); \
+			echo "RTCONFIG_SDN_PRIORITY=y" >>$(1); \
+		else \
+			sed -i "/RTCONFIG_SDN_PRIORITY/d" $(1); \
+			echo "# RTCONFIG_SDN_PRIORITY is not set" >> $(1); \
+		fi; \
 	fi;
 	if [ "$(TUF_UI)" = "y" ]; then \
 		sed -i "/RTCONFIG_TUF_UI/d" $(1); \
@@ -3218,6 +3250,12 @@ define RouterOptions
 		echo "# RTCONFIG_WPS_LED is not set" >>$(1); \
 		sed -i "/RTCONFIG_EAPOL/d" $(1); \
 		echo "# RTCONFIG_EAPOL is not set" >>$(1); \
+	fi;
+	sed -i "/RTCONFIG_IP808AR/d" $(1); \
+	if [ "$(IP808AR)" = "y" ]; then \
+		echo "RTCONFIG_IP808AR=y" >>$(1); \
+	else \
+		echo "# RTCONFIG_IP808AR is not set" >>$(1); \
 	fi;
 	if [ "$(BCM4906_504)" = "y" ]; then \
 		sed -i "/RTCONFIG_BCM4906_504/d" $(1); \
@@ -4601,6 +4639,9 @@ define RouterOptions
 	if [ "$(WIREGUARD)" = "y" ]; then \
 		sed -i "/RTCONFIG_WIREGUARD/d" $(1); \
 		echo "RTCONFIG_WIREGUARD=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_WIREGUARD/d" $(1); \
+		echo "# RTCONFIG_WIREGUARD is not set" >>$(1); \
 	fi;
 	if [ "$(SYSCLASSGPIO)" = "y" ]; then \
 		sed -i "/RTCONFIG_SYSCLASSGPIO/d" $(1); \
@@ -6886,6 +6927,8 @@ else ifeq ($(MT7621),y)
 	else \
 		cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B) ; \
 	fi
+else ifeq ($(MT799X),y)
+	cp $(LINUXDIR)/config_base_7988 $(LINUXDIR)/config_$(lowercase_B)
 else
 	cp $(LINUXDIR)/config_base $(LINUXDIR)/config_$(lowercase_B)
 endif
@@ -7190,4 +7233,3 @@ get_extendno:
 .PHONY: dummy
 .PHONY: pre_tools
 .PHONY: get_extendno
-

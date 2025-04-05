@@ -239,8 +239,14 @@ var chdom = function(){window.location.href=domainNameUrl};
 	}
 })();
 
+var ATEMODE = '<% nvram_get("ATEMODE"); %>';
+
 function initial(){
 	top.name = "";/* reset cache of state.js win.name */
+
+	if(ATEMODE == "1"){
+		$(".div_td.signin_hint").text("<#CTL_signin#>"+" (ATE MODE)");
+	}
 
 	var flag = login_info.error_status;
 	if(isIE8 || isIE9){
@@ -449,7 +455,7 @@ function checkTime(i){
 			<div class="div_td img_gap">
 				<div class="login_img"></div>
 			</div>
-			<div class="div_td"><#CTL_signin#></div>
+			<div class="div_td signin_hint"><#CTL_signin#></div>
 		</div>	
 		<div class="prod_madelName"><#Web_Title2#></div>
 

@@ -124,11 +124,6 @@ function genLanguageList() {
     return code;
 }
 
-function isMultisiteApp() {
-    let urlParameter = new URLSearchParams(window.location.search);
-    return urlParameter.get("mapp") == "true";
-}
-
 var menuList = [
 /*
 	{
@@ -218,10 +213,6 @@ var menuList = [
 	//     divide: true,
 	// },
 ];
-
-if (isMultisiteApp()) {
-    menuList = menuList.filter(item => item.url !== "QIS_wizard.htm");
-}
 
 let urlParameter = new URLSearchParams(window.location.search);
 /* DECIDE THEME */
@@ -332,6 +323,10 @@ if(system.currentOPMode.id != "RT"){
 	}
 }
 
+if (navigator.userAgent.match(/ASUSMultiSiteManager/)) {
+    menuList = menuList.filter(item => item.url !== "QIS_wizard.htm");
+}
+
 function genNavMenu() {
     /*
         {
@@ -341,7 +336,7 @@ function genNavMenu() {
             clicked: [boolean] ,
             divide: [boolean] 分隔線,
         },
-    
+
     */
 	var menuListClicked = location.search.split("url=")[1].split("&")[0];
 	for(var i=0; i<menuList.length; i++){
@@ -513,7 +508,7 @@ function changeLanguage(lang) {
 function reboot() {
 	var rebootTime = httpApi.hookGet("get_default_reboot_time");
 	var FbState = httpApi.nvramGet(["fb_state"], true).fb_state;
-	var FbNote = "Feedback is ongoing. Rebooting may cause the program to terminate and the feedback cannot be completed.\nPlease reboot later.";/*untranslated*/
+	var FbNote = `<#feedback_note5#>`;
 
 	if (FbState == "0") {
 		alert(FbNote);
@@ -543,9 +538,6 @@ function pageRedirect(target) {
     }
     else if (target == "QIS_wizard.htm") {
         location.href = "/QIS_wizard.htm";
-    }
-    else if (urlParameter.get("mapp") === "true") {
-        location.href = `/index.html?url=${target}&current_theme=${theme}&mapp=true`;
     }
     else {
         location.href = "/index.html?url=" + target + "&current_theme=" + theme;

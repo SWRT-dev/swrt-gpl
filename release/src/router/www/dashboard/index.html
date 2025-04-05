@@ -47,16 +47,26 @@
             }
         }, 3000);
 
-        async function checkPolicy(){
-            if (policy_status.EULA == "0") {
-                const policyModal = new PolicyUpdateModalComponent();
-                policyModal.show();
-            } else if (policy_status.EULA == 1 && ((policy_status.PP == 1 && policy_status.PP_time != "") || (policy_status.PP == 0 && policy_status.PP_time == ""))) {
-                const policyModal = new PolicyModalComponent({
-                    policy: 'PP'
+        function checkPolicy() {
+            const policyStatus = PolicyStatus()
+                .then(data => {
+                    if (data.EULA == "0") {
+                        const policyModal = new PolicyUpdateModalComponent({
+                            policyStatus: data,
+                            securityUpdate: 1,
+                            websUpdate: 1,
+                        });
+                        policyModal.show();
+                    } else if (data.EULA == 1 && ((data.PP == 1 && data.PP_time != "") || (data.PP == 0 && data.PP_time == ""))) {
+                        const policyModal = new PolicyModalComponent({
+                            policyStatus: data,
+                            policy: 'PP',
+                            securityUpdate: 1,
+                            websUpdate: 1,
+                        });
+                        policyModal.show();
+                    }
                 });
-                policyModal.show();
-            }
         }
 
         document.addEventListener("DOMContentLoaded", function () {
@@ -116,8 +126,17 @@
                 document.querySelector("nav").classList.add("d-none");
             }
 
-            if(urlParameter.get("mapp")==="true"){ // for Multisite App
-                document.querySelector("header").classList.add("d-none");
+            if(navigator.userAgent.match(/ASUSMultiSiteManager/)){ // for Multisite App
+                const mapp_div = document.createElement("div");
+                mapp_div.style.position = "absolute";
+                mapp_div.style.top="22px";
+                mapp_div.style.left="10px";
+                const mobile_menu = document.getElementById("mobile_menu");
+                mobile_menu.classList.remove("d-none");
+                mapp_div.append(mobile_menu);
+                document.querySelector('article').prepend(mapp_div);
+                document.querySelector("section").classList.add("mt-3");
+                document.querySelector("header").remove();
             }
 
             checkPolicy();

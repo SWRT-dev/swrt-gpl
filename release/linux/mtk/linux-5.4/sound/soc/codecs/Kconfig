@@ -127,6 +127,7 @@ config SND_SOC_ALL_CODECS
 	select SND_SOC_NAU8822 if I2C
 	select SND_SOC_NAU8824 if I2C
 	select SND_SOC_NAU8825 if I2C
+	select SND_SOC_SI3218X_SPI
 	select SND_SOC_HDMI_CODEC
 	select SND_SOC_PCM1681 if I2C
 	select SND_SOC_PCM1789_I2C if I2C
@@ -1487,6 +1488,14 @@ config SND_SOC_NAU8824
 
 config SND_SOC_NAU8825
 	tristate
+
+#config SND_SOC_SI3218X
+#	tristate
+
+config SND_SOC_SI3218X_SPI
+	tristate "Proslic SI3218X CODEC - SPI"
+	depends on SPI
+#	select SND_SOC_SI3218X
 
 config SND_SOC_TPA6130A2
 	tristate "Texas Instruments TPA6130A2 headphone amplifier"

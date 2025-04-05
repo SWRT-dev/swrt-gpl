@@ -355,9 +355,19 @@ ifeq ($(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916)),y)
 CFLAGS += -DJFFS2_UBI_VOLUME_SIZE=$(JFFS2_UBI_VOLUME_SIZE)
 endif
 
+ifeq ($(RTCONFIG_IP808AR),y)
+CFLAGS += -I$(SRCBASE)/shared -I$(HND_SRC)/kernel/linux-4.19/drivers/char/pse
+CFLAGS += -I$(TOP)/pse_lib -L$(TOP)/pse_lib -lPsE
+CFLAGS += -DUSER_API
+CFLAGS += -L$(TOP_PLATFORM)/i2c-tools/i2c-tools-4.0/lib -li2c
+endif
+
 OBJS := rc.o init.o interface.o lan.o wireless.o $(if $(RTCONFIG_SOFTWIRE46), s46comm.o) wan.o pppd.o auth.o services.o
 OBJS += firewall.o ppp.o services.o common.o
 OBJS += watchdog.o check_watchdog.o ntp.o udhcpc.o ate.o
+ifeq ($(RTCONFIG_IP808AR),y)
+OBJS += poemon.o
+endif
 ifeq ($(RTCONFIG_MULTIWAN_IF),y)
 OBJS += qos_multi_wan_if.o
 else ifeq ($(RTCONFIG_MULTIWAN_CFG),y)
@@ -672,8 +682,8 @@ ifeq ($(RTCONFIG_WPS),y)
 OBJS += wpsaide.o
 endif
 
-ifeq ($(or $(RTCONFIG_CONCURRENTREPEATER),$(RTCONFIG_AMAS)),y)
-ifeq ($(RTCONFIG_RALINK),y)
+ifeq ($(and $(RTCONFIG_RALINK),$(or $(RTCONFIG_CONCURRENTREPEATER),$(RTCONFIG_AMAS))),y)
+ifneq ($(RTCONFIG_NL80211),y)
 OBJS += re_wpsc.o
 endif
 endif
@@ -1008,6 +1018,11 @@ ifeq ($(RTCONFIG_QCA_LBD),y)
 OBJS += $(if $(wildcard sysdeps/qca/lbd-qca.c),lbd-qca.o,prebuild/lbd-qca.o)
 endif
 
+ifeq ($(RTCONFIG_MTK_BSD),y)
+OBJS += $(if $(wildcard sysdeps/ralink/bsd-ralink.c),bsd-ralink.o,prebuild/bsd-ralink.o)
+endif
+
+
 ifeq ($(BUILD_NAME), RT-AC1200_V2)
 CFLAGS += -DRTAC1200V2
 endif
@@ -1320,8 +1335,10 @@ endif
 ifeq ($(RTCONFIG_CONCURRENTREPEATER),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc led_monitor
 endif
-ifeq ($(or $(RTCONFIG_CONCURRENTREPEATER),$(RTCONFIG_AMAS)),y)
+ifeq ($(and $(RTCONFIG_RALINK),$(or $(RTCONFIG_CONCURRENTREPEATER),$(RTCONFIG_AMAS))),y)
+ifneq ($(RTCONFIG_NL80211),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc re_wpsc
+endif
 endif
 
 ifeq ($(RTCONFIG_WPS),y)
@@ -1427,6 +1444,9 @@ ifeq ($(RTCONFIG_DISK_MONITOR),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc disk_monitor
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc disk_remove
+ifeq ($(RTCONFIG_OPENPLUSKERNEL_NTFS3),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc chgntfsdrv
+endif
 ifeq ($(RTCONFIG_APP_PREINSTALLED)$(RTCONFIG_APP_NETINSTALLED),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc run_app_script
 	@cd $(INSTALLDIR)/sbin && ln -sf rc chk_app_state
@@ -1565,7 +1585,7 @@ endif
 ifeq ($(or $(RTCONFIG_SOC_IPQ8064),$(RTCONFIG_SOC_IPQ8074),$(RTCONFIG_SOC_IPQ53XX)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc readmem
 endif
-ifeq ($(or $(RTCONFIG_WIFI_QCN5024_QCN5054),$(RTCONFIG_WIFI_IPQ53XX_QCN6274),$(RTCONFIG_QCA_AXCHIP)),y)
+ifeq ($(or $(RTCONFIG_WIFI_QCN5024_QCN5054),$(RTCONFIG_WIFI_IPQ53XX_QCN6274),$(RTCONFIG_WIFI_IPQ53XX_QCN64XX),$(RTCONFIG_QCA_AXCHIP)),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc stress_pktgen
 endif
 ifeq ($(or $(RTCONFIG_SOC_IPQ8074)),y)
@@ -1743,6 +1763,10 @@ endif
 ifeq ($(RTCONFIG_NORDVPN),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc nordvpn
 endif
+endif
+
+ifeq ($(RTCONFIG_WIREGUARD),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc check_wgc_ep
 endif
 
 ifeq ($(RTCONFIG_ISP_CUSTOMIZE_TOOL),y)

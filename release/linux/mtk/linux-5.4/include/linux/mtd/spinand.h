@@ -62,6 +62,59 @@
 		   SPI_MEM_OP_NO_DUMMY,					\
 		   SPI_MEM_OP_NO_DATA)
 
+/* Macros for CASN */
+#define SPINAND_CASN_PAGE_READ_FROM_CACHE_OP(fast, naddr, addr, ndummy, buf, len) \
+	SPI_MEM_OP(SPI_MEM_OP_CMD(fast ? 0x0b : 0x03, 1),		\
+		   SPI_MEM_OP_ADDR(naddr, addr, 1),			\
+		   SPI_MEM_OP_DUMMY(ndummy, 1),			\
+		   SPI_MEM_OP_DATA_IN(len, buf, 1))
+
+#define SPINAND_CASN_PAGE_READ_FROM_CACHE_X2_OP(naddr, addr, ndummy, buf, len)	\
+	SPI_MEM_OP(SPI_MEM_OP_CMD(0x3b, 1),			\
+		   SPI_MEM_OP_ADDR(naddr, addr, 1),			\
+		   SPI_MEM_OP_DUMMY(ndummy, 1),			\
+		   SPI_MEM_OP_DATA_IN(len, buf, 2))
+
+#define SPINAND_CASN_PAGE_READ_FROM_CACHE_DUALIO_OP(naddr, addr, ndummy, buf, len)	\
+		SPI_MEM_OP(SPI_MEM_OP_CMD(0xbb, 1),			\
+			   SPI_MEM_OP_ADDR(naddr, addr, 2),			\
+			   SPI_MEM_OP_DUMMY(ndummy, 2),			\
+			   SPI_MEM_OP_DATA_IN(len, buf, 2))
+
+#define SPINAND_CASN_PAGE_READ_FROM_CACHE_X4_OP(naddr, addr, ndummy, buf, len)	\
+	SPI_MEM_OP(SPI_MEM_OP_CMD(0x6b, 1),				\
+		   SPI_MEM_OP_ADDR(naddr, addr, 1),				\
+		   SPI_MEM_OP_DUMMY(ndummy, 1),				\
+		   SPI_MEM_OP_DATA_IN(len, buf, 4))
+
+#define SPINAND_CASN_PAGE_READ_FROM_CACHE_QUADIO_OP(naddr, addr, ndummy, buf, len)	\
+	SPI_MEM_OP(SPI_MEM_OP_CMD(0xeb, 1),				\
+		   SPI_MEM_OP_ADDR(naddr, addr, 4),				\
+		   SPI_MEM_OP_DUMMY(ndummy, 4),				\
+		   SPI_MEM_OP_DATA_IN(len, buf, 4))
+
+#define SPINAND_CASN_PROG_LOAD(reset, naddr, addr, buf, len)			\
+	SPI_MEM_OP(SPI_MEM_OP_CMD(reset ? 0x02 : 0x84, 1),		\
+		   SPI_MEM_OP_ADDR(naddr, addr, 1),				\
+		   SPI_MEM_OP_NO_DUMMY,					\
+		   SPI_MEM_OP_DATA_OUT(len, buf, 1))
+
+#define SPINAND_CASN_PROG_LOAD_X4(reset, naddr, addr, buf, len)			\
+	SPI_MEM_OP(SPI_MEM_OP_CMD(reset ? 0x32 : 0x34, 1),		\
+		   SPI_MEM_OP_ADDR(naddr, addr, 1),				\
+		   SPI_MEM_OP_NO_DUMMY,					\
+		   SPI_MEM_OP_DATA_OUT(len, buf, 4))
+
+#define SPINAND_CASN_ADVECC_OP(casn_adv_ecc_status, buf)			\
+	SPI_MEM_OP(SPI_MEM_OP_CMD(casn_adv_ecc_status.cmd, 1),			\
+		   SPI_MEM_OP_ADDR(casn_adv_ecc_status.addr_nbytes,		\
+				   casn_adv_ecc_status.addr,			\
+				   casn_adv_ecc_status.addr_buswidth),		\
+		   SPI_MEM_OP_DUMMY(casn_adv_ecc_status.dummy_nbytes,		\
+				    casn_adv_ecc_status.dummy_buswidth),	\
+		   SPI_MEM_OP_DATA_IN(casn_adv_ecc_status.status_nbytes, buf, 1))
+/* Macros for CASN end */
+
 #define SPINAND_PAGE_READ_FROM_CACHE_OP(fast, addr, ndummy, buf, len)	\
 	SPI_MEM_OP(SPI_MEM_OP_CMD(fast ? 0x0b : 0x03, 1),		\
 		   SPI_MEM_OP_ADDR(2, addr, 1),				\
@@ -239,6 +292,8 @@ struct spinand_manufacturer {
 
 /* SPI NAND manufacturers */
 extern const struct spinand_manufacturer esmt_c8_spinand_manufacturer;
+extern const struct spinand_manufacturer etron_spinand_manufacturer;
+extern const struct spinand_manufacturer fudan_spinand_manufacturer;
 extern const struct spinand_manufacturer gigadevice_spinand_manufacturer;
 extern const struct spinand_manufacturer macronix_spinand_manufacturer;
 extern const struct spinand_manufacturer micron_spinand_manufacturer;
@@ -286,8 +341,13 @@ struct spinand_ecc_info {
 
 #define SPINAND_HAS_QE_BIT		BIT(0)
 #define SPINAND_HAS_CR_FEAT_BIT		BIT(1)
+#define SPINAND_SUP_CR			BIT(2)
+#define SPINAND_SUP_ON_DIE_ECC		BIT(3)
+#define SPINAND_SUP_LEGACY_ECC_STATUS	BIT(4)
+#define SPINAND_SUP_ADV_ECC_STATUS	BIT(5)
+#define SPINAND_ECC_PARITY_READABLE	BIT(6)
 #if defined(CONFIG_SOC_MT7621)
-#define SPINAND_RELOAD_PAGE_0		BIT(2)
+#define SPINAND_RELOAD_PAGE_0		BIT(7)
 #endif
 
 /**
@@ -365,6 +425,28 @@ struct spinand_dirmap {
 };
 
 /**
+ * struct CASN_ADVECC - CASN's advanced ECC description
+ * @cmd: Command to access SPI-NAND on-chip ECC status registers
+ * @mask: Mask to access SPI-NAND on-chip ECC status registers.
+ *	  ADV_ECC_STATUS->status_nbytes | CASN_ADVECC->mask
+ *			1		|      0 to 0xff
+ *			2		|     0 to 0xffff
+ * @shift: How many bits to shift to get on-chip ECC status
+ * @pre_op: This comes from CASN page's ADV_ECC_STATUS's pre_op.
+ *	    After reading on-chip ECC status, we need to do some math
+ *	    operations if this is specified.
+ * @pre_mask: This comes from CASN page's ADV_ECC_STATUS's pre_mask.
+ *	      This is used in companion with pre_op above.
+ */
+struct CASN_ADVECC {
+	u8 cmd;
+	u16 mask;
+	u8 shift;
+	u8 pre_op;
+	u8 pre_mask;
+};
+
+/**
  * struct spinand_device - SPI NAND device instance
  * @base: NAND device instance
  * @spimem: pointer to the SPI mem object
@@ -416,6 +498,23 @@ struct spinand_device {
 	u8 *oobbuf;
 	u8 *scratchbuf;
 	const struct spinand_manufacturer *manufacturer;
+
+	bool use_casn;
+	struct nand_casn *casn;
+	struct spi_mem_op *advecc_high_ops; /* ops to read higher part of advanced ECC status*/
+	struct spi_mem_op *advecc_low_ops;
+	struct CASN_OOB *casn_oob;
+	struct CASN_ADVECC *advecc_high;
+	struct CASN_ADVECC *advecc_low;
+
+	u8 advecc_low_bitcnt;
+	u8 advecc_noerr_status;
+	u8 advecc_uncor_status;
+	u8 advecc_post_op;
+	u8 advecc_post_mask;
+
+	size_t (*eccsr_math_op[4])(size_t, size_t);
+
 	const char *chip_model;
 	void *priv;
 };
@@ -487,3 +586,4 @@ int spinand_upd_cfg(struct spinand_device *spinand, u8 mask, u8 val);
 int spinand_select_target(struct spinand_device *spinand, unsigned int target);
 
 #endif /* __LINUX_MTD_SPINAND_H */
+

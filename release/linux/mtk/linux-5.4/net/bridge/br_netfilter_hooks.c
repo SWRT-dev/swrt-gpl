@@ -868,11 +868,17 @@ static unsigned int ip_sabotage_in(void *priv,
 {
 	struct nf_bridge_info *nf_bridge = nf_bridge_info_get(skb);
 
-	if (nf_bridge && !nf_bridge->in_prerouting &&
-	    !netif_is_l3_master(skb->dev) &&
-	    !netif_is_l3_slave(skb->dev)) {
-		state->okfn(state->net, state->sk, skb);
-		return NF_STOLEN;
+	if (nf_bridge) {
+		if (nf_bridge->sabotage_in_done)
+			return NF_ACCEPT;
+
+		if (!nf_bridge->in_prerouting &&
+		    !netif_is_l3_master(skb->dev) &&
+		    !netif_is_l3_slave(skb->dev)) {
+			nf_bridge->sabotage_in_done = 1;
+			state->okfn(state->net, state->sk, skb);
+			return NF_STOLEN;
+		}
 	}
 
 	return NF_ACCEPT;
@@ -1099,16 +1105,9 @@ static struct ctl_table brnf_table[] = {
 
 static inline void br_netfilter_sysctl_default(struct brnf_net *brnf)
 {
-#if defined(CONFIG_MODEL_TUFAX4200) || defined(CONFIG_MODEL_TUFAX6000) || defined(CONFIG_MODEL_RTAX59U) || defined(CONFIG_MODEL_PRTAX57_GO) \
-	|| defined(CONFIG_MODEL_RTAX52) || defined(CONFIG_MODEL_RTAX57M)
-	brnf->call_iptables = 0;
-	brnf->call_ip6tables = 0;
-	brnf->call_arptables = 0;
-#else
 	brnf->call_iptables = 1;
 	brnf->call_ip6tables = 1;
 	brnf->call_arptables = 1;
-#endif
 	brnf->filter_vlan_tagged = 0;
 	brnf->filter_pppoe_tagged = 0;
 	brnf->pass_vlan_indev = 0;

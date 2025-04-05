@@ -20,12 +20,23 @@
 #include <iwlib.h>
 #include <rtconfig.h>
 
+#if defined(RTCONFIG_HAS_6G)
+#define MAX_NRCHANNELS (64)
+#else
+#define MAX_NRCHANNELS (32)
+#endif
 
 extern const char WIF_2G[];
 extern const char WIF_5G[];
+#if defined(RTCONFIG_HAS_5G_2)
+extern const char WIF_5G2[];
+#endif
 extern const char WIF_6G[];
 extern const char WDSIF_5G[];
 extern const char APCLI_6G[];
+#if defined(RTCONFIG_HAS_5G_2)
+extern const char APCLI_5G2[];
+#endif
 extern const char APCLI_5G[];
 extern const char APCLI_2G[];
 #define URE	"apcli0"
@@ -46,12 +57,17 @@ extern const char APCLI_2G[];
 #define MODE_VHT		4
 #if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #define MODE_HE 5
+#define MODE_EHT 6
+
 #define MODE_HE_SU	8
 #define MODE_HE_24G 7
 #define MODE_HE_5G 6
 #define MODE_HE_EXT_SU	9
 #define MODE_HE_TRIG	10
 #define MODE_HE_MU	11
+#define MODE_EHT_ER_SU  13
+#define MODE_EHT_TB     14
+#define MODE_EHT_MU     15
 #endif
 
 #define BW_20			0
@@ -59,9 +75,16 @@ extern const char APCLI_2G[];
 #define BW_BOTH			2
 #define BW_80			2
 #define BW_160			3
+#if defined(RTCONFIG_MT799X)
+#define BW_320			4
+#define BW_10			400 /* not supported, meaningless value */
+#define BW_5			500 /* not supported, meaningless value */
+#define BW_8080			600 /* not supported, meaningless value */
+#else
 #define BW_10           4
 #define BW_5            5
 #define BW_8080         6
+#endif
 
 #define MAC_ADDR_LEN			6
 
@@ -486,7 +509,11 @@ struct GNU_PACKED wnm_command {
 #elif defined(RTCONFIG_MT798X)
 #define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	(8*124*1024) // 8 UBI LEB
 #elif defined(RTCONFIG_MT799X)
+#if defined(RTCONFIG_MT7992) // 15 UBI LEB
+#define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	(15*124*1024) // 15 UBI LEB
+#else
 #define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	(11*124*1024) // 11 UBI LEB
+#endif // MT7992
 #else
 #define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	0x11000
 #define DEFAULT_EEPROM_SIZE_SHIFT	0x0
@@ -500,7 +527,11 @@ struct GNU_PACKED wnm_command {
 #if defined(RTCONFIG_MT798X)
 #define FTRY_PARM_SHIFT		(0xA0000 + 0x10000) /* EEPROM end + 64KB */
 #elif defined(RTCONFIG_MT799X)
+#if defined(RTCONFIG_MT7992)
+#define FTRY_PARM_SHIFT		(0x15C000 + 0x10000) /* EEPROM end + 64KB */
+#else
 #define FTRY_PARM_SHIFT		(0xF1000 + 0x10000) /* EEPROM end + 64KB */
+#endif // MT7992
 #else /* Legacy */
 #define	FTRY_PARM_SHIFT		(0)
 #endif
@@ -571,7 +602,11 @@ struct GNU_PACKED wnm_command {
 #elif defined(RTCONFIG_MT799X)
 #define OFFSET_MAC_ADDR_2G	(OFFSET_MTD_FACTORY + 0x4)	// MTK EEPROM MAC address
 #define OFFSET_MAC_ADDR		(OFFSET_MTD_FACTORY + 0xA)	// 5G MAC address
+#if defined(RTCONFIG_HAS_5G_2) && defined(RTCONFIG_WIFI7) && defined(RTCONFIG_WIFI7_NO_6G)
+#define OFFSET_MAC_ADDR_5G_2	(OFFSET_MTD_FACTORY + 0x2C0)	// 5G_2 MAC address
+#else
 #define OFFSET_MAC_ADDR_6G	(OFFSET_MTD_FACTORY + 0x2C0)	// 6G MAC address
+#endif
 #define OFFSET_MAC_GMAC2	(OFFSET_MTD_FACTORY + 0xFFFEE)	// MTK RFB LAN2
 #define OFFSET_MAC_GMAC0	(OFFSET_MTD_FACTORY + 0xFFFF4)	// MTK RFB LAN
 #define OFFSET_MAC_GMAC1	(OFFSET_MTD_FACTORY + 0xFFFFA)	// MTK RFB WAN
@@ -666,6 +701,10 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_HW_BOM	0x5FE0C	// 32 bytes
 #define OFFSET_HW_DATE_CODE	0x5FE3E	// 8 bytes
 #else
+#define OFFSET_MODEL_DESC	(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0x0300) // 128 byte (300-37F)
+#define MAX_MODEL_DESC_SIZE	128
+// next, 0x0380
+//
 #define OFFSET_PASS_ENC		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xfee0)	// 64 bytes for the encrypt length of 32 char.
 #define OFFSET_PASS		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff50)	// 32 bytes
 #define OFFSET_EISN		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xff70)	// 32 bytes
@@ -683,6 +722,8 @@ struct GNU_PACKED wnm_command {
 #define OFFSET_HW_BOM		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xFE0C)	// 32 bytes
 #define OFFSET_HW_DATE_CODE	(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xFE3E)	// 8 bytes
 #define OFFSET_HW_COBRAND	(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xFE46)	// 1 bytes
+#define OFFSET_FCO		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xFE47)	// 1 byte
+#define OFFSET_NVOV		(OFFSET_MTD_FACTORY + FTRY_PARM_SHIFT + 0xFE48)	// 8 byte (FE48-FE4F)
 #endif
 
 #if defined(RTCONFIG_AMAS) || defined(RTCONFIG_EASYMESH) || defined(RTCONFIG_SWRT)
@@ -814,6 +855,59 @@ typedef struct {
 	unsigned int link[MAX_PORT];
 	unsigned int speed[MAX_PORT];
 } phyState;
+
+#if defined(RTCONFIG_MULTILAN_CFG)
+extern char* get_wlan_ifnames(void);
+#endif
+
+#if defined(RTCONFIG_NL80211)
+#define HOSTAPD_CLI		"/usr/bin/hostapd_cli"	/* installed by hostapd */
+#define HOSTAPD_CTRL_PATH	"/var/run/hostapd/"	/* ctrl_interface of hostapd_raX.conf must be directory and can't use this directive. */
+#define MWPA_CLI		"/usr/bin/wpa_cli"
+#define MWPA_CTRL_PATH		"/var/run/wpa_supplicant/"
+
+/* asus sub-command
+ * sync from linux/linux-5.4.x/include/uapi/linux/mtk_nl80211_inc/mtk_vendor_nl80211.h */
+#ifndef __MTK_VENDOR_NL80211_H
+#define __MTK_VENDOR_NL80211_H
+enum asus_nl80211_vendor_subcmd_no {
+	ASUS_NL80211_VENDOR_SUBCMD_GET_STA_MAC_LIST = 1,
+	ASUS_NL80211_VENDOR_SUBCMD_GET_NO_BCN,
+	ASUS_NL80211_VENDOR_SUBCMD_GET_APCLI_MLO_INFO,
+	ASUS_NL80211_VENDOR_SUBCMD_GET_DFS_CAC_STATUS,
+
+	ASUS_NL80211_VENDOR_SUBCMD_MAX
+};
+#endif /* __MTK_VENDOR_NL80211_H */
+
+struct nl80211_cmd {
+	char ifname[IFNAMSIZ];		/* wireless interface name */
+	char cmd[16];			/* command: e.g., scan, asuscmd, etc. */
+	char subcmd[16];		/* sub-command: e.g., trigger, dump, etc. */
+
+	struct {			/* for asuscmd */
+		void *pointer;		/* pointer to buffer */
+		u16  length;		/* buffer size */
+		u8   flags;		/* asus sub-command */
+	} data;
+};
+
+/* NOTICE: sync from mt_wifi7/source/mt_wifi/include/mld_link_mgr.h */
+struct apcli_mlo_info {
+	uint16_t valid_path;			/* valid band, bit0:2G, bit1:5G, ... */
+	uint8_t link_status;			/* MLO connection status */
+	uint16_t link_path;			/* link band, bit0:2G, bit1:5G, ... */
+	uint8_t link_addr[5][MAC_ADDR_LEN];	/* MAC address of parent-AP */
+	uint8_t mld_addr[MAC_ADDR_LEN];		/* MLD address of own apcli */
+	uint8_t ap_mld_addr[MAC_ADDR_LEN];	/* MLD address of parent-AP */
+};
+
+extern int do_nl80211_cmd(struct nl80211_cmd *nc);
+extern int get_no_bcn(char *ifname);
+extern void set_no_bcn(char *ifname, int value);
+extern void get_apcli_mlo_info(char *ifname, struct apcli_mlo_info *ami);
+extern int get_dfs_cac_status(char *ifname);
+#endif /* RTCONFIG_NL80211 */
 
 #endif
 

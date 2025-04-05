@@ -19,6 +19,8 @@
 #endif
 
 #define AQR_FIRMWARE					CONFIG_AQUANTIA_PHY_FW_FILE
+#define AQR113C_FIRMWARE				CONFIG_AQUANTIA_PHY_FW_FILE_AQR113C
+#define CUX3410_FIRMWARE				CONFIG_AQUANTIA_PHY_FW_FILE_CUX3410
 
 /* Vendor specific 1, MDIO_MMD_VEND1 */
 #define VEND1_STD_CONTROL1				0x0000
@@ -65,6 +67,8 @@
 #define VEND1_RSVD_PROV2				0xc471
 #define VEND1_RSVD_PROV2_DAISYCHAIN_HOPCOUNT		GENMASK(5, 0)
 #define VEND1_RSVD_PROV2_DAISYCHAIN_HOPCOUNT_OVERRIDE	BIT(6)
+
+#define VEND1_GLOBAL_RSVD_STAT2				0xc886
 
 /*! The byte address, in processor memory, of the start of the IRAM segment. */
 #define AQ_IRAM_BASE_ADDRESS				0x40000000
@@ -141,7 +145,11 @@ const uint16_t AQ_CRC16Table[256] = {0x0000, 0x1021, 0x2042, 0x3063, 0x4084, 0x5
 
 struct task_struct *gangload_kthread = NULL;
 struct phy_device *gangload_phydevs[MAX_GANGLOAD_DEVICES];
+static unsigned long gangload_timeout = 0;
 static int gangload = 0;
+static DEFINE_SPINLOCK(gangload_lock);
+
+static int aqr_firmware_download_single(struct phy_device *phydev, bool force_reload);
 
 void AQ_API_EnableMDIO_BootLoadMode
 (
@@ -832,10 +840,21 @@ static int AQ_API_WriteBootLoadImage(
 	int j;
 
 	for (j = 0; j < num_phydevs; j++) {
+		/* stall the uP */
+		val = phy_read_mmd(phydevs[j], MDIO_MMD_VEND1, VEND1_CONTROL2);
+		val |= VEND1_CONTROL2_UP_RUNSTALL_OVERRIDE;
+		val |= VEND1_CONTROL2_UP_RUNSTALL;
+		phy_write_mmd(phydevs[j], MDIO_MMD_VEND1, VEND1_CONTROL2, val);
+
 		/* disable the S/W reset to the Global MMD registers */
 		val = phy_read_mmd(phydevs[j], MDIO_MMD_VEND1, VEND1_RESET_CONTROL);
 		val |= VEND1_RESET_CONTROL_MMD_RESET_DISABLE;
 		phy_write_mmd(phydevs[j], MDIO_MMD_VEND1, VEND1_RESET_CONTROL, val);
+
+		/* de-assert Global S/W reset */
+		val = phy_read_mmd(phydevs[j], MDIO_MMD_VEND1, VEND1_STD_CONTROL1);
+		val &= ~VEND1_STD_CONTROL1_SOFT_RESET;
+		phy_write_mmd(phydevs[j], MDIO_MMD_VEND1, VEND1_STD_CONTROL1, val);
 
 		/* assert Global S/W reset */
 		val = phy_read_mmd(phydevs[j], MDIO_MMD_VEND1, VEND1_STD_CONTROL1);
@@ -861,68 +880,167 @@ static int AQ_API_WriteBootLoadImage(
 					      NULL, NULL, 0);
 }
 
+static int aqr_firmware_check_heartbeat(struct phy_device *phydev)
+{
+	struct aqr107_priv *priv = phydev->priv;
+	int stopped = 0, ret;
+
+	ret = phy_read_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_RSVD_STAT2);
+	if (ret < 0)
+		return ret;
+
+	/* heartbeat stopped if the current heartbeat is equal to the previous */
+	if (priv->heartbeat == ret)
+		stopped = 1;
+
+	/* update heartbeat to the private data */
+	priv->heartbeat = ret;
+
+	return stopped;
+}
+
+int aqr_firmware_heartbeat_thread(void *data)
+{
+	struct phy_device *phydev = data;
+	struct aqr107_priv *priv = phydev->priv;
+	struct device *dev;
+	int ret = 0;
+
+	dev = &phydev->mdio.dev;
+
+	for (;;) {
+		if (kthread_should_stop())
+			break;
+
+		if (priv->fw_initialized == true &&
+		    aqr_firmware_check_heartbeat(phydev) == 1) {
+			dev_err(dev, "Detect heartbeat stopped, start to realod firmware...\n");
+			aqr_firmware_download_single(phydev, true);
+		}
+
+		set_current_state(TASK_INTERRUPTIBLE);
+		schedule_timeout(2 * HZ);
+	}
+
+	return ret;
+}
+
+static char* aqr_firmware_name_get(u32 phy_id)
+{
+	switch (phy_id) {
+		case PHY_ID_AQR113C:
+			return AQR113C_FIRMWARE;
+		case PHY_ID_CUX3410:
+			return CUX3410_FIRMWARE;
+		default:
+			return AQR_FIRMWARE;
+	}
+}
+
 static void aqr_firmware_download_cb(const struct firmware *fw, void *context)
 {
 	struct phy_device **phydevs = context;
 	struct phy_device *gandload_phydev = phydevs[0];
-	struct device *dev;
-	struct aqr107_priv *priv;
+	struct device *dev = &phydevs[0]->mdio.dev;
+	struct aqr107_priv *priv = phydevs[0]->priv;
 	int result[MAX_GANGLOAD_DEVICES];
-	int i, ret = 0;
+	int i, num_phydevs = 0, ret = 0;
+	u32 phy_id = phydevs[0]->drv->phy_id;
+	char *firmware_name = aqr_firmware_name_get(phy_id);
 
 	if (!fw)
 		return;
 
+	spin_lock(&gangload_lock);
+
+	num_phydevs = priv->fw_dl_mode == FW_DL_GNAGLOAD ?
+		      gangload : 1;
+
 retry:
+	if (gandload_phydev->state == PHY_HALTED && priv->fw_initialized == true) {
+		dev_info(dev, "Detect PHY power down, stop to download firmware...\n");
+		goto out;
+	}
+
 	memset(result, 0, sizeof(result));
 
-	ret = AQ_API_WriteBootLoadImage(phydevs, MAX_GANGLOAD_DEVICES, gandload_phydev,
+	ret = AQ_API_WriteBootLoadImage(phydevs, num_phydevs, gandload_phydev,
 					result, fw->data, fw->size);
 	if (ret) {
-		for (i = 0; i < MAX_GANGLOAD_DEVICES; i++) {
+		for (i = 0; i < num_phydevs; i++) {
 			if (result[i] == 0)
 				continue;
 
 			dev = &phydevs[i]->mdio.dev;
 			dev_err(dev, "failed to download firmware %s, ret: %d\n",
-				AQR_FIRMWARE, ret);
+				firmware_name, ret);
 			goto retry;
 		}
 	}
 
-#ifdef CONFIG_AQUANTIA_PHY_MDI_SWAP
+	/* wait firmware initialization completed */
 	mdelay(250);
-#endif
-	for (i = 0; i < MAX_GANGLOAD_DEVICES; i++) {
+
+	for (i = 0; i < num_phydevs; i++) {
 		if (result[i] == 0) {
+			dev = &phydevs[i]->mdio.dev;
 			priv = phydevs[i]->priv;
 			priv->fw_initialized = true;
-#ifdef CONFIG_AQUANTIA_PHY_MDI_SWAP
+
+			aqr107_chip_info(phydevs[i]);
+
+			ret = aqr107_config_usx_aneg_en(phydevs[i]);
+			if (ret)
+				dev_err(dev, "USX autonegotiation disabled, ret: %d\n", ret);
+
+			ret = aqr107_config_led(phydevs[i]);
+			if (ret)
+				dev_err(dev, "LED configuration failed, ret: %d\n", ret);
+
 			aqr107_config_mdi(phydevs[i]);
-#endif
+
+			aqr107_set_downshift(phydevs[i],
+					     MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT);
+
+			if (phy_is_started(phydevs[i])) {
+				phydevs[i]->state = PHY_UP;
+				phy_queue_state_machine(phydevs[i], 0);
+			}
 		}
 	}
 
+out:
 	release_firmware(fw);
+
+	spin_unlock(&gangload_lock);
 }
 
-int aqr_firmware_download_single(struct phy_device *phydev)
+static int aqr_firmware_download_single(struct phy_device *phydev, bool force_reload)
 {
 	struct aqr107_priv *priv = phydev->priv;
 	struct device *dev = &phydev->mdio.dev;
+	const struct firmware *fw;
 	int ret = 0;
+	u32 phy_id = phydev->drv->phy_id;
+	char *firmware_name = aqr_firmware_name_get(phy_id);
 
-	if (priv->fw_initialized == true)
+	if (priv->fw_initialized == true && force_reload == false)
 		return 0;
 
-	priv->phydevs[0] = phydev;
-
-	ret = request_firmware_nowait(THIS_MODULE, true, AQR_FIRMWARE, dev,
-				      GFP_KERNEL, priv->phydevs, aqr_firmware_download_cb);
-	if (ret) {
-		dev_err(dev, "failed to load firmware %s, ret: %d\n",
-			AQR_FIRMWARE, ret);
+	if (priv->phydevs[0] != phydev) {
+		priv->phydevs[0] = phydev;
+		spin_lock_init(&priv->lock);
 	}
+	priv->fw_dl_mode = FW_DL_SINGLE;
+	priv->heartbeat = -1;
+
+	ret = request_firmware(&fw, firmware_name, dev);
+	if (ret) {
+		dev_err(dev, "failed to request firmware %s, ret: %d\n",
+			firmware_name, ret);
+	}
+
+	aqr_firmware_download_cb(fw, priv->phydevs);
 
 	return ret;
 }
@@ -932,18 +1050,21 @@ static int aqr_firmware_gandload_thread(void *data)
 	struct phy_device **phydevs = data;
 	struct device *dev = &phydevs[0]->mdio.dev;
 	int ret = 0;
+	u32 phy_id = phydevs[0]->drv->phy_id;
+	char *firmware_name = aqr_firmware_name_get(phy_id);
 
 	for (;;) {
 		if (kthread_should_stop())
 			break;
 
-		/* reach maximum gangload phy devices */
-		if (gangload == MAX_GANGLOAD_DEVICES) {
-			ret = request_firmware_nowait(THIS_MODULE, true, AQR_FIRMWARE, dev,
+		/* either maximum gangload phy devices or timeout is reached */
+		if (gangload == MAX_GANGLOAD_DEVICES ||
+		    time_after(jiffies, gangload_timeout)) {
+			ret = request_firmware_nowait(THIS_MODULE, true, firmware_name, dev,
 						      GFP_KERNEL, phydevs, aqr_firmware_download_cb);
 			if (ret) {
-				dev_err(dev, "failed to load firmware %s, ret: %d\n",
-					AQR_FIRMWARE, ret);
+				dev_err(dev, "failed to request firmware %s, ret: %d\n",
+					firmware_name, ret);
 			}
 			break;
 		}
@@ -959,26 +1080,48 @@ static int aqr_firmware_download_gang(struct phy_device *phydev)
 {
 	struct aqr107_priv *priv = phydev->priv;
 	struct device *dev = &phydev->mdio.dev;
+	int i;
 
 	if (priv->fw_initialized == true)
 		return 0;
 
 	if (!gangload_kthread) {
+		/* setup a maximum wait time limit for gangload mode */
+		gangload_timeout = jiffies + 5 * HZ;
+
 		/* create a thread for monitor gangload devices */
 		gangload_kthread = kthread_create(aqr_firmware_gandload_thread,
 						  gangload_phydevs,
 						  "aqr_firmware_gandload_thread");
 		if (IS_ERR(gangload_kthread)) {
 			dev_err(dev,
-				"%s Failed to create thread for aqr_firmware_gandload_thread\n",
-				__func__);
+				"failed to create aqr_firmware_gandload_thread(%ld)\n",
+				 PTR_ERR(gangload_kthread));
 			return PTR_ERR(gangload_kthread);
 		}
-		wake_up_process(gangload_kthread);
 	}
 
+	for (i = 0; i < gangload; i++) {
+		if (gangload_phydevs[i] == phydev) {
+			dev_warn(dev, "Detect duplicate gangload phydev\n");
+			return 0;
+		}
+	}
+
+	/* fall back to single mode if timeout is reached */
+	if (time_after(jiffies, gangload_timeout))
+		return aqr_firmware_download_single(phydev, false);
+
+	if (priv->phydevs[0] != phydev) {
+		priv->phydevs[0] = phydev;
+		spin_lock_init(&priv->lock);
+	}
+	priv->fw_dl_mode = FW_DL_GNAGLOAD;
+	priv->heartbeat = -1;
 	gangload_phydevs[gangload] = phydev;
 	gangload++;
+
+	wake_up_process(gangload_kthread);
 
 	return 0;
 }
@@ -987,7 +1130,7 @@ int aqr_firmware_download(struct phy_device *phydev)
 {
 	int ret = 0;
 #ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD_SINGLE
-	ret = aqr_firmware_download_single(phydev);
+	ret = aqr_firmware_download_single(phydev, false);
 #elif CONFIG_AQUANTIA_PHY_FW_DOWNLOAD_GANG
 	ret = aqr_firmware_download_gang(phydev);
 #endif

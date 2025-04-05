@@ -486,6 +486,45 @@ static inline u32 linkmode_adv_to_lcl_adv_t(unsigned long *advertising)
 }
 
 /**
+ * mii_lpa_mod_linkmode_x - decode the link partner's config_reg to linkmodes
+ * @linkmodes: link modes array
+ * @lpa: config_reg word from link partner
+ * @fd_bit: link mode for 1000XFULL bit
+ */
+static inline void mii_lpa_mod_linkmode_x(unsigned long *linkmodes, u16 lpa,
+					 int fd_bit)
+{
+	linkmode_mod_bit(ETHTOOL_LINK_MODE_Autoneg_BIT, linkmodes,
+			 lpa & LPA_LPACK);
+	linkmode_mod_bit(ETHTOOL_LINK_MODE_Pause_BIT, linkmodes,
+			 lpa & LPA_1000XPAUSE);
+	linkmode_mod_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, linkmodes,
+			 lpa & LPA_1000XPAUSE_ASYM);
+	linkmode_mod_bit(fd_bit, linkmodes,
+			 lpa & LPA_1000XFULL);
+}
+
+/**
+ * linkmode_adv_to_mii_adv_x - encode a linkmode to config_reg
+ * @linkmodes: linkmodes
+ * @fd_bit: full duplex bit
+ */
+static inline u16 linkmode_adv_to_mii_adv_x(unsigned long *linkmodes,
+					    int fd_bit)
+{
+	u16 adv = 0;
+
+	if (linkmode_test_bit(fd_bit, linkmodes))
+		adv |= ADVERTISE_1000XFULL;
+	if (linkmode_test_bit(ETHTOOL_LINK_MODE_Pause_BIT, linkmodes))
+		adv |= ADVERTISE_1000XPAUSE;
+	if (linkmode_test_bit(ETHTOOL_LINK_MODE_Asym_Pause_BIT, linkmodes))
+		adv |= ADVERTISE_1000XPSE_ASYM;
+
+	return adv;
+}
+
+/**
  * mii_advertise_flowctrl - get flow control advertisement flags
  * @cap: Flow control capabilities (FLOW_CTRL_RX, FLOW_CTRL_TX or both)
  */

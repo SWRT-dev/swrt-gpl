@@ -32,20 +32,27 @@
 		regulator-always-on;
 	};
 
-	sound {
-		compatible = "mediatek,mt7986-wm8960-machine";
-		mediatek,platform = <&afe>;
+	sound_wm8960 {
+		compatible = "mediatek,mt7986-wm8960-sound";
 		audio-routing = "Headphone", "HP_L",
 				"Headphone", "HP_R",
 				"LINPUT1", "AMIC",
 				"RINPUT1", "AMIC";
-		mediatek,audio-codec = <&wm8960>;
+
 		status = "okay";
+
+		platform {
+			sound-dai = <&afe>;
+		};
+
+		codec {
+			sound-dai = <&wm8960>;
+		};
 	};
 };
 
 &fan {
-	pwms = <&pwm 1 50000 0>;
+	pwms = <&pwm 1 50000>;
 	status = "disabled";
 };
 

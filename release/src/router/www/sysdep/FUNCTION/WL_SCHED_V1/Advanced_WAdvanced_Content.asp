@@ -283,7 +283,7 @@ var QAM1024_5G_support = isSupport('qam1024_5g'); // RTCONFIG_QAM1024_5G
 var MUMIMO2G_support = isSupport('mumimo_2g'); // RTCONFIG_MUMIMO_2G
 var MUMIMO5G_support = isSupport('mumimo_5g'); // RTCONFIG_MUMIMO_5G
 var wifi7_ofdma_support = wifi7_support;
-var wifi7_mumimo_support = wifi7_support;
+var wifi7_mumimo_support = isSupport('hide_mumimo') ? false : wifi7_support;
 (function(){
 	if(Bcmwifi_support){
 		var _cap = '';
@@ -369,7 +369,7 @@ function initial(){
 		changeRSSI(wl_user_rssi_onload);
 	else{
 		document.getElementById("rssiTr").style.display = "none";
-		$("#wl_unit_field").toggle(!(isSwMode("re") || isSwMode("ew")))
+		$("#wl_unit_field").toggle(!(isSwMode("RP") || isSwMode("ew")))
 	}
 
 	if(!band5g_support)
@@ -479,7 +479,7 @@ function initial(){
 				inputCtrl(document.form.wl_turbo_qam, 0);
 			}
 			
-			$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#>");
+			$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#> (WiFi 5)");
 			if(QAM1024_support){
 				var desc = ["Up to MCS 9 (802.11ac)", "Up to MCS 11 (NitroQAM/1024-QAM)"];
 				var value = ["1", "2"];
@@ -542,7 +542,7 @@ function initial(){
 					inputCtrl(document.form.wl_turbo_qam, 0);
 				}
 				
-				$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#>");
+				$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#> (WiFi 5)");
 				if(QAM1024_support){
 					var desc = ["Up to MCS 7 (802.11n)", "Up to MCS 9 (TurboQAM/256-QAM)", "Up to MCS 11 (NitroQAM/1024-QAM)"];
 					var value = ["0", "1", "2"];
@@ -737,7 +737,7 @@ function initial(){
 	}
 
 	/* Agile DFS, EU sku, HE2.0 only */
-	if((is_unit_5g(wl_unit_value) || is_unit_5g_2(wl_unit_value)) && "<% nvram_get("wl0_country_code"); %>" == 'GB' && "<% soc_version_major(); %>" == "2" && (based_modelid == "RT-AX89U" || based_modelid == "GT-AXY16000")){
+	if ((is_unit_5g(wl_unit_value) || is_unit_5g_2(wl_unit_value)) && agile_dfs_support) {
 		inputCtrl(document.form.wl_precacen, 1);
 	}
 	else{
@@ -767,7 +767,7 @@ function initial(){
 
 	control_TimeField();
 
-	if(isSwMode("re")){
+	if(isSwMode("RP")){
 		var _rows = document.getElementById("WAdvTable").rows;
 		for(var i=0; i<_rows.length; i++){
 			if(_rows[i].className.search("rept") == -1){
@@ -851,8 +851,11 @@ function initial(){
 		document.getElementById('wifi7_mode_field').style.display = '';
 		document.getElementById('he_mode_field').style.display = 'none';
 	}
-	if(!band5g_11ax_support)
-		document.getElementById('he_mode_field').style.display = 'none';
+	
+	if(isSupport("sdn_mainfh")){
+		document.getElementById('wifi7_mode_field').style.display = 'none';
+		document.getElementById('wl_sched_enable').style.display = 'none';
+	}	
 	if(swrt_kv_support)
 		document.getElementById("swrt_kv_tr").style.display = "";
 	if(swrt_ft_support)
@@ -1023,7 +1026,7 @@ function changeRSSI(_switch){
 var reboot_confirm=0;
 function applyRule(){
 	if(lantiq_support && wave_ready != 1){
-		alert("Please wait a minute for wireless ready");
+		alert(`<#Wireless_ready#>`);
 		return false;
 	}
 	
@@ -2406,7 +2409,7 @@ function wifi7_mode(obj){
 						<td>
 							<select name="wl_precacen" class="input_option">
 									<option value="0" <% nvram_match("wl_precacen", "0","selected"); %> ><#WLANConfig11b_WirelessCtrl_buttonname#></option>
-									<option value="1" <% nvram_match("wl_precacen", "1","selected"); %> ><#WLANConfig11b_WirelessCtrl_button1name#></option>
+									<option value="1" <% nvram_match("wl_precacen", "1","selected"); %> ><#Auto#></option>
 							</select>
 						</td>
 					</tr>
@@ -2463,4 +2466,3 @@ function wifi7_mode(obj){
 <div id="footer"></div>
 </body>
 </html>
-

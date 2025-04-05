@@ -21,6 +21,8 @@
 char * nvram_get_x(const char *sid, const char *name);
 #define nvram_safe_get_x(sid, name) (nvram_get_x(sid, name) ? : "")
 
+#define sys_upload(image) eval("nvram", "restore", image)
+
 void httpd_nvram_commit(void){
 
 	/* 0:nvram 1:openvpn 2:ipsec 3:usericon */
@@ -359,7 +361,7 @@ int get_wl_nband_list()
 				break;
 		}
 
-		if(unit != 0)
+		if(wlnband_list[0] != '\0')
 			strlcat(wlnband_list, "<", sizeof(wlnband_list));
 
 		strlcat(wlnband_list, band_str, sizeof(wlnband_list));
@@ -417,6 +419,12 @@ static int get_sdn_rwd_cap_array(struct json_object *sdn_rwd_cap_array){
 #if defined(RTCONFIG_MLO)
 		"MLO",
 #endif
+#if defined(RTCONFIG_OPEN_NAT) && defined(RTCONFIG_SDN_PRIORITY)
+		"Gaming",
+#endif
+#if defined(RTCONFIG_MULTILAN_MWL)
+		"MAINFH",
+#endif
 		"Guest", "IoT", "VPN",
 		NULL};
 
@@ -432,28 +440,31 @@ static int get_sdn_rwd_cap_array(struct json_object *sdn_rwd_cap_array){
 struct RWD_MAPPING_TABLE rwd_mapping_t[] =
 {
 #if defined(RTAX82U) || defined(DSL_AX82U) || defined(GTAXE11000) || defined(GTAC2900) || defined(GTAX11000) || defined(GSAX3000) || defined(GSAX5400) || defined(GTAX11000_PRO) || defined(TUFAX5400) || defined(GTAXE16000) || defined(GTAX6000) || defined(GT10) || defined(RTAX82U_V2) || defined(TUFAX5400_V2)
-	{"AuraRGB", "light_effect/light_effect.html", "light_effect/light_effect_white.css"},
-	{"AuraRGB_preview", "light_effect/light_effect_pre.html", NULL},
+	{"AuraRGB", "light_effect/light_effect.html", "<rt><white>light_effect/light_effect_white.css"},
+	{"AuraRGB_preview", "light_effect/light_effect_pre.html", "<rt>"},
 #endif
-	{"Tencent", "game_accelerator_tencent.html", NULL},
+	{"Tencent", "game_accelerator_tencent.html", "<rt>"},
 #if defined(RTCONFIG_OOKLA) || defined(RTCONFIG_OOKLA_LITE)
-	{"SpeedTest", "internet_speed.html", "css/internetSpeed_white_theme.css"},
+	{"SpeedTest", "internet_speed.html", "<default><white>css/internetSpeed_white_theme.css"},
 #endif
-#if defined(RTCONFIG_BWDPI)
-	{"AiProtection_MALS", "AiProtection_MaliciousSitesBlocking_m.asp", NULL},
-	{"AiProtection_VP", "AiProtection_IntrusionPreventionSystem_m.asp", NULL},
-	{"AiProtection_CC", "AiProtection_InfectedDevicePreventBlock_m.asp", NULL},
+#if defined(RTCONFIG_BWDPI) || defined(RTCONFIG_HNS)
+	{"AiProtection_MALS", "AiProtection_MaliciousSitesBlocking_m.asp", "<rt>"},
+	{"AiProtection_VP", "AiProtection_IntrusionPreventionSystem_m.asp", "<rt>"},
+	{"AiProtection_CC", "AiProtection_InfectedDevicePreventBlock_m.asp", "<rt>"},
 #endif
-	{"VPN_Fusion", "VPN/vpnc.html", "VPN/vpncWHITE.css"},
-	{"VPN_Server", "VPN/vpns.html", "VPN/vpnsWHITE.css"},
+	{"VPN_Fusion", "VPN/vpnc.html", "<rt><gt>VPN/vpncGT.css<tuf>VPN/vpncTUF.css<white>VPN/vpncWHITE.css"},
+	{"VPN_Server", "VPN/vpns.html", "<rt><gt>VPN/vpnsGT.css<tuf>VPN/vpnsTUF.css<white>VPN/vpnsWHITE.css"},
 #ifdef RTCONFIG_MULTILAN_CFG
-	{"SDN", "SDN/sdn.html", "SDN/sdn_WHITE.css"},
+	{"SDN", "SDN/sdn.html", "<rt><gt>SDN/sdn_ROG.css<tuf>SDN/sdn_TUF.css<white>SDN/sdn_WHITE.css"},
 #endif
 #ifdef RTCONFIG_DASHBOARD
-	{"Dashboard", "index.html?url=dashboard", "css/business-white.css"},
+	{"Dashboard", "index.html?url=dashboard", "<white>css/business-white.css"},
 #endif
 #ifdef RTCONFIG_SW_BTN
-	{"MultiFuncBtn", "multifuncbtn/mfb.html", "multifuncbtn/mfb_WHITE.css"},
+	{"MultiFuncBtn", "multifuncbtn/mfb.html", "<rt><white>multifuncbtn/mfb_WHITE.css"},
+#endif
+#ifdef RTCONFIG_ADGUARDDNS
+	{"AdGuard DNS", "adguard_dns.html", "<rt><gt>css/adguard_customize_ROG.css<white>css/adguard_dns_WHITE.css"},
 #endif
 	{NULL, NULL, NULL}
 };
@@ -462,7 +473,9 @@ int get_rwd_table(struct json_object *rwd_mapping)
 {
 	int white_theme_status = 0;
 	char *url = NULL;
-	char url_file[128] = {0}, check_path[128] = {0};
+	char *theme_support = NULL, *theme_url = NULL;
+	char url_file[128] = {0}, check_path[128] = {0}, theme_name[32] = {0};
+	char theme_list[2048] = {0}, word[256]={0}, *word_next = NULL;
 	struct RWD_MAPPING_TABLE *p;
 	struct json_object *function_obj = NULL;
 
@@ -489,16 +502,27 @@ int get_rwd_table(struct json_object *rwd_mapping)
 		if(!check_if_file_exist(check_path))
 			continue;
 
-		if(p->white_theme){
-			snprintf(check_path, sizeof(check_path), "/www/%s", p->white_theme);
-			if(check_if_file_exist(check_path))
-				white_theme_status = 1;
+		function_obj = json_object_new_object();
+		json_object_object_add(function_obj, "path", json_object_new_string(p->path));
+
+		strlcpy(theme_list, p->theme_list, sizeof(theme_list));
+
+		foreach_60(word, theme_list, word_next){
+
+			if ((vstrsep(word, ">", &theme_support, &theme_url) != 2))
+				continue;
+
+			if(*theme_url != '\0'){
+				snprintf(check_path, sizeof(check_path), "/www/%s", theme_url);
+				if(!check_if_file_exist(check_path)){
+					dbg("check_path[%s] not found\n", check_path);
+					continue;
+				}
+			}
+			snprintf(theme_name, sizeof(theme_name), "%s_theme", theme_support);
+			json_object_object_add(function_obj, theme_name, json_object_new_string("1"));
 		}
 
-		function_obj = json_object_new_object();
-
-		json_object_object_add(function_obj, "path", json_object_new_string(p->path));
-		json_object_object_add(function_obj, "white_theme", json_object_new_string((white_theme_status==1)?"1":"0"));
 #if defined(RTCONFIG_MULTILAN_CFG)
 		if(!strcmp("SDN", p->name)){
 			json_object *sdn_rwd_cap_array = json_object_new_array();
@@ -510,7 +534,6 @@ int get_rwd_table(struct json_object *rwd_mapping)
 	}
 	return 1;
 }
-
 
 int
 update_string_in_62(char *out, int idx, char *update_str, int out_len)
@@ -886,6 +909,10 @@ struct REPLACE_PRODUCTID_S replace_productid_t[] =
 	{"TUF-BE6500", "TUF GAMING 小旋风 Pro", "CN"},
 	{"TUF_3600", "TUF GAMING 小旋风", "CN"},
 	{"TUF_6500", "TUF GAMING 小旋风 Pro", "CN"},
+	{"ZenWiFi_BD4", "灵耀魔方 WiFi7 BE3600", "CN"},
+	{"ZenWiFi_BD4_Outdoor", "灵耀魔方 无界", "CN"},
+	{"ZenWiFi_BT8P", "灵耀魔方Pro WiFi7 BE9400", "CN"},
+	{"GS7", "ROG 魔盒", "CN"},
 	{NULL, NULL, NULL}
 };
 
@@ -930,10 +957,55 @@ void replace_productid(char *GET_PID_STR, char *RP_PID_STR, int len){
 }
 
 
-int do_firmware_check(int from_id)
+
+/*
+ * Check firmware update status
+ * @return	0:No need upgrade 1:need upgrade 2:need Force upgrade 3:Fail to retrieve firmware
+ */
+int check_firmware_update_status(void)
 {
+	int count = 60;
+
+	while(count-- > 0){
+		sleep(1);
 #ifdef RTCONFIG_CFGSYNC
-	char event_msg[64] = {0};
+		if(is_cfg_server_ready()){
+			int cfg_check = nvram_get_int("cfg_check");
+
+			if(cfg_check == 0 || cfg_check == 1 || cfg_check == 5)
+				continue;
+			else if(cfg_check == 2 || cfg_check == 3)
+				return 3;
+			else if(cfg_check == 9)
+				return 0;
+			else if(cfg_check == 7)
+				return 1;
+		}
+		else
+#endif
+		{
+			if(nvram_get_int("webs_state_update") == 0)
+				continue;
+			else{
+				if(nvram_get_int("webs_state_error") == 1)
+					return 3;
+				else
+					return nvram_get_int("webs_state_flag");
+			}
+		}
+	}
+	return 3;
+}
+
+/*
+ * Do firmware update to FRS server
+ * @param	from_id		trigger service
+ * @param	wait_result	0: do not wait 1:watting
+ * @return	0:No need upgrade 1:need upgrade 2:need Force upgrade 3:Fail to retrieve firmware
+ */
+int do_firmware_check(int from_id, int wait_result)
+{
+	int ret = 0;
 
 	if(from_id == FROM_BROWSER)
 		nvram_set("webs_update_trigger", "GUI_CFG");
@@ -942,14 +1014,22 @@ int do_firmware_check(int from_id)
 	else
 		nvram_set("webs_update_trigger", "AWSIOT_CFG");
 
+#ifdef RTCONFIG_CFGSYNC
+	char event_msg[64] = {0};
 	snprintf(event_msg, sizeof(event_msg), HTTPD_GENERIC_MSG, EID_HTTPD_FW_CHECK);
-
-	if (strlen(event_msg))
+	if(is_cfg_server_ready())
+	{
+		if (strlen(event_msg))
 			send_cfgmnt_event(event_msg);
-#else
-	notify_rc("start_webs_update");
+	}
+	else
 #endif
-	return 0;
+		notify_rc("start_webs_update");
+
+	if(wait_result)
+		ret = check_firmware_update_status();
+
+	return ret;
 }
 
 int do_firmware_upgrade(void)

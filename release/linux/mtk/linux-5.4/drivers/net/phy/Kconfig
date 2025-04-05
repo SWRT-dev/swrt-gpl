@@ -337,6 +337,8 @@ endif # RTL8366_SMI
 
 source "drivers/net/phy/mtk/mt753x/Kconfig"
 
+source "drivers/net/phy/airoha/an8855/Kconfig"
+
 comment "MII PHY device drivers"
 
 config SFP
@@ -345,15 +347,26 @@ config SFP
 	depends on HWMON || HWMON=n
 	select MDIO_I2C
 
-config AIROHA_EN8801S_PHY
-	tristate "Drivers for Airoha EN8801S Gigabit PHYs"
+config AIROHA_AN8801_PHY
+	tristate "Drivers for Airoha AN8801 Gigabit PHYs"
 	---help---
-	  Currently supports the Airoha EN8801S PHY.
+	  Currently supports the Airoha AN8801 PHY.
 
 config AIROHA_EN8801SC_PHY
-        tristate "Drivers for Airoha EN8801S Gigabit PHYs for MT7981 SoC."
-        ---help---
-          Currently supports the Airoha EN8801S PHY for MT7981 SoC.
+	tristate "Drivers for Airoha EN8801S Gigabit PHYs for MediaTek SoC."
+	---help---
+	  Currently supports the Airoha EN8801S PHY for MediaTek SoC.
+
+config AIROHA_EN8811H_PHY
+	tristate "Drivers for Airoha EN8811H 2.5G Gigabit PHY"
+	---help---
+	  Currently supports the Airoha EN8811H PHY.
+
+config AIROHA_EN8811H_PHY_DEBUGFS
+	bool "EN8811H debugfs support"
+	depends on AIROHA_EN8811H_PHY
+	---help---
+	  Enable creation of debugfs files for the EN8811H drivers.
 
 config ADIN_PHY
 	tristate "Analog Devices Industrial Ethernet PHYs"
@@ -373,24 +386,6 @@ config AQUANTIA_PHY
 	tristate "Aquantia PHYs"
 	---help---
 	  Currently supports the Aquantia AQ1202, AQ2104, AQR105, AQR405, AQR113C
-
-config AQUANTIA_PHY_MDI_SWAP
-	tristate "MDI Swap Enable"
-	depends on AQUANTIA_PHY
-	---help---
-	  Currently supports the Aquantia AQR113C
-
-choice
-	prompt "Swap mode"
-	default AQUANTIA_PHY_MDI_REVERSED
-	depends on AQUANTIA_PHY_MDI_SWAP
-
-	config AQUANTIA_PHY_MDI_NORMAL
-		bool "Normal"
-
-	config AQUANTIA_PHY_MDI_REVERSED
-		bool "Reversed"
-endchoice
 
 config AQUANTIA_PHY_FW_DOWNLOAD
 	tristate "Firmware Download Enable"
@@ -417,11 +412,31 @@ choice
 endchoice
 
 config AQUANTIA_PHY_FW_FILE
-	string "FW File"
+	string "Default PHY FW File"
 	depends on AQUANTIA_PHY
 	default "Rhe-05.06-Candidate7-AQR_Mediatek_23B_StartOff_ID45623_VER36657.cld"
 	---help---
-	  Currently supports the Aquantia AQR113c
+	  This is the default FW.
+
+config AQUANTIA_PHY_FW_FILE_AQR113C
+	string "AQR113C PHY FW File"
+	depends on AQUANTIA_PHY
+	default "Rhe-05.06-Candidate7-AQR_Mediatek_23B_StartOff_ID45623_VER36657.cld"
+	---help---
+	  This FW is for AQR113C
+
+config AQUANTIA_PHY_FW_FILE_CUX3410
+	string "CUX3410 PHY FW File"
+	depends on AQUANTIA_PHY
+	default "AQR-G4_v5.7.0-AQR_EVB_Generic_X3410_StdCfg_MDISwap_USX_ID46316_VER2148.cld"
+	---help---
+	  This FW is for CUX3410
+
+config AQUANTIA_PHY_MIB
+	tristate "MIB Read Enable"
+	depends on AQUANTIA_PHY
+	---help---
+	  Currently supports the Aquantia AQR113C
 
 config AX88796B_PHY
 	tristate "Asix PHYs"
@@ -577,15 +592,7 @@ config MESON_GXL_PHY
 	---help---
 	  Currently has a driver for the Amlogic Meson GXL Internal PHY
 
-config MEDIATEK_GE_PHY
-	tristate "MediaTek Gigabit Ethernet PHYs"
-	help
-	  Supports the MediaTek Gigabit Ethernet PHYs.
-
-config MEDIATEK_2P5GE_PHY
-	tristate "MediaTek 2.5Gb Ethernet PHYs"
-	---help---
-	  Supports MediaTek internal 2.5Gb Ethernet PHYs.
+source "drivers/net/phy/mediatek/Kconfig"
 
 config MICREL_PHY
 	tristate "Micrel PHYs"
@@ -604,6 +611,9 @@ config MICROCHIP_T1_PHY
 
 config MICROSEMI_PHY
 	tristate "Microsemi PHYs"
+	depends on MACSEC || MACSEC=n
+	select CRYPTO_AES
+	select CRYPTO_ECB
 	---help---
 	  Currently supports VSC8514, VSC8530, VSC8531, VSC8540 and VSC8541 PHYs
 

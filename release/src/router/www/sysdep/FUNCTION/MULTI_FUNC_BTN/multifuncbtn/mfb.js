@@ -2,13 +2,12 @@ const is_Web_iframe = (($(parent.document).find("#mainMenu").length > 0) || (top
 const vpn_title_text = (()=>{return (isSupport("vpn_fusion") ? `<#VPN_Fusion#>` : `<#vpnc_title#>`);})();
 let btnsw_list = [
 	{"title":vpn_title_text, "value":"4"},
-	{"title":`Operation`, "value":"1"},/* untranslated */
 	{"title":`LED`, "value":"2"},/* untranslated */
 	{"title":`WiFi`, "value":"3"},/* untranslated */
 	{"title":`${Guest_Network_naming}`, "value":"5"},
+	{"title":`<#AiMesh_NodeLocation01#> / Travel`, "value":"1"},/* untranslated */
 	{"title":`No Function`, "value":"0"}/* untranslated */
 ];
-btnsw_list = btnsw_list.filter(item => item.value != "1");
 const support_vpn_btn = (isSupport("vpn_fusion") && isSwMode("rt"));
 if(!support_vpn_btn){
 	btnsw_list = btnsw_list.filter(item => item.value != "4")
@@ -189,6 +188,52 @@ function Update_Setting_Profile(_obj, _profile_data){
 			$SDN_Profiles_cntr.hide();
 		}
 	}
+	if(_profile_data.value == "1"){
+		let $config_content_cntr = $(_obj).find("[data-container='config_content_cntr']").empty();
+		const get_nvsw = httpApi.hookGet("get_nvsw");
+		if(get_nvsw && get_nvsw.profile != undefined){
+			const nvsw_mapping = [{"profile_id":0, "text":`<#AiMesh_NodeLocation01#>`, "mode":"home"}, {"profile_id":1, "text":`Travel`, "mode":"travel"}];/* untranslated */
+			get_nvsw.profile.forEach((item)=>{
+				const specific_nvsw = nvsw_mapping.find(nvsw => nvsw.profile_id == item.profile_id);
+				let $mode_profile_cntr = $("<div>").addClass(`mode_profile_container`).appendTo($config_content_cntr);
+				$mode_profile_cntr.addClass(()=>{
+					if(nv_btnsw_onoff == "1"){
+						if(get_nvsw.cur_id == item.profile_id){
+							return `nvsw_active`;
+						}
+					}
+				});
+				$("<div>").addClass(`icon_component ${(specific_nvsw) ? specific_nvsw.mode : ``}`).append("<i>").appendTo($mode_profile_cntr);
+				let $detail_comp = $("<div>").addClass("detail_component").appendTo($mode_profile_cntr);
+				let $mode_comp = $("<div>").addClass("text_component").appendTo($detail_comp);
+				let main_text = (specific_nvsw) ? specific_nvsw.text : `--`;
+				if(nv_btnsw_onoff == "1"){
+					if(get_nvsw.cur_id == item.profile_id){
+						main_text += ` (<#Status_Active#>)`;
+					}
+				}
+				$("<div>").addClass("main_text").html(main_text).appendTo($mode_comp);
+				$("<div>").addClass("sub_text").html(`<#vpnc_profile#>`).appendTo($mode_comp);
+				let $profile_comp = $("<div>").addClass("text_component").appendTo($detail_comp);
+				$("<div>").addClass("main_text").html(get_mode_text(item)).appendTo($profile_comp);
+				$("<div>").addClass("sub_text").html(`<#DSL_Mode#>`).appendTo($profile_comp);
+			});
+
+			function get_mode_text(nvsw_info){
+				if(nvsw_info.status == "OK"){
+					if(nvsw_info.mb == "1") return `<#OP_MB_item#>`;
+					else if(nvsw_info.rp == "1") return `<#OP_RE_item#>`;
+					else if(nvsw_info.re == "1") return `<#AiMesh_Node#>`;
+					else if(nvsw_info.wisp == "1") return `<#OP_WISP_item#>`;
+					else if(nvsw_info.sw_mode == "1") return `<#Router_mode#>`;
+					else return `--`;
+				}
+				else{
+					return "--";
+				}
+			}
+		}
+	}
 }
 function Get_Component_BTNSW_VPN(view_mode){
 	let $container = $("<div>").addClass("setting_content_container no_action_container");
@@ -282,7 +327,7 @@ function Get_Component_BTNSW_OP(view_mode){
 	let $container = $("<div>").addClass("setting_content_container no_action_container");
 
 	if(view_mode == "popup"){
-		Get_Component_Popup_Profile_Title(`Operation Profile`).appendTo($container)/* untranslated */
+		Get_Component_Popup_Profile_Title(`<#AiMesh_NodeLocation01#> / Travel`).appendTo($container)/* untranslated */
 			.find("#title_close_btn").unbind("click").click(function(e){
 				e = e || event;
 				e.stopPropagation();
@@ -290,13 +335,18 @@ function Get_Component_BTNSW_OP(view_mode){
 			});
 	}
 	else
-		Get_Component_Profile_Title(`Operation Profile`).appendTo($container).find("#title_del_btn").remove();/* untranslated */
+		Get_Component_Profile_Title(`<#AiMesh_NodeLocation01#> / Travel`).appendTo($container).find("#title_del_btn").remove();/* untranslated */
 
 	let $content_container = $("<div>").addClass("popup_content_container profile_setting").appendTo($container);
 
-	Get_Component_Schematic().appendTo($content_container);
+	Get_Component_Schematic(
+		{
+			"fun_desc":`Please switch the multi-function button to the designated mode while the power is off, then power on. The router will boot up and enter the designated mode.`,
+			"btnsw":"1"
+		}/* untranslated */
+	).appendTo($content_container);
 
-	let btnsw_onoff_parm = {"title":"Multi-Function Button Default", "type":"switch", "id":"btnsw_onoff", "set_value":"off"};
+	let btnsw_onoff_parm = {"title":`Multi-Function Button Default`, "type":"switch", "id":"btnsw_onoff", "set_value":"off"};/* untranslated */
 	Get_Component_Switch(btnsw_onoff_parm).appendTo($content_container)
 		.find("#" + btnsw_onoff_parm.id + "").click(function(e){
 			e = e || event;
@@ -304,6 +354,12 @@ function Get_Component_BTNSW_OP(view_mode){
 			const this_btnsw_onoff = $(this).closest(".setting_content_container").attr("data-btnsw-onoff");
 			Set_BTNSW_ONOFF({"btnsw_onoff":this_btnsw_onoff, "switch_status":$(this).hasClass("on")});
 		});
+
+	let $mode_config_cntr = $("<div>").addClass("mode_config_container").appendTo($content_container);
+	$("<div>").attr({"data-container":"config_content_cntr"}).appendTo($mode_config_cntr);
+	let $notice_cntr = $("<div>").addClass("notice_container").appendTo($mode_config_cntr);
+	$("<div>").addClass("title").html(`<div class='icon_notice'></div><#InternetSpeed_Notice#>`).appendTo($notice_cntr);
+	$("<div>").addClass("desc").html(`Please note factory reset will clean up all mode profiles.`).appendTo($notice_cntr);/* untranslated */
 
 	return $container;
 }
@@ -654,7 +710,11 @@ function Get_Component_SDN_Profiles(){
 function Get_Component_Schematic(_parm){
 	let $profile_setting_item = $("<div>").addClass("profile_setting_item schematic");
 	let $schematic_cntr = $("<div>").addClass("schematic_container").appendTo($profile_setting_item);
-	$("<div>").addClass("img_item").appendTo($schematic_cntr);
+	let btnsw = "";
+	if(_parm != undefined){
+		btnsw = (_parm.btnsw != undefined) ? `btnsw_${_parm.btnsw}` : "";
+	}
+	$("<div>").addClass(`img_item ${btnsw}`).appendTo($schematic_cntr);
 	$("<div>").addClass("notice_item").html(`*Schematic machine switch.`).appendTo($schematic_cntr);
 	let fun_desc = "";
 	if(_parm != undefined){
@@ -680,7 +740,9 @@ function Set_BTNSW_ONOFF(_json_data){
 		nvramSet_obj.btnsw_sdn_idx = _json_data.btnsw_sdn_idx;
 		post_fun = "sdn";
 	}
-
+	else if(_json_data.btnsw_onoff == "1"){
+		post_fun = "op";
+	}
 	httpApi.nvramSet(nvramSet_obj, function(){
 		let $profile_item_cntrs = $("#profile_list_content .profile_item_container");
 		$profile_item_cntrs.find(".item_tag").remove();
@@ -689,5 +751,9 @@ function Set_BTNSW_ONOFF(_json_data){
 		if(post_fun == "sdn") update_nv.push("btnsw_sdn_idx");
 		nv_btnsw_onoff = httpApi.nvramGet(update_nv, true).btnsw_onoff;
 		$profile_item_cntrs.filter("[data-btnsw-onoff="+nv_btnsw_onoff+"]").find(".item_tag_container").append($("<div>").addClass("item_tag link").html("<#CTL_Default#>"));
+		if(post_fun == "op"){
+			const get_nvsw = httpApi.hookGet("get_nvsw", true);
+			$profile_item_cntrs.filter("[data-btnsw-onoff='1']").click();
+		}
 	});
 }

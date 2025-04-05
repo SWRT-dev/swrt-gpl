@@ -579,7 +579,7 @@ extern int change_location(char *lang);
 #ifdef RTCONFIG_WTF_REDEEM
 extern void wtfast_gen_partnercode(char *str, size_t size);
 #endif
-extern void update_wlan_log(int sig);
+extern void update_wlan_log_sig(int sig);
 extern void system_cmd_test(char *system_cmd, char *SystemCmd, int len);
 extern void do_feedback_mail_cgi(char *url, FILE *stream);
 extern void do_dfb_log_file(char *url, FILE *stream);

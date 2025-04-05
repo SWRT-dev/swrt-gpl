@@ -481,12 +481,6 @@ config SWRT_FULLCONE
 	help
 	  Porting from broadcom.
 
-config SWRT_FULLCONEV2
-	tristate "new fullcone support"
-	depends on !SWRT_FULLCONE
-	help
-	  Porting from broadcom.
-
 if NF_TABLES
 
 config NF_TABLES_SET

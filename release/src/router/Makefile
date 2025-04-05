@@ -737,12 +737,13 @@ endif
 ifeq ($(RTCONFIG_QCA),y)
 ifneq ($(PLATFORM_ROUTER),)
 HOSTAPD_PKG:=$(PLATFORM_ROUTER)/qca-hostap
-QCA_HOSTAPD_DIR:=$(SRCBASE)/$(HOSTAPD_PKG)
+PLATFORM_HOSTAPD_DIR:=$(SRCBASE)/$(HOSTAPD_PKG)
 endif
 else
 HOSTAPD_PKG:=hostapd-2.6
-QCA_HOSTAPD_DIR:=$(TOP)/$(HOSTAPD_PKG)
+PLATFORM_HOSTAPD_DIR:=$(TOP)/$(HOSTAPD_PKG)
 endif
+export PLATFORM_HOSTAPD_DIR
 
 ifneq ($(MTWANIF),)
 CFLAGS += -DMAX_MULTI_WAN_NUM=$(MTWANIF)
@@ -881,7 +882,11 @@ ifeq ($(RTCONFIG_RALINK),y)
 # Ralink/MTK-specific packages
 #################################################################################
 obj-y += wireless_tools$(WTOOL_SUFFIX)
-obj-$(RTCONFIG_SWRTMESH) += hostapd-mtk wireless-regdb
+ifeq ($(RTCONFIG_SWRTMESH),y)
+ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_RALINK_MT7621)),y)
+obj-y += hostapd-mtk wireless-regdb
+endif
+endif
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
 obj-y += flash
 endif
@@ -897,7 +902,7 @@ obj-y += libnl-tiny-0.1
 obj-y += libubox
 obj-y += libuci
 obj-y += swconfig
-else ifeq ($(RTCONFIG_MT798X),y)
+else ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X)),y)
 obj-y += libnl-tiny-0.1
 obj-y += libubox
 obj-y += libuci
@@ -1286,11 +1291,11 @@ ifeq ($(RTCONFIG_NTFS),y)
 ifeq ($(RTCONFIG_OPEN_NTFS3G_2016),y)
 obj-$(RTCONFIG_OPEN_NTFS3G) += ntfs-3g-2016.2.22
 else
-obj-$(RTCONFIG_OPEN_NTFS3G) += ntfs-3g
+obj-$(or $(RTCONFIG_OPEN_NTFS3G),$(RTCONFIG_KERNEL_NTFS3)) += ntfs-3g
 endif
 obj-$(RTCONFIG_PARAGON_NTFS) += ufsd
 obj-$(RTCONFIG_TUXERA_NTFS) += tuxera
-obj-$(RTCONFIG_NTFS3) += ntfs3
+obj-$(RTCONFIG_KERNEL_NTFS3) += ntfs3
 endif
 ifeq ($(RTCONFIG_HFS),y)
 obj-$(RTCONFIG_PARAGON_HFS) += ufsd
@@ -1408,11 +1413,7 @@ obj-$(RTCONFIG_WTFAST) += wtfast
 #obj-$(RTCONFIG_ZEBRA) += zebra
 obj-$(RTCONFIG_QUAGGA) += quagga
 #obj-$(RTCONFIG_IPP2P) += ipp2p
-ifeq ($(or $(RTCONFIG_LANTIQ),$(RTCONFIG_RALINK),$(RTCONFIG_BCMARM),$(RTCONFIG_QCA)),y)
 LZO_VER := -2.10
-else
-LZO_VER :=
-endif
 obj-$(RTCONFIG_LZO) += lzo$(LZO_VER)
 obj-$(RTCONFIG_OPENVPN) += lz4
 obj-$(RTCONFIG_OPENVPN) += openpam
@@ -1486,7 +1487,11 @@ ifneq ($(or $(RTN56U),$(DSLN55U)),y)
 obj-y += phddns
 endif
 
+ifeq ($(RTCONFIG_MUSL_LIBC),y)
+obj-$(RTCONFIG_STRACE) += strace-4.8
+else
 obj-$(RTCONFIG_STRACE) += strace
+endif
 
 obj-n += lsof
 obj-$(RTCONFIG_IPERF) += iperf
@@ -1507,9 +1512,7 @@ obj-$(UBI) += mtd-utils
 obj-$(UBIFS) += mtd-utils
 obj-$(UBIFS) += e2fsprogs lzo$(LZO_VER) zlib
 ifeq ($(RTCONFIG_RALINK),y)
-obj-$(RA_SKU) += ra_SingleSKU
-obj-$(RA_SKU_IN_DRV) += ra_SingleSKU
-obj-$(MT798X) += ra_SingleSKU
+obj-y += ra_SingleSKU
 endif
 
 ifeq ($(HND_ROUTER),y)
@@ -1832,7 +1835,7 @@ ifneq ($(RTCONFIG_BCMARM),y)
 kernel_header: $(LINUXDIR)/.config
 	$(MAKE) -C $(LINUXDIR) ARCH=$(ARCH) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) headers_install INSTALL_HDR_PATH=$(TOP)/$@
 ifeq ($(RTCONFIG_RALINK),y)
-ifeq ($(MT798X),y)
+ifeq ($(or $(MT798X),$(MT799X)),y)
 	mkdir -p $@/include/uapi
 	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 else
@@ -1868,7 +1871,7 @@ kernel: $(LINUXDIR)/.config
 	$(SEP)
 
 ifneq ($(RTCONFIG_BCMARM),y)
-ifeq ($(RTCONFIG_MT798X),y)
+ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X)),y)
 	$(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) vmlinux CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) CC=$(KERNELCC) LD=$(KERNELLD)
 	if grep -q "CONFIG_MODULES=y" $(LINUXDIR)/.config ; then \
 	    $(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) modules CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) CC=$(KERNELCC) LD=$(KERNELLD); \
@@ -2116,7 +2119,7 @@ endif # RTCONFIG_BCMARM
 
 ifeq ($(RTCONFIG_RALINK),y)
 else ifeq ($(RTCONFIG_QCA),y)
-else ifeq ($(RTCONFIG_MT798X),y)
+else ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X)),y)
 else ifneq ($(RTCONFIG_BCMARM),y)
 lzma-loader:
 	@[ ! -d $(SRCBASE)/lzma-loader ] || \
@@ -2391,7 +2394,9 @@ else ifeq ($(MUSL_LIBC),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libc.so.0
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libcrypt.so.0
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libpthread.so.0
-ifeq ($(RTCONFIG_MT798X),y)
+ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X)),y)
+	install -D $(shell dirname $(shell which $(CXX)))/../lib/libstdc++.so.6 $(TARGETDIR)/lib/libstdc++.so.6
+	$(STRIP) $(TARGETDIR)/lib/libstdc++.so.6
 	$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1
 	$(STRIP) $(TARGETDIR)/lib/libc.so
 	cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-aarch64.so.1
@@ -2407,7 +2412,7 @@ endif
 	@mkdir -p $(TARGETDIR)/rom/etc/wireless/mediatek
 ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_WLMODULE_MT7915D_AP)),y)
 #	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7621/MT7915/* $(TARGETDIR)/rom/etc/wireless/mediatek/
-else ifeq ($(RTCONFIG_MT798X),y)
+else ifeq  ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X)),y)
 	# TBD.
 else ifeq ($(RTCONFIG_RALINK_MT7629),y)
 	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7629/* $(TARGETDIR)/rom/etc/wireless/mediatek/
@@ -2461,11 +2466,16 @@ ifeq ($(MUSL64),y)
 	cd $(TARGETDIR)/lib && \
 		ln -sf libc.so ld-musl-aarch64.so.1
 else
+ifeq ($(IPQ53XX),y)
+	cd $(TARGETDIR)/lib && \
+		ln -sf libc.so ld-musl-armhf.so.1
+else
 	cd $(TARGETDIR)/lib && \
 		ln -sf libc.so ld-musl-arm.so.1
 endif
+endif
 	install $(LIBDIR)/libc.so $(TARGETDIR)/lib/
-	$(STRIP) $(TARGETDIR)/lib/libc.so
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGETDIR)/lib/libc.so)
 else
 	install $(LIBDIR)/ld-uClibc.so.[01] $(TARGETDIR)/lib/
 	install $(LIBDIR)/libcrypt.so.[01] $(TARGETDIR)/lib/
@@ -2515,7 +2525,7 @@ endif
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 	#FIXME
-else ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_RALINK_MT7621),$(RTCONFIG_MT798X),$(RTCONFIG_RALINK_EN7561)),y)
+else ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_RALINK_MT7621),$(RTCONFIG_MT798X),$(RTCONFIG_MT799X),$(RTCONFIG_RALINK_EN7561)),y)
 	# do nothibg #
 else ifeq ($(or $(RTACRH18),$(RT4GAC86U)),y)
 	install -D zlib/libz.so.1 $(TARGETDIR)/usr/lib/
@@ -3372,7 +3382,7 @@ openssl-1.1/Makefile:
 	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O3) \
 	$(if $(RTCONFIG_DEBUG),-g) \
 	-ffunction-sections -fdata-sections -Wl,--gc-sections \
-	shared $(OPENSSL_CIPHERS) --api=1.0.0 \
+	shared $(OPENSSL_CIPHERS) no-async --api=1.0.0 \
 	    no-aria no-sm2 no-sm3 no-sm4 \
 	    $(if $(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),enable-devcryptoeng -I$(TOP)/cryptodev-linux/src) \
 	    --with-rand-seed=devrandom \
@@ -3411,7 +3421,7 @@ openssl-3.0.11/Makefile:
 	./Configure $(HOSTCONFIG)-swrt --prefix=/usr --openssldir=/etc --cross-compile-prefix=' ' \
 	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O3) \
 	-ffunction-sections -fdata-sections -Wl,--gc-sections \
-	shared $(OPENSSL_CIPHERS) --api=1.0.0 \
+	shared $(OPENSSL_CIPHERS) no-async --api=1.0.0 \
 	    no-aria no-sm2 no-sm3 no-sm4 \
 	    $(if $(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),enable-devcryptoeng -I$(TOP)/cryptodev-linux/src) \
 	    $(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
@@ -4293,7 +4303,7 @@ ntfs-3g-2016.2.22-install: ntfs-3g-2016.2.22
 	install -d $(INSTALLDIR)/ntfs-3g-2016.2.22/sbin && cd $(INSTALLDIR)/ntfs-3g-2016.2.22/sbin && \
 		ln -sf ../bin/ntfs-3g mount.ntfs-3g && \
 		ln -sf ../bin/ntfs-3g mount.ntfs
-ifeq ($(RTCONFIG_NTFS3),y)
+ifeq ($(RTCONFIG_KERNEL_NTFS3),y)
 	install -D ntfs-3g-2016.2.22/ntfsprogs/mkntfs $(INSTALLDIR)/ntfs-3g-2016.2.22/bin/mkntfs
 	install -D ntfs-3g-2016.2.22/ntfsprogs/ntfscluster $(INSTALLDIR)/ntfs-3g-2016.2.22/bin/ntfscluster
 	install -D ntfs-3g-2016.2.22/ntfsprogs/ntfsinfo $(INSTALLDIR)/ntfs-3g-2016.2.22/bin/ntfsinfo
@@ -4328,6 +4338,18 @@ ntfs-3g-install: ntfs-3g
 	install -d $(INSTALLDIR)/ntfs-3g/sbin && cd $(INSTALLDIR)/ntfs-3g/sbin && \
 		ln -sf ../bin/ntfs-3g mount.ntfs-3g && \
 		ln -sf ../bin/ntfs-3g mount.ntfs
+ifeq ($(RTCONFIG_KERNEL_NTFS3),y)
+	install -D ntfs-3g/ntfsprogs/mkntfs $(INSTALLDIR)/ntfs-3g/bin/mkntfs
+	install -D ntfs-3g/ntfsprogs/ntfscluster $(INSTALLDIR)/ntfs-3g/bin/ntfscluster
+	install -D ntfs-3g/ntfsprogs/ntfsinfo $(INSTALLDIR)/ntfs-3g/bin/ntfsinfo
+	install -D ntfs-3g/ntfsprogs/ntfslabel $(INSTALLDIR)/ntfs-3g/bin/ntfslabel
+	install -D ntfs-3g/ntfsprogs/ntfsfix $(INSTALLDIR)/ntfs-3g/bin/ntfsfix
+	$(STRIP) -s $(INSTALLDIR)/ntfs-3g/bin/mkntfs
+	$(STRIP) -s $(INSTALLDIR)/ntfs-3g/bin/ntfscluster
+	$(STRIP) -s $(INSTALLDIR)/ntfs-3g/bin/ntfsinfo
+	$(STRIP) -s $(INSTALLDIR)/ntfs-3g/bin/ntfslabel
+	$(STRIP) -s $(INSTALLDIR)/ntfs-3g/bin/ntfsfix
+endif
 
 linux-ntfs-2.0.0/stamp-h1:
 	cd linux-ntfs-2.0.0 && \
@@ -4636,7 +4658,7 @@ endif
 endif
 
 6relayd: 6relayd/Makefile
-	@EXT_CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -fPIC" \
+	@EXT_CFLAGS="-Os -Wall $(EXTRACFLAGS) -ffunction-sections -fdata-sections -fPIC -DASUSWRT" \
 	EXT_LDFLAGS="-ffunction-sections -fdata-sections -Wl,--gc-sections" \
 	PREFIX="/usr" \
 	$(MAKE) -C 6relayd
@@ -5241,15 +5263,15 @@ libev-4.33-clean:
 nfcm/stamp-h1:
 	touch $@
 
-nfcm: nfcm/stamp-h1 libev-4.33 sqlite3 json-c libnfnetlink-1.0.1 libmnl-1.0.4 libnetfilter_conntrack-1.0.7 $(if $(HND_ROUTER),ethswctl_lib,)
+nfcm: nfcm/stamp-h1 libev-4.33 sqlite3 json-c libnfnetlink-1.0.1 libmnl-1.0.4 libnetfilter_conntrack-1.0.7 $(if $(HND_ROUTER),ethswctl_lib,) $(if $(QCA),$(PLATFORM_ROUTER)/qca-ssdk-shell)
 	@$(SEP)
-	@$(MAKE) -C nfcm CC=$(CC) QCA=$(if $(QCA),y,n) HND=$(if $(HND_ROUTER),y,n) AX=$(if $(RTCONFIG_HND_ROUTER_AX),y,n)
+	@$(MAKE) -C nfcm CC=$(CC) QCA=$(if $(QCA),y,n) MODEL=$(MODEL) HND=$(if $(HND_ROUTER),y,n) AX=$(if $(RTCONFIG_HND_ROUTER_AX),y,n)
 
 nfcm-install: nfcm
 	@echo INSTALLDIR=$(INSTALLDIR)
 	install -D nfcm/nfcm $(INSTALLDIR)/$</usr/bin/nfcm
 
-nfcm-clean:
+nfcm-clean: bridge-utils-clean
 	@$(SEP)
 	@$(MAKE) -C nfcm clean QCA=$(if $(QCA),y,n) HND=$(if $(HND_ROUTER),y,n)
 	rm -rf nfcm/stamp-h1
@@ -5391,6 +5413,10 @@ libbcm:
 libbcm-install:
 	install -D libbcm/libbcm.so $(INSTALLDIR)/libbcm/usr/lib/libbcm.so
 	$(STRIP) $(INSTALLDIR)/libbcm/usr/lib/libbcm.so
+
+strace-4.8-install:
+	install -D strace-4.8/strace $(INSTALLDIR)/strace-4.8/usr/sbin/strace
+	$(STRIP) $(INSTALLDIR)/strace-4.8/usr/sbin/strace
 
 lldpd-0.9.8: $(if $(RTCONFIG_AMAS),json-c libevent-2.0.21) jansson-2.7 lldpd-0.9.8/Makefile
 	$(MAKE) -C $@
@@ -6772,7 +6798,7 @@ easy-rsa-install:
 openvpn/dh2048.pem:
 	openssl dhparam -dsaparam -out $@ 2048
 
-openvpn: shared $(if $(BCM_502L07P2),ethctl_lib) openssl lzo$(LZO_VER) libcap-ng openpam zlib openvpn/Makefile openvpn/dh2048.pem
+openvpn: shared openssl lzo$(LZO_VER) libcap-ng openpam zlib openvpn/Makefile openvpn/dh2048.pem
 	$(MAKE) $(PARALLEL_BUILD) -C $@
 
 openvpn/Makefile:
@@ -6793,10 +6819,10 @@ openvpn/Makefile:
 			-Wl,--gc-sections \
 			-lpthread -ldl \
 			-L$(TOP)/zlib -lz" \
-		IPROUTE="/usr/sbin/ip" \
+		IPROUTE="/usr/sbin/ip" IFCONFIG="/sbin/ifconfig" ROUTE="/sbin/route" \
 		$(CONFIGURE) --prefix=/usr --bindir=/usr/sbin --libdir=/usr/lib \
 			--disable-debug --enable-management --disable-small \
-			--disable-selinux --disable-dco \
+			--disable-selinux --disable-dco --disable-socks --enable-password-save \
 			--enable-plugin-auth-pam \
 			ac_cv_lib_resolv_gethostbyname=no \
 			--enable-iproute2 \
@@ -8154,7 +8180,7 @@ lm-sensors-master:
 
 AQIS = --enable-extaqis
 
-ifeq ($(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(MT798X)),y)
+ifeq ($(or $(HND_ROUTER_AX_6756),$(HND_ROUTER_BE_4916),$(MT798X),$(MT799X)),y)
 BLUEZ_5.56_LDFLAGS_EXT := -lncurses
 else
 BLUEZ_5.56_LDFLAGS_EXT :=
@@ -8176,6 +8202,8 @@ ifeq ($(wildcard bluez-5.56/prebuild),)
 			-L$(STAGEDIR)/usr/local/lib \
 			-lglib-2.0 -lical -licalvcal \
 			-L$(TOP)/openssl -lssl -lcrypto \
+			-L$(TOP)/libdisk -ldisk \
+			-L$(TOP)/libwebapi -lwebapi \
 			-L$(TOP_PLATFORM)/nvram$(BCMEX) -L$(TOP)/nvram -L$(INSTALLDIR)/nvram/usr/lib -lnvram \
 			$(EXTRA_NV_LDFLAGS) \
 			-L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared $(if $(BCM_502L07P2),-L$(TOP_PLATFORM)/ethctl_lib -lethctl) \
@@ -8318,7 +8346,7 @@ udev-173-install: udev-173
 		ln -sf libudev.so.0.12.0 libudev.so.0 && \
 		ln -sf libudev.so.0.12.0 libudev.so
 
-ifeq ($(MT798X),y)
+ifeq ($(or $(MT798X),$(MT799X)),y)
 LIBICAL_EXTRA_LINK = -lstdc++
 endif
 libical-2.0.0/Makefile: libical-2.0.0/CMakeLists.txt
@@ -8777,7 +8805,7 @@ dnsqd-install:
 dnsqd-clean:
 	cd dnsqd && make clean
 
-libnetfilter_queue: libnfnetlink-$(NETLINK_LIB_VER) ibmnl-1.0.4 libnetfilter_queue/Makefile
+libnetfilter_queue: libnfnetlink-$(NETLINK_LIB_VER) libmnl-1.0.4 libnetfilter_queue/Makefile
 	$(MAKE) -C libnetfilter_queue
 
 libnetfilter_queue/Makefile:
@@ -8908,7 +8936,7 @@ wlceventd: $(if $(RTCONFIG_NOTIFICATION_CENTER),nt_center sqlite,)
 
 hapdevent: $(if $(HOSTAPD_PKG), $(HOSTAPD_PKG))
 #$(if $(RTCONFIG_NOTIFICATION_CENTER),nt_center sqlite,) $(HOSTAPD_PKG)
-	$(MAKE) -C $@ $(if $(QCA_HOSTAPD_DIR),QCA_HOSTAPD_DIR=$(QCA_HOSTAPD_DIR))
+	$(MAKE) -C $@ $(if $(PLATFORM_HOSTAPD_DIR),PLATFORM_HOSTAPD_DIR=$(PLATFORM_HOSTAPD_DIR))
 
 iwevent: $(if $(RTCONFIG_NOTIFICATION_CENTER),nt_center sqlite,)
 
@@ -10208,3 +10236,4 @@ $(obj-y) $(obj-n) $(obj-clean) $(obj-install): dummy
 .PHONY: all clean distclean mrproper install package image
 .PHONY: conf mconf oldconf kconf kmconf config menuconfig oldconfig
 .PHONY: dummy libnet libpcap
+

@@ -1260,9 +1260,6 @@ function get_layer_items(layer_order){
 	$.ajax({
     		url: '/gettree.asp?layer_order='+layer_order,
     		dataType: 'script',
-    		error: function(xhr){
-    			;
-    		},
     		success: function(){
 				get_tree_items(treeitems);					
   			}
@@ -1808,7 +1805,7 @@ function onDropBoxLogin(_parm){
 							</tr>	
 						<tr style="display:none;">
 							<th width="30%" style="font-family: Calibri;font-weight: bolder;">
-								<#Server_Name#>	<!-- Server Name -->
+								<#Server_Name#>
 							</th>			
 							<td>
 							  <input type="text" class="input_32_table" maxlength="32" style="height: 23px;" id="sambaclient_name" name="sambaclient_name" autocorrect="off" autocapitalize="off">
@@ -1835,7 +1832,7 @@ function onDropBoxLogin(_parm){
 
 						<tr style="display:none;">
 							<th width="30%" style="font-family: Calibri;font-weight: bolder;">
-								Server Name
+								<#Server_Name#>
 							</th>			
 							<td>
 							  <input type="text" class="input_32_table" maxlength="32" style="height: 23px;" id="usbclient_name" name="usbclient_name" autocorrect="off" autocapitalize="off">

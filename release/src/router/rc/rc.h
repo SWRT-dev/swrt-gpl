@@ -768,6 +768,14 @@ extern void ralink_hostapd_start(void);
 extern void ralink_hostapd_stop(void);
 extern void gen_ralink_wifi_cfgs(void);
 #endif
+#if defined(RTCONFIG_NL80211)
+extern char *getWscStatus_enrollee(int unit, char *buf, int buflen);
+extern char *getWscStatus(char *ifname, char *buf, int buflen);
+extern int create_tmp_aif(char *aif, char *ssid_prefix);
+extern void destroy_tmp_aif(char *aif, int kill);
+extern void raX_hostapd(int start);
+extern void apcliX_wpa_supplicant(int start);
+#endif
 #endif	/* RTCONFIG_RALINK */
 
 /* board API under sysdeps/XXX/XXX.c */
@@ -840,6 +848,7 @@ extern int dis_steer(void);
  || defined(RTCONFIG_WIFI_QCA9994_QCA9994) \
  || defined(RTCONFIG_WIFI_QCN5024_QCN5054) \
  || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX) \
  || defined(RTCONFIG_QCA_AXCHIP) \
  || defined(RTCONFIG_PCIE_AR9888) || defined(RTCONFIG_PCIE_QCA9888) \
  || defined(RTCONFIG_SOC_IPQ40XX)
@@ -847,7 +856,7 @@ extern void Set_Qcmbr(const char *value);
 extern void Get_BData_X(const char *command);
 extern int start_thermald(void);
 #endif
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX) \
  || defined(RTCONFIG_QCA_AXCHIP)
 extern void Set_Ftm(const char *value);
 #endif
@@ -1638,6 +1647,7 @@ extern void update_lan_state(int state, int reason);
 extern void set_et_qos_mode(void);
 extern void start_wl(void);
 extern void stop_wl(void);
+extern int add_lan_routes(char *lan_ifname);
 #if defined(RTCONFIG_QCA)||defined(RTCONFIG_RALINK)
 extern char *get_hwaddr(const char *ifname);
 #endif
@@ -1762,9 +1772,11 @@ extern int pc_main(int argc, char *argv[]);
 // pc_block.c
 #ifdef RTCONFIG_PARENTALCTRL
 extern int pc_block_main(int argc, char *argv[]);
-extern void config_blocking_redirect(FILE *fp);
+extern void config_blocking_redirect(FILE *fp, char *lan_if);
 #ifdef RTCONFIG_PC_REWARD
-extern void config_pc_reward_redirect(FILE *fp);
+#ifdef RTCONFIG_MULTILAN_CFG
+extern void handle_sdn_config_pc_reward_redirect(FILE *fp);
+#endif
 extern int is_in_pc_reward_period(char *mac);
 #endif
 #ifdef RTCONFIG_ISP_OPTUS
@@ -1807,6 +1819,7 @@ extern int start_pppoe_relay(char *wan_if);
 extern void stop_pppoe_relay(void);
 
 /* re_wpsc.c */
+#define REWPSC_PID_FILE	"/var/run/re_wpsc.pid"
 extern int mtk_set_wps_result(int n, char *wif);
 
 // roamst.c
@@ -2018,6 +2031,10 @@ extern void erase_nvram(void);
 extern int init_toggle(void);
 extern void btn_check(void);
 extern int watchdog_main(int argc, char *argv[]);
+#ifdef RTCONFIG_IP808AR
+extern int poemon_main(int argc, char *argv[]);
+extern int poeInit_main(int argc, char *argv[]);
+#endif
 #ifdef RTCONFIG_CONNTRACK
 extern int pctime_main(int argc, char *argv[]);
 #endif
@@ -2311,6 +2328,12 @@ extern void remove_pool_error(const char *device, const char *flag);
 #endif
 extern int diskremove_main(int argc, char *argv[]);
 
+#if defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
+extern int chgntfsdrv_main(int argc, char *argv[]);
+#else
+static inline int chgntfsdrv_main(int argc, char *argv[]) { return 0; }
+#endif
+
 #ifdef RTCONFIG_CIFS
 extern void start_cifs(void);
 extern void stop_cifs(void);
@@ -2532,7 +2555,8 @@ extern void stop_ipv6_tunnel(void);
 #define S46_LOG_PATH	"/jffs/s46.log"
 #define S46_RETRY_TIME	3
 enum S46_SVRURL_TYPE {
-	GET_NTT_HGW_URL			= 0,
+	GET_JPIX_HGW_URL		= 0,
+	GET_BIGLOB_HGW_URL,
 	GET_V6PLUS_URL,
 	SET_V6PLUS_URL,
 	GET_OCNVC_URL
@@ -2567,9 +2591,10 @@ extern void restart_ocnvcd(int unit);
 extern void start_dslited(int unit);
 extern void stop_dslited(int unit);
 extern void restart_dslited(int unit);
-extern void start_auto46det(void);
+extern void start_auto46det(int mode, int force);
 extern void stop_auto46det(void);
 //s46comm.c
+extern void _restart_wan_if(const int unit);
 extern void s46print(const char *logpath, const char *format, ...);
 #define S46_DBG(fmt, args...) \
 	do { \
@@ -2591,12 +2616,12 @@ extern void fmrs2file(int unit);
 extern void init_wan46(void);
 // v6plusd.c
 #define V6PLUSD_PIDFILE "/var/run/v6plusd.%d.pid"
-extern char *s46_jpne_maprules(char *id, char *idbuf, size_t idlen, long *rsp_code);
+extern char *get_jpix_map(const int wan_unit, char *id, char *idbuf, size_t idlen, long *rsp_code);
 extern int check_v6plusd(int unit);
 extern int v6plusd_main(int argc, char **argv);
 // ocnvcd.c
 #define OCNVCD_PIDFILE "/var/run/ocnvcd.%d.pid"
-extern char *s46_ocn_maprules(char *v6perfix, int prefixlen, long *rsp_code);
+extern char *get_ocn_map(const int wan_unit, char *v6perfix, int prefixlen, long *rsp_code);
 extern int check_ocnvcd(int unit);
 extern int ocnvcd_main(int argc, char **argv);
 // dslited.c
@@ -2717,6 +2742,7 @@ extern int prepare_cert_in_etc(void);
 #else
 static inline int prepare_cert_in_etc(void) { return 0; }
 #endif
+extern void restart_qos_if_bwlim_enabled(void);
 extern void handle_notifications(void);
 #ifdef RTL_WTDOG
 extern void stop_rtl_watchdog(void);
@@ -3755,6 +3781,12 @@ extern void start_uu();
 extern void stop_uu();
 extern void exec_uu();
 #endif
+#if defined(RTCONFIG_MTK_BSD)
+#define BSD_LOG "/tmp/mtk_mapd.log"
+#define WAPP_LOG "/tmp/mtk_wapp.log"
+#define BSD_PATH "/etc/mapd_strng.conf"
+extern int gen_bsd_config_file(void);
+#endif
 
 #if defined(RTCONFIG_QCA_LBD)
 #define LBD_PATH "/tmp/lbd.conf"
@@ -3835,7 +3867,7 @@ static inline int asus_ctrl_sku_write(char *asusctrl_sku) { return 0; }
 extern void asus_ctrl_sku_check();
 extern void asus_ctrl_sku_update();
 extern void fix_location_code(void);
-extern int asus_ctrl_nv(char *asusctrl);
+extern int asus_ctrl_nv(char *asusctrl, int do_rc);
 extern int asus_ctrl_nv_restore();
 extern int setting_SG_mode_wps();
 #endif
@@ -4054,12 +4086,14 @@ extern int get_wisp_status(void);
 #endif
 
 #if defined(RTCONFIG_NVSW_IN_JFFS)
-int nvsw_switching(int *outval);
+void nvsw_destroy(void);
+void nvsw_move(int toram);
+int nvsw_switching(int *outval, int restore_default);
 int nvsw_set(unsigned char idx, unsigned char btnsw_meaning);
 int nvsw_cfg_get(unsigned char *target_idx, unsigned char *max_idx, unsigned char *btnsw_meaning);
 int nvsw_clone_nvimg(unsigned char idx, char *comment);
 int nvsw_def_nvimg(unsigned char idx, char *comment);
-int nvsw_get_comment(unsigned char idx, char *buf, int buf_len);
+int nvsw_get_info(unsigned char idx, char *comment_buf, int comment_len, unsigned char *args, int args_len);
 int nvsw_statuslog_clear(void);
 int nvsw_cmd(int argc, char **argv);
 #endif

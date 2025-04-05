@@ -17,6 +17,35 @@
 #define MTK_ENABLE     1
 #define MTK_PULLDOWN   0
 #define MTK_PULLUP     1
+#define MTK_PULL_PU_PD_TYPE		BIT(0)
+#define MTK_PULL_PULLSEL_TYPE		BIT(1)
+#define MTK_PULL_PUPD_R1R0_TYPE 	BIT(2)
+/* MTK_PULL_RSEL_TYPE can select resistance and can be
+ * turned on/off itself. But it can't be selected pull up/down
+ */
+#define MTK_PULL_RSEL_TYPE		BIT(3)
+#define MTK_PULL_PD_TYPE        BIT(4)
+/* MTK_PULL_PU_PD_RSEL_TYPE is a type which is controlled by
+ * MTK_PULL_PU_PD_TYPE and MTK_PULL_RSEL_TYPE.
+ */
+#define MTK_PULL_PU_PD_RSEL_TYPE	(MTK_PULL_PU_PD_TYPE \
+					| MTK_PULL_RSEL_TYPE)
+#define MTK_PULL_TYPE_MASK	(MTK_PULL_PU_PD_TYPE |\
+				 MTK_PULL_PULLSEL_TYPE |\
+				 MTK_PULL_PUPD_R1R0_TYPE |\
+				 MTK_PULL_RSEL_TYPE)
+#define MTK_PUPD_SET_R1R0_00 100
+#define MTK_PUPD_SET_R1R0_01 101
+#define MTK_PUPD_SET_R1R0_10 102
+#define MTK_PUPD_SET_R1R0_11 103
+#define MTK_PULL_SET_RSEL_000  200
+#define MTK_PULL_SET_RSEL_001  201
+#define MTK_PULL_SET_RSEL_010  202
+#define MTK_PULL_SET_RSEL_011  203
+#define MTK_PULL_SET_RSEL_100  204
+#define MTK_PULL_SET_RSEL_101  205
+#define MTK_PULL_SET_RSEL_110  206
+#define MTK_PULL_SET_RSEL_111  207
 
 #define EINT_NA	U16_MAX
 #define NO_EINT_SUPPORT	EINT_NA
@@ -66,6 +95,8 @@ enum {
 	PINCTRL_PIN_REG_DRV_EN,
 	PINCTRL_PIN_REG_DRV_E0,
 	PINCTRL_PIN_REG_DRV_E1,
+	PINCTRL_PIN_REG_DRV_ADV,
+	PINCTRL_PIN_REG_RSEL,
 	PINCTRL_PIN_REG_MAX,
 };
 
@@ -99,6 +130,22 @@ struct mtk_pin_field {
 	u32 mask;
 	u8  bitpos;
 	u8  next;
+};
+
+/**
+ * struct mtk_pin_rsel - the structure that provides bias resistance selection.
+ * @s_pin:		the start pin within the rsel range
+ * @e_pin:		the end pin within the rsel range
+ * @rsel_index:	the rsel bias resistance index
+ * @up_rsel:	the pullup rsel bias resistance value
+ * @down_rsel:	the pulldown rsel bias resistance value
+ */
+struct mtk_pin_rsel {
+	u16 s_pin;
+	u16 e_pin;
+	u16 rsel_index;
+	u32 up_rsel;
+	u32 down_rsel;
 };
 
 /* struct mtk_pin_field_calc - the structure that holds the range providing
@@ -205,6 +252,9 @@ struct mtk_pin_soc {
 	bool				ies_present;
 	const char * const		*base_names;
 	unsigned int			nbase_names;
+    	const unsigned int		*pull_type;
+	const struct mtk_pin_rsel	*pin_rsel;
+	unsigned int			npin_rsel;
 
 	/* Specific pinconfig operations */
 	int (*bias_disable_set)(struct mtk_pinctrl *hw,
@@ -215,7 +265,10 @@ struct mtk_pin_soc {
 			const struct mtk_pin_desc *desc, bool pullup);
 	int (*bias_get)(struct mtk_pinctrl *hw,
 			const struct mtk_pin_desc *desc, bool pullup, int *res);
-
+	int (*bias_set_combo)(struct mtk_pinctrl *hw,
+			      const struct mtk_pin_desc *desc, u32 pullup, u32 arg);
+	int (*bias_get_combo)(struct mtk_pinctrl *hw,
+			      const struct mtk_pin_desc *desc, u32 *pullup, u32 *arg);
 	int (*drive_set)(struct mtk_pinctrl *hw,
 			 const struct mtk_pin_desc *desc, u32 arg);
 	int (*drive_get)(struct mtk_pinctrl *hw,
@@ -246,6 +299,10 @@ struct mtk_pinctrl {
 	struct mtk_eint			*eint;
 	struct mtk_pinctrl_group	*groups;
 	const char          **grp_names;
+	/* lock pin's register resource to avoid multiple threads issue*/
+	spinlock_t lock;
+	/* identify rsel setting by si unit or rsel define in dts node */
+	bool rsel_si_unit;
 };
 
 void mtk_rmw(struct mtk_pinctrl *pctl, u8 i, u32 reg, u32 mask, u32 set);
@@ -282,7 +339,12 @@ int mtk_pinconf_drive_set(struct mtk_pinctrl *hw,
 			  const struct mtk_pin_desc *desc, u32 arg);
 int mtk_pinconf_drive_get(struct mtk_pinctrl *hw,
 			  const struct mtk_pin_desc *desc, int *val);
-
+int mtk_pinconf_bias_set_combo(struct mtk_pinctrl *hw,
+			       const struct mtk_pin_desc *desc,
+			       u32 pullup, u32 enable);
+int mtk_pinconf_bias_get_combo(struct mtk_pinctrl *hw,
+			       const struct mtk_pin_desc *desc,
+			       u32 *pullup, u32 *enable);
 int mtk_pinconf_drive_set_rev1(struct mtk_pinctrl *hw,
 			       const struct mtk_pin_desc *desc, u32 arg);
 int mtk_pinconf_drive_get_rev1(struct mtk_pinctrl *hw,

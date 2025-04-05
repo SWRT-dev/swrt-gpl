@@ -21,6 +21,9 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+#include <sys/sysmacros.h>
+#endif
 #include <wlutils.h>
 #include <bcmdevs.h>
 #include <shared.h>
@@ -113,9 +116,35 @@ void init_others(void)
 		mount("overlay", "/www/images", "overlay", MS_MGC_VAL, "lowerdir=/TX-AX6000/images:/www/images");
 	}
 #endif
-	if (nvram_match("lacp_enabled", "1") && f_exists("/sys/kernel/no_dsa_offload"))
+	if (nvram_match("lacp_enabled", "1"))
+#if defined(GS7)
+		f_write_string("/sys/kernel/debug/mxl862xx/disable_offload_fwd_mark", "1", 0, 0);
+#else
 		f_write_string("/sys/kernel/no_dsa_offload", "1", 0, 0);
+#endif
 	nvram_unset("wifidat_dbg");
+#if defined(RTCONFIG_MT799X)
+#if defined(GS7)
+	/* initialization: used to improve PPPoE bidirectional throughput */
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=72", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=73", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=74", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=75", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=76", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=77", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=78", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperQueueAssign", "nQueueId=79", "nRateShaperId=17");
+	eval("fapi-GSW-QoS-ShaperCfgSet", "nRateShaperId=17", "bEnable=0", "nCbs=0x8000", "nRate=2450000");
+
+	/* let mxl862xx receive LLDP packets for AiMesh */
+	eval("fapi-GSW-PceRuleDisable", "pattern.nIndex=12");
+	/* let mxl862xx receive EtherType 0x8809 for 802.3ad */
+	if ((sw_mode() == SW_MODE_ROUTER && bond_wan_enabled())
+	 || nvram_match("lacp_enabled", "1"))
+		eval("fapi-GSW-PceRuleDisable", "pattern.nIndex=13");
+#endif
+	modprobe("crypto_safexcel");
+#endif
 }
 
 int is_if_up(char *ifname)
@@ -752,7 +781,7 @@ void config_switch()
 				__setup_vlan(2, 0, 0x00000210);
 				__setup_vlan(3, 0, 0x00000210);
 #endif
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 				/* IPTV tag only NIC */
 				//doSystem("echo 1 > /sys/class/net/%s/vlan_only", nvram_safe_get("wan0_gw_ifname"));
 				doSystem("echo 1 > /sys/class/net/%s/vlan_only", "eth1");
@@ -1049,6 +1078,8 @@ void wan_force_link_sp(int unit)
 	port = 6;
 #elif defined(RTAX59U) || defined(RTAX52)
 	port = 1;
+#elif defined(RTAX57M)
+	port = 4;
 #elif defined(PRTAX57_GO)
 	port = 0;
 #elif defined(RMAX6000) || defined(SWRT360T7)
@@ -1132,27 +1163,160 @@ switch_exist(void)
 	return (ret == 0);
 }
 
+struct tcode_sku_tbl_t {
+	char *tcode;
+	char *regspec;
+};
+
+static const struct tcode_sku_tbl_t tcode_sku_tbl[] = {
+	{ "EU", "CE" },
+	{ "UK", "CE" },
+	{ "CA", "IC" },
+	{ "CN", "CN" },
+	{ "JP", "JP" },
+	{ "KR", "KCC" },
+
+	{ NULL, NULL }	// END
+};
+
+void convert_tcode_to_regspec(char *regspec)
+{
+	char tcode[8];
+	int i;
+	if(regspec == NULL)
+		return;
+
+	strlcpy(tcode, nvram_safe_get("territory_code"), sizeof(tcode));
+	tcode[2] = '\0';
+
+	for(i = 0; tcode_sku_tbl[i].tcode; i++) {
+		if (strcmp(tcode, tcode_sku_tbl[i].tcode) == 0) {
+			strlcpy(regspec, tcode_sku_tbl[i].regspec, 4); //max 3+1
+			return;
+		}
+	}
+
+	strcpy(regspec, "FCC");	//default
+}
+
+#if defined(RTCONFIG_MT799X)
+void gen_ra_config_parent(void)
+{
+#if defined(RTCONFIG_MT7992)
+	const char *mt799x_l1_dat = "/tmp/mt7992.1.dat";
+#else
+	const char *mt799x_l1_dat = "/tmp/mt7990.1.dat";
+#endif
+	FILE *fp;
+	if ((fp = fopen(mt799x_l1_dat, "w"))) {
+		char EDCCARegion[32];
+		char WHNAT[4];
+		char *value = NULL;
+
+		if ((value = nvram_get("WHNAT")) == NULL || value[0] == '\0')
+			value = "1";
+		strlcpy(WHNAT, value, sizeof(WHNAT));
+#ifdef RTCONFIG_RALINK_EDCCA
+		char *tcode = nvram_get("territory_code");
+		if (tcode == NULL)
+			;
+		else if(strcmp(tcode, "EU/01") == 0
+		     || strcmp(tcode, "AA/01") == 0
+		     || strcmp(tcode, "AU/01") == 0)
+		{
+			value = nvram_get("EDCCARegion");
+			if (value == NULL)
+				value = "2";
+		}
+		else if(strcmp(tcode, "US/01") == 0
+		     || strcmp(tcode, "CA/01") == 0)
+		{
+			value = "1";
+		}
+		else if(strcmp(tcode, "JP/01") == 0)
+		{
+			value = "3";
+		}
+		else if(strcmp(tcode, "CN/01") == 0)
+		{
+			value = "4";
+		}
+#endif	/* RTCONFIG_RALINK_EDCCA */
+		if (value != NULL)
+			snprintf(EDCCARegion, sizeof(EDCCARegion), "EDCCARegion=%s", value);
+		else
+			EDCCARegion[0] = '\0';
+		fprintf(fp, "#The word of \"Default\" must not be removed\n"
+			"Default\n"
+#if defined(RTCONFIG_MT7992)
+			"BN0_profile_path=/etc/wireless/mediatek/mt7992.b0.dat\n"
+			"BN1_profile_path=/etc/wireless/mediatek/mt7992.b1.dat\n"
+#else
+			"BN0_profile_path=/etc/wireless/mediatek/mt7990.b0.dat\n"
+			"BN1_profile_path=/etc/wireless/mediatek/mt7990.b1.dat\n"
+			"BN2_profile_path=/etc/wireless/mediatek/mt7990.b2.dat\n"
+#endif
+			"E2pAccessMode=2\n"
+			"TestModeEn=%d\n"
+			"WHNAT=%s\n"
+#if !defined(RTCONFIG_MT7992)
+			"MloV1=0\n"
+#endif
+			"WtblDupNum=0\n"
+			"%s\n"
+			, nvram_get_int("wifi_testmode")
+			, WHNAT
+			, EDCCARegion
+		);
+		fclose(fp);
+	}
+}
+#endif
+
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_SOC_MT7988D)
+static void get_hnat_skip_vid(char *buf, int len)
+{
+	*buf = '\0';
+#ifdef RTCONFIG_MULTILAN_CFG
+	get_vlan(buf);
+#endif
+
+	if (iptv_enabled()) {
+		int i, v;
+		char nv[sizeof("switch_wanXtagidXXX")], tmp[sizeof("4096<XX")];
+
+		for (i = 1; i <= 2; ++i) {
+			snprintf(nv, sizeof(nv), "switch_wan%dtagid", i);
+			v = nvram_get_int(nv);
+			if (v > 1 && v < 4096) {
+				snprintf(tmp, sizeof(tmp), "%s%d", (*buf == '\0') ? "" : ">", v);
+				strlcat(buf, tmp, len);
+			}
+		}
+	}
+}
+#endif
+
 void init_wl(void)
 {
-	unsigned char buffer[16];
-	unsigned char *dst;
+	unsigned char dst[16];
 	char tmpStr1[16];
 	char tmpStr2[24];
 	char tmpStr3[24];
 	char cmd[1024];
 	int i, r;
-#if defined(RTCONFIG_MT798X)
-	char iptv_vids[32], vid[100], str[120];
+#if defined(RTCONFIG_MT799X)
+	gen_ra_config_parent();
 #endif
 
 	memset(tmpStr1, 0, sizeof(tmpStr1));
 	memset(tmpStr2, 0, sizeof(tmpStr2));
 	memset(tmpStr3, 0, sizeof(tmpStr3));
 	memset(cmd, 0, sizeof(cmd));
-	dst = buffer;
-	memset(buffer, 0, sizeof(buffer));
-	memset(dst, 0, MAX_REGSPEC_LEN+1);
+
+	memset(dst, 0, sizeof(dst));
 	
+#if 0
 	if(FRead(dst, REGSPEC_ADDR, MAX_REGSPEC_LEN) < 0)
 	{
 		_dprintf("READ REGSPEC_ADDR ERROR\n");
@@ -1167,10 +1331,15 @@ void init_wl(void)
 			}
 		}
 	}
+#else
+	convert_tcode_to_regspec(dst);
+	nvram_set("reg_spec", dst);	//for RDRegion
+#endif /* RTCONFIG_NEW_REGULATION_DOMAIN */
 	r = snprintf(tmpStr1, sizeof(tmpStr1), "regspec=%s", dst);
 	if(unlikely(r < 0))
 		dbg("snprintf failed\n");
-	memset(dst, 0, MAX_REGDOMAIN_LEN+1);
+	memset(dst, 0, sizeof(dst));
+#if defined(RTCONFIG_NEW_REGULATION_DOMAIN)
 	if(FRead(dst, REG2G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
 	{
 		_dprintf("READ REG2G_EEPROM_ADDR ERROR\n");
@@ -1185,10 +1354,12 @@ void init_wl(void)
 			}
 		}
 	}
+#endif /* RTCONFIG_NEW_REGULATION_DOMAIN */
 	r = snprintf(tmpStr2, sizeof(tmpStr2), "regspec_2g=%s", dst);
 	if(unlikely(r < 0))
 		dbg("snprintf failed\n");
-	memset(dst, 0, MAX_REGDOMAIN_LEN+1);
+	memset(dst, 0, sizeof(dst));
+#if defined(RTCONFIG_NEW_REGULATION_DOMAIN)
 	if(FRead(dst, REG5G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
 	{
 		_dprintf("READ REG5G_EEPROM_ADDR ERROR\n");
@@ -1203,69 +1374,60 @@ void init_wl(void)
 			}
 		}
 	}
+#endif /* RTCONFIG_NEW_REGULATION_DOMAIN */
 	r = snprintf(tmpStr3, sizeof(tmpStr3), "regspec_5g=%s", dst);
 	if(unlikely(r < 0))
 		dbg("snprintf failed\n");
-	if (!module_loaded("rt2860v2_ap"))
-		modprobe("rt2860v2_ap");
 
-#if defined (RTCONFIG_WLMODULE_MT7610_AP)
-	if (!module_loaded("MT7610_ap"))
-		modprobe("MT7610_ap");
-#endif
-
-#if defined (RTCONFIG_WLMODULE_MT7628_AP)
-	if (!module_loaded("mt_wifi_7628"))
-		modprobe("mt_wifi_7628");
-#endif
-
-#if defined (RTCONFIG_WLMODULE_RLT_WIFI)
-	if (!module_loaded("rlt_wifi"))
-	{   
-		modprobe("rlt_wifi");
-	}
-#endif
-#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7603E_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP) \
+	|| defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	int mtd_part = 0, mtd_size = 0;
 	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
-		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=131072 skip=0 count=1", mtd_part);
+#if defined(RTCONFIG_MT798X)
+#if defined(RMAX6000) || defined(SWRT360T7)
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=%d skip=0 count=1", mtd_part, 720896);
+#else
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=%d skip=0 count=1", mtd_part, 655360);
+#endif
+#elif defined(RTCONFIG_MT799X)
+#if defined(RTCONFIG_MT7992)
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs= skip=0 count=1", mtd_part, 1425408);
+#else
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=%d skip=0 count=1", mtd_part, 987136);
+#endif
+#else
+		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=%d skip=0 count=1", mtd_part, 131072);
+#endif
 		system(cmd);
 		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
 	}else
 		printf("init_devs: can't find Factory MTD partition\n");
+#if defined(RTCONFIG_MT798X)
+	if(mt798x_unlock_txpower)
+		mt798x_unlock_txpower();
+	doSystem("cp -s /rom/firmware/* /lib/firmware/");
+#endif
 #endif
 #if defined(RTCONFIG_MT798X)
-	*vid = '\0';
-#ifdef RTCONFIG_MULTILAN_CFG
-	get_vlan(vid);
+	modprobe("mtkhnat");
+#elif defined(RTCONFIG_MT799X)
+	modprobe("mtkhnat");
+	modprobe("mtk_warp");
+	modprobe("compat");
+	modprobe("cfg80211");
+	modprobe("mt_wifi_cmn");
 #endif
-	if (iptv_enabled()) {
-		int i, v;
-		char nv[sizeof("switch_wanXtagidXXX")], tmp[sizeof("4096<XX")];
 
-		*iptv_vids = '\0';
-		for (i = 1; i <= 2; ++i) {
-			snprintf(nv, sizeof(nv), "switch_wan%dtagid", i);
-			v = nvram_get_int(nv);
-			if (v > 1 && v < 4096) {
-				snprintf(tmp, sizeof(tmp), "%s%d", (*vid == '\0')? "" : ">", v);
-				strlcat(iptv_vids, tmp, sizeof(iptv_vids));
-			}
-		}
-
-		if (*iptv_vids != '\0')
-			strlcpy(vid, iptv_vids, sizeof(vid));
-	}
-	snprintf(str, sizeof(str), "vids=\"%s\"", vid);
-	modprobe("mtkhnat", str);
-#endif	/* RTCONFIG_MT798X */
-
-#if defined (RTCONFIG_WLMODULE_MT7603E_AP)
+#if defined (RTCONFIG_WLMODULE_MT7610_AP)
+	if (!module_loaded("MT7610_ap"))
+		modprobe("MT7610_ap");
+#elif defined (RTCONFIG_WLMODULE_MT7628_AP)
+	if (!module_loaded("mt_wifi_7628"))
+		modprobe("mt_wifi_7628");
+#elif defined (RTCONFIG_WLMODULE_MT7603E_AP)
 	if (!module_loaded("rlt_wifi_7603e"))
 		modprobe("rlt_wifi_7603e");
-#endif
-
-#if defined (RTCONFIG_WLMODULE_MT7615E_AP)
+#elif defined (RTCONFIG_WLMODULE_MT7615E_AP)
 	if (!module_loaded("mt_wifi_7615E"))
 		//modprobe("mt_wifi_7615E", tmpStr1, tmpStr2, tmpStr3);
 		modprobe("mt_wifi_7615E");
@@ -1273,54 +1435,45 @@ void init_wl(void)
 	if (!module_loaded("mt_whnat"))
 		modprobe("mt_whnat");
 #endif
+#else
+#if defined(RTCONFIG_SOC_MT7981)
+	if (!module_loaded("lowmem"))
+		modprobe("lowmem");
 #endif
-#if defined(RTCONFIG_WLMODULE_MT7915D_AP)
-	int mtd_part = 0, mtd_size = 0;
-	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
-		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=131072 skip=0 count=1", mtd_part);
-		system(cmd);
-		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
-	}else
-		printf("init_devs: can't find Factory MTD partition\n");
-	//if (!module_loaded("mt_wifi"))
-		//modprobe("mt_wifi", tmpStr1, tmpStr2, tmpStr3);
-	if (!module_loaded("mt_wifi"))
-		modprobe("mt_wifi");
-#if !defined(RTCONFIG_RALINK_MT7621)
-	if (!module_loaded("mt_whnat"))
-		modprobe("mt_whnat");
+	if (!module_loaded("mt_wifi")){
+#if defined(RTCONFIG_MT798X)
+		if (!module_loaded("conninfra"))
+			modprobe("conninfra");
 #endif
+		modprobe("mt_wifi", tmpStr1, tmpStr2, tmpStr3);
+#if defined(RTCONFIG_MT798X)
+		if (!module_loaded("mtk_warp"))
+			modprobe("mtk_warp");
+		if (!module_loaded("mtk_warp_proxy"))
+			modprobe("mtk_warp_proxy"); 
+#elif defined(RTCONFIG_MT799X)
+		modprobe("mtk_hwifi");
+		modprobe("connac_if");
+		modprobe("mtk_pci");
+		modprobe("mtk_wed");
+#if defined(RTCONFIG_MT7992)
+		modprobe("mt7992", "option_type=0", "rro_mode=4", "intr_option_set=0");
+#else
+		modprobe("mt7990", "option_type=2", "rro_enable=Y", "intr_option_set=0");
+		modprobe("mt7991");
+		modprobe("mt7990_dbg");
+#endif
+#endif
+	}
+#endif
+	sleep(1);
+
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr1);
 	system(cmd);
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr2);
 	system(cmd);
 	snprintf(cmd, sizeof(cmd), "iwpriv %s set RuntimePara_%s\n", get_wifname(0), tmpStr3);
 	system(cmd);
-#endif
-#if defined(RTCONFIG_MT798X)
-	int mtd_part = 0, mtd_size = 0;
-	if (mtd_getinfo("Factory", &mtd_part, &mtd_size)){
-#if defined(RMAX6000) || defined(SWRT360T7)
-		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=720896 skip=0 count=1", mtd_part);
-#else
-		snprintf(cmd, sizeof(cmd), "dd if=/dev/mtdblock%d of=/lib/firmware/e2p bs=655360 skip=0 count=1", mtd_part);
-#endif
-		system(cmd);
-		if(mt798x_unlock_txpower)
-			mt798x_unlock_txpower();
-		system("ln -sf /rom/etc/wireless/mediatek /etc/wireless/");
-		doSystem("cp -s /rom/firmware/* /lib/firmware/");
-	}else
-		printf("init_devs: can't find Factory MTD partition\n");
-	if (!module_loaded("conninfra"))
-		modprobe("conninfra");
-	if (!module_loaded("mt_wifi"))
-		modprobe("mt_wifi");
-	if (!module_loaded("mtk_warp"))
-		modprobe("mtk_warp");
-	if (!module_loaded("mtk_warp_proxy"))
-		modprobe("mtk_warp_proxy");
-#endif
 	sleep(1);
 }
 
@@ -1429,6 +1582,30 @@ void fini_wl(void)
 		modprobe_r("conninfra");
 	if (is_hwnat_loaded())
 		modprobe_r(MTK_HNAT_MOD);
+#elif defined(RTCONFIG_MT799X)
+#define MODPROBE_R(m) if (module_loaded(m)){ /* cprintf("#RW# rm(%s)\n", m); usleep(500*1000); */ modprobe_r(m); }
+	/* For speed up restart_wireless mechanism, skip remove modules */
+	if (nvram_match("surw", "1"))
+		return;
+	/* the unload order is from MTK/Code, change some of them may system crash */
+#if defined(RTCONFIG_MT7992)
+	MODPROBE_R("mt7992");
+#else
+	MODPROBE_R("mt7990");
+	MODPROBE_R("mt7991");
+#endif
+	MODPROBE_R("mtk_wed");
+#if !defined(RTCONFIG_MT7992)
+	MODPROBE_R("mt7990_dbg");
+#endif
+	MODPROBE_R("mtk_pci");
+	MODPROBE_R("connac_if");
+	MODPROBE_R("mtk_hwifi");
+	MODPROBE_R("mt_wifi");
+	MODPROBE_R("mt_wifi_cmn");
+	MODPROBE_R("mtk_warp");
+	if (is_hwnat_loaded())
+		modprobe_r(MTK_HNAT_MOD);
 #endif
 #if defined (RTCONFIG_WLMODULE_MT7610_AP)
 	if (module_loaded("MT7610_ap"))
@@ -1503,6 +1680,15 @@ void gen_ra_sku(const char *reg_spec)
 }
 #endif	/* RA_SINGLE_SKU */
 
+#if defined(RTCONFIG_MT799X)
+void set_et0macaddr(char *mac_2G, char *mac_5G)
+{
+	if (mac_2G) // same as LAN
+		nvram_set("et0macaddr", mac_2G);
+	if (mac_5G) // same as WAN
+		nvram_set("et1macaddr", mac_5G);
+}
+#else
 void set_et0macaddr(char *macaddr2, char *macaddr)
 {
 #if defined(RTAC1200) || defined(RTAC1200V2) || defined(RTAC53) || defined(RTACRH18) || defined(RT4GAC86U) || defined(RTAX53U) || defined(RT4GAX56) || defined(RTAX54) ||defined(XD4S)
@@ -1519,6 +1705,7 @@ void set_et0macaddr(char *macaddr2, char *macaddr)
 		nvram_set("et1macaddr", macaddr2);
 #endif
 }
+#endif // MT799X
 
 #if defined(TUFAX4200) || defined(TUFAX6000) // EEPROM runtime fix
 void eeprom_check(void);
@@ -1526,7 +1713,10 @@ void eeprom_check(void);
 void init_syspara(void)
 {
 	unsigned char buffer[16];
-	unsigned char *dst, reg_spec[MAX_REGSPEC_LEN + 1] = { 0 }, reg_2g[MAX_REGDOMAIN_LEN + 1] = { 0 }, reg_5g[MAX_REGDOMAIN_LEN + 1] = { 0 };
+	unsigned char *dst;
+#ifdef RTCONFIG_NEW_REGULATION_DOMAIN
+	unsigned char reg_spec[MAX_REGSPEC_LEN + 1] = { 0 }, reg_2g[MAX_REGDOMAIN_LEN + 1] = { 0 }, reg_5g[MAX_REGDOMAIN_LEN + 1] = { 0 };
+#endif	/* RTCONFIG_NEW_REGULATION_DOMAIN */
 	unsigned int bytes;
 	int i, r;
 	char macaddr[]="00:11:22:33:44:55";
@@ -1581,6 +1771,31 @@ void init_syspara(void)
 	memset(productid, 0, sizeof(productid));
 	memset(fwver, 0, sizeof(fwver));
 	memset(txbf_para, 0, sizeof(txbf_para));
+
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+#if defined(BT8) || defined(BT6) || defined(BT8P) || defined(GS7)
+	{
+		char *HwId = nvram_safe_get("HwId");
+		char *src;
+		if (HwId[0] == 'B') {
+			src = "/lib/firmware/MT7990_eFEM_RICH_233.bin";
+		}
+		else {
+#if defined(BT8P)
+			src = "/lib/firmware/MT7990_eFEM_RICH_233_2e5e5e.bin";
+#else
+			src = "/lib/firmware/MT7990_eFEM_SKY_233.bin";
+#endif
+		}
+#if defined(GS7)
+		src = "/lib/firmware/MT7992-GS7-BE7200.bin";
+		symlink(src, "/tmp/MT7992_EEPROM.bin");
+#else
+		symlink(src, "/tmp/MT7990_eFEM_BT8.bin");
+#endif
+	}
+#endif
+#endif
 
 	if (FRead(dst, OFFSET_MAC_ADDR, bytes)<0)
 	{
@@ -1707,15 +1922,6 @@ void init_syspara(void)
         nvram_unset("odmpid");
 #endif
 
-	if (FRead(reg_spec, REGSPEC_ADDR, MAX_REGSPEC_LEN) < 0)
-		*reg_spec = '\0';
-	if (FRead(reg_2g, REG2G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
-		*reg_2g = '\0';
-	if (FRead(reg_5g, REG5G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
-		*reg_5g = '\0';
-	trim_char(reg_spec, 0xFF);
-	trim_char(reg_2g, 0xFF);
-	trim_char(reg_5g, 0xFF);
 
 #if defined(RTCONFIG_TCODE)
 	/* Territory code */
@@ -1732,31 +1938,55 @@ void init_syspara(void)
 			    !isupper(buffer[0]) || !isupper(buffer[1]) ||
 			    !isdigit(buffer[3]) || !isdigit(buffer[4]))
 			{
+#if defined(RTCONFIG_MT799X)
+				nvram_set("territory_code", "DB/01");
+#else
 				nvram_unset("territory_code");
+#endif
 			} else {
 				nvram_set("territory_code", buffer);
 			}
 		}
 	}
-
-#if defined(RTCONFIG_ASUSCTRL)
-	nvram_unset("ctl_reg_spec");
-	nvram_unset("ctl_wl_reg_2g");
-	nvram_unset("ctl_wl_reg_5g");
-
-	asus_ctrl_sku_check();
-
-	if (*nvram_safe_get("ctl_reg_spec") != '\0')
-		strlcpy(reg_spec, nvram_safe_get("ctl_reg_spec"), sizeof(reg_spec));
-	if (*nvram_safe_get("ctl_wl_reg_2g") != '\0')
-		strlcpy(reg_2g, nvram_safe_get("ctl_wl_reg_2g"), sizeof(reg_2g));
-	if (*nvram_safe_get("ctl_wl_reg_5g") != '\0')
-		strlcpy(reg_5g, nvram_safe_get("ctl_wl_reg_5g"), sizeof(reg_5g));
-#endif
 #endif	/* RTCONFIG_TCODE */
 
 	/* reserved for Ralink. used as ASUS country code. */
-#if !defined(RTCONFIG_NEW_REGULATION_DOMAIN)
+#if defined(RTCONFIG_TCODE) && defined(RTCONFIG_MT799X)
+	strlcpy(country_code, nvram_safe_get("territory_code"), sizeof(country_code));
+	{
+		char *wl1_IEEE80211H = "0";
+
+		country_code[2] = '\0';
+		nvram_set("wl_country_code", country_code);
+		nvram_set("wl0_country_code", country_code);
+#ifdef RTCONFIG_HAS_5G
+		nvram_set("wl1_country_code", country_code);
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_HAS_6G)
+		nvram_set("wl2_country_code", country_code);
+#endif
+#endif
+#ifdef RTCONFIG_RALINK_DFS
+		if (strcmp(country_code, "DB") != 0)
+			wl1_IEEE80211H = "1";
+#endif	/* RTCONFIG_RALINK_DFS */
+		nvram_set("wl1_IEEE80211H", wl1_IEEE80211H);
+#if defined(RTCONFIG_HAS_5G_2)
+		nvram_set("wl2_IEEE80211H", wl1_IEEE80211H);
+#endif
+		if (strcmp(country_code, "EU") == 0 || strcmp(country_code, "JP") == 0)
+			nvram_set("wl_reg_2g", "2G_CH13");
+		else
+			nvram_set("wl_reg_2g", "2G_CH11");
+#ifdef RTCONFIG_HAS_5G
+		if (strcmp(country_code, "EU") == 0 || strcmp(country_code, "JP") == 0)
+			nvram_set("wl_reg_5g", "5G_BAND123");
+		else if (strcmp(country_code, "CN") == 0)
+			nvram_set("wl_reg_5g", "5G_BAND124");
+		else
+			nvram_set("wl_reg_5g", "5G_ALL");
+#endif
+	}
+#elif !defined(RTCONFIG_NEW_REGULATION_DOMAIN)
 	dst = (unsigned char*) country_code;
 	bytes = 2;
 	if (FRead(dst, OFFSET_COUNTRY_CODE, bytes)<0)
@@ -1774,7 +2004,16 @@ void init_syspara(void)
 #endif
 	}
 #else	/* ! RTCONFIG_NEW_REGULATION_DOMAIN */
-	dst = buffer;
+
+	if (FRead(reg_spec, REGSPEC_ADDR, MAX_REGSPEC_LEN) < 0)
+		*reg_spec = '\0';
+	if (FRead(reg_2g, REG2G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
+		*reg_2g = '\0';
+	if (FRead(reg_5g, REG5G_EEPROM_ADDR, MAX_REGDOMAIN_LEN) < 0)
+		*reg_5g = '\0';
+	trim_char(reg_spec, 0xFF);
+	trim_char(reg_2g, 0xFF);
+	trim_char(reg_5g, 0xFF);
 
 #if defined(RTCONFIG_MT798X)
 	reg_spec_def = "CE";
@@ -1941,7 +2180,7 @@ void init_syspara(void)
 		nvram_set("firmver", "unknown");
 	}
 	else
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	{
 		strlcpy(productid, rt_buildname, sizeof(productid));
 		nvram_set("productid", trim_r(productid));
@@ -2159,7 +2398,7 @@ void reinit_hwnat(int unit)
 	}
 #endif
 
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #if defined(RTCONFIG_IPSEC)
 	/* If IPSec VPN is enabled, disable hwnat. */
 	if (act > 0 && (nvram_get_int("ipsec_server_enable") == 1 || nvram_get_int("ipsec_client_enable") == 1))
@@ -2346,6 +2585,17 @@ void reinit_hwnat(int unit)
 			break;
 		}
 #endif
+
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_SOC_MT7988D)
+		#define HNAT_SKIP_VID "/sys/kernel/debug/hnat/skip_vid"
+		if (f_exists(HNAT_SKIP_VID)) {
+			char vids[128];
+
+			get_hnat_skip_vid(vids, sizeof(vids));
+			doSystem("echo \"%s\" > "HNAT_SKIP_VID, vids);
+		}
+#endif
+
 #if defined(RTCONFIG_RALINK_MT7621) && (defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP))
 		doSystem("iwpriv %s set hw_nat_register=%d", get_wifname(0), 1);
 #ifdef RTCONFIG_HAS_5G
@@ -2361,17 +2611,44 @@ void reinit_hwnat(int unit)
 		adjust_hwnat_wifi_offloading();
 	
 	}
+
+#if defined(GS7)
+	snprintf(prefix, sizeof(prefix), "wan%d_", prim_unit);
+	if (nvram_match(strcat_r(prefix, "proto", tmp), "pppoe")) {
+		/* enable throughput limits */
+		eval("fapi-GSW-QoS-ShaperCfgSet", "nRateShaperId=17", "bEnable=1");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=1", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=2", "nDefaultTrafficClass=1");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=3", "nDefaultTrafficClass=2");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=4", "nDefaultTrafficClass=3");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=5", "nDefaultTrafficClass=4");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=6", "nDefaultTrafficClass=5");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=7", "nDefaultTrafficClass=6");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=8", "nDefaultTrafficClass=15");
+	}
+	else {
+		/* disable throughput limits */
+		eval("fapi-GSW-QoS-ShaperCfgSet", "nRateShaperId=17", "bEnable=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=1", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=2", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=3", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=4", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=5", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=6", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=7", "nDefaultTrafficClass=0");
+		eval("fapi-GSW-CtpPortConfigSet", "nLogicalPortId=8", "nDefaultTrafficClass=0");
+	}
+#endif
 }
 
 int
 wl_exist(char *ifname, int band)
 {
 	int ret = 0;
-	ret = eval("iwpriv", ifname, "stat");
-	_dprintf("eval(iwpriv, %s, stat) ret(%d)\n", ifname, ret);
+	ret = eval(IWPRIV, ifname, "stat");
+	_dprintf("eval("IWPRIV", %s, stat) ret(%d)\n", ifname, ret);
 	return !ret;
 }
-
 #ifdef RTCONFIG_SWCONFIG
 void set_wan_tag(char *interface)
 {
@@ -3728,3 +4005,4 @@ void easymesh_agent(void)
 }
 
 #endif
+

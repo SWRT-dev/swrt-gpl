@@ -37,6 +37,7 @@
 	(DEVICE_WRITE | RG_TSV2F_CTRL_4 << 8 | 0xFC)
 #define SET_TS_RSV_V5 (DEVICE_WRITE | RG_TSV2F_CTRL_1 << 8 | 0x8D)
 #define SET_TS_EN_V5  (DEVICE_WRITE | RG_TSV2F_CTRL_0 << 8 | 0xF1)
+#define SET_TS_V2VF_RSV_V5 (DEVICE_WRITE | RG_TSV2F_CTRL_3 << 8 | 0x04)
 
 #define SET_MANUAL_RCK_V5	  (DEVICE_WRITE | RG_TSV2F_CTRL_6 << 8 | 0x00)
 #define SELECT_SENSOR_RCK_V5(id)  (DEVICE_WRITE | RG_TSV2F_CTRL_5 << 8 | (id))
@@ -1154,6 +1155,7 @@ static void device_enable_and_init_v5(struct lvts_data *lvts_data)
 				  i);
 		lvts_write_device(lvts_data, SET_TS_RSV_V5, i);
 		lvts_write_device(lvts_data, SET_TS_EN_V5, i);
+		lvts_write_device(lvts_data, SET_TS_V2VF_RSV_V5, i);
 	}
 
 	lvts_data->counting_window_us = 20;

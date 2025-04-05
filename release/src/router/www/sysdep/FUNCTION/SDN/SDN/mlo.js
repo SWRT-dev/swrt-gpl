@@ -135,7 +135,7 @@ function Get_Component_Feature_Desc(view_mode){
 
 	$("<div>").addClass("horizontal_line").appendTo($feature_desc_cntr);
 
-	let $faq = $("<a/>").attr({"target":"_blank", "href":"https://www.asus.com/support/FAQ/1051272/"}).html(`WiFi7 Multi-link Operation (MLO)`);
+	let $faq = $("<a/>").attr({"target":"_blank", "href":"https://www.asus.com/support/FAQ/1051272/"}).html(`WiFi7 <#WiFi_mlo_title#>`);
 	$("<div>").addClass("faq hyperlink").append($faq).appendTo($feature_desc_cntr);
 
 	return $container;
@@ -160,8 +160,8 @@ function Get_Component_MLO_Introduce(view_mode){
 
 	let $popup_content_container = $("<div>").addClass("popup_content_container").appendTo($container);
 
-	let $feature_desc_cntr = $("<div>").addClass("feature_desc_container introduce").appendTo($popup_content_container);
-	$("<div>").addClass("feature_image introduce").appendTo($feature_desc_cntr);
+	let $feature_desc_cntr = $("<div>").addClass("feature_desc_container introduce mlo_image").appendTo($popup_content_container);
+	$("<div>").addClass("blank_component").appendTo($feature_desc_cntr);
 	$("<div>").addClass("desc").html(
 		`<#WiFi_mlo_Experience#>`
 	).appendTo($feature_desc_cntr);
@@ -368,6 +368,7 @@ function set_apply_btn_Backhaul(_obj){
 	}
 }
 function check_sdn_legacy_exists(){
+	return true;//Return true temporarily because isSupport("sdn_mwl")
 	let legacy_exist = false;
 	let sdn_rl_count = 0;
 	const each_sdn_rl = decodeURIComponent(httpApi.nvramCharToAscii(["sdn_rl"],true).sdn_rl).split("<");
@@ -386,6 +387,7 @@ function check_sdn_legacy_exists(){
 	return (legacy_exist || sdn_rl_is_full);
 }
 function check_mlo_meet_conditions(){
+	return true;//Return true temporarily because isSupport("sdn_mwl")
 	const sdn_legacy = check_sdn_legacy_exists();
 	const smart_connect_all_band = (()=>{
 		let status = (httpApi.nvramGet(["smart_connect_x"]).smart_connect_x == "1") ? true : false;

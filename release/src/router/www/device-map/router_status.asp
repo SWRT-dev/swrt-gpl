@@ -27,6 +27,8 @@ var ram_usage_array = new Array();
 var color_table = ["#c6dafc", "#7baaf7", "#4285f4", "#3367d6"];
 var led_table = ["<#btn_disable#>", "<#Priority_Level_3#>", "<#Medium#>", "<#High#>"];
 $(document).ready(function(){
+	const get_header_info = httpApi.hookGet("get_header_info");
+	window.parent.postMessage('router_status.asp', `${get_header_info.protocol}://${get_header_info.host}:${get_header_info.port}`);
 	if(system.INTELplatform){
 		register_event();
 		var ledLv = httpApi.nvramGet(["bc_ledLv"]).bc_ledLv;
@@ -66,6 +68,16 @@ $(document).ready(function(){
 		$("#hw_information_field").hide()
 		$("#yadns_field").hide()
 	}
+
+	if(isSupport("sdn_mainfh") || isSwMode("MB")){
+		$("#wireless_tab").hide();
+	}
+
+	setTimeout(function(){
+		if($('.tab-block:visible').length == 1){
+			$('.tab-block').hide();
+		}
+	}, 1);	
 });
 
 var nvram = new Object();
@@ -408,7 +420,7 @@ function get_ethernet_ports() {
 			var Get_Port_Status_Popup_Notice = function(_objID){
 				var $popup_hint_bg = $("<div>").attr({"id": _objID, "onselectstart":"return false"});
 				$popup_hint_bg.css({"height":"auto", "width":"65%", "max-width":"500px", "border-radius":"4px", "position":"absolute", "padding":"18px",
-					"font-size":"16px", "left":"12%", "z-index":"10000", "margin":"auto", "left":"0", "right":"0", "line-height":"150%",
+					"font-size":"16px", "z-index":"10000", "margin":"auto", "left":"0", "right":"0", "line-height":"150%",
 					"background":"#1c272c", "border":"1px solid #364752", "box-shadow":"0 2px 4px 0 rgb(0 0 0 / 20%), 0 1px 4px 0 rgb(60 60 60 / 30%)"
 				});
 				var $hint_text_bg = $("<div>").appendTo($popup_hint_bg);
@@ -498,7 +510,7 @@ function get_ethernet_ports() {
 							$port_icon.addClass(()=>{
 								return ("poe_port " + ((port_item.poe_info.poe_link == "1") ? "poe_en" : "poe_dis"));
 							});
-						};
+						}
 
 						if(port_item.cap_support.WAN || port_item.cap_support.WANAUTO){
 							$("<div>").addClass("wan_icon").appendTo($port_icon);
@@ -686,8 +698,8 @@ function get_plc_ports() {
 			var autodet_plc_tx_mimo = httpApi.nvramGet(["autodet_plc_tx_mimo"], true).autodet_plc_tx_mimo;
 			var autodet_plc_rx_mimo = httpApi.nvramGet(["autodet_plc_rx_mimo"], true).autodet_plc_rx_mimo;
 			status = (autodet_plc_tx_mimo >= "1" && autodet_plc_rx_mimo >= "1") ? "MIMO" : "SISO";
-			tx = httpApi.nvramGet(["autodet_plc_tx"], true).autodet_plc_tx;;
-			rx = httpApi.nvramGet(["autodet_plc_rx"], true).autodet_plc_rx;;
+			tx = httpApi.nvramGet(["autodet_plc_tx"], true).autodet_plc_tx;
+			rx = httpApi.nvramGet(["autodet_plc_rx"], true).autodet_plc_rx;
 		}
 		code += '<div class="display-flex flex-a-center table-body">';
 		code += '<div class="port-block-width table-content table-content-first" style="text-overflow:ellipsis;overflow:hidden;" title="' + status + '">'+ status +'</div>';

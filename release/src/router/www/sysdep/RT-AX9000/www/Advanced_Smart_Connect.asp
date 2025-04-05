@@ -20,6 +20,7 @@
 <script type="text/javascript" src="/validator.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <script type="text/javascript" src="/client_function.js"></script>
+<script type="text/javascript" src="/js/asus_clientlist.js"></script>
 <style>
 .FormTable th{
 	width:20%;
@@ -894,6 +895,11 @@ function restoreRule(){
 	});
 }
 
+function showClientlistModal(){
+    const clientlistModal = new ClientlistModel();
+    clientlistModal.show();
+}
+
 </script>
 </head>
 
@@ -937,7 +943,7 @@ function restoreRule(){
 			<div class="formfonttitle"><#menu5_1#> - <#smart_connect_rule#></div>
 			<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 			<div class="formfontdesc"><#smart_connect_hint#></div>
-			<div style="text-align:right;margin-top:-36px;padding-bottom:3px;"><input type="button" class="button_gen" value="<#View_List#>" onClick="pop_clientlist_listview(true)"></div>
+			<div style="text-align:right;margin-top:-36px;padding-bottom:3px;"><input type="button" class="button_gen" value="<#View_List#>" onClick="showClientlistModal()"></div>
 			<div id="bsd_steering_div">
 				<table cellspacing="0" cellpadding="4" bordercolor="#6b8fa3" border="1" align="center" width="100%" class="FormTable" style="margin-top:10px">
 					<thead>

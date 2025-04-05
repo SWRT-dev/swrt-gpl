@@ -469,6 +469,21 @@ static ssize_t vlan_only_store(struct device *dev,
 }
 NETDEVICE_SHOW_RW(vlan_only, fmt_dec);
 #endif
+#if 1 // force_down
+static int change_force_down(struct net_device *dev, unsigned long force_down)
+{
+	dev->force_down = (bool)force_down;
+	return 0;
+}
+
+static ssize_t force_down_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t len)
+{
+	return netdev_store(dev, attr, buf, len, change_force_down);
+}
+NETDEVICE_SHOW_RW(force_down, fmt_dec);
+#endif
 
 static ssize_t proto_down_store(struct device *dev,
 				struct device_attribute *attr,
@@ -642,6 +657,9 @@ static struct attribute *net_class_attrs[] __ro_after_init = {
 	&dev_attr_proto_down.attr,
 #if 1 /* IPTV tag only NIC */
 	&dev_attr_vlan_only.attr,
+#endif
+#if 1 // force_down
+	&dev_attr_force_down.attr,
 #endif
 	&dev_attr_carrier_up_count.attr,
 	&dev_attr_carrier_down_count.attr,

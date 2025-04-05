@@ -88,13 +88,13 @@ define(function(){
 				]
 			},		
 			{
-				menuName: Guest_Network_naming,
+				menuName: isSupport("sdn_mwl") ? `<#Network#>` : Guest_Network_naming,
 				index: "menu_GuestNetwork",
 				tab: [
 					{url: "Captive_Portal.asp", tabName: "Free WiFi"},
 					{url: "Captive_Portal_Advanced.asp", tabName: "<#Captive_Portal#>"},
 					{url: "Guest_network_fbwifi.asp", tabName: "Facebook WiFi"},
-					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: Guest_Network_naming},
+					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: isSupport("sdn_mwl") ? `<#Network#>` : Guest_Network_naming},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -257,7 +257,6 @@ define(function(){
 					{url: "Advanced_TR069_Content.asp", tabName: "TR-069"},
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
 					{url: "Advanced_Privacy.asp", tabName: "<#menu_privacy#>"},
-					{url: "Advanced_MultiFuncBtn.asp", tabName: "Multi-Function Button"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -593,6 +592,10 @@ define(function(){
 				if(!isSupport("mtlancfg") || !isSupport("mlo")){
 					retArray.push("MLO.asp");
 				}
+				
+				if(isSupport("sdn_mainfh")){
+					retArray.push("Advanced_ACL_Content.asp");
+				}
 
 				if(isSupport("BUSINESS")){
 					retArray.push("APP_Installation.asp");
@@ -601,10 +604,6 @@ define(function(){
 					retArray.push("Advanced_Modem_Content.asp");
 					retArray.push("Advanced_TimeMachine.asp");
 					retArray.push("fileflex.asp");
-				}
-
-				if(!isSupport("sw_btn")){
-					retArray.push("Advanced_MultiFuncBtn.asp");
 				}
 
 				if(isSupport("wifi7")){

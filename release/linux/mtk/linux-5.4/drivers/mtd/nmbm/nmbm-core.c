@@ -257,6 +257,37 @@ static bool nmbm_write_phys_page(struct nmbm_instance *ni, uint64_t addr,
 }
 
 /*
+ * nmbm_panic_write_phys_page - Panic write page with retry
+ * @ni: NMBM instance structure
+ * @addr: linear address where the data will be written to
+ * @data: the main data to be written
+ *
+ * Write a page for at most NMBM_TRY_COUNT times.
+ */
+static bool nmbm_panic_write_phys_page(struct nmbm_instance *ni, uint64_t addr,
+				       const void *data)
+{
+	int tries, ret;
+
+	if (ni->lower.flags & NMBM_F_READ_ONLY) {
+		nlog_err(ni, "%s called with NMBM_F_READ_ONLY set\n", addr);
+		return false;
+	}
+
+	for (tries = 0; tries < NMBM_TRY_COUNT; tries++) {
+		ret = ni->lower.panic_write_page(ni->lower.arg, addr, data);
+		if (!ret)
+			return true;
+
+		nmbm_reset_chip(ni);
+	}
+
+	nlog_err(ni, "Panic page write failed at address 0x%08llx\n", addr);
+
+	return false;
+}
+
+/*
  * nmbm_erase_phys_block - Erase a block with retry
  * @ni: NMBM instance structure
  * @addr: Linear address
@@ -2730,6 +2761,56 @@ static int nmbm_write_logic_page(struct nmbm_instance *ni, uint64_t addr,
 }
 
 /*
+ * nmbm_panic_write_logic_page - Panic write page based on logic address
+ * @ni: NMBM instance structure
+ * @addr: logic linear address
+ * @data: buffer contains main data. optional.
+ */
+static int nmbm_panic_write_logic_page(struct nmbm_instance *ni, uint64_t addr,
+				       const void *data)
+{
+	uint32_t lb, pb, offset;
+	uint64_t paddr;
+	bool success;
+
+	if (!ni->lower.panic_write_page)
+		return -ENOTSUPP;
+
+	/* Extract block address and in-block offset */
+	lb = addr2ba(ni, addr);
+	offset = addr & ni->erasesize_mask;
+
+	/* Map logic block to physical block */
+	pb = ni->block_mapping[lb];
+
+	/* Whether the logic block is good (has valid mapping) */
+	if ((int32_t)pb < 0) {
+		nlog_debug(ni, "Logic block %u is a bad block\n", lb);
+		return -EIO;
+	}
+
+	/* Fail if physical block is marked bad */
+	if (nmbm_get_block_state(ni, pb) == BLOCK_ST_BAD)
+		return -EIO;
+
+	/* Assemble new address */
+	paddr = ba2addr(ni, pb) + offset;
+
+	success = nmbm_panic_write_phys_page(ni, paddr, data);
+	if (success)
+		return 0;
+
+	/*
+	 * Do not remap bad block here. Just mark this block in state table.
+	 * Remap this block on erasing.
+	 */
+	nmbm_set_block_state(ni, pb, BLOCK_ST_NEED_REMAP);
+	nmbm_update_info_table(ni);
+
+	return -EIO;
+}
+
+/*
  * nmbm_write_single_page - Write one page based on logic address
  * @ni: NMBM instance structure
  * @addr: logic linear address
@@ -2756,6 +2837,32 @@ int nmbm_write_single_page(struct nmbm_instance *ni, uint64_t addr,
 	}
 
 	return nmbm_write_logic_page(ni, addr, data, oob, mode);
+}
+
+/*
+ * nmbm_panic_write_single_page - Panic write one page based on logic address
+ * @ni: NMBM instance structure
+ * @addr: logic linear address
+ * @data: buffer contains main data. optional.
+ */
+int nmbm_panic_write_single_page(struct nmbm_instance *ni, uint64_t addr,
+				 const void *data)
+{
+	if (!ni)
+		return -EINVAL;
+
+	/* Sanity check */
+	if (ni->protected || (ni->lower.flags & NMBM_F_READ_ONLY)) {
+		nlog_debug(ni, "Device is forced read-only\n");
+		return -EROFS;
+	}
+
+	if (addr >= ba2addr(ni, ni->data_block_count)) {
+		nlog_err(ni, "Address 0x%llx is invalid\n", addr);
+		return -EINVAL;
+	}
+
+	return nmbm_panic_write_logic_page(ni, addr, data);
 }
 
 /*

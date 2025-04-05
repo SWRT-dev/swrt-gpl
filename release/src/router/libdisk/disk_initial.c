@@ -55,7 +55,7 @@ disk_info_t *read_disk_data(){
 		if(sscanf(line, "%u %*u %llu %15s", &major, &device_size, device_name) != 3)
 			continue;
 		if(major != USB_DISK_MAJOR
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 				&& major != MMC_DISK_MAJOR
 #endif
 				)
@@ -159,7 +159,7 @@ int is_disk_name(const char *device_name){
 	if(get_device_type_by_device(device_name) != DEVICE_TYPE_DISK)
 		return 0;
 
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 	if(isMMCDevice(device_name)){
 		if(strchr(device_name, 'p'))
 			return 0;
@@ -222,7 +222,7 @@ disk_info_t *create_disk(const char *device_name, disk_info_t **new_disk_info){
 	follow_disk_info->size_in_kilobytes = size_in_kilobytes;
 
 	if(isStorageDevice(device_name)
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 			|| isMMCDevice(device_name)
 #endif
 #ifdef RTCONFIG_USB_CDROM
@@ -314,7 +314,7 @@ disk_info_t *create_disk(const char *device_name, disk_info_t **new_disk_info){
 		}
 		else{
 			tag = DEFAULT_USB_TAG;
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 			if (isMMCDevice(device_name))
 				tag = DEFAULT_MMC_TAG;
 #endif
@@ -548,7 +548,7 @@ int get_disk_partitionnumber(const char *string, u32 *partition_number, u32 *mou
 		while(isdigit(string[len-1]))
 			--len;
 
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 		if(string[len-1] == 'p')
 			--len;
 #endif
@@ -602,7 +602,7 @@ int is_partition_name(const char *device_name, u32 *partition_order){
 		return 0;
 
 	// get the partition number in the device_name
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 	if(isMMCDevice(device_name))
 		// SD card: mmcblk0p1.
 		order = (u32)strtol(device_name+8, NULL, 10);
@@ -969,7 +969,7 @@ char *get_disk_name(const char *string, char *buf, const int buf_size){
 		while(isdigit(string[len-1]))
 			--len;
 
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 		if(string[len-1] == 'p')
 			--len;
 #endif

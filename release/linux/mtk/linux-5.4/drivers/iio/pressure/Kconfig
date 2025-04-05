@@ -64,6 +64,13 @@ config DPS310
 	  This driver can also be built as a module.  If so, the module will be
 	  called dps310.
 
+config ZTS8032
+	tristate "Zilltek ZTS8032 barometric pressure sensor"
+	depends on I2C
+	select REGMAP_I2C
+	help
+	  Support for the Zilltek ZTS8032 barometric pressure sensor.
+
 config HID_SENSOR_PRESS
 	depends on HID_SENSOR_HUB
 	select IIO_BUFFER
@@ -88,6 +95,21 @@ config HP03
 
 	  To compile this driver as a module, choose M here: the module
 	  will be called hp03.
+
+config ICP201XX
+        tristate "InvenSense ICP-201xx pressure and temperature sensor"
+        depends on (I2C || SPI_MASTER)
+        select IIO_BUFFER
+        select IIO_TRIGGERED_BUFFER
+        select CRC32
+	select ICP201XX_I2C
+        help
+	  Say yes here to build support for the Invensense ICP201XX
+
+config ICP201XX_I2C
+	tristate
+	depends on ICP201XX
+	depends on I2C
 
 config MPL115
 	tristate

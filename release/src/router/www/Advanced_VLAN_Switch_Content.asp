@@ -153,6 +153,7 @@
 var VLAN_Profile_select = [];
 var VLAN_port_status = {};
 
+var str_vlan_desc2 = `<#VALN_Switch_desc2#>`.replace("%1$@", `<#All#>(<#Setting_factorydefault_value#>)`).replace("%2$@", `Access`).replace("%3$@", `Trunk`);
 var str_port_binding_note_tmp = "";
 var str_port_binding_note = stringSafeGet("<#VLAN_port_binding_note#>");
 var str_modify = stringSafeGet(" <#web_redirect_suggestion_modify#>");
@@ -653,6 +654,7 @@ var get_VLAN_Status;
 
 function initial() {
 	show_menu();
+	$("#vlan_desc2").html(str_vlan_desc2);
 	var vlan_switch_array = { "VLAN" : ["VLAN", "Advanced_VLAN_Switch_Content.asp"], "Profile" : ["Profile", "Advanced_VLAN_Profile_Content.asp"]};
 	$('#divSwitchMenu').html(gen_switch_menu(vlan_switch_array, "VLAN"));
 
@@ -806,6 +808,7 @@ function gen_VLAN_port_table(port_profile) {
 			if (port_length > 0) { //With port_info //with empty 0 item
 
 				var col_count=0;
+				var wanlan_tag = 0;
 				// Convert the JSON object into an array of key-value pairs (entries)
 				const port_info = Object.entries(port_profile[mesh_mac[i]].port);
 				port_info.forEach(([key, value]) => {
@@ -868,9 +871,8 @@ function gen_VLAN_port_table(port_profile) {
 									break;
 						}
 						$port_status_idx = $("<div>").appendTo($port_status_icon);
-						//$port_status_idx.html(j + 1)
 						$port_status_idx.html(icon_lanport_idx).addClass("status_idx");
-						//if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport == (j+1) ) //for CAP only
+
 						if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport == (lanport_idx) ) //for CAP only
 						{
 							port_profile[mesh_mac[i]].port[key].wans_lanport = '1';
@@ -889,6 +891,7 @@ function gen_VLAN_port_table(port_profile) {
 									$port_status_note.html("Aggregation").addClass("status_note_status_idx_null");
 							}
 						}
+
 						if( i == 0 && key == 3 && orig_aggregation.bond_wan == 1 ){ //CAP only because have no info for RE, general LAN4
 							port_profile[mesh_mac[i]].port[key].wan_bonding = '1';
 						}
@@ -961,6 +964,32 @@ function gen_VLAN_port_table(port_profile) {
 								ext_switch_ui_display.push(port_ui_display_txt);
 						}
 
+						// 3. cap with Pri/Sec WAN
+							//PHY_PORT_CAP_DUALWAN_SECONDARY_WAN  (1U << 29)
+							//PHY_PORT_CAP_DUALWAN_PRIMARY_WAN    (1U << 30)
+						if(port_profile[mesh_mac[i]].port[key].detail.cap_support.DUALWAN_SECONDARY_WAN ||
+							port_profile[mesh_mac[i]].port[key].detail.cap_support.DUALWAN_PRIMARY_WAN){
+
+							port_profile[mesh_mac[i]].port[key].wans_lanport = '1';
+							wanlan_tag = parseInt(key)+1;
+							if(aggressive_tag != 1){
+								aggressive_tag = 1;
+								$port_status_note = $("<div>").appendTo($port_status_icon);
+								if(top.webWrapper){
+									if($port_status_idx.html() != "")
+										$port_status_note.html("Aggregation").addClass("status_note_white");
+									else
+										$port_status_note.html("Aggregation").addClass("status_note_white_status_idx_null");
+								}
+								else{
+									if($port_status_idx.html() != "")
+										$port_status_note.html("Aggregation").addClass("status_note");
+									else
+										$port_status_note.html("Aggregation").addClass("status_note_status_idx_null");
+								}
+							}
+						}
+
 						$port_table_td_mode.empty();
 						$port_table_td_mode.append(insert_vlan_mode_selector(macaddr_str, lanport_idx, port_profile[mesh_mac[i]].port[key].mode, aggressive_tag));
 						$port_table_td_profile.empty();
@@ -983,7 +1012,9 @@ function gen_VLAN_port_table(port_profile) {
 					$port_table_tr_status[r] = $("<tr>").appendTo($port_table_bg);
 					var $port_table_th_status = $("<th>").appendTo($port_table_tr_status[r]);
 					$port_table_th_status.css({"width":"20%"});
+					$port_table_th_status.css({"height":"70px"});
 					$port_table_th_status.html("<ul class='ul-align'><li>" + macaddr_str + "</li></ul>");	//<li>" + loc_str + "</li>
+
 					//table content : mode
 					$port_table_tr_mode[r] = $("<tr>").appendTo($port_table_bg);
 					var $port_table_th_mode = $("<th>").appendTo($port_table_tr_mode[r]);
@@ -1063,6 +1094,24 @@ function gen_VLAN_port_table(port_profile) {
 							$port_status_idx = $("<div>").appendTo($port_status_icon);
 							$port_status_idx.html(icon_lanport_idx).addClass("status_idx");
 
+							if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport == (lanport_idx) ) //for CAP only
+							{
+								port_profile[mesh_mac[i]].port[key].wans_lanport = '1';
+								aggressive_tag = 1;
+								$port_status_note = $("<div>").appendTo($port_status_icon);
+								if(top.webWrapper){
+									if($port_status_idx.html() != "")
+										$port_status_note.html("Aggregation").addClass("status_note_white");
+									else
+										$port_status_note.html("Aggregation").addClass("status_note_white_status_idx_null");
+								}
+								else{
+									if($port_status_idx.html() != "")
+										$port_status_note.html("Aggregation").addClass("status_note");
+									else
+										$port_status_note.html("Aggregation").addClass("status_note_status_idx_null");
+								}
+							}
 
 							var select_node_capability = httpApi.aimesh_get_node_capability(port_profile[mesh_mac[i]]);
 							var lacp = manage_get_lacp(port_profile[mesh_mac[i]], select_node_capability);
@@ -1133,6 +1182,32 @@ function gen_VLAN_port_table(port_profile) {
 									ext_switch_ui_display.push(port_ui_display_txt);
 							}
 
+							// 3. cap with Pri/Sec WAN
+							//PHY_PORT_CAP_DUALWAN_SECONDARY_WAN  (1U << 29)
+							//PHY_PORT_CAP_DUALWAN_PRIMARY_WAN    (1U << 30)
+							if(port_profile[mesh_mac[i]].port[key].detail.cap_support.DUALWAN_SECONDARY_WAN ||
+								port_profile[mesh_mac[i]].port[key].detail.cap_support.DUALWAN_PRIMARY_WAN){
+								port_profile[mesh_mac[i]].port[key].wans_lanport = '1';
+
+								wanlan_tag = parseInt(key)+1;
+								$port_status_note = $("<div>").appendTo($port_status_icon);
+								if(aggressive_tag != 1){
+									aggressive_tag = 1;
+									if(top.webWrapper){
+										if($port_status_idx.html() != "")
+											$port_status_note.html("Aggregation").addClass("status_note_white");
+										else
+											$port_status_note.html("Aggregation").addClass("status_note_white_status_idx_null");
+									}
+									else{
+										if($port_status_idx.html() != "")
+											$port_status_note.html("Aggregation").addClass("status_note");
+										else
+											$port_status_note.html("Aggregation").addClass("status_note_status_idx_null");
+									}
+								}
+							}
+
 							$port_table_td_mode.empty();
 							$port_table_td_mode.append(insert_vlan_mode_selector(macaddr_str, lanport_idx, port_profile[mesh_mac[i]].port[key].mode, aggressive_tag));
 							$port_table_td_profile.empty();
@@ -1174,12 +1249,22 @@ function gen_VLAN_port_table(port_profile) {
 			var note_WAN_port = "";
 			var note_ext_switch = "";
 
-			if( i == 0 && orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport != "")	//for CAP only
+			if( i == 0 &&  ((orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport != "") || wanlan_tag))	//for CAP only
 			{
 				note_wans_lanport += "<b>LAN ";
-				note_wans_lanport += orig_wans_lanport;
+				if(orig_wans_dualwan.indexOf("lan") >= 0 && orig_wans_lanport != ""){
+					note_wans_lanport += orig_wans_lanport;
+					if(wanlan_tag && orig_wans_lanport != wanlan_tag){
+						note_wans_lanport += ", ";
+						note_wans_lanport += wanlan_tag;
+					}
+				}
+				else{
+					if(wanlan_tag)
+						note_wans_lanport += wanlan_tag;
+				}
 				note_wans_lanport += "</b>: ";
-				str_port_binding_note_tmp = str_port_binding_note.replace("%@", "<#dualwan#>");
+				str_port_binding_note_tmp = `<#VLAN_port_DualWAN_note#>`;
 				note_wans_lanport += str_port_binding_note_tmp;
 				note_wans_lanport += str_modify.replace('<a>', '<a id="modify_wans">');
 				$("<div>").html(note_wans_lanport).appendTo($target_div).css('text-align','left');
@@ -1809,6 +1894,7 @@ function manage_get_lacp(_node_info, _node_capability){
 									<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 									<div class="formfontdesc"><#VALN_Switch_desc#></div>
 									<div id="divSwitchMenu" style="margin-top:-40px;float:right;"></div>
+									<div id="vlan_desc2" class="formfontdesc"></div>
 									
 									<div id="divVLANTable" style="width:100%;margin-top:25px;">
 										<div id="tableCAP" class="port_status_table"></div>

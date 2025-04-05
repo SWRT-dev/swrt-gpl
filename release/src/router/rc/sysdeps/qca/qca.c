@@ -900,7 +900,7 @@ int create_tmp_sta(int unit, char *sta, char *ssid_prefix)
 			shortgi = 1;
 
 		doSystem("%s %s shortgi %d\n", IWPRIV, sta, shortgi);
-		doSystem("%s %s mode %s", IWPRIV, sta, sta_default_mode(unit));
+		doSystem("%s %s mode %s", IWPRIV, sta, sta_default_mode(unit, 1));
 		doSystem("%s %s extap 1", IWPRIV, sta);
 
 		if(!lan_ifname || !*lan_ifname)
@@ -1799,7 +1799,7 @@ next_mrate:
 			nmode = nvram_pf_get_int(prefix, "nmode_x");
 			shortgi = (nmode != 2) ? !!nvram_pf_get_int(prefix, "HT_GI") : 0;
 			doSystem("%s %s shortgi %d\n", IWPRIV, sta, shortgi);
-			doSystem("%s %s mode %s", IWPRIV, sta, sta_default_mode(i));
+			doSystem("%s %s mode %s", IWPRIV, sta, sta_default_mode(i, 1));
 			doSystem("%s %s extap 1", IWPRIV, sta);
 
 			get_wpa_supplicant_pidfile(sta, pid_file, sizeof(pid_file));
@@ -5918,7 +5918,7 @@ void start_wsc_enrollee_band(int band)
 		create_tmp_sta(band, sta, NULL);
 	}
 
-	set_wpa_cli_cmd(band, "wps_pbc", NULL);
+	set_wpa_cli_cmd(band, "wps_pbc", 0);
 }
 
 void start_wsc_enrollee(void)
@@ -5927,7 +5927,7 @@ void start_wsc_enrollee(void)
 	char word[256], *next, ifnames[128];
 
 	i = 0;
-	strcpy(ifnames, nvram_safe_get("wl_ifnames"), sizeof(ifnames));
+	strlcpy(ifnames, nvram_safe_get("wl_ifnames"), sizeof(ifnames));
 	foreach(word, ifnames, next) {
 		if (i >= MAX_NR_WL_IF)
 			break;
@@ -5955,7 +5955,7 @@ void stop_wsc_enrollee_band(int band)
 {
 	char sta[64];
 	strlcpy(sta, get_staifname(band), sizeof(sta));
-	set_wpa_cli_cmd(band, "wps_cancel", NULL);
+	set_wpa_cli_cmd(band, "wps_cancel", 0);
 
 	if (sw_mode() == SW_MODE_ROUTER
 			|| sw_mode() == SW_MODE_AP) {
@@ -5969,7 +5969,7 @@ void stop_wsc_enrollee(void)
 	char word[256], *next, ifnames[128];
 
 	i = 0;
-	strcpy(ifnames, nvram_safe_get("wl_ifnames"), sizeof(ifnames));
+	strlcpy(ifnames, nvram_safe_get("wl_ifnames"), sizeof(ifnames));
 	foreach(word, ifnames, next) {
 		if (i >= MAX_NR_WL_IF)
 			break;
@@ -7523,7 +7523,7 @@ int wlcconnect_core(void)
 			}
 		}
 		if(!reconnected && nvram_pf_match(prefix, "nband", "1")){
-			doSystem("%s %s mode %s", IWPRIV, ifname, sta_default_mode(unit));
+			doSystem("%s %s mode %s", IWPRIV, ifname, sta_default_mode(unit, 1));
 			reconnected = 1;
 		}
 	}
@@ -7879,8 +7879,8 @@ void apply_config_to_driver(int band)
 	snprintf(prefix, sizeof(prefix), "wl%d_", band);
 	copy_rpt_params_to_wl(prefix, wlc_prefix);
 	write_rpt_wpa_supplicant_conf(band, wlc_prefix, NULL, NULL);
-	set_wpa_cli_cmd(band, "reconfigure", NULL);
-	set_wpa_cli_cmd(band, "enable_network all", NULL);
+	set_wpa_cli_cmd(band, "reconfigure", 0);
+	set_wpa_cli_cmd(band, "enable_network all", 0);
 }
 #endif
 

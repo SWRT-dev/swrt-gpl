@@ -1,191 +1,88 @@
-/*
- * From FreeBSD 2.2.7: Fundamental constants relating to ethernet.
- *
- * Copyright (C) 2009, Broadcom Corporation
- * All Rights Reserved.
- * 
- * THIS SOFTWARE IS OFFERED "AS IS", AND BROADCOM GRANTS NO WARRANTIES OF ANY
- * KIND, EXPRESS OR IMPLIED, BY STATUTE, COMMUNICATION OR OTHERWISE. BROADCOM
- * SPECIFICALLY DISCLAIMS ANY IMPLIED WARRANTIES OF MERCHANTABILITY, FITNESS
- * FOR A SPECIFIC PURPOSE OR NONINFRINGEMENT CONCERNING THIS SOFTWARE.
- *
- * $Id: ethernet.h,v 9.45.12.3 2009/10/12 23:01:02 Exp $
- */
+/* Copyright (C) 1997, 1999, 2001, 2008 Free Software Foundation, Inc.
+   This file is part of the GNU C Library.
 
-#ifndef _NET_ETHERNET_H_	    /* use native BSD ethernet.h when available */
-#define _NET_ETHERNET_H_
+   The GNU C Library is free software; you can redistribute it and/or
+   modify it under the terms of the GNU Lesser General Public
+   License as published by the Free Software Foundation; either
+   version 2.1 of the License, or (at your option) any later version.
 
-#ifndef _TYPEDEFS_H_
-#include "typedefs.h"
-#endif
+   The GNU C Library is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   Lesser General Public License for more details.
 
-/* enable structure packing */
-#if defined(__GNUC__)
-#define	PACKED	__attribute__((packed))
+   You should have received a copy of the GNU Lesser General Public
+   License along with the GNU C Library; if not, write to the Free
+   Software Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA
+   02111-1307 USA.  */
+
+/* Based on the FreeBSD version of this file. Curiously, that file
+   lacks a copyright in the header. */
+
+#ifndef __NET_ETHERNET_H
+#define __NET_ETHERNET_H 1
+#include <stdio.h>
+#if !(defined(__GLIBC__) || defined(__UCLIBC__))
+#include <netinet/ether.h>	//use the struct in tool chain
 #else
-#pragma pack(1)
-#define	PACKED
-#endif
+#include <sys/cdefs.h>
+#include <sys/types.h>
+#include <linux/if_ether.h>     /* IEEE 802.3 Ethernet constants */
 
-/*
- * The number of bytes in an ethernet (MAC) address.
- */
-#define	ETHER_ADDR_LEN		6
+__BEGIN_DECLS
 
-/*
- * The number of bytes in the type field.
- */
-#define	ETHER_TYPE_LEN		2
+/* This is a name for the 48 bit ethernet address available on many
+   systems.  */
+struct ether_addr
+{
+  u_int8_t ether_addr_octet[ETH_ALEN];
+} __attribute__ ((__packed__));
 
-/*
- * The number of bytes in the trailing CRC field.
- */
-#define	ETHER_CRC_LEN		4
+/* 10Mb/s ethernet header */
+struct ether_header
+{
+  u_int8_t  ether_dhost[ETH_ALEN];	/* destination eth addr	*/
+  u_int8_t  ether_shost[ETH_ALEN];	/* source ether addr	*/
+  u_int16_t ether_type;		        /* packet type ID field	*/
+} __attribute__ ((__packed__));
 
-/*
- * The length of the combined header.
- */
-#define	ETHER_HDR_LEN		(ETHER_ADDR_LEN * 2 + ETHER_TYPE_LEN)
+/* Ethernet protocol ID's */
+#define	ETHERTYPE_PUP		0x0200          /* Xerox PUP */
+#define ETHERTYPE_SPRITE	0x0500		/* Sprite */
+#define	ETHERTYPE_IP		0x0800		/* IP */
+#define	ETHERTYPE_ARP		0x0806		/* Address resolution */
+#define	ETHERTYPE_REVARP	0x8035		/* Reverse ARP */
+#define ETHERTYPE_AT		0x809B		/* AppleTalk protocol */
+#define ETHERTYPE_AARP		0x80F3		/* AppleTalk ARP */
+#define	ETHERTYPE_VLAN		0x8100		/* IEEE 802.1Q VLAN tagging */
+#define ETHERTYPE_IPX		0x8137		/* IPX */
+#define	ETHERTYPE_IPV6		0x86dd		/* IP protocol version 6 */
+#define ETHERTYPE_LOOPBACK	0x9000		/* used to test interfaces */
 
-/*
- * The minimum packet length.
- */
-#define	ETHER_MIN_LEN		64
 
-/*
- * The minimum packet user data length.
- */
-#define	ETHER_MIN_DATA		46
+#define	ETHER_ADDR_LEN	ETH_ALEN                 /* size of ethernet addr */
+#define	ETHER_TYPE_LEN	2                        /* bytes in type field */
+#define	ETHER_CRC_LEN	4                        /* bytes in CRC field */
+#define	ETHER_HDR_LEN	ETH_HLEN                 /* total octets in header */
+#define	ETHER_MIN_LEN	(ETH_ZLEN + ETHER_CRC_LEN) /* min packet length */
+#define	ETHER_MAX_LEN	(ETH_FRAME_LEN + ETHER_CRC_LEN) /* max packet length */
 
-/*
- * The maximum packet length.
- */
-#define	ETHER_MAX_LEN		1518
-
-/*
- * The maximum packet user data length.
- */
-#define	ETHER_MAX_DATA		1500
-
-/* ether types */
-#define ETHER_TYPE_MIN		0x0600		/* Anything less than MIN is a length */
-#define	ETHER_TYPE_IP		0x0800		/* IP */
-#define ETHER_TYPE_ARP		0x0806		/* ARP */
-#define ETHER_TYPE_8021Q	0x8100		/* 802.1Q */
-#define	ETHER_TYPE_BRCM		0x886c		/* Broadcom Corp. */
-#define	ETHER_TYPE_802_1X	0x888e		/* 802.1x */
-#ifdef BCMWPA2
-#define	ETHER_TYPE_802_1X_PREAUTH 0x88c7	/* 802.1x preauthentication */
-#endif
-
-/* Broadcom subtype follows ethertype;  First 2 bytes are reserved; Next 2 are subtype; */
-#define	ETHER_BRCM_SUBTYPE_LEN	4	/* Broadcom 4 byte subtype */
-#define	ETHER_BRCM_CRAM		1	/* Broadcom subtype cram protocol */
-
-/* ether header */
-#define ETHER_DEST_OFFSET	(0 * ETHER_ADDR_LEN)	/* dest address offset */
-#define ETHER_SRC_OFFSET	(1 * ETHER_ADDR_LEN)	/* src address offset */
-#define ETHER_TYPE_OFFSET	(2 * ETHER_ADDR_LEN)	/* ether type offset */
-
-/*
- * A macro to validate a length with
- */
+/* make sure ethenet length is valid */
 #define	ETHER_IS_VALID_LEN(foo)	\
 	((foo) >= ETHER_MIN_LEN && (foo) <= ETHER_MAX_LEN)
 
-#define ETHER_FILL_MCAST_ADDR_FROM_IP(eaddr, mgrp_ip) \
-		eaddr[0] = 0x01;	\
-		eaddr[1] = 0x00;	\
-		eaddr[2] = 0x5e;	\
-		eaddr[5] = mgrp_ip & 0xff; mgrp_ip >>= 8; \
-		eaddr[4] = mgrp_ip & 0xff; mgrp_ip >>= 8; \
-		eaddr[3] = mgrp_ip & 0x7f
-
-#ifndef __INCif_etherh     /* Quick and ugly hack for VxWorks */
 /*
- * Structure of a 10Mb/s Ethernet header.
+ * The ETHERTYPE_NTRAILER packet types starting at ETHERTYPE_TRAIL have
+ * (type-ETHERTYPE_TRAIL)*512 bytes of data followed
+ * by an ETHER type (as given above) and then the (variable-length) header.
  */
-#if 1
-#include <netinet/ether.h>      //use the struct in tool chain
-#else
-struct	ether_header {
-	uint8	ether_dhost[ETHER_ADDR_LEN];
-	uint8	ether_shost[ETHER_ADDR_LEN];
-	uint16	ether_type;
-} PACKED;
+#define	ETHERTYPE_TRAIL		0x1000		/* Trailer packet */
+#define	ETHERTYPE_NTRAILER	16
 
-/*
- * Structure of a 48-bit Ethernet address.
- */
-struct	ether_addr {
-	uint8 octet[ETHER_ADDR_LEN];
-} PACKED;
-#endif
-#endif	/* !__INCif_etherh Quick and ugly hack for VxWorks */
+#define	ETHERMTU	ETH_DATA_LEN
+#define	ETHERMIN	(ETHER_MIN_LEN - ETHER_HDR_LEN - ETHER_CRC_LEN)
 
-/*
- * Takes a pointer, set, test, clear, toggle locally admininistered
- * address bit in the 48-bit Ethernet address.
- */
-#define ETHER_SET_LOCALADDR(ea)	(((uint8 *)(ea))[0] = (((uint8 *)(ea))[0] | 2))
-#define ETHER_IS_LOCALADDR(ea) 	(((uint8 *)(ea))[0] & 2)
-#define ETHER_CLR_LOCALADDR(ea)	(((uint8 *)(ea))[0] = (((uint8 *)(ea))[0] & 0xd))
-#define ETHER_TOGGLE_LOCALADDR(ea)	(((uint8 *)(ea))[0] = (((uint8 *)(ea))[0] ^ 2))
+__END_DECLS
 
-/* Takes a pointer, marks unicast address bit in the MAC address */
-#define ETHER_SET_UNICAST(ea)	(((uint8 *)(ea))[0] = (((uint8 *)(ea))[0] & ~1))
-
-/*
- * Takes a pointer, returns true if a 48-bit multicast address
- * (including broadcast, since it is all ones)
- */
-#define ETHER_ISMULTI(ea) (((const uint8 *)(ea))[0] & 1)
-
-
-/* compare two ethernet addresses - assumes the pointers can be referenced as shorts */
-#define	ether_cmp(a, b)	(!(((short*)a)[0] == ((short*)b)[0]) | \
-			 !(((short*)a)[1] == ((short*)b)[1]) | \
-			 !(((short*)a)[2] == ((short*)b)[2]))
-
-/* copy an ethernet address - assumes the pointers can be referenced as shorts */
-#define	ether_copy(s, d) { \
-		((short*)d)[0] = ((short*)s)[0]; \
-		((short*)d)[1] = ((short*)s)[1]; \
-		((short*)d)[2] = ((short*)s)[2]; }
-
-/*
- * Takes a pointer, returns true if a 48-bit broadcast (all ones)
- */
-#define ETHER_ISBCAST(ea) ((((uint8 *)(ea))[0] &		\
-			    ((uint8 *)(ea))[1] &		\
-			    ((uint8 *)(ea))[2] &		\
-			    ((uint8 *)(ea))[3] &		\
-			    ((uint8 *)(ea))[4] &		\
-			    ((uint8 *)(ea))[5]) == 0xff)
-
-static const struct ether_addr ether_bcast = {{255, 255, 255, 255, 255, 255}};
-static const struct ether_addr ether_null = {{0, 0, 0, 0, 0, 0}};
-
-/*
- * Takes a pointer, returns true if a 48-bit null address (all zeros)
- */
-#define ETHER_ISNULLADDR(ea) ((((uint8 *)(ea))[0] |		\
-			    ((uint8 *)(ea))[1] |		\
-			    ((uint8 *)(ea))[2] |		\
-			    ((uint8 *)(ea))[3] |		\
-			    ((uint8 *)(ea))[4] |		\
-			    ((uint8 *)(ea))[5]) == 0)
-
-#define ETHER_MOVE_HDR(d, s) \
-do { \
-	struct ether_header t; \
-	t = *(struct ether_header *)(s); \
-	*(struct ether_header *)(d) = t; \
-} while (0)
-
-#undef PACKED
-#if !defined(__GNUC__)
-#pragma pack()
-#endif
-
-#endif /* _NET_ETHERNET_H_ */
+#endif	/* (__GLIBC__ || __UCLIBC__) */
+#endif	/* net/ethernet.h */

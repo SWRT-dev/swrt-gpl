@@ -203,7 +203,19 @@ function drawClientList(tab){
 		else {
 			clientHtmlTd += '</td></tr><tr><td style="height:20px;">';
 		}
-		clientHtmlTd += (clientObj.isWebServer) ? '<a class="link" href="http://' + clientObj.ip + '" target="_blank">' + clientObj.ip + '</a>' : clientObj.ip;
+
+        const truncateString = (str, maxLength) => {
+          if (str.length <= maxLength + 3) {
+            return str;
+          } else {
+            return str.substring(0, maxLength) + '...';
+          }
+        }
+
+        const clientIpCode = (clientObj.ip != "0.0.0.0") ? `<div title="${clientObj.ip}">${clientObj.ip}</div>` : `<div title="${clientObj.ip6}">${truncateString(clientObj.ip6,17)}</div>`;
+        const clientIpLinkCode = (clientObj.ip != "0.0.0.0") ? `${clientObj.ip}` : `[${clientObj.ip6}]`;
+
+		clientHtmlTd += (clientObj.isWebServer) ? `<a class="link" href="http://${clientIpLinkCode}" target="_blank">${clientIpCode}}</a>` : `${clientIpCode}`;
 
 		clientHtmlTd += '</td><td>';
 		var rssi_t = 0;
@@ -240,7 +252,7 @@ function drawClientList(tab){
 		if(parent.sw_mode != 4) {
 			clientHtmlTd += '<div style="height:28px;width:28px;float:right;margin-right:5px;margin-bottom:-20px;">';
 			var radioIcon_css = "radioIcon";
-			if((clientObj.isGN != "" && clientObj.isGN != undefined) || (isSupport("mtlancfg") && clientObj.sdn_idx > 0))
+			if(clientObj.isGN != "" && clientObj.isGN != undefined)
 				radioIcon_css += " GN";
 			clientHtmlTd += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
 			if(clientObj.isWL != 0 || (isSupport("mtlancfg") && clientObj.sdn_idx > 0)) {
@@ -345,7 +357,7 @@ function drawClientList(tab){
 	}
 
 	$(".circle").mouseover(function(){
-		return overlib(this.firstChild.innerHTML + " clients are connecting to <% nvram_get("productid"); %> through this device.");
+		return overlib(`${this.firstChild.innerHTML} clients are connecting to <% nvram_get("productid"); %> through this device.`);
 	});
 
 	$(".circle").mouseout(function(){
@@ -406,7 +418,7 @@ function oui_query_full_vendor(mac){
 		}, 1);
 	}
 	else {
-		if('<% nvram_get("x_Setting"); %>' == '1' && wanConnectStatus && clientList[mac].internetState) {
+		if((httpApi.isConnected(0) || httpApi.isConnected(1)) && clientList[mac].internetState) {
 			var queryStr = mac.replace(/\:/g, "").splice(6,6,"");
 			var overlibStrTmp = retOverLibStr(clientList[mac]);
 			$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/ouiDB.json", function(data){

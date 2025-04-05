@@ -15,7 +15,11 @@
 #include <linux/pwm.h>
 
 #if 1  /* for pwm export */
+#if defined(CONFIG_PINCTRL_MT7988)
+struct pwm_device *sysfs_pwmdev[8] = { 0 };
+#else
 struct pwm_device *sysfs_pwmdev[4] = { 0 }; // max 4 channels
+#endif
 struct pwm_device *pwmget_sysfsdev(unsigned int hwid)
 {
 	if (hwid >= 4) return NULL;
@@ -601,6 +605,13 @@ static int pwm_class_resume_npwm(struct device *parent, unsigned int npwm)
 		if (!export)
 			continue;
 
+		/* If pwmchip was not enabled before suspend, do nothing. */
+		if (!export->suspend.enabled) {
+			/* release lock taken in pwm_class_get_state */
+			mutex_unlock(&export->lock);
+			continue;
+		}
+
 		state.enabled = export->suspend.enabled;
 		ret = pwm_class_apply_state(export, pwm, &state);
 		if (ret < 0)
@@ -625,7 +636,17 @@ static int __maybe_unused pwm_class_suspend(struct device *parent)
 		if (!export)
 			continue;
 
+		/*
+		 * If pwmchip was not enabled before suspend, save
+		 * state for resume time and do nothing else.
+		 */
 		export->suspend = state;
+		if (!state.enabled) {
+			/* release lock taken in pwm_class_get_state */
+			mutex_unlock(&export->lock);
+			continue;
+		}
+
 		state.enabled = false;
 		ret = pwm_class_apply_state(export, pwm, &state);
 		if (ret < 0) {

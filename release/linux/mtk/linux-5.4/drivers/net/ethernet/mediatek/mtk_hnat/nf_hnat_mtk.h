@@ -18,7 +18,9 @@
 #include <linux/netdevice.h>
 #include "../mtk_eth_soc.h"
 
+#if 1 /* ASUS: skip specific VID */
 #define MTLAN_MAXINUM             17 /* 1 (Default) + 16 */
+#endif
 
 #define HNAT_SKB_CB2(__skb) ((struct hnat_skb_cb2 *)&((__skb)->cb[44]))
 struct hnat_skb_cb2 {
@@ -46,10 +48,14 @@ struct hnat_desc {
 	u32 is_sp : 1;
 	u32 hf : 1;
 	u32 amsdu : 1;
-	u32 resv3 : 19;
+	u32 tops : 6;
+	u32 is_decap : 1;
+	u32 cdrt : 8;
+	u32 is_decrypt : 1;
+	u32 resv3 : 3;
 	u32 magic_tag_protect : 16;
 } __packed;
-#elif defined(CONFIG_MEDIATEK_NETSYS_V2)
+#elif defined(CONFIG_MEDIATEK_NETSYS_RX_V2)
 struct hnat_desc {
 	u32 entry : 15;
 	u32 filled : 3;
@@ -72,13 +78,13 @@ struct hnat_desc {
 	u32 crsn : 5;
 	u32 sport : 4;
 	u32 alg : 1;
-	u32 iface : 4;
+	u32 iface : 8;
 	u32 filled : 3;
 	u32 resv : 1;
 	u32 magic_tag_protect : 16;
 	u32 wdmaid : 8;
 	u32 rxid : 2;
-	u32 wcid : 8;
+	u32 wcid : 10;
 	u32 bssid : 6;
 } __packed;
 #endif
@@ -94,6 +100,29 @@ struct hnat_desc {
 	((((skb_headroom(skb) >= FOE_INFO_LEN) ? 1 : 0)))
 
 #define skb_hnat_info(skb) ((struct hnat_desc *)(skb->head))
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+#define skb_hnat_tops(skb) (((struct hnat_desc *)((skb)->head))->tops)
+#define skb_hnat_is_decap(skb) (((struct hnat_desc *)((skb)->head))->is_decap)
+#define skb_hnat_is_encap(skb) (!skb_hnat_is_decap(skb))
+#define skb_hnat_set_tops(skb, tops) ((skb_hnat_tops(skb)) = (tops))
+#define skb_hnat_set_is_decap(skb, is_decap) ((skb_hnat_is_decap(skb)) = (is_decap))
+#define skb_hnat_cdrt(skb) (((struct hnat_desc *)((skb)->head))->cdrt)
+#define skb_hnat_is_decrypt(skb) (((struct hnat_desc *)((skb)->head))->is_decrypt)
+#define skb_hnat_is_encrypt(skb) (!skb_hnat_is_decrypt(skb))
+#define skb_hnat_set_cdrt(skb, cdrt) ((skb_hnat_cdrt(skb)) = (cdrt))
+#define skb_hnat_set_is_decrypt(skb, is_dec) ((skb_hnat_is_decrypt(skb)) = is_dec)
+#else /* !defined(CONFIG_MEDIATEK_NETSYS_V3) */
+#define skb_hnat_tops(skb) (0)
+#define skb_hnat_is_decap(skb) (0)
+#define skb_hnat_is_encap(skb) (0)
+#define skb_hnat_set_tops(skb, tops)
+#define skb_hnat_set_is_decap(skb, is_decap)
+#define skb_hnat_cdrt(skb) (0)
+#define skb_hnat_is_decrypt(skb) (0)
+#define skb_hnat_is_encrypt(skb) (0)
+#define skb_hnat_set_cdrt(skb, cdrt)
+#define skb_hnat_set_is_decrypt(skb, is_dec)
+#endif /* defined(CONFIG_MEDIATEK_NETSYS_V3) */
 #define skb_hnat_magic(skb) (((struct hnat_desc *)(skb->head))->magic)
 #define skb_hnat_reason(skb) (((struct hnat_desc *)(skb->head))->crsn)
 #define skb_hnat_entry(skb) (((struct hnat_desc *)(skb->head))->entry)
@@ -115,21 +144,29 @@ struct hnat_desc {
 #define skb_hnat_hf(skb) (((struct hnat_desc *)((skb)->head))->hf)
 #define skb_hnat_amsdu(skb) (((struct hnat_desc *)((skb)->head))->amsdu)
 #define skb_hnat_ppe2(skb)						\
-	((skb_hnat_iface(skb) == FOE_MAGIC_GE_LAN2 ||			\
-	 skb_hnat_iface(skb) == FOE_MAGIC_WED2) && CFG_PPE_NUM == 3)
+	((skb_hnat_sport(skb) == NR_GMAC3_PORT) && (CFG_PPE_NUM >= 3))
 #define skb_hnat_ppe1(skb)						\
-	((skb_hnat_iface(skb) == FOE_MAGIC_GE_WAN && CFG_PPE_NUM == 3) ||	\
-	 (skb_hnat_iface(skb) == FOE_MAGIC_WED1 && CFG_PPE_NUM > 1))
+	((skb_hnat_sport(skb) == NR_GMAC2_PORT) && (CFG_PPE_NUM >= 2))
 #define skb_hnat_ppe(skb)						\
 	(skb_hnat_ppe2(skb) ? 2 : (skb_hnat_ppe1(skb) ? 1 : 0))
+#define headroom_iface(h) (h.iface)
+#define headroom_ppe1(h)						\
+		((headroom_iface(h) == FOE_MAGIC_GE_LAN2 ||		\
+		 headroom_iface(h) == FOE_MAGIC_WED2) && CFG_PPE_NUM == 3)
+#define headroom_ppe2(h)						\
+	((headroom_iface(h) == FOE_MAGIC_GE_LAN2 ||			\
+	 headroom_iface(h) == FOE_MAGIC_WED2) && CFG_PPE_NUM == 3)
+#define headroom_ppe(h) \
+	(headroom_ppe2(h) ? 2 : (headroom_ppe1(h) ? 1 : 0))
+
 #define do_ext2ge_fast_try(dev, skb)						\
 	((skb_hnat_iface(skb) == FOE_MAGIC_EXT) && !is_from_extge(skb))
 #define set_from_extge(skb) (HNAT_SKB_CB2(skb)->magic = 0x78786688)
 #define clr_from_extge(skb) (HNAT_SKB_CB2(skb)->magic = 0x0)
 #define set_to_ppe(skb) (HNAT_SKB_CB2(skb)->magic = 0x78681415)
 #define is_from_extge(skb) (HNAT_SKB_CB2(skb)->magic == 0x78786688)
-#define is_hnat_info_filled(skb) (skb_hnat_filled(skb) == HNAT_INFO_FILLED)
 #define is_magic_tag_valid(skb) (skb_hnat_magic_tag(skb) == HNAT_MAGIC_TAG)
+#define is_hnat_info_filled(skb) (skb_hnat_filled(skb) == HNAT_INFO_FILLED)
 #define set_from_mape(skb) (HNAT_SKB_CB2(skb)->magic = 0x78787788)
 #define is_from_mape(skb) (HNAT_SKB_CB2(skb)->magic == 0x78787788)
 #define is_unreserved_port(hdr)						       \

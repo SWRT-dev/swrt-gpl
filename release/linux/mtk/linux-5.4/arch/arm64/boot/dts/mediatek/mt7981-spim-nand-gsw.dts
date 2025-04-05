@@ -53,7 +53,7 @@
 				reg = <0x0100000 0x0080000>;
 			};
 
-			partition@180000 {
+			factory: partition@180000 {
 				label = "Factory";
 				reg = <0x180000 0x0200000>;
 			};
@@ -71,29 +71,49 @@
 	};
 
 	sound_wm8960 {
-		compatible = "mediatek,mt79xx-wm8960-machine";
-		mediatek,platform = <&afe>;
+		compatible = "mediatek,mt7986-wm8960-sound";
 		audio-routing = "Headphone", "HP_L",
 				"Headphone", "HP_R",
 				"LINPUT1", "AMIC",
 				"RINPUT1", "AMIC";
-		mediatek,audio-codec = <&wm8960>;
+
 		status = "disabled";
+
+		platform {
+			sound-dai = <&afe>;
+		};
+
+		codec {
+			sound-dai = <&wm8960>;
+		};
 	};
 
 	sound_si3218x {
-		compatible = "mediatek,mt79xx-si3218x-machine";
-		mediatek,platform = <&afe>;
-		mediatek,ext-codec = <&proslic_spi>;
+		compatible = "mediatek,mt7986-si3218x-sound";
 		status = "disabled";
+
+		platform {
+			sound-dai = <&afe>;
+		};
+
+		codec {
+			sound-dai = <&proslic_spi>;
+		};
 	};
 
-        gsw: gsw@0 {
-                compatible = "mediatek,mt753x";
-                mediatek,ethsys = <&ethsys>;
-                #address-cells = <1>;
-                #size-cells = <0>;
-        };
+	gsw_mt753x: gsw@0 {
+		compatible = "mediatek,mt753x";
+		mediatek,ethsys = <&ethsys>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
+
+	gsw_an8855: gsw@1 {
+		compatible = "airoha,an8855";
+		#mediatek,ethsys = <&ethsys>;
+		#address-cells = <1>;
+		#size-cells = <0>;
+	};
 };
 
 &afe {
@@ -122,67 +142,88 @@
 };
 
 &eth {
-        status = "okay";
+	status = "okay";
 
-        gmac0: mac@0 {
-                compatible = "mediatek,eth-mac";
-                reg = <0>;
-                phy-mode = "2500base-x";
+	gmac0: mac@0 {
+		compatible = "mediatek,eth-mac";
+		reg = <0>;
+		phy-mode = "2500base-x";
 
-                fixed-link {
-                        speed = <2500>;
-                        full-duplex;
-                        pause;
-                };
-        };
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+			pause;
+		};
+	};
 
-        gmac1: mac@1 {
-                compatible = "mediatek,eth-mac";
-                reg = <1>;
-                phy-mode = "gmii";
-                phy-handle = <&phy0>;
-        };
+	gmac1: mac@1 {
+		compatible = "mediatek,eth-mac";
+		reg = <1>;
+		phy-mode = "gmii";
+		phy-handle = <&phy0>;
+	};
 
-        mdio: mdio-bus {
-                #address-cells = <1>;
-                #size-cells = <0>;
+	mdio: mdio-bus {
+		#address-cells = <1>;
+		#size-cells = <0>;
 
-                phy0: ethernet-phy@0 {
-                        compatible = "ethernet-phy-id03a2.9461";
-                        reg = <0>;
-                        phy-mode = "gmii";
-                        nvmem-cells = <&phy_calibration>;
-                        nvmem-cell-names = "phy-cal-data";
-                };
-
-        };
+		phy0: ethernet-phy@0 {
+			compatible = "ethernet-phy-id03a2.9461";
+			reg = <0>;
+			phy-mode = "gmii";
+			nvmem-cells = <&phy_calibration>;
+			nvmem-cell-names = "phy-cal-data";
+		};
+	};
 };
 
-&gsw {
-        mediatek,mdio = <&mdio>;
-        mediatek,portmap = "llllw";
-        mediatek,mdio_master_pinmux = <1>;
-        reset-gpios = <&pio 39 0>;
-        interrupt-parent = <&pio>;
-        interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
-        status = "okay";
+&gsw_mt753x {
+	mediatek,mdio = <&mdio>;
+	mediatek,portmap = "lllll";
+	mediatek,mdio_master_pinmux = <1>;
+	reset-gpios = <&pio 39 0>;
+	interrupt-parent = <&pio>;
+	interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
+	status = "okay";
 
-        port6: port@6 {
-                compatible = "mediatek,mt753x-port";
-                reg = <6>;
-                phy-mode = "sgmii";
-                fixed-link {
-                        speed = <2500>;
-                        full-duplex;
-                };
-        };
+	port6: port@6 {
+		compatible = "mediatek,mt753x-port";
+		reg = <6>;
+		phy-mode = "sgmii";
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+		};
+	};
+};
+
+&gsw_an8855 {
+	airoha,mdio = <&mdio>;
+	airoha,portmap = "lllll";
+	airoha,smi-addr = <6>;
+	reset-gpios = <&pio 39 0>;
+	interrupt-parent = <&pio>;
+	interrupts = <38 IRQ_TYPE_LEVEL_HIGH>;
+	status = "okay";
+
+	port5: port@5 {
+		compatible = "airoha,an8855-port";
+		reg = <5>;
+		phy-mode = "2500base-x";
+		/* airoha,stag-on = <1>; */
+
+		fixed-link {
+			speed = <2500>;
+			full-duplex;
+		};
+	};
 };
 
 &hnat {
-        mtketh-wan = "eth1";
-        mtketh-lan = "eth0";
-        mtketh-max-gmac = <2>;
-        status = "okay";
+	mtketh-wan = "eth1";
+	mtketh-lan = "eth0";
+	mtketh-max-gmac = <2>;
+	status = "okay";
 };
 
 &spi0 {
@@ -195,8 +236,8 @@
 		compatible = "spi-nand";
 		reg = <0>;
 		spi-max-frequency = <52000000>;
-		spi-tx-buswidth = <4>;
-		spi-rx-buswidth = <4>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
 	};
 };
 
@@ -216,6 +257,13 @@
 		reset_gpio = <&pio 15 0>;
 		ig,enable-spi = <1>;     /* 1: Enable, 0: Disable */
 	};
+};
+
+&wbsys {
+	mediatek,mtd-eeprom = <&factory 0x0000>;
+	status = "okay";
+	pinctrl-names = "dbdc";
+	pinctrl-0 = <&wf_dbdc_pins>;
 };
 
 &pio {
@@ -294,6 +342,21 @@
                         groups = "uart2_1";
                 };
         };
+
+	wf_dbdc_pins: wf_dbdc-pins {
+		mux {
+			function = "eth";
+			groups = "wf0_mode1";
+		};
+		conf {
+			pins = "WF_HB1", "WF_HB2", "WF_HB3", "WF_HB4",
+			       "WF_HB0", "WF_HB0_B", "WF_HB5", "WF_HB6",
+			       "WF_HB7", "WF_HB8", "WF_HB9", "WF_HB10",
+			       "WF_TOP_CLK", "WF_TOP_DATA", "WF_XO_REQ",
+			       "WF_CBA_RESETB", "WF_DIG_RESETB";
+			drive-strength = <MTK_DRIVE_4mA>;
+		};
+	};
 };
 
 &xhci {

@@ -170,7 +170,7 @@
 		compatible = "mediatek,mt7622-wdt",
 			     "mediatek,mt6589-wdt";
 		reg = <0 0x1001c000 0 0x1000>;
-		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 		#reset-cells = <1>;
 	};
 

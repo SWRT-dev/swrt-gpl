@@ -5,6 +5,7 @@
  */
 
 /dts-v1/;
+#include <dt-bindings/gpio/gpio.h>
 #include "mt7988.dtsi"
 
 / {
@@ -60,7 +61,7 @@
 
 			partition@780000 {
 				label = "ubi";
-				reg = <0x780000 0x7880000>;
+				reg = <0x780000 0x7080000>;
 			};
 		};
 	};
@@ -73,26 +74,39 @@
 	};
 
 	sound_wm8960 {
-		compatible = "mediatek,mt79xx-wm8960-machine";
-		mediatek,platform = <&afe>;
+		compatible = "mediatek,mt7986-wm8960-sound";
 		audio-routing = "Headphone", "HP_L",
 				"Headphone", "HP_R",
 				"LINPUT1", "AMIC",
 				"RINPUT1", "AMIC";
-		mediatek,audio-codec = <&wm8960>;
+
 		status = "disabled";
+
+		platform {
+			sound-dai = <&afe>;
+		};
+
+		codec {
+			sound-dai = <&wm8960>;
+		};
 	};
 
 	sound_si3218x {
-		compatible = "mediatek,mt79xx-si3218x-machine";
-		mediatek,platform = <&afe>;
-		mediatek,ext-codec = <&proslic_spi>;
+		compatible = "mediatek,mt7986-si3218x-sound";
 		status = "disabled";
+
+		platform {
+			sound-dai = <&afe>;
+		};
+
+		codec {
+			sound-dai = <&proslic_spi>;
+		};
 	};
 };
 
 &fan {
-	pwms = <&pwm 0 50000 0>;
+	pwms = <&pwm 0 50000>;
 	status = "okay";
 };
 
@@ -110,6 +124,64 @@
 	status = "okay";
 };
 
+&uart1 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&uart1_pins>;
+	status = "okay";
+};
+
+&i2c0 {
+	pinctrl-names = "default";
+	pinctrl-0 = <&i2c0_pins>;
+	status = "okay";
+
+	rt5190a_64: rt5190a@64 {
+		compatible = "richtek,rt5190a";
+		reg = <0x64>;
+		/*interrupts-extended = <&gpio26 0 IRQ_TYPE_LEVEL_LOW>;*/
+		vin2-supply = <&rt5190_buck1>;
+		vin3-supply = <&rt5190_buck1>;
+		vin4-supply = <&rt5190_buck1>;
+
+		regulators {
+			rt5190_buck1: buck1 {
+				regulator-name = "rt5190a-buck1";
+				regulator-min-microvolt = <5090000>;
+				regulator-max-microvolt = <5090000>;
+				regulator-allowed-modes =
+				<RT5190A_OPMODE_AUTO RT5190A_OPMODE_FPWM>;
+				regulator-boot-on;
+			};
+			buck2 {
+				regulator-name = "vcore";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <1400000>;
+				regulator-boot-on;
+			};
+			buck3 {
+				regulator-name = "proc";
+				regulator-min-microvolt = <600000>;
+				regulator-max-microvolt = <1400000>;
+				regulator-boot-on;
+			};
+			buck4 {
+				regulator-name = "rt5190a-buck4";
+				regulator-min-microvolt = <850000>;
+				regulator-max-microvolt = <850000>;
+				regulator-allowed-modes =
+				<RT5190A_OPMODE_AUTO RT5190A_OPMODE_FPWM>;
+				regulator-boot-on;
+			};
+			ldo {
+				regulator-name = "rt5190a-ldo";
+				regulator-min-microvolt = <1200000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-boot-on;
+			};
+		};
+	};
+};
+
 &i2c1 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&i2c1_pins>;
@@ -118,6 +190,23 @@
 	wm8960: wm8960@1a {
 		compatible = "wlf,wm8960";
 		reg = <0x1a>;
+	};
+
+	zts8032: zts8032@77 {
+		compatible = "zilltek,zts8032";
+		reg = <0x76>;
+	};
+
+	dps368: dps368@77 {
+		compatible = "infineon,dps310";
+		reg = <0x77>;
+	};
+
+	rtq6056: rtq6056@40 {
+		compatible = "richtek,rtq6056";
+		reg = <0x40>;
+		shunt-resistor-micro-ohms = <10000>;
+		#io-channel-cells = <1>;
 	};
 };
 
@@ -138,8 +227,8 @@
 		spi-cal-addr = /bits/ 32 <0x0 0x0 0x0 0x0 0x0>;
 		reg = <0>;
 		spi-max-frequency = <52000000>;
-		spi-tx-buswidth = <4>;
-		spi-rx-buswidth = <4>;
+		spi-tx-bus-width = <4>;
+		spi-rx-bus-width = <4>;
 	};
 };
 
@@ -165,6 +254,8 @@
 &pcie0 {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pcie0_pins>;
+	wifi-reset-gpios = <&pio 7 GPIO_ACTIVE_HIGH>;
+	wifi-reset-msleep = <100>;
 	status = "okay";
 };
 
@@ -195,15 +286,49 @@
 
 		conf {
 			groups = "mdc_mdio0";
-			drive-strength = <MTK_DRIVE_8mA>;
+			drive-strength = <MTK_DRIVE_10mA>;
+		};
+	};
+
+	gbe0_led0_pins: gbe0-pins {
+		mux {
+			function = "led";
+			groups = "gbe0_led0";
+		};
+	};
+
+	gbe1_led0_pins: gbe1-pins {
+		mux {
+			function = "led";
+			groups = "gbe1_led0";
+		};
+	};
+
+	gbe2_led0_pins: gbe2-pins {
+		mux {
+			function = "led";
+			groups = "gbe2_led0";
+		};
+	};
+
+	gbe3_led0_pins: gbe3-pins {
+		mux {
+			function = "led";
+			groups = "gbe3_led0";
+		};
+	};
+
+	i2c0_pins: i2c0-pins-g0 {
+		mux {
+			function = "i2c";
+			groups = "i2c0_1";
 		};
 	};
 
 	pcie0_pins: pcie0-pins {
 		mux {
 			function = "pcie";
-			groups = "pcie_2l_0_pereset", "pcie_clk_req_n0_0",
-				 "pcie_wake_n0_0";
+			groups = "pcie_2l_0_pereset", "pcie_clk_req_n0_0";
 		};
 	};
 
@@ -265,6 +390,13 @@
 			groups = "pcm";
 		};
 	};
+
+	uart1_pins: uart1-pins {
+		mux {
+			function = "uart";
+			groups = "uart1_2";
+		};
+	};
 };
 
 &watchdog {
@@ -279,11 +411,12 @@
 	gmac0: mac@0 {
 		compatible = "mediatek,eth-mac";
 		reg = <0>;
+		mtd-mac-address = <&factory 0xFFFF4>;
 		mac-type = "xgdm";
 		phy-mode = "10gbase-kr";
 
 		fixed-link {
-			speed = <2500>;
+			speed = <10000>;
 			full-duplex;
 			pause;
 		};
@@ -292,38 +425,36 @@
 	gmac1: mac@1 {
 		compatible = "mediatek,eth-mac";
 		reg = <1>;
+		mtd-mac-address = <&factory 0xFFFFA>;
 		mac-type = "xgdm";
-		phy-mode = "10gbase-kr";
+		phy-mode = "usxgmii";
 		phy-handle = <&phy0>;
 	};
 
 	gmac2: mac@2 {
 		compatible = "mediatek,eth-mac";
 		reg = <2>;
+		mtd-mac-address = <&factory 0xFFFEE>;
 		mac-type = "xgdm";
-		phy-mode = "10gbase-kr";
+		phy-mode = "usxgmii";
 		phy-handle = <&phy1>;
 	};
 
 	mdio: mdio-bus {
 		#address-cells = <1>;
 		#size-cells = <0>;
-		mdc-max-frequency = <10500000>;
+		clock-frequency = <10500000>;
 
 		phy0: ethernet-phy@0 {
 			reg = <0>;
 			compatible = "ethernet-phy-ieee802.3-c45";
-			reset-gpios = <&pio 72 1>;
-			reset-assert-us = <1000000>;
-			reset-deassert-us = <1000000>;
+			mdi-reversal = /bits/ 16 <1>;
 		};
 
 		phy1: ethernet-phy@8 {
 			reg = <8>;
 			compatible = "ethernet-phy-ieee802.3-c45";
-			reset-gpios = <&pio 71 1>;
-			reset-assert-us = <1000000>;
-			reset-deassert-us = <1000000>;
+			mdi-reversal = /bits/ 16 <1>;
 		};
 
 		switch@0 {
@@ -379,13 +510,13 @@
 				compatible = "mediatek,dsa-slave-mdio";
 				#address-cells = <1>;
 				#size-cells = <0>;
+				mediatek,pio = <&pio>;
 
 				sphy0: switch_phy0@0 {
 					compatible = "ethernet-phy-id03a2.9481";
 					reg = <0>;
-					phy-mode = "gmii";
-					rext = "efuse";
-					tx_r50 = "efuse";
+					pinctrl-names = "gbe-led";
+					pinctrl-0 = <&gbe0_led0_pins>;
 					nvmem-cells = <&phy_calibration_p0>;
 					nvmem-cell-names = "phy-cal-data";
 				};
@@ -393,9 +524,8 @@
 				sphy1: switch_phy1@1 {
 					compatible = "ethernet-phy-id03a2.9481";
 					reg = <1>;
-					phy-mode = "gmii";
-					rext = "efuse";
-					tx_r50 = "efuse";
+					pinctrl-names = "gbe-led";
+					pinctrl-0 = <&gbe1_led0_pins>;
 					nvmem-cells = <&phy_calibration_p1>;
 					nvmem-cell-names = "phy-cal-data";
 				};
@@ -403,9 +533,8 @@
 				sphy2: switch_phy2@2 {
 					compatible = "ethernet-phy-id03a2.9481";
 					reg = <2>;
-					phy-mode = "gmii";
-					rext = "efuse";
-					tx_r50 = "efuse";
+					pinctrl-names = "gbe-led";
+					pinctrl-0 = <&gbe2_led0_pins>;
 					nvmem-cells = <&phy_calibration_p2>;
 					nvmem-cell-names = "phy-cal-data";
 				};
@@ -413,9 +542,8 @@
 				sphy3: switch_phy3@3 {
 					compatible = "ethernet-phy-id03a2.9481";
 					reg = <3>;
-					phy-mode = "gmii";
-					rext = "efuse";
-					tx_r50 = "efuse";
+					pinctrl-names = "gbe-led";
+					pinctrl-0 = <&gbe3_led0_pins>;
 					nvmem-cells = <&phy_calibration_p3>;
 					nvmem-cell-names = "phy-cal-data";
 				};
@@ -430,4 +558,20 @@
 	mtketh-lan2 = "eth2";
 	mtketh-max-gmac = <3>;
 	status = "okay";
+};
+
+&slot0 {
+	mt7996@0,0 {
+		reg = <0x0000 0 0 0 0>;
+		device_type = "pci";
+		mediatek,mtd-eeprom = <&factory 0x0>;
+	};
+};
+
+&slot1 {
+	mt7992@0,0 {
+		reg = <0x0000 0 0 0 0>;
+		device_type = "pci";
+		mediatek,mtd-eeprom = <&factory 0x0>;
+	};
 };

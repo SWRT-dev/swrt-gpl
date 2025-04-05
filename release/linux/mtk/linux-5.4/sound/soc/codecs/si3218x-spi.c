@@ -1,4 +1,6 @@
 // SPDX-License-Identifier: GPL-2.0
+//
+// Copyright (C) 2023 MediaTek Inc.
 
 #include <linux/module.h>
 #include <linux/kernel.h>
@@ -46,8 +48,8 @@ static int mtk_ext_spi_remove(struct spi_device *spi)
 }
 
 static const struct of_device_id mtk_ext_match_table[] = {
-	{.compatible = "silabs,proslic_spi",},
-	{},
+	{.compatible = "silabs,proslic_spi" },
+	{ /* sentinel */ }
 };
 MODULE_DEVICE_TABLE(of, mtk_ext_match_table);
 

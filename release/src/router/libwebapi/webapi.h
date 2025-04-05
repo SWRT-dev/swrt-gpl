@@ -53,7 +53,7 @@ enum{
 struct RWD_MAPPING_TABLE {
         char *name;
         char *path;
-        char *white_theme;
+        char *theme_list;
 };
 
 struct JFFS_BACKUP_PROFILE_S {
@@ -158,7 +158,7 @@ extern int get_newob_onboardinglist(struct json_object *new_ob_obj);
 #ifdef RTCONFIG_AMAS
 extern int do_reboot_action(char *device_list);
 #endif
-extern int do_firmware_check(int from_id);
+extern int do_firmware_check(int from_id, int wait_result);
 extern int do_firmware_upgrade(void);
 extern int do_feedback_mail(struct json_object *feedback_obj);
 extern int is_noFwManual(void);
@@ -168,3 +168,4 @@ extern int set_security_update(char *security_update);
 extern int get_security_update(void);
 #endif
 #endif /* !__WEBAPI_H__ */
+

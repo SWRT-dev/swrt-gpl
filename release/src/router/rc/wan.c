@@ -1258,6 +1258,13 @@ start_wan_if(int unit)
 #endif
 #endif
 
+#if defined(RTCONFIG_AUTO_WANPORT) && !defined(RTCONFIG_BCM_MFG)
+	if(!nvram_get_int("stopwar_correct_wan_if") && is_auto_wanport_enabled() == 2 && strcmp(nvram_safe_get("autowan_detected_ifname"), nvram_safe_get("wan0_ifname"))){
+		TRACE_PT("AUTO_WANPORT: set the incorrect wan_ifname to be %s.\n", nvram_safe_get("autowan_detected_ifname"));
+		nvram_set("wan0_ifname", nvram_safe_get("autowan_detected_ifname"));
+	}
+#endif
+
 #ifdef RTCONFIG_MULTISERVICE_WAN
 	if(dualwan_unit__nonusbif(unit) && nvram_match("switch_wantag", "none"))
 	{
@@ -2009,8 +2016,23 @@ TRACE_PT("3g begin with %s.\n", wan_ifname);
 
 			/* launch dhcp client and wait for lease forawhile */
 			if (dhcpenable) {
-				start_udhcpc(wan_ifname, unit,
-					(wan_proto == WAN_PPPOE) ? &pid : NULL);
+#if defined(RTCONFIG_AUTO_WANPORT) && !defined(RTCONFIG_BCM_MFG)
+				if(is_auto_wanport_enabled() == 1){
+					strlcpy(wan_ifname, nvram_safe_get("lan_ifname"), sizeof(wan_ifname));
+
+					dbG("AUTO_WANPORT start PPP's udhcpc: %s, %d\n", wan_ifname, unit);
+					start_udhcpc(wan_ifname, unit,
+						(wan_proto == WAN_PPPOE) ? &pid : NULL);
+
+					dbG("AUTO_WANPORT Skip the below PPP procedure: %s, %d\n", wan_ifname, unit);
+					break;
+				}
+				else
+#endif
+				{
+					start_udhcpc(wan_ifname, unit,
+						(wan_proto == WAN_PPPOE) ? &pid : NULL);
+				}
 			} else {
 				char gateway[16];
 
@@ -2043,6 +2065,13 @@ TRACE_PT("3g begin with %s.\n", wan_ifname);
 				if (unit == wan_primary_ifunit())
 					start_igmpproxy(wan_ifname);
 			}
+
+#if defined(RTCONFIG_AUTO_WANPORT) && !defined(RTCONFIG_BCM_MFG)
+			if(is_auto_wanport_enabled() == 1){
+				dbG("AUTO_WANPORT Skip the below PPP procedure (no DHCP): %s, %d\n", wan_ifname, unit);
+				break;
+			}
+#endif
 
 #if defined(HND_ROUTER) || defined(RTAC1200V2) || defined(RTACRH18)|| defined(RT4GAC86U)
 			if (wan_proto == WAN_PPTP && !module_loaded("pptp"))
@@ -3993,10 +4022,10 @@ wan_up(const char *pwan_ifname)
 
 			/* the gateway is out of the local network */
 			if ((inet_addr(gateway) & mask) != (addr & mask))
-				route_add(wan_ifname, 2, gateway, NULL, "255.255.255.255");
+				route_add(wan_ifname, 3, gateway, NULL, "255.255.255.255");
 
 			/* default route via default gateway */
-			route_add(wan_ifname, 2, "0.0.0.0", gateway, "0.0.0.0");
+			route_add(wan_ifname, 3, "0.0.0.0", gateway, "0.0.0.0");
 
 			/* ... and to dns servers as well for demand ppp to work */
 			if (nvram_get_int(strcat_r(prefix, "dnsenable_x", tmp))) {
@@ -4004,7 +4033,7 @@ wan_up(const char *pwan_ifname)
 				foreach(word, dns, next) {
 					if ((inet_addr(word) != inet_addr(gateway)) &&
 					    (inet_addr(word) & mask) != (addr & mask))
-						route_add(wan_ifname, 2, word, gateway, "255.255.255.255");
+						route_add(wan_ifname, 3, word, gateway, "255.255.255.255");
 				}
 			}
 		}
@@ -4015,11 +4044,10 @@ wan_up(const char *pwan_ifname)
 #endif
 
 		/* start multicast router on DHCP+VPN physical interface */
-#ifdef RTCONFIG_MULTISERVICE_WAN
-		if (!nvram_match("switch_wantag", "none"))
-#endif
 		if (nvram_match("iptv_ifname", wan_ifname)
+#if !defined(RTCONFIG_MULTISERVICE_WAN)
 		 || wan_unit == wan_primary_ifunit()
+#endif
 		)
 			start_igmpproxy(wan_ifname);
 
@@ -5303,7 +5331,9 @@ start_wan(void)
 				_dprintf("%s: start_wan_if(%d)!\n", __FUNCTION__, unit);
 				start_wan_if(unit);
 			}
-#ifdef RTCONFIG_HND_ROUTER
+#if defined(RTCONFIG_HND_ROUTER) \
+ || defined(RTCONFIG_SWITCH_MT7986_MT7531) \
+ || defined(RTCONFIG_SWITCH_MT7988)
 			else if(!strcmp(wans_mode, "fo") || !strcmp(wans_mode, "fb")){
 				_dprintf("%s: stop_wan_if(%d) for IFUP only!\n", __func__, unit);
 				stop_wan_if(unit);

@@ -41,10 +41,16 @@ const char APCLI_2G[]	= "apcli0";
 #endif
 #elif defined(RTCONFIG_MT799X)
 const char WIF_6G[]	= "rax0";
+#if defined(RTCONFIG_HAS_5G_2)
+const char WIF_5G2[]   = "rax0";
+#endif
 const char WIF_5G[]	= "rai0";
 const char WIF_2G[]	= "ra0";
 const char WDSIF_5G[]	= "wdsx";
 const char APCLI_6G[]	= "apclix0";
+#if defined(RTCONFIG_HAS_5G_2)
+const char APCLI_5G2[]   = "apclix0";
+#endif
 const char APCLI_5G[]	= "apclii0";
 const char APCLI_2G[]	= "apcli0";
 #else
@@ -290,6 +296,8 @@ int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq)
 {
 	int ret = 0;
  	int s;
+	unsigned short subcmd = 0;
+	void *orig_data, *new_data = NULL;
 
 	/* open socket to kernel */
 	if ((s = socket(AF_INET, SOCK_DGRAM, 0)) < 0) {
@@ -299,8 +307,49 @@ int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq)
 
 	/* do it */
 	strncpy(pwrq->ifr_name, ifname, IFNAMSIZ);
+#if defined(RTCONFIG_MT799X)
+	if(cmd == RTPRIV_IOCTL_GET_MAC_TABLE || cmd == RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT) {
+		cmd = RTPRIV_IOCTL_ASUSCMD;
+		pwrq->u.data.flags = ASUS_SUBCMD_GET_MAC_TABLE_STRUCT;
+	} else if (cmd == RTPRIV_IOCTL_SET) {
+		cmd = RTPRIV_IOCTL_ASUSCMD;
+		pwrq->u.data.flags = ASUS_SUBCMD_IOCTL_SET;
+	} 
+	else if (cmd == RT_PRIV_IOCTL) {
+		unsigned short new_len = sizeof(pwrq->u.data.flags) + pwrq->u.data.length;
+
+		subcmd = pwrq->u.data.flags;
+		orig_data = pwrq->u.data.pointer;
+		
+		// Redirecting the pointer to a new data pointer.
+		new_data = (void *)malloc(new_len * 1);
+		memcpy(new_data, &subcmd, sizeof(pwrq->u.data.flags));
+		memcpy(new_data+sizeof(pwrq->u.data.flags), orig_data, pwrq->u.data.length);
+		pwrq->u.data.pointer = new_data;
+
+		// new length
+		pwrq->u.data.length = new_len;
+
+		// new flags
+		cmd = RTPRIV_IOCTL_ASUSCMD;
+		pwrq->u.data.flags = ASUS_SUBCMD_IOCTL;
+	}
+	else if (cmd == RTPRIV_IOCTL_WSC_PROFILE) {
+		cmd = RTPRIV_IOCTL_ASUSCMD;
+		pwrq->u.data.flags = ASUS_SUBCMD_WSC_PROFILE;
+	}
+#endif
+
 	if ((ret = ioctl(s, cmd, pwrq)) < 0)
-		perror(pwrq->ifr_name);
+		dbg("ioctl(%s, %d) errno(%d : %s)\n", pwrq->ifr_name, cmd, errno, strerror(errno));
+
+	if (new_data) {
+		pwrq->u.data.length = pwrq->u.data.length - sizeof(pwrq->u.data.flags);
+		pwrq->u.data.flags = subcmd;
+		memcpy(orig_data, new_data+sizeof(pwrq->u.data.flags), pwrq->u.data.length);
+		pwrq->u.data.pointer = orig_data;
+		free(new_data);
+	}
 
 	/* cleanup */
 	close(s);
@@ -309,6 +358,20 @@ int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq)
 
 unsigned int get_radio_status(char *ifname)
 {
+#if defined(RTCONFIG_NL80211)
+	struct ifreq ifr;
+	int sfd;
+	int ret;
+
+	if ((sfd = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) >= 0) {
+		strcpy(ifr.ifr_name, ifname);
+		ret = ioctl(sfd, SIOCGIFFLAGS, &ifr);
+		close(sfd);
+		if (ret == 0)
+			return !!(ifr.ifr_flags & IFF_UP);
+	}
+	return 0;
+#else /* !RTCONFIG_NL80211 */
 	struct iwreq wrq;
 	unsigned int data = 0;
 
@@ -319,6 +382,7 @@ unsigned int get_radio_status(char *ifname)
 		printf("ioctl error\n");
 
 	return data;
+#endif /* RTCONFIG_NL80211 */
 }
 
 int get_radio(int unit, int subunit)
@@ -362,7 +426,7 @@ void set_radio(int on, int unit, int subunit)
 	//if (nvram_match(strcat_r(prefix, "radio", tmp), "0")) return;
 	// TODO: replace hardcoded 
 	// TODO: handle subunit
-#if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP)
+#if defined(RTCONFIG_WLMODULE_MT7629_AP) || defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_WLMODULE_MT7615E_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X) || defined(RTCONFIG_NL80211)
 	// MTK suggested MT7629/MT7915D use ifconfig down/up to instead RadioOn=0/1
 	doSystem("ifconfig %s %s", ifname, on ? "up":"down");
 #else
@@ -1333,9 +1397,11 @@ int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb)
 		return -1;
 	}
 
-	*channel = (int)info.channel;
+	if (channel)
+		*channel = (int)info.channel;
 
-	switch (info.bandwidth) {
+	if (bw) {
+		switch (info.bandwidth) {
 		case 0:
 			*bw = 20;
 			break;
@@ -1348,12 +1414,18 @@ int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb)
 		case 3:
 			*bw = 160;
 			break;
+#if defined(RTCONFIG_BW320M)
+		case 7:
+			*bw = 320;
+			break;
+#endif
 		default:
 			*bw = 0;
 			break;
+		}
 	}
 
-	if (info.bandwidth == 1) {
+	if (nctrlsb && info.bandwidth == 1) {
 		switch (info.extrach) {
 			case 1:
 				*nctrlsb = 0;
@@ -1376,7 +1448,7 @@ int get_regular_class(const char* ifname)
 	struct iwreq wrq;
 
 	memset(data, 0x00, sizeof(data));
-	wrq.u.data.length = strlen(data) + 1;
+	wrq.u.data.length = sizeof(data);
 	wrq.u.data.pointer = (caddr_t) data;
 	wrq.u.data.flags = ASUS_SUBCMD_GET_RCLASS;
 
@@ -1394,13 +1466,19 @@ int get_regular_class(const char* ifname)
 	return 0;
 }
 
+#if defined(RTCONFIG_HAS_6G)
+static const char *wif[] = { WIF_2G, WIF_5G, WIF_6G };
+static const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_6G };
+#elif defined(RTCONFIG_HAS_5G_2)
+static const char *wif[] = { WIF_2G, WIF_5G, WIF_5G2 };
+static const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_5G2 };
+#else
+static const char *wif[] = { WIF_2G, WIF_5G };
+static const char *sta[] = { APCLI_2G, APCLI_5G };
+#endif
+
 char *get_wififname(int band)
 {
-#if defined(RTCONFIG_MT799X)
-	const char *wif[] = { WIF_2G, WIF_5G, WIF_6G };
-#else
-	const char *wif[] = { WIF_2G, WIF_5G };
-#endif
 	if (band < 0 || band >= ARRAY_SIZE(wif)) {
 		printf("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
@@ -1408,13 +1486,21 @@ char *get_wififname(int band)
 	return (char*) wif[band];
 }
 
+int get_wififname_unit(const char *ifname)
+{
+        int band;
+        if (!ifname)
+                return -1;
+        for (band = 0; band < min(MAX_NR_WL_IF, ARRAY_SIZE(wif)); ++band) {
+                SKIP_ABSENT_BAND(band);
+                if (!strncmp(ifname, wif[band], strlen(wif[band])))
+                        return band;
+        }
+        return -1;
+}
+
 char *get_staifname(int band)
 {
-#if defined(RTCONFIG_MT799X)
-	const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_6G };
-#else
-	const char *sta[] = { APCLI_2G, APCLI_5G };
-#endif
 	if (band < 0 || band >= ARRAY_SIZE(sta)) {
 		printf("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
@@ -1425,13 +1511,6 @@ char *get_staifname(int band)
 int get_sta_ifname_unit(const char *ifname)
 {
         int band;
-#if defined(RTCONFIG_MT799X)
-	const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_6G };
-#elif defined(RTCONFIG_HAS_5G_2)
-	const char *sta[] = { APCLI_2G, APCLI_5G, APCLI_5G2};
-#else	
-	const char *sta[] = { APCLI_2G, APCLI_5G };
-#endif
         if (!ifname)
                 return -1;
         for (band = 0; band < min(MAX_NR_WL_IF, ARRAY_SIZE(sta)); ++band) {
@@ -1657,4 +1736,125 @@ int set_sdn_active_by_unit(int sdn_idx, int onoff)
 
 }	
 #endif
+
+#if defined(RTCONFIG_NL80211)
+/* reference from QCA platform */
+#define WPA_CLI_REPLY_SIZE		32
+#define QUERY_WPA_CLI_REPLY_TIMEOUT	10
+#define QUERY_WPA_STATE_TIMEOUT		25
+char *wpa_cli_reply(const char *fcmd, char *reply)
+{
+	FILE *fp;
+	int rlen;
+
+	fp = popen(fcmd, "r");
+	if (fp) {
+		rlen = fread(reply, 1, WPA_CLI_REPLY_SIZE, fp);
+		pclose(fp);
+		if (rlen > 1) {
+			reply[rlen-1] = '\0';
+			return reply;
+		}
+	}
+
+	return "";
+}
+
+void set_wpa_cli_cmd(int band, const char *cmd, int chk_reply)
+{
+	char *sta;
+	char fcmd[128];
+	char reply[WPA_CLI_REPLY_SIZE];
+	int timeout = QUERY_WPA_CLI_REPLY_TIMEOUT;
+	int scan_and_with_scan_events = 0;
+
+	if (band < 0 || band >= MAX_NR_WL_IF || cmd == NULL || cmd[0] == '\0')
+		return;
+
+	sta = get_staifname(band);
+	if (chk_reply) {
+		if (strcmp(cmd, "scan") == 0) { // check if scan_events is supported
+			char *rpt;
+			snprintf(fcmd, sizeof(fcmd), MWPA_CLI" -p "MWPA_CTRL_PATH" -i %s scan_events", sta);
+			rpt = wpa_cli_reply(fcmd, reply);
+			if ((strcmp(rpt, "YES")==0) || (strcmp(rpt, "NO")==0))
+				scan_and_with_scan_events = 1;
+		}
+		if (scan_and_with_scan_events) {
+			eval(MWPA_CLI, "-p", MWPA_CTRL_PATH, "-i", sta, (char*) cmd); // just issue scan command & wait scan_events
+			snprintf(fcmd, sizeof(fcmd), MWPA_CLI" -p "MWPA_CTRL_PATH" -i %s scan_events", sta);
+			timeout = QUERY_WPA_STATE_TIMEOUT;
+			while (strcmp(wpa_cli_reply(fcmd, reply), "YES") && timeout--) {
+				//dbg("%s(%d): reply [%s] ...(%d/%d)\n", __func__, band, reply, timeout, QUERY_WPA_STATE_TIMEOUT);
+				sleep(1);
+			};
+		} else { // non-scan cmd or no scan_events supported
+			snprintf(fcmd, sizeof(fcmd), MWPA_CLI" -p "MWPA_CTRL_PATH" -i %s %s", sta, cmd);
+			while (strcmp(wpa_cli_reply(fcmd, reply), "OK") && timeout--) {
+				//dbg("%s(%d): reply [%s] ...(%d/%d)\n", __func__, band, reply, timeout, QUERY_WPA_CLI_REPLY_TIMEOUT);
+				sleep(1);
+			};
+
+			if (strcmp(cmd, "scan") == 0) {
+				snprintf(fcmd, sizeof(fcmd), MWPA_CLI" -p "MWPA_CTRL_PATH" -i %s status | grep wpa_state=", sta);
+				timeout = QUERY_WPA_STATE_TIMEOUT;
+				while (!strcmp(wpa_cli_reply(fcmd, reply), "wpa_state=SCANNING") && timeout--) {
+					//dbg("%s(%d): reply [%s] ...(%d/%d)\n", __func__, band, reply, timeout, QUERY_WPA_STATE_TIMEOUT);
+					sleep(1);
+				};
+			}
+		}
+	}
+	else
+		eval(MWPA_CLI, "-p", MWPA_CTRL_PATH, "-i", sta, (char*) cmd);
+}
+#endif /* RTCONFIG_NL80211 */
+
+int get_sta_count(int bssidx, int vifidx)
+{
+	unsigned char data[128];	//only pMacTab->Num is required
+	char wlif_name[8];
+	struct iwreq wrq;
+	int sta_count = 0;
+
+	__get_wlifname(bssidx, vifidx, wlif_name);
+
+	if (is_intf_up(wlif_name) != 1) { //not up
+		return sta_count;
+	}
+
+	memset(data, 0x00, sizeof(data));
+	wrq.u.data.length = sizeof(data);
+	wrq.u.data.pointer = (caddr_t) data;
+	wrq.u.data.flags = 0;
+	if (wl_ioctl(wlif_name, RTPRIV_IOCTL_GET_MAC_TABLE_STRUCT, &wrq) < 0) {
+		dbg("WI[%s] Access to MacTableStruct failure\n", wlif_name);
+		return sta_count;
+	}
+
+	if(bssidx == 0) {
+		RT_802_11_MAC_TABLE_2G* mp2=(RT_802_11_MAC_TABLE_2G*)wrq.u.data.pointer;
+		sta_count = mp2->Num;
+	} else {
+		RT_802_11_MAC_TABLE_5G* mp =(RT_802_11_MAC_TABLE_5G*)wrq.u.data.pointer;
+		sta_count = mp->Num;
+	}
+	//dbg("%s: sta_count(%d)\n", wlif_name, sta_count);
+	return sta_count;
+}
+
+int get_all_sta_count(void)
+{
+	int sta_count, band, sband, max_sband;
+
+	sta_count = 0;
+	for (band = 0; band < MAX_NR_WL_IF; ++band) {
+		SKIP_ABSENT_BAND(band);
+		max_sband = num_of_mssid_support(band);
+		for(sband = 0; sband <= max_sband; sband++) {
+			sta_count += get_sta_count(band, sband);
+		}
+	}
+	return sta_count;
+}
 

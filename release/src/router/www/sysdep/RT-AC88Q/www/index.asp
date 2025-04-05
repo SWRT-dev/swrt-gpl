@@ -113,6 +113,7 @@
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script language="JavaScript" type="text/javascript" src="/form.js"></script>
+<script type="text/javascript" src="/js/asus_clientlist.js"></script>
 <script>
 if(usb_support) addNewScript("/disk_functions.js");
 
@@ -325,7 +326,7 @@ function initial(){
 			show_USBDevice(tmpDisk);
 		}
 		
-	 	require(['/require/modules/diskList.js'], function(diskList){
+		require(['/require/modules/diskList.js?hash=' + Math.random().toString()], function(diskList){
 	 		var usbDevicesList = diskList.list();
 			for(var i=0; i<usbDevicesList.length; i++){
 			  var new_option = new Option(usbDevicesList[i].deviceName, usbDevicesList[i].deviceIndex);
@@ -969,7 +970,9 @@ function showstausframe(page){
 			
 		page = "Internet";
 	}
-	
+	else if(page == "Router"){
+		page = isSupport("sdn_mainfh") ? `${page}_status` : page;
+	}
 	window.open("/device-map/"+page.toLowerCase()+".asp","statusframe");
 }
 
@@ -1568,7 +1571,7 @@ function popupEditBlock(clientObj){
 
 		if(sw_mode != 4){
 			var radioIcon_css = "radioIcon";
-			if((clientObj.isGN != "" && clientObj.isGN != undefined) || (isSupport("mtlancfg") && clientObj.sdn_idx > 0))
+			if(clientObj.isGN != "" && clientObj.isGN != undefined)
 				radioIcon_css += " GN";
 			clientIconHtml += '<div class="' + radioIcon_css + ' radio_' + rssi_t +'" title="' + connectModeTip + '"></div>';
 			if(clientObj.isWL != 0 || (isSupport("mtlancfg") && clientObj.sdn_idx > 0)){
@@ -1641,7 +1644,7 @@ function popupEditBlock(clientObj){
 		if(deviceTitle == undefined || deviceTitle == "") {
 			document.getElementById('manufacturer_field').value = "Loading manufacturer..";
 			setTimeout(function(){
-				if('<% nvram_get("x_Setting"); %>' == '1' && wanConnectStatus && clientObj.internetState) {
+				if((httpApi.isConnected(0) || httpApi.isConnected(1)) && clientObj.internetState) {
 					oui_query(clientObj.mac);
 				}
 			}, 1000);
@@ -2083,6 +2086,12 @@ function setDefaultIcon() {
 function closeClientDetailView() {
 	edit_cancel();
 }
+
+function showClientlistModal(){
+    const clientlistModal = new ClientlistModel();
+    clientlistModal.show();
+}
+
 </script>
 </head>
 
@@ -2412,7 +2421,7 @@ function closeClientDetailView() {
 							<span style="font-size:12px;font-family: Verdana, Arial, Helvetica, sans-serif;">DDNS:</span>
 							<strong id="ddnsHostName" class="index_status" style="font-size:14px;"><#QIS_detectWAN_desc2#></strong>
 							<span id="ddns_fail_hint" class="notificationoff" onClick="show_ddns_fail_hint();" onMouseOut="nd();"></span>
-							<span><img id="le_icon" src="images/New_ui/networkmap/LE_badge_color.svg" style="width:25px; height:25px; display:none;"></span>
+							<span><img id="le_icon" title="Let's Encrypt" src="images/New_ui/networkmap/LE_badge_color.svg" style="width:25px; height:25px; display:none;"></span>
 						</div>
 						<div id="wlc_band_div" style="margin-top:5px;display:none">
 							<span style="font-size:14px;font-family: Verdana, Arial, Helvetica, sans-serif;"><#Interface#>:</span>
@@ -2471,7 +2480,7 @@ function closeClientDetailView() {
 							<div class="clients" id="clientNumber" style="cursor:pointer;"></div>
 						</div>
 
-						<input type="button" class="button_gen" value="<#View_List#>" style="margin-top:15px;" onClick="pop_clientlist_listview(true)">
+						<input type="button" class="button_gen" value="<#View_List#>" style="margin-top:15px;" onClick="showClientlistModal()">
 
 						<div id="networkmap_switch" style="display:none">
 							<div align="center" class="left" style="width:94px; cursor:pointer;margin-top:10px" id="networkmap_enable_t"></div>
@@ -2506,28 +2515,52 @@ function closeClientDetailView() {
 					<td valign="top">
 						<div class="statusTitle" id="statusTitle_NM">
 							<div id="helpname" style="padding-top:10px;font-size:16px;"></div>
-						</div>							
+						</div>
 						<div class="NM_radius_bottom_container">
 							<iframe id="statusframe" class="NM_radius_bottom" style="display:none;margin-left:0px;height:760px;width:320px;\9" name="statusframe" frameborder="0"></iframe>
 						</div>
-				
 						<script>
 							(function(){
+								const defaultRouterFrame = `/device-map/router${isSupport("sdn_mainfh")?"_status":""}.asp`;
 								setTimeout(function(){
-									document.getElementById("statusframe").src = "/device-map/router.asp";	
+									$('#statusframe').attr('src', defaultRouterFrame).show();
+									const get_header_info = httpApi.hookGet("get_header_info");
+									const domain = `${get_header_info.protocol}://${get_header_info.host}`;
+									const domain_w_port = `${get_header_info.protocol}://${get_header_info.host}:${get_header_info.port}`;
+
+									let messageTimeout;
+									messageTimeout = setTimeout(() => {
+										document.getElementById("statusframe").src = defaultRouterFrame;
+									}, 5000);
+
+									window.addEventListener('message', function(event){
+										if(event.data == `router${isSupport("sdn_mainfh")?"_status":""}.asp`){
+											const has_port = /:\d+$/.test(event.origin);
+											if(has_port){
+												if(event.origin !== domain_w_port){
+													return;
+												}
+											}
+											else{
+												if(event.origin !== domain){
+													return;
+												}
+											}
+											clearTimeout(messageTimeout);
+											$("#statusframe").show()
+												.off('load').on("load", function(){
+													const $statusframe = $(this);
+													$statusframe.show();
+													$statusframe[0].contentWindow.onbeforeunload = function(){
+														$statusframe.hide();
+													};
+												});
+										}
+									});
 								}, 1);
-								
-								var $iframe = $("#statusframe");
-								$iframe.on("load", function(){
-									$iframe.show();
-									document.getElementById("statusframe").contentWindow.onbeforeunload = function(){
-										$iframe.hide();
-									};
-								});
 							})()
 						</script>
-
-					</td>	
+					</td>
 				</tr>
 			</table>
 			</div>

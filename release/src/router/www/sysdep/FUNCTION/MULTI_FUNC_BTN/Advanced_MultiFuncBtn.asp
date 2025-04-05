@@ -31,7 +31,7 @@ function initial(){
 			document.getElementsByClassName("rwd_iframe")[0].style.height = "770px";
 		}
 		else{
-			if(based_modelid.substr(0,2) == "GT"){
+			if(isSupport("ROG_UI")){
 				curTheme = "ROG";
 			}
 		}

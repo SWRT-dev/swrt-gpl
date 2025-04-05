@@ -12,20 +12,14 @@
  * This file contains all ONFI helpers.
  */
 
+#include <linux/mtd/param.h>
 #include <linux/slab.h>
 
 #include "internals.h"
 
 u16 onfi_crc16(u16 crc, u8 const *p, size_t len)
 {
-	int i;
-	while (len--) {
-		crc ^= *p++ << 8;
-		for (i = 0; i < 8; i++)
-			crc = (crc << 1) ^ ((crc & 0x8000) ? 0x8005 : 0);
-	}
-
-	return crc;
+	return nanddev_crc16(crc, p, len);
 }
 
 /* Parse the Extended Parameter Page. */
@@ -104,37 +98,6 @@ ext_out:
 }
 
 /*
- * Recover data with bit-wise majority
- */
-static void nand_bit_wise_majority(const void **srcbufs,
-				   unsigned int nsrcbufs,
-				   void *dstbuf,
-				   unsigned int bufsize)
-{
-	int i, j, k;
-
-	for (i = 0; i < bufsize; i++) {
-		u8 val = 0;
-
-		for (j = 0; j < 8; j++) {
-			unsigned int cnt = 0;
-
-			for (k = 0; k < nsrcbufs; k++) {
-				const u8 *srcbuf = srcbufs[k];
-
-				if (srcbuf[i] & BIT(j))
-					cnt++;
-			}
-
-			if (cnt > nsrcbufs / 2)
-				val |= BIT(j);
-		}
-
-		((u8 *)dstbuf)[i] = val;
-	}
-}
-
-/*
  * Check if the NAND chip is ONFI compliant, returns 1 if it is, 0 otherwise.
  */
 int nand_onfi_detect(struct nand_chip *chip)
@@ -184,7 +147,7 @@ int nand_onfi_detect(struct nand_chip *chip)
 		const void *srcbufs[3] = {p, p + 1, p + 2};
 
 		pr_warn("Could not find a valid ONFI parameter page, trying bit-wise majority to recover it\n");
-		nand_bit_wise_majority(srcbufs, ARRAY_SIZE(srcbufs), p,
+		nanddev_bit_wise_majority(srcbufs, ARRAY_SIZE(srcbufs), p,
 				       sizeof(*p));
 
 		if (onfi_crc16(ONFI_CRC_BASE, (u8 *)p, 254) !=

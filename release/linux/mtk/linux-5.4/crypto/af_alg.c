@@ -226,6 +226,30 @@ out:
 	return err;
 }
 
+static int alg_setentropy(struct sock *sk, char __user *ukey,
+		      unsigned int entropy_len)
+{
+	struct alg_sock *ask = alg_sk(sk);
+	const struct af_alg_type *type = ask->type;
+	u8 *entropy;
+	int err;
+
+	entropy = sock_kmalloc(sk, entropy_len, GFP_KERNEL);
+	if (!entropy)
+		return -ENOMEM;
+
+	err = -EFAULT;
+	if (copy_from_user(entropy, ukey, entropy_len))
+		goto out;
+
+	err = type->setentropy(ask->private, entropy, entropy_len);
+
+out:
+	sock_kzfree_s(sk, entropy, entropy_len);
+
+	return err;
+}
+
 static int alg_setsockopt(struct socket *sock, int level, int optname,
 			  char __user *optval, unsigned int optlen)
 {
@@ -250,7 +274,6 @@ static int alg_setsockopt(struct socket *sock, int level, int optname,
 			goto unlock;
 		if (!type->setkey)
 			goto unlock;
-
 		err = alg_setkey(sk, optval, optlen);
 		break;
 	case ALG_SET_AEAD_AUTHSIZE:
@@ -259,6 +282,15 @@ static int alg_setsockopt(struct socket *sock, int level, int optname,
 		if (!type->setauthsize)
 			goto unlock;
 		err = type->setauthsize(ask->private, optlen);
+		break;
+	case ALG_SET_DRBG_ENTROPY:
+		if (sock->state == SS_CONNECTED)
+			goto unlock;
+		if (!type->setentropy)
+			goto unlock;
+		err = alg_setentropy(sk, optval, optlen);
+		break;
+
 	}
 
 unlock:
@@ -291,6 +323,11 @@ int af_alg_accept(struct sock *sk, struct socket *newsock, bool kern)
 	security_sock_graft(sk2, newsock);
 	security_sk_clone(sk, sk2);
 
+	/*
+	 * newsock->ops assigned here to allow type->accept call to override
+	 * them when required.
+	 */
+	newsock->ops = type->ops;
 	err = type->accept(ask->private, sk2);
 
 	nokey = err == -ENOKEY;
@@ -309,7 +346,6 @@ int af_alg_accept(struct sock *sk, struct socket *newsock, bool kern)
 	alg_sk(sk2)->parent = sk;
 	alg_sk(sk2)->type = type;
 
-	newsock->ops = type->ops;
 	newsock->state = SS_CONNECTED;
 
 	if (nokey)
@@ -1029,9 +1065,13 @@ EXPORT_SYMBOL_GPL(af_alg_sendpage);
 void af_alg_free_resources(struct af_alg_async_req *areq)
 {
 	struct sock *sk = areq->sk;
+	struct af_alg_ctx *ctx;
 
 	af_alg_free_areq_sgls(areq);
 	sock_kfree_s(sk, areq, areq->areqlen);
+
+	ctx = alg_sk(sk)->private;
+	ctx->inflight = false;
 }
 EXPORT_SYMBOL_GPL(af_alg_free_resources);
 
@@ -1095,10 +1135,18 @@ EXPORT_SYMBOL_GPL(af_alg_poll);
 struct af_alg_async_req *af_alg_alloc_areq(struct sock *sk,
 					   unsigned int areqlen)
 {
-	struct af_alg_async_req *areq = sock_kmalloc(sk, areqlen, GFP_KERNEL);
+	struct af_alg_ctx *ctx = alg_sk(sk)->private;
+	struct af_alg_async_req *areq;
 
+	/* Only one AIO request can be in flight. */
+	if (ctx->inflight)
+		return ERR_PTR(-EBUSY);
+
+	areq = sock_kmalloc(sk, areqlen, GFP_KERNEL);
 	if (unlikely(!areq))
 		return ERR_PTR(-ENOMEM);
+
+	ctx->inflight = true;
 
 	areq->areqlen = areqlen;
 	areq->sk = sk;

@@ -38,7 +38,7 @@ config NET_MEDIATEK_HNAT
 	  in the MediaTek MT7986/MT2701/MT7622/MT7629/MT7621 chipset
 	  family.
 
-config MTK_HNAT_FORCE_CT_ACCOUNTING 
+config MTK_HNAT_FORCE_CT_ACCOUNTING
 	bool "MediaTek CT Accouting always on"
 	---help---
 	  This option enable MTK HNAT ct accouting always on.

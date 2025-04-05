@@ -25,78 +25,49 @@
 #include "nf_hnat_mtk.h"
 #include "hnat.h"
 
-#include <linux/string.h>
-char *vids = "";  
-module_param(vids, charp, 0);
-
+#if 1 /* ASUS: skip specific VID */
+extern int vlan_num[MTLAN_MAXINUM];
+#endif
 
 struct mtk_hnat *hnat_priv;
 static struct socket *_hnat_roam_sock;
 static struct work_struct _hnat_roam_work;
+static struct delayed_work _hnat_flow_entry_teardown_work;
 
 int (*ra_sw_nat_hook_rx)(struct sk_buff *skb) = NULL;
 EXPORT_SYMBOL(ra_sw_nat_hook_rx);
 int (*ra_sw_nat_hook_tx)(struct sk_buff *skb, int gmac_no) = NULL;
 EXPORT_SYMBOL(ra_sw_nat_hook_tx);
+void (*ra_sw_nat_clear_bind_entries)(void) = NULL;
+EXPORT_SYMBOL(ra_sw_nat_clear_bind_entries);
+
+int (*hnat_get_wdma_tx_port)(u32 wdma_idx) = NULL;
+EXPORT_SYMBOL(hnat_get_wdma_tx_port);
+int (*hnat_get_wdma_rx_port)(u32 wdma_idx) = NULL;
+EXPORT_SYMBOL(hnat_get_wdma_rx_port);
 
 int (*ppe_del_entry_by_mac)(unsigned char *mac) = NULL;
 EXPORT_SYMBOL(ppe_del_entry_by_mac);
+int (*ppe_del_entry_by_ip)(bool is_ipv4, void *addr) = NULL;
+EXPORT_SYMBOL(ppe_del_entry_by_ip);
+int (*ppe_del_entry_by_bssid_wcid)(u32 wdma_idx, u16 bssid, u16 wcid) = NULL;
+EXPORT_SYMBOL(ppe_del_entry_by_bssid_wcid);
 
 void (*ppe_dev_register_hook)(struct net_device *dev) = NULL;
 EXPORT_SYMBOL(ppe_dev_register_hook);
 void (*ppe_dev_unregister_hook)(struct net_device *dev) = NULL;
 EXPORT_SYMBOL(ppe_dev_unregister_hook);
+int (*mtk_tnl_encap_offload)(struct sk_buff *skb) = NULL;
+EXPORT_SYMBOL(mtk_tnl_encap_offload);
+int (*mtk_tnl_decap_offload)(struct sk_buff *skb) = NULL;
+EXPORT_SYMBOL(mtk_tnl_decap_offload);
+bool (*mtk_tnl_decap_offloadable)(struct sk_buff *skb) = NULL;
+EXPORT_SYMBOL(mtk_tnl_decap_offloadable);
+bool (*mtk_crypto_offloadable)(struct sk_buff *skb) = NULL;
+EXPORT_SYMBOL(mtk_crypto_offloadable);
 
-
-int vlan_num[MTLAN_MAXINUM];
-int _vstrsep(char *buf, const char *sep, ...)
-{
-    va_list ap;
-    char **p;
-    int n;
-
-    n = 0;
-    va_start(ap, sep);
-    while ((p = va_arg(ap, char **)) != NULL) {
-        if ((*p = strsep(&buf, sep)) == NULL) break;
-        ++n;
-    }
-    va_end(ap);
-    return n;
-}
-
-#define vstrsep(buf, sep, args...) _vstrsep(buf, sep, args, NULL)
-
-int get_vids(char *ids)
-{
-       int i;
-       char *p1=NULL,*b=NULL,tmp[10];
-       if(!strlen(ids))
-               return 0;
-             
-       i=0;
-       p1=strstr(ids,">");
-       if(p1)
-       {
-               memset(tmp,0,sizeof(tmp));
-               strncpy(tmp,ids,strlen(ids)-strlen(p1));
-                vlan_num[0]= simple_strtol(tmp, 0, 10);
-                while ((b = strsep(&p1, ">")) != NULL) 
-               {
-                       if(strlen(b)==0)
-                               continue;
-                       i++;
-                       vlan_num[i]= simple_strtol(b, 0, 10);
-               }
-
-        }
-        else
-       {
-                vlan_num[0]= simple_strtol(ids, 0, 10);
-       }       
-       return 1;
-}
-
+int (*hnat_set_wdma_pse_port_state)(u32 wdma_idx, bool up) = NULL;
+EXPORT_SYMBOL(hnat_set_wdma_pse_port_state);
 
 static void hnat_sma_build_entry(struct timer_list *t)
 {
@@ -106,6 +77,16 @@ static void hnat_sma_build_entry(struct timer_list *t)
 		cr_set_field(hnat_priv->ppe_base[i] + PPE_TB_CFG,
 			     SMA, SMA_FWD_CPU_BUILD_ENTRY);
 }
+
+struct foe_entry *hnat_get_foe_entry(u32 ppe_id, u32 index)
+{
+	if (index == 0x7fff || index >= hnat_priv->foe_etry_num ||
+	    ppe_id >= CFG_PPE_NUM)
+		return ERR_PTR(-EINVAL);
+
+	return &hnat_priv->foe_table_cpu[ppe_id][index];
+}
+EXPORT_SYMBOL(hnat_get_foe_entry);
 
 void hnat_cache_ebl(int enable)
 {
@@ -117,6 +98,7 @@ void hnat_cache_ebl(int enable)
 		cr_set_field(hnat_priv->ppe_base[i] + PPE_CAH_CTRL, CAH_EN, enable);
 	}
 }
+EXPORT_SYMBOL(hnat_cache_ebl);
 
 static void hnat_reset_timestamp(struct timer_list *t)
 {
@@ -168,7 +150,7 @@ void cr_set_field(void __iomem *reg, u32 field, u32 val)
 }
 
 /*boundary entry can't be used to accelerate data flow*/
-static void exclude_boundary_entry(struct foe_entry *foe_table_cpu)
+void exclude_boundary_entry(struct foe_entry *foe_table_cpu)
 {
 	int entry_base = 0;
 	int bad_entry, i, j;
@@ -190,6 +172,59 @@ static void exclude_boundary_entry(struct foe_entry *foe_table_cpu)
 	}
 }
 
+static int mtk_get_wdma_tx_port(u32 wdma_idx)
+{
+	if (wdma_idx == 0 || wdma_idx == 1 || wdma_idx == 2)
+		return NR_PPE0_PORT;
+
+	return -EINVAL;
+}
+
+static int mtk_get_wdma_rx_port(u32 wdma_idx)
+{
+	if (wdma_idx == 2)
+		return NR_WDMA2_PORT;
+	else if (wdma_idx == 1)
+		return NR_WDMA1_PORT;
+	else if (wdma_idx == 0)
+		return NR_WDMA0_PORT;
+
+	return -EINVAL;
+}
+
+static int mtk_set_wdma_pse_port_state(u32 wdma_idx, bool up)
+{
+	int port;
+
+	port = mtk_get_wdma_rx_port(wdma_idx);
+	if (port < 0)
+		return -EINVAL;
+
+	cr_set_field(hnat_priv->fe_base + MTK_FE_GLO_CFG(port),
+		     MTK_FE_LINK_DOWN_P((u32)port), !up);
+
+	return 0;
+}
+
+static int mtk_set_ppe_pse_port_state(u32 ppe_id, bool up)
+{
+	u32 port;
+
+	if (ppe_id == 0)
+		port = NR_PPE0_PORT;
+	else if (ppe_id == 1)
+		port = NR_PPE1_PORT;
+	else if (ppe_id == 2)
+		port = NR_PPE2_PORT;
+	else
+		return -EINVAL;
+
+	cr_set_field(hnat_priv->fe_base + MTK_FE_GLO_CFG(port),
+		     MTK_FE_LINK_DOWN_P(port), !up);
+
+	return 0;
+}
+
 void set_gmac_ppe_fwd(int id, int enable)
 {
 	void __iomem *reg;
@@ -201,28 +236,32 @@ void set_gmac_ppe_fwd(int id, int enable)
 
 	if (enable) {
 #if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
-		if (CFG_PPE_NUM == 3 && id == NR_GMAC3_PORT)
-			cr_set_bits(reg, BITS_GDM_ALL_FRC_P_PPE2);
-		else if (CFG_PPE_NUM == 3 && id == NR_GMAC2_PORT)
-			cr_set_bits(reg, BITS_GDM_ALL_FRC_P_PPE1);
+		if (CFG_PPE_NUM >= 3 && id == NR_GMAC3_PORT)
+			cr_set_field(reg, GDM_ALL_FRC_MASK, BITS_GDM_ALL_FRC_P_PPE2);
+		else if (CFG_PPE_NUM >= 2 && id == NR_GMAC2_PORT)
+			cr_set_field(reg, GDM_ALL_FRC_MASK, BITS_GDM_ALL_FRC_P_PPE1);
 		else
+			cr_set_field(reg, GDM_ALL_FRC_MASK, BITS_GDM_ALL_FRC_P_PPE);
+#else
+		cr_set_field(reg, GDM_ALL_FRC_MASK, BITS_GDM_ALL_FRC_P_PPE);
 #endif
-			cr_set_bits(reg, BITS_GDM_ALL_FRC_P_PPE);
-
 		return;
 	}
 
 	/*disabled */
 	val = readl(reg);
-	if ((val & GDM_ALL_FRC_MASK) == BITS_GDM_ALL_FRC_P_PPE
 #if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
-		 || (CFG_PPE_NUM == 3 &&
+	if ((CFG_PPE_NUM >= 2 &&
 	    ((val & GDM_ALL_FRC_MASK) == BITS_GDM_ALL_FRC_P_PPE1 ||
-	     (val & GDM_ALL_FRC_MASK) == BITS_GDM_ALL_FRC_P_PPE2))
-#endif
-	)
+	     (val & GDM_ALL_FRC_MASK) == BITS_GDM_ALL_FRC_P_PPE2)))
 		cr_set_field(reg, GDM_ALL_FRC_MASK,
 			     BITS_GDM_ALL_FRC_P_CPU_PDMA);
+#endif
+
+	if ((val & GDM_ALL_FRC_MASK) == BITS_GDM_ALL_FRC_P_PPE)
+		cr_set_field(reg, GDM_ALL_FRC_MASK,
+				 BITS_GDM_ALL_FRC_P_CPU_PDMA);
+
 }
 
 static int entry_mac_cmp(struct foe_entry *entry, u8 *mac)
@@ -249,6 +288,85 @@ static int entry_mac_cmp(struct foe_entry *entry, u8 *mac)
 	return ret;
 }
 
+static int entry_ip_cmp(struct foe_entry *entry, bool is_ipv4, void *addr)
+{
+	struct in6_addr *tmp_ipv6;
+	struct in6_addr ipv6 = {0};
+	struct in6_addr foe_sipv6 = {0};
+	struct in6_addr foe_dipv6 = {0};
+	u32 *tmp_ipv4, ipv4;
+	u32 *sipv6_0 = NULL;
+	u32 *dipv6_0 = NULL;
+	int ret = 0;
+
+	if (is_ipv4) {
+		tmp_ipv4 = (u32 *)addr;
+		ipv4 = ntohl(*tmp_ipv4);
+
+		switch ((int)entry->bfib1.pkt_type) {
+		case IPV4_HNAPT:
+		case IPV4_HNAT:
+			if (entry->ipv4_hnapt.sip == ipv4 ||
+			    entry->ipv4_hnapt.new_dip == ipv4)
+				ret = 1;
+			break;
+		case IPV4_DSLITE:
+		case IPV4_MAP_E:
+			if (entry->ipv4_dslite.sip == ipv4 ||
+			    entry->ipv4_dslite.dip == ipv4)
+				ret = 1;
+			break;
+		default:
+			break;
+		}
+	} else {
+		memset(&foe_sipv6, 0, sizeof(struct in6_addr));
+		memset(&foe_dipv6, 0, sizeof(struct in6_addr));
+		memset(&ipv6, 0, sizeof(struct in6_addr));
+
+		tmp_ipv6 = (struct in6_addr *)addr;
+		ipv6.s6_addr32[0] = ntohl(tmp_ipv6->s6_addr32[0]);
+		ipv6.s6_addr32[1] = ntohl(tmp_ipv6->s6_addr32[1]);
+		ipv6.s6_addr32[2] = ntohl(tmp_ipv6->s6_addr32[2]);
+		ipv6.s6_addr32[3] = ntohl(tmp_ipv6->s6_addr32[3]);
+
+		switch ((int)entry->bfib1.pkt_type) {
+		case IPV6_3T_ROUTE:
+		case IPV6_5T_ROUTE:
+		case IPV6_6RD:
+			sipv6_0 = &(entry->ipv6_3t_route.ipv6_sip0);
+			dipv6_0 = &(entry->ipv6_3t_route.ipv6_dip0);
+			break;
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+		case IPV6_HNAT:
+		case IPV6_HNAPT:
+			sipv6_0 = &(entry->ipv6_hnapt.ipv6_sip0);
+			dipv6_0 = &(entry->ipv6_hnapt.new_ipv6_ip0);
+			break;
+#endif
+		default:
+			break;
+		}
+
+		if (sipv6_0 && dipv6_0) {
+			memcpy(&foe_sipv6, sipv6_0, sizeof(struct in6_addr));
+			memcpy(&foe_dipv6, dipv6_0, sizeof(struct in6_addr));
+			if (!memcmp(&foe_sipv6, &ipv6, sizeof(struct in6_addr)) ||
+			    !memcmp(&foe_dipv6, &ipv6, sizeof(struct in6_addr)))
+				ret = 1;
+		}
+	}
+
+	if (ret && debug_level >= 2) {
+		if (is_ipv4)
+			pr_info("ipv4=%pI4\n", tmp_ipv4);
+		else
+			pr_info("ipv6=%pI6\n", tmp_ipv6);
+	}
+
+	return ret;
+}
+
 int entry_delete_by_mac(u8 *mac)
 {
 	struct foe_entry *entry = NULL;
@@ -270,6 +388,70 @@ int entry_delete_by_mac(u8 *mac)
 	if(!ret && debug_level >= 2)
 		pr_info("entry not found\n");
 
+	return ret;
+}
+
+int entry_delete_by_ip(bool is_ipv4, void *addr)
+{
+	struct foe_entry *entry = NULL;
+	int index, i, ret = 0;
+
+	for (i = 0; i < CFG_PPE_NUM; i++) {
+		entry = hnat_priv->foe_table_cpu[i];
+		for (index = 0; index < DEF_ETRY_NUM; entry++, index++) {
+			if (entry->bfib1.state == BIND && entry_ip_cmp(entry, is_ipv4, addr)) {
+				memset(entry, 0, sizeof(*entry));
+				hnat_cache_ebl(1);
+				if (debug_level >= 2)
+					pr_info("delete entry idx = %d\n", index);
+				ret++;
+			}
+		}
+	}
+
+	if (!ret && debug_level >= 2)
+		pr_info("entry not found\n");
+
+	return ret;
+}
+
+static int entry_delete_by_bssid_wcid(u32 wdma_idx, u16 bssid, u16 wcid)
+{
+	struct foe_entry *entry = NULL;
+	int index, i;
+	int ret = 0;
+	int port;
+
+	port = mtk_get_wdma_rx_port(wdma_idx);
+
+	if (port < 0)
+		return -EINVAL;
+
+	for (i = 0; i < CFG_PPE_NUM; i++) {
+		entry = hnat_priv->foe_table_cpu[i];
+		for (index = 0; index < DEF_ETRY_NUM; entry++, index++) {
+			if (entry->bfib1.state != BIND)
+				continue;
+
+			if (IS_IPV4_GRP(entry)) {
+				if (entry->ipv4_hnapt.winfo.bssid != bssid ||
+				    entry->ipv4_hnapt.winfo.wcid != wcid ||
+				    entry->ipv4_hnapt.iblk2.dp != port)
+					continue;
+			} else {
+				if (entry->ipv6_5t_route.winfo.bssid != bssid ||
+				    entry->ipv6_5t_route.winfo.wcid != wcid ||
+				    entry->ipv6_5t_route.iblk2.dp != port)
+					continue;
+			}
+
+			memset(entry, 0, sizeof(*entry));
+			hnat_cache_ebl(1);
+			if (debug_level >= 2)
+				pr_info("delete entry idx = %d\n", index);
+			ret++;
+		}
+	}
 	return ret;
 }
 
@@ -358,25 +540,73 @@ static void hnat_roaming_disable(void)
 	pr_info("hnat roaming work disable\n");
 }
 
+static void hnat_flow_entry_teardown_all(u32 ppe_id)
+{
+	struct hnat_flow_entry *flow_entry;
+	struct hlist_head *head;
+	struct hlist_node *n;
+	int index;
+
+	spin_lock_bh(&hnat_priv->flow_entry_lock);
+	for (index = 0; index < DEF_ETRY_NUM / 4; index++) {
+		head = &hnat_priv->foe_flow[ppe_id][index];
+		hlist_for_each_entry_safe(flow_entry, n, head, list) {
+			hnat_flow_entry_delete(flow_entry);
+		}
+	}
+	spin_unlock_bh(&hnat_priv->flow_entry_lock);
+}
+
+static void hnat_flow_entry_teardown_handler(struct work_struct *work)
+{
+	struct hnat_flow_entry *flow_entry;
+	struct hlist_head *head;
+	struct hlist_node *n;
+	unsigned long now = jiffies;
+	int index, i;
+	u32 cnt = 0;
+
+	spin_lock_bh(&hnat_priv->flow_entry_lock);
+	for (i = 0; i < CFG_PPE_NUM; i++) {
+		for (index = 0; index < DEF_ETRY_NUM / 4; index++) {
+			head = &hnat_priv->foe_flow[i][index];
+			hlist_for_each_entry_safe(flow_entry, n, head, list) {
+				/* If the entry is updated before 30 seconds, teardown it. */
+				if (time_after(now, flow_entry->last_update + msecs_to_jiffies(30 * 1000))) {
+					hnat_flow_entry_delete(flow_entry);
+					cnt++;
+				}
+			}
+		}
+	}
+	spin_unlock_bh(&hnat_priv->flow_entry_lock);
+
+	if (debug_level >= 2 && cnt > 0)
+		pr_info("[%s]: Teardown %d entries\n", __func__, cnt);
+
+	schedule_delayed_work(&_hnat_flow_entry_teardown_work, msecs_to_jiffies(1000));
+}
+
+static void hnat_flow_entry_teardown_enable(void)
+{
+	INIT_DELAYED_WORK(&_hnat_flow_entry_teardown_work, hnat_flow_entry_teardown_handler);
+	schedule_delayed_work(&_hnat_flow_entry_teardown_work, msecs_to_jiffies(1000));
+}
+
+static void hnat_flow_entry_teardown_disable(void)
+{
+	cancel_delayed_work(&_hnat_flow_entry_teardown_work);
+}
+
 static int hnat_hw_init(u32 ppe_id)
 {
-	int i;
-	char *tmp = vids;
 	if (ppe_id >= CFG_PPE_NUM)
 		return -EINVAL;
 
-	memset(vlan_num,0,sizeof(vlan_num));
-	if(get_vids(tmp)==0)
-	{
-		printk("hwnat: use 501/502 for gn\n");
-		vlan_num[0]=501;
-		vlan_num[1]=502;
-	}
-	printk("%s: Skip VLAN: ", __func__);
-	for (i = 0; i < MTLAN_MAXINUM && vlan_num[i]; ++i) {
-		printk("%d,", vlan_num[i]);
-	}
-	printk("\n");
+#if 1 /* ASUS: skip specific VID */
+	memset(vlan_num, 0, sizeof(vlan_num));
+#endif
+
 	/* setup hashing */
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, TB_ETRY_NUM, hnat_priv->etry_num_cfg);
 	cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_TB_CFG, HASH_MODE, HASH_MODE_1);
@@ -458,11 +688,14 @@ static int hnat_hw_init(u32 ppe_id)
 	    hnat_priv->data->version == MTK_HNAT_V3) {
 		writel(0xcb777, hnat_priv->ppe_base[ppe_id] + PPE_DFT_CPORT1);
 		writel(0x7f, hnat_priv->ppe_base[ppe_id] + PPE_SBW_CTRL);
+		cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_GLO_CFG, SP_CMP_EN, 1);
 	}
 
 	if (hnat_priv->data->version == MTK_HNAT_V3) {
 		cr_set_field(hnat_priv->ppe_base[ppe_id] + PPE_SB_FIFO_DBG,
 			     SB_MED_FULL_DRP_EN, 1);
+		cr_set_bits(hnat_priv->ppe_base[ppe_id] + PPE_GLO_CFG,
+			    NEW_IPV4_ID_INC_EN | TSID_EN);
 	}
 
 	/*enable ppe mib counter*/
@@ -477,6 +710,8 @@ static int hnat_hw_init(u32 ppe_id)
 
 	dev_info(hnat_priv->dev, "PPE%d hwnat start\n", ppe_id);
 
+	spin_lock_init(&hnat_priv->entry_lock);
+	spin_lock_init(&hnat_priv->flow_entry_lock);
 	return 0;
 }
 
@@ -484,6 +719,7 @@ static int hnat_start(u32 ppe_id)
 {
 	u32 foe_table_sz;
 	u32 foe_mib_tb_sz;
+	u32 foe_flow_sz;
 	int etry_num_cfg;
 
 	if (ppe_id >= CFG_PPE_NUM)
@@ -496,12 +732,21 @@ static int hnat_start(u32 ppe_id)
 		hnat_priv->foe_table_cpu[ppe_id] = dma_alloc_coherent(
 				hnat_priv->dev, foe_table_sz,
 				&hnat_priv->foe_table_dev[ppe_id], GFP_KERNEL);
-
-		if (hnat_priv->foe_table_cpu[ppe_id])
-			break;
+		if (hnat_priv->foe_table_cpu[ppe_id]) {
+			foe_flow_sz = (hnat_priv->foe_etry_num / 4) * sizeof(struct hlist_head);
+			hnat_priv->foe_flow[ppe_id] = devm_kzalloc(hnat_priv->dev, foe_flow_sz, GFP_KERNEL);
+			if (!hnat_priv->foe_flow[ppe_id]) {
+				dma_free_coherent(hnat_priv->dev, foe_table_sz,
+						  hnat_priv->foe_table_cpu[ppe_id],
+						  hnat_priv->foe_table_dev[ppe_id]);
+				hnat_priv->foe_table_cpu[ppe_id] = NULL;
+			} else {
+				break;
+			}
+		}
 	}
 
-	if (!hnat_priv->foe_table_cpu[ppe_id])
+	if (!hnat_priv->foe_table_cpu[ppe_id] || !hnat_priv->foe_flow[ppe_id])
 		return -1;
 	dev_info(hnat_priv->dev, "PPE%d entry number = %d\n",
 		 ppe_id, hnat_priv->foe_etry_num);
@@ -636,6 +881,10 @@ static void hnat_stop(u32 ppe_id)
 		writel(0, hnat_priv->ppe_base[ppe_id] + PPE_MIB_TB_BASE);
 		kfree(hnat_priv->acct[ppe_id]);
 	}
+
+	/* Release the allocated hnat_flow_entry nodes */
+	if (hnat_priv->foe_flow[ppe_id])
+		hnat_flow_entry_teardown_all(ppe_id);
 }
 
 static void hnat_release_netdev(void)
@@ -678,6 +927,10 @@ int hnat_enable_hook(void)
 		ra_sw_nat_hook_tx = mtk_sw_nat_hook_tx;
 		ppe_dev_register_hook = mtk_ppe_dev_register_hook;
 		ppe_dev_unregister_hook = mtk_ppe_dev_unregister_hook;
+		ra_sw_nat_clear_bind_entries = foe_clear_all_bind_entries;
+		hnat_get_wdma_tx_port = mtk_get_wdma_tx_port;
+		hnat_get_wdma_rx_port = mtk_get_wdma_rx_port;
+		hnat_set_wdma_pse_port_state = mtk_set_wdma_pse_port_state;
 	}
 	eth_hook_tx = mtk_hnat_eth_hook_tx;
 
@@ -685,6 +938,8 @@ int hnat_enable_hook(void)
 		return -1;
 
 	ppe_del_entry_by_mac = entry_delete_by_mac;
+	ppe_del_entry_by_ip = entry_delete_by_ip;
+	ppe_del_entry_by_bssid_wcid = entry_delete_by_bssid_wcid;
 	hook_toggle = 1;
 
 	return 0;
@@ -697,6 +952,10 @@ int hnat_disable_hook(void)
 
 	ra_sw_nat_hook_tx = NULL;
 	ra_sw_nat_hook_rx = NULL;
+	ra_sw_nat_clear_bind_entries = NULL;
+	hnat_get_wdma_tx_port = NULL;
+	hnat_get_wdma_rx_port = NULL;
+	hnat_set_wdma_pse_port_state = NULL;
 	eth_hook_tx = NULL;
 	hnat_unregister_nf_hooks();
 
@@ -719,6 +978,8 @@ int hnat_disable_hook(void)
 
 	mod_timer(&hnat_priv->hnat_sma_build_entry_timer, jiffies + 3 * HZ);
 	ppe_del_entry_by_mac = NULL;
+	ppe_del_entry_by_ip = NULL;
+	ppe_del_entry_by_bssid_wcid = NULL;
 	hook_toggle = 0;
 
 	return 0;
@@ -727,6 +988,7 @@ int hnat_disable_hook(void)
 int hnat_warm_init(void)
 {
 	u32 foe_table_sz, foe_mib_tb_sz, ppe_id = 0;
+	int i;
 
 	unregister_netevent_notifier(&nf_hnat_netevent_nb);
 
@@ -752,8 +1014,17 @@ int hnat_warm_init(void)
 		hnat_hw_init(ppe_id);
 	}
 
-	set_gmac_ppe_fwd(0, 1);
-	set_gmac_ppe_fwd(1, 1);
+	/* The SER will enable all the PPE ports again,
+	 * so we have to manually disable the unused ports one more.
+	 */
+	for (i = 0; i < MAX_PPE_NUM; i++) {
+		if (i >= CFG_PPE_NUM)
+			mtk_set_ppe_pse_port_state(i, false);
+	}
+
+	set_gmac_ppe_fwd(NR_GMAC1_PORT, 1);
+	set_gmac_ppe_fwd(NR_GMAC2_PORT, 1);
+	set_gmac_ppe_fwd(NR_GMAC3_PORT, 1);
 	register_netevent_notifier(&nf_hnat_netevent_nb);
 
 	return 0;
@@ -778,14 +1049,18 @@ static int hnat_probe(struct platform_device *pdev)
 	const struct of_device_id *match;
 
 	hnat_priv = devm_kzalloc(&pdev->dev, sizeof(struct mtk_hnat), GFP_KERNEL);
-	if (!hnat_priv)
-		return -ENOMEM;
+	if (!hnat_priv) {
+		err = -ENOMEM;
+		goto err_out2;
+	}
 
 	hnat_priv->foe_etry_num = DEF_ETRY_NUM;
 
 	match = of_match_device(of_hnat_match, &pdev->dev);
-	if (unlikely(!match))
-		return -EINVAL;
+	if (unlikely(!match)) {
+		err = -EINVAL;
+		goto err_out2;
+	}
 
 	hnat_priv->data = (struct mtk_hnat_data *)match->data;
 
@@ -793,8 +1068,10 @@ static int hnat_probe(struct platform_device *pdev)
 	np = hnat_priv->dev->of_node;
 
 	err = of_property_read_string(np, "mtketh-wan", &name);
-	if (err < 0)
-		return -EINVAL;
+	if (err < 0) {
+		err = -EINVAL;
+		goto err_out2;
+	}
 
 	strncpy(hnat_priv->wan, (char *)name, IFNAMSIZ - 1);
 	dev_info(&pdev->dev, "wan = %s\n", hnat_priv->wan);
@@ -823,8 +1100,10 @@ static int hnat_probe(struct platform_device *pdev)
 	/*get total gmac num in hnat*/
 	err = of_property_read_u32_index(np, "mtketh-max-gmac", 0, &val);
 
-	if (err < 0)
-		return -EINVAL;
+	if (err < 0) {
+		err = -EINVAL;
+		goto err_out2;
+	}
 
 	hnat_priv->gmac_num = val;
 
@@ -849,13 +1128,17 @@ static int hnat_probe(struct platform_device *pdev)
 	dev_info(&pdev->dev, "ppe num = %d\n", hnat_priv->ppe_num);
 
 	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	if (!res)
-		return -ENOENT;
+	if (!res) {
+		err = -ENOENT;
+		goto err_out2;
+	}
 
 	hnat_priv->fe_base = devm_ioremap_nocache(&pdev->dev, res->start,
 					     res->end - res->start + 1);
-	if (!hnat_priv->fe_base)
-		return -EADDRNOTAVAIL;
+	if (!hnat_priv->fe_base) {
+		err = -EADDRNOTAVAIL;
+		goto err_out2;
+	}
 
 #if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
 	hnat_priv->ppe_base[0] = hnat_priv->fe_base + 0x2200;
@@ -871,7 +1154,7 @@ static int hnat_probe(struct platform_device *pdev)
 
 	err = hnat_init_debugfs(hnat_priv);
 	if (err)
-		return err;
+		goto err_out2;
 
 	prop = of_find_property(np, "ext-devices", NULL);
 	for (name = of_prop_next_string(prop, NULL); name;
@@ -897,6 +1180,16 @@ static int hnat_probe(struct platform_device *pdev)
 		err = hnat_start(i);
 		if (err)
 			goto err_out;
+	}
+
+	/* The PSE default enables all the PPE ports,
+	 * so we need to manually disable the unused ports.
+	 */
+	for (i = 0; i < MAX_PPE_NUM; i++) {
+		if (i >= CFG_PPE_NUM)
+			mtk_set_ppe_pse_port_state(i, false);
+		else
+			mtk_set_ppe_pse_port_state(i, true);
 	}
 
 	if (hnat_priv->data->whnat) {
@@ -931,6 +1224,10 @@ static int hnat_probe(struct platform_device *pdev)
 	if (err)
 		pr_info("hnat roaming work fail\n");
 
+	hnat_flow_entry_teardown_enable();
+
+	INIT_LIST_HEAD(&hnat_priv->xlat.map_list);
+
 	return 0;
 
 err_out:
@@ -943,6 +1240,9 @@ err_out1:
 		ext_if_del(ext_entry);
 		kfree(ext_entry);
 	}
+err_out2:
+	for (i = 0; i < MAX_PPE_NUM; i++)
+		mtk_set_ppe_pse_port_state(i, false);
 	return err;
 }
 
@@ -951,6 +1251,7 @@ static int hnat_remove(struct platform_device *pdev)
 	int i;
 
 	hnat_roaming_disable();
+	hnat_flow_entry_teardown_disable();
 	unregister_netdevice_notifier(&nf_hnat_netdevice_nb);
 	unregister_netevent_notifier(&nf_hnat_netevent_nb);
 	hnat_disable_hook();
@@ -960,6 +1261,9 @@ static int hnat_remove(struct platform_device *pdev)
 
 	for (i = 0; i < CFG_PPE_NUM; i++)
 		hnat_stop(i);
+
+	for (i = 0; i < MAX_PPE_NUM; i++)
+		mtk_set_ppe_pse_port_state(i, false);
 
 	hnat_deinit_debugfs(hnat_priv);
 	hnat_release_netdev();

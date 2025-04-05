@@ -2,6 +2,8 @@
 #ifndef _NET_PPTP_H
 #define _NET_PPTP_H
 
+#include <net/gre.h>
+
 #define PPP_LCP_ECHOREQ 0x09
 #define PPP_LCP_ECHOREP 0x0A
 #define SC_RCV_BITS     (SC_RCV_B7_1|SC_RCV_B7_0|SC_RCV_ODDP|SC_RCV_EVNP)
@@ -20,5 +22,7 @@ struct pptp_gre_header {
 	__be32 ack;
 } __packed;
 
+/* symbol exported from linux kernel driver/net/ppp/pptp.c */
+extern int (*mtk_pptp_seq_next)(uint16_t call_id, uint32_t *val);
 
 #endif

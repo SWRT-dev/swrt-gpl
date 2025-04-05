@@ -20,6 +20,8 @@
 #include <dt-bindings/pinctrl/mt65xx.h>
 #include <dt-bindings/input/linux-event-codes.h>
 #include <dt-bindings/gpio/gpio.h>
+#include <dt-bindings/reset/mt7986-resets.h>
+
 / {
 	compatible = "mediatek,mt7981-rfb";
 	interrupt-parent = <&gic>;
@@ -139,9 +141,9 @@
 		#size-cells = <2>;
 		ranges;
 
-		/* 192 KiB reserved for ARM Trusted Firmware (BL31) */
+		/* 512 KiB reserved for ARM Trusted Firmware (BL31 + BL32) */
 		secmon_reserved: secmon@43000000 {
-			reg = <0 0x43000000 0 0x30000>;
+			reg = <0 0x43000000 0 0x80000>;
 			no-map;
 		};
 
@@ -232,10 +234,10 @@
 	};
 
 	watchdog: watchdog@1001c000 {
-		compatible = "mediatek,mt7622-wdt",
+		compatible = "mediatek,mt7986-wdt",
 			     "mediatek,mt6589-wdt";
 		reg = <0 0x1001c000 0 0x1000>;
-		interrupts = <GIC_SPI 110 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 74 IRQ_TYPE_LEVEL_HIGH>;
 		#reset-cells = <1>;
 	};
 
@@ -395,10 +397,14 @@
         eth: ethernet@15100000 {
                 compatible = "mediatek,mt7981-eth";
                 reg = <0 0x15100000 0 0x80000>;
-                interrupts = <GIC_SPI 196 IRQ_TYPE_LEVEL_HIGH>,
-                             <GIC_SPI 197 IRQ_TYPE_LEVEL_HIGH>,
-                             <GIC_SPI 198 IRQ_TYPE_LEVEL_HIGH>,
-                             <GIC_SPI 199 IRQ_TYPE_LEVEL_HIGH>;
+		interrupts = <GIC_SPI 189 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 190 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 191 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 192 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 196 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 197 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 198 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 199 IRQ_TYPE_LEVEL_HIGH>;
                 clocks = <&ethsys CK_ETH_FE_EN>,
                          <&ethsys CK_ETH_GP2_EN>,
                          <&ethsys CK_ETH_GP1_EN>,
@@ -475,29 +481,41 @@
 	};
 
 	mmc0: mmc@11230000 {
-                   compatible = "mediatek,mt7986-mmc",
-                                "mediatek,mt7981-mmc";
-                   reg = <0 0x11230000 0 0x1000>, <0 0x11c20000 0 0x1000>;
-                   interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
-                   clocks = <&topckgen CK_TOP_EMMC_208M>,
-                             <&topckgen CK_TOP_EMMC_400M>,
-                             <&infracfg_ao CK_INFRA_MSDC_CK>;
-                   assigned-clocks = <&topckgen CK_TOP_EMMC_208M_SEL>,
-                                      <&topckgen CK_TOP_EMMC_400M_SEL>;
-                   assigned-clock-parents = <&topckgen CK_TOP_CB_M_D2>,
-                                             <&topckgen CK_TOP_CB_NET2_D2>;
-                   clock-names = "source", "hclk", "source_cg";
-                   status = "disabled";
-        };
+		compatible = "mediatek,mt7986-mmc",
+			     "mediatek,mt7981-mmc";
+		reg = <0 0x11230000 0 0x1000>, <0 0x11c20000 0 0x1000>;
+		interrupts = <GIC_SPI 143 IRQ_TYPE_LEVEL_HIGH>;
+		clocks = <&topckgen CK_TOP_EMMC_208M>,
+			 <&topckgen CK_TOP_EMMC_400M>,
+			 <&infracfg_ao CK_INFRA_MSDC_66M_CK>,
+			 <&infracfg_ao CK_INFRA_MSDC_CK>;
+		assigned-clocks = <&topckgen CK_TOP_EMMC_208M_SEL>,
+				  <&topckgen CK_TOP_EMMC_400M_SEL>;
+		assigned-clock-parents = <&topckgen CK_TOP_CB_M_D2>,
+					 <&topckgen CK_TOP_CB_NET2_D2>;
+		clock-names = "source", "hclk", "bus_clk", "source_cg";
+		status = "disabled";
+	};
 
 	wbsys: wbsys@18000000 {
-		compatible = "mediatek,wbsys";
-		reg = <0 0x18000000 0  0x1000000>;
+		compatible = "mediatek,wbsys",
+			     "mediatek,mt7981-wmac";
+		resets = <&watchdog MT7986_TOPRGU_CONSYS_RST>;
+		reset-names = "consys";
+		clocks = <&topckgen CK_TOP_NETSYS_MCU_SEL>,
+			 <&topckgen CK_TOP_AP2CNN_HOST_SEL>;
+		clock-names = "mcu", "ap2conn";
+		reg = <0 0x18000000 0 0x1000000>,
+		      <0 0x10003000 0 0x1000>,
+		      <0 0x11d10000 0 0x1000>;
 		interrupts = <GIC_SPI 213 IRQ_TYPE_LEVEL_HIGH>,
-					 <GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH>,
-					 <GIC_SPI 215 IRQ_TYPE_LEVEL_HIGH>,
-					 <GIC_SPI 216 IRQ_TYPE_LEVEL_HIGH>;
+			     <GIC_SPI 214 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 215 IRQ_TYPE_LEVEL_HIGH>,
+			     <GIC_SPI 216 IRQ_TYPE_LEVEL_HIGH>;
 		chip_id = <0x7981>;
+		memory-region = <&wmcpu_emi>;
+		nvmem-cells = <&consys_variant>;
+		nvmem-cell-names = "variant";
 	};
 
 	wed_pcie: wed_pcie@10003000 {
@@ -625,6 +643,10 @@
 			reg = <0x274 0xc>;
 		};
 
+		consys_variant: consys@284 {
+			reg = <0x284 0x4>;
+		};
+
 		phy_calibration: calib@8dc {
 			reg = <0x8dc 0x10>;
 		};
@@ -646,7 +668,7 @@
 	};
 
 	afe: audio-controller@11210000 {
-		compatible = "mediatek,mt79xx-audio";
+		compatible = "mediatek,mt7981-afe", "mediatek,mt7986-afe";
 		reg = <0 0x11210000 0 0x9000>;
 		interrupts = <GIC_SPI 106 IRQ_TYPE_LEVEL_HIGH>;
 		clocks = <&infracfg_ao CK_INFRA_AUD_BUS_CK>,

@@ -178,6 +178,9 @@
 	background-size: contain;
 	margin: 8px 0;
 }
+.schematic_container .img_item.btnsw_1{
+	background-image: url(/images/New_ui/multifuncbtn/dark_theme/img_multi_func_btnsw_1.svg);
+}
 .schematic_container .notice_item{
 	color: #FC0;
 	font-size: 11px;
@@ -193,4 +196,125 @@
 	letter-spacing: 0.25px;
 	text-transform: capitalize;
 	margin: 8px 16px;
+}
+.mode_config_container{
+	padding: 4%;
+	background-color: rgb(0 0 0 / 10%);
+	line-height: 140%;
+}
+.mode_config_container .mode_profile_container{
+	width: 100%;
+	height: 70px;
+	border: 1px solid rgb(84, 103, 117);
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	padding: 0 4%;
+	box-sizing: border-box;
+}
+.mode_config_container .mode_profile_container:not(:first-child){
+	margin: 12px 0;
+}
+.mode_profile_container .icon_component{
+	min-width: 50px;
+	height: 50px;
+	background-color: rgb(255 255 255 / 10%);
+	border-radius: 8px;
+}
+.icon_component > i{
+	--svg: url(/images/New_ui/SDN/dark_theme/Category/ic-build.svg);
+	width: 100%;
+	height: 100%;
+	display: block;
+	-webkit-mask: var(--svg);
+	mask: var(--svg);
+	-webkit-mask-repeat: no-repeat;
+	-webkit-mask-position: center;
+	-webkit-mask-size: 60%;
+	background-color: rgb(0 0 0 / 60%);
+}
+.icon_component.travel > i{
+	--svg: url(/images/New_ui/multifuncbtn/ic_travel.svg);
+}
+.icon_component.home > i{
+	--svg: url(/images/New_ui/multifuncbtn/ic_home.svg);
+}
+.nvsw_active .icon_component > i{
+	background-color: #FFF;
+}
+.mode_profile_container .detail_component{
+	display: flex;
+	flex-grow: 1;
+	flex-wrap: wrap;
+	margin-left: 12px;
+}
+.detail_component .text_component{
+	position: relative;
+	width: 100%;
+	display: flex;
+	justify-content: space-between;
+	height: 25px;
+	align-items: flex-start;
+}
+.detail_component .text_component:not(:first-child){
+	align-items: flex-end;
+}
+.detail_component .text_component:not(:first-child):before{
+	position: absolute;
+	content: "";
+	top: 0;
+	width: 100%;
+	border-top: 1px solid rgba(171, 180, 194, 0.2);
+}
+.text_component .main_text{
+	font-size: 14px;
+	color: #a4b7c3;
+}
+.nvsw_active .text_component .main_text{
+	font-size: 16px;
+	color: #FFF;
+}
+.text_component .sub_text{
+	font-size: 12px;
+	text-transform: uppercase;
+	color: #a4b7c3;
+}
+.mode_config_container .notice_container{
+	background-color: rgb(0 0 0 / 20%);
+	border-radius: 8px;
+	padding: 8px 12px;
+}
+.notice_container .title{
+	color: #00DEDA;
+	display: flex;
+	align-items: center;
+}
+.notice_container .desc{
+	margin-top: 6px;
+	color: #FC0;
+}
+.notice_container .icon_notice{
+	color: #00DEDA !important;
+	border: 1px solid #00DEDA;
+	width: 20px;
+	height: 20px;
+	margin-right: 8px;
+}
+.icon_notice{
+	width: 24px;
+	height: 24px;
+	border-radius: 50%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	color: white;
+	font-size: 120%;
+	font-weight: bolder;
+	position: relative;
+	border: 1px solid #FFF;
+	font-family: monospace;
+}
+.icon_notice::before{
+	content: '!';
+	position: absolute;
 }

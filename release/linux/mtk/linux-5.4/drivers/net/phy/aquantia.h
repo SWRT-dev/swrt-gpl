@@ -9,6 +9,18 @@
 #include <linux/device.h>
 #include <linux/phy.h>
 
+#define PHY_ID_AQ1202	0x03a1b445
+#define PHY_ID_AQ2104	0x03a1b460
+#define PHY_ID_AQR105	0x03a1b4a2
+#define PHY_ID_AQR106	0x03a1b4d0
+#define PHY_ID_AQR107	0x03a1b4e0
+#define PHY_ID_AQCS109	0x03a1b5c2
+#define PHY_ID_AQR405	0x03a1b4b0
+#define PHY_ID_AQR113C	0x31c31c12
+#define PHY_ID_CUX3410	0x31c31dd3
+
+#define MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT		4
+
 #define PMAPMD_RSVD_VEND_PROV				0xe400
 #define PMAPMD_RSVD_VEND_PROV_MDI_CONF			BIT(0)
 
@@ -45,15 +57,42 @@ static const struct aqr107_hw_stat aqr107_hw_stats[] = {
 };
 #define AQR107_SGMII_STAT_SZ ARRAY_SIZE(aqr107_hw_stats)
 
+#ifdef CONFIG_AQUANTIA_PHY_MIB
+struct aqr107_mib_stat {
+	u64 crc8_error_packets;
+	u64 ldpc_error_packets;
+	u64 ls_tx_good_packets;
+	u64 ls_tx_bad_packets;
+	u64 ls_rx_good_packets;
+	u64 ls_rx_bad_packets;
+	u64 ss_tx_good_packets;
+	u64 ss_tx_bad_packets;
+	u64 ss_rx_good_packets;
+	u64 ss_rx_bad_packets;
+};
+#endif
+
 struct aqr107_priv {
 	u64 sgmii_stats[AQR107_SGMII_STAT_SZ];
 #ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
 	struct phy_device *phydevs[1];
+	struct task_struct *heartbeat_thread;
+	spinlock_t lock;
 	bool fw_initialized;
+	int fw_dl_mode;
+	u16 heartbeat;
+#endif
+#ifdef CONFIG_AQUANTIA_PHY_MIB
+	struct aqr107_mib_stat mib;
+	struct task_struct *mib_thread;
 #endif
 };
 
+int aqr107_set_downshift(struct phy_device *phydev, u8 cnt);
+void aqr107_chip_info(struct phy_device *phydev);
 int aqr107_config_mdi(struct phy_device *phydev);
+int aqr107_config_usx_aneg_en(struct phy_device *phydev);
+int aqr107_config_led(struct phy_device *phydev);
 
 #if IS_REACHABLE(CONFIG_HWMON)
 int aqr_hwmon_probe(struct phy_device *phydev);
@@ -62,5 +101,14 @@ static inline int aqr_hwmon_probe(struct phy_device *phydev) { return 0; }
 #endif
 
 #ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
+enum aqr_fw_dl_mode {
+	FW_DL_SINGLE = 0,
+	FW_DL_GNAGLOAD,
+};
+
+int aqr_firmware_heartbeat_thread(void *data);
 int aqr_firmware_download(struct phy_device *phydev);
+#endif
+#ifdef CONFIG_AQUANTIA_PHY_MIB
+int aqr107_config_mib(struct phy_device *phydev);
 #endif

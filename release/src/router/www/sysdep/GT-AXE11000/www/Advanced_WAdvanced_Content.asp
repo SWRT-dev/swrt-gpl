@@ -240,7 +240,7 @@ var QAM256_support = false;
 var QAM1024_support = false;
 var QAM4096_support = false;
 var wifi7_ofdma_support = false;
-var wifi7_mumimo_support = false;
+var wifi7_mumimo_support = isSupport('hide_mumimo') ? false : wifi7_support;
 (function(){
 	if(Bcmwifi_support){
 		var _cap = '';
@@ -333,7 +333,7 @@ function initial(){
 		changeRSSI(wl_user_rssi_onload);
 	else{
 		document.getElementById("rssiTr").style.display = "none";
-		$("#wl_unit_field").toggle(!(isSwMode("re") || isSwMode("ew")))
+		$("#wl_unit_field").toggle(!(isSwMode("RP") || isSwMode("ew")))
 	}
 
 	if(!band5g_support)
@@ -703,7 +703,7 @@ function initial(){
 
 	control_TimeField();
 
-	if(isSwMode("re")){
+	if(isSwMode("RP")){
 		var _rows = document.getElementById("WAdvTable").rows;
 		for(var i=0; i<_rows.length; i++){
 			if(_rows[i].className.search("rept") == -1){
@@ -796,14 +796,16 @@ function initial(){
 		}
 
 		document.getElementById("wl_gmode_checkbox").style.display = "";
-		if(document.form.wl_rateset.value == "ofdm"){
-			document.form.wl_rateset_ckb.checked = true;
-		}
-		else{
-			document.form.wl_rateset_ckb.checked = false;
-		}
+		if(disable11b_support){
+			if(document.form.wl_rateset.value == "ofdm"){
+				document.form.wl_rateset_ckb.checked = true;
+			}
+			else{
+				document.form.wl_rateset_ckb.checked = false;
+			}
 
-		wl_mode_change(document.form.wl_nmode_x.value);	
+			wl_mode_change(document.form.wl_nmode_x.value);
+		}
 	}
 
 	if(maxassoc_support){
@@ -816,6 +818,10 @@ function initial(){
 	if(wifi7_support && based_modelid != 'GT-BE96'){
 		document.getElementById('wifi7_mode_field').style.display = '';
 		document.getElementById('he_mode_field').style.display = 'none';
+	}
+	
+	if(isSupport("sdn_mainfh")){
+		$(".mainBH").hide();
 	}
 }
 
@@ -970,7 +976,7 @@ function changeRSSI(_switch){
 
 function applyRule(){
 	if(lantiq_support && wave_ready != 1){
-		alert("Please wait a minute for wireless ready");
+		alert(`<#Wireless_ready#>`);
 		return false;
 	}
 	
@@ -1498,6 +1504,12 @@ function regen_mode(){	//please sync to initial() : //Change wireless mode help 
 		_temp_value = ['0', '9'];
 		add_options_x2(document.form.wl_nmode_x, _temp, _temp_value, _nmode_x);
 	}
+
+	if(isSupport("sdn_mainfh")){
+		_temp = ['<#Auto#>'];
+		_temp_value = ['0'];
+		add_options_x2(document.form.wl_nmode_x, _temp, _temp_value, 0);
+	}
 }
 
 function wifi7_mode(obj){	
@@ -1705,7 +1717,7 @@ function wifi7_mode(obj){
 						</td>
 					</tr>
 
-					<tr id="wl_ap_isolate_field">
+					<tr id="wl_ap_isolate_field" class="mainBH">
 			  			<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(3, 5);"><#WLANConfig11b_x_IsolateAP_itemname#></a></th>
 			  			<td>
 							<input type="radio" value="1" name="wl_ap_isolate" class="input" onClick="return change_common_radio(this, 'WLANConfig11b', 'wl_ap_isolate', '1')" <% nvram_match("wl_ap_isolate", "1", "checked"); %>><#checkbox_Yes#>
@@ -1737,7 +1749,7 @@ function wifi7_mode(obj){
 						</td>
 					</tr>
 
-					<tr>
+					<tr class="mainBH">
 						<th><a class="hintstyle" href="javascript:void(0);" onClick="openHint(0, 2);"><#WLANConfig11b_x_BlockBCSSID_itemname#></a></th>
 						<td>
 							<input type="radio" value="1" name="wl_closed" class="input" <% nvram_match("wl_closed", "1", "checked"); %>><#checkbox_Yes#>
@@ -1778,7 +1790,7 @@ function wifi7_mode(obj){
 							</div>
 						</td>
 					</tr>
-					<tr id="wifi7_mode_field" style="display:none">
+					<tr id="wifi7_mode_field" style="display:none" class="mainBH">
 						<th>
 							<a id="wifi7_mode_text" class="hintstyle"><#WiFi7_Mode#></a>
 						</th>

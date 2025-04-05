@@ -1030,6 +1030,8 @@ spi_nor_find_best_erase_type(const struct spi_nor_erase_map *map,
 			continue;
 
 		erase = &map->erase_type[i];
+		if (!erase->size)
+			continue;
 
 		/* Alignment is not mandatory for overlaid regions */
 		if (region->offset & SNOR_OVERLAID_REGION &&
@@ -2240,13 +2242,20 @@ static const struct flash_info spi_nor_ids[] = {
 	{ "en25p64",    INFO(0x1c2017, 0, 64 * 1024,  128, 0) },
 	{ "en25q64",    INFO(0x1c3017, 0, 64 * 1024,  128, SECT_4K) },
 	{ "en25q128",   INFO(0x1c3018, 0, 64 * 1024,  256, SECT_4K) },
+	{ "en25qx128a", INFO(0x1c7118, 0, 64 * 1024, 256, 0) },
 	{ "en25q80a",   INFO(0x1c3014, 0, 64 * 1024,   16,
 			SECT_4K | SPI_NOR_DUAL_READ) },
 	{ "en25qh32",   INFO(0x1c7016, 0, 64 * 1024,   64, 0) },
 	{ "en25qh64",   INFO(0x1c7017, 0, 64 * 1024,  128,
 			SECT_4K | SPI_NOR_DUAL_READ) },
 	{ "en25qh128",  INFO(0x1c7018, 0, 64 * 1024,  256, 0) },
+	{ "en25qx128",	INFO(0x1c7118, 0, 64 * 1024,  256,
+			SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
+			SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB) },
 	{ "en25qh256",  INFO(0x1c7019, 0, 64 * 1024,  512, 0) },
+	{ "en25qx256a", INFO(0x1c7119, 0, 64 * 1024,  512,
+			SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
+			SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB) },
 	{ "en25s64",	INFO(0x1c3817, 0, 64 * 1024,  128, SECT_4K) },
 
 	/* ESMT */
@@ -4907,6 +4916,21 @@ static int spi_nor_cal_read(void *priv, u32 *addr, int addrlen, u8 *buf, int rea
 	return spi_nor_read_raw(nor, *addr, readlen, buf);
 }
 
+static int spi_nor_cal_read_4B(void *priv, u32 *addr, int addrlen, u8 *buf,
+			    int readlen)
+{
+	int ret;
+	struct spi_nor *nor = (struct spi_nor *)priv;
+
+	nor->reg_proto = SNOR_PROTO_1_1_1;
+	nor->read_proto = SNOR_PROTO_1_1_1;
+	nor->read_opcode = SPINOR_OP_READ_4B;
+	nor->addr_width = 4;
+	nor->read_dummy = 0;
+
+	return spi_nor_read_raw(nor, *addr, readlen, buf);
+}
+
 static const struct flash_info *spi_nor_get_flash_info(struct spi_nor *nor,
 						       const char *name)
 {
@@ -4981,8 +5005,16 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	if (!nor->bouncebuf)
 		return -ENOMEM;
 
-	if(nor->spimem)
-		spi_mem_do_calibration(nor->spimem, spi_nor_cal_read, nor);
+	if(nor->spimem) {
+		ret = spi_mem_do_calibration(nor->spimem,
+					     spi_nor_cal_read, nor);
+		if (ret) {
+			ret = spi_mem_do_calibration(nor->spimem,
+						     spi_nor_cal_read_4B, nor);
+			if (ret)
+				return ret;
+		}
+	}
 
 	info = spi_nor_get_flash_info(nor, name);
 	if (IS_ERR(info))

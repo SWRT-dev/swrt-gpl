@@ -96,11 +96,23 @@ struct flow_offload {
 #define FLOW_OFFLOAD_PATH_DSA		BIT(3)
 #define FLOW_OFFLOAD_PATH_DSLITE	BIT(4)
 #define FLOW_OFFLOAD_PATH_6RD		BIT(5)
+#define FLOW_OFFLOAD_PATH_TNL		BIT(6)
+
+enum flow_offload_tnl {
+	FLOW_OFFLOAD_TNL_GRETAP,
+	FLOW_OFFLOAD_TNL_PPTP,
+	FLOW_OFFLOAD_TNL_L2TP_V2,
+	FLOW_OFFLOAD_TNL_L2TP_V3,
+	FLOW_OFFLOAD_VXLAN,
+	FLOW_OFFLOAD_NATT,
+	__FLOW_OFFLOAD_MAX,
+};
 
 struct flow_offload_hw_path {
 	struct net_device *dev;
 	struct net_device *virt_dev;
 	u32 flags;
+	u32 tnl_type;
 
 	u8 eth_src[ETH_ALEN];
 	u8 eth_dest[ETH_ALEN];

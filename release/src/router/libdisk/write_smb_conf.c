@@ -15,7 +15,9 @@
  * MA 02111-1307 USA
  */
 
+#ifndef _GNU_SOURCE
 #define _GNU_SOURCE
+#endif
 
 #include <stdio.h>
 #include <string.h>
@@ -336,7 +338,19 @@ int main(int argc, char *argv[])
 #else
 		fprintf(fp, "workgroup = %s\n", p_computer_name);
 #endif
-
+#if defined(RTCONFIG_KSMBD)
+	fprintf(fp, "server min protocol = NT1\n");
+	fprintf(fp, "server max protocol = SMB2\n");
+	fprintf(fp, "server signing = disabled\n");
+	fprintf(fp, "ipc timeout = 20\n");
+	fprintf(fp, "deadtime = 15\n");
+	fprintf(fp, "map to guest = Bad User\n");
+	fprintf(fp, "smb2 max read = 64K\n");
+	fprintf(fp, "smb2 max write = 64K\n");
+	fprintf(fp, "smb2 max trans = 64K\n");
+	fprintf(fp, "cache read buffers = no\n");
+	fprintf(fp, "cache trans buffers = no\n");
+#else
 #if defined(RTCONFIG_TUXERA_SMBD)
 	fprintf(fp, "userdb_type = text\n");
 	fprintf(fp, "userdb_file = /etc/samba/smbpasswd\n");
@@ -497,7 +511,7 @@ int main(int argc, char *argv[])
 //	fprintf(fp, "mangling method = hash2\n");	// ASUS add
 	fprintf(fp, "wide links = no\n"); 		// ASUS add
 	fprintf(fp, "bind interfaces only = yes\n");	// ASUS add
-
+#endif
 	snprintf(br0_ll, "%s", getifaddr(nvram_safe_get("lan_ifname"), AF_INET6, GIF_LINKLOCAL) ? : "");
 	snprintf(br0_unicast, "%s", getifaddr(nvram_safe_get("lan_ifname"), AF_INET6, 0) ? : "");
 
@@ -575,6 +589,8 @@ int main(int argc, char *argv[])
 
 		fprintf(fp, "hosts deny = 0.0.0.0/0\n");
 	}
+#if defined(RTCONFIG_KSMBD)
+#else
 #if LINUX_VERSION_CODE < KERNEL_VERSION(2,6,36)
 	fprintf(fp, "use sendfile = no\n");
 #else
@@ -604,7 +620,7 @@ int main(int argc, char *argv[])
 	fprintf(fp, "level2 oplocks = yes\n");
 	fprintf(fp, "kernel oplocks = no\n");
 #endif
-
+#endif
 	if(nvram_invmatch("re_mode", "1"))
 	{
 #if !defined(RTCONFIG_SAMBA36X) && !defined(RTCONFIG_SAMBA4)
@@ -685,8 +701,17 @@ int main(int argc, char *argv[])
 				fprintf(fp, "veto files = /.__*.txt*/asusware*/asus_lighttpdpasswd/\n");
 				fprintf(fp, "path = %s\n", follow_partition->mount_point);
 				fprintf(fp, "writeable = %s\n", strcmp(follow_partition->permission, "rw") == 0 ? "yes" : "no");
+#if defined(RTCONFIG_KSMBD)
+				fprintf(fp, "create mask = %s", "0755");
+				fprintf(fp, "directory mask = %s", "0777");
+				fprintf(fp, "read only = %s", strcmp(follow_partition->permission, "rw") == 0 ? "no" : "yes");
+				fprintf(fp, "guest ok = %s", "yes");
+				fprintf(fp, "browseable = %s", "yes");
+				fprintf(fp, "hide dot files = %s", "yes");
+#else
 				fprintf(fp, "dos filetimes = yes\n");
 				fprintf(fp, "fake directory create times = yes\n");
+#endif
 #endif // RTCONFIG_TUXERA_SMBD
 			}
 		}
@@ -938,9 +963,17 @@ int main(int argc, char *argv[])
 					fprintf(fp, "comment = %s's %s\n", follow_disk->tag, mount_folder);
 					fprintf(fp, "path = %s\n", follow_partition->mount_point);
 					fprintf(fp, "writeable = %s\n", strcmp(follow_partition->permission, "rw") == 0 ? "yes" : "no");
+#if defined(RTCONFIG_KSMBD)
+					fprintf(fp, "create mask = %s", "0755");
+					fprintf(fp, "directory mask = %s", "0777");
+					fprintf(fp, "read only = %s", strcmp(follow_partition->permission, "rw") == 0 ? "no" : "yes");
+					fprintf(fp, "guest ok = %s", "yes");
+					fprintf(fp, "browseable = %s", "yes");
+					fprintf(fp, "hide dot files = %s", "yes");
+#else
 					fprintf(fp, "dos filetimes = yes\n");
 					fprintf(fp, "fake directory create times = yes\n");
-
+#endif
 					fprintf(fp, "valid users = ");
 					first = 1;
 #ifdef RTCONFIG_PERMISSION_MANAGEMENT
@@ -1052,10 +1085,18 @@ int main(int argc, char *argv[])
 						fprintf(fp, "[%s (at %s)]\n", folder_list[n], mount_folder);
 					fprintf(fp, "comment = %s's %s in %s\n", mount_folder, folder_list[n], follow_disk->tag);
 					fprintf(fp, "path = %s/%s\n", follow_partition->mount_point, folder_list[n]);
-
+#if defined(RTCONFIG_KSMBD)
+					fprintf(fp, "create mask = %s", "0755");
+					fprintf(fp, "directory mask = %s", "0777");
+					fprintf(fp, "read only = %s", "no");
+					fprintf(fp, "writeable = %s", "yes");
+					fprintf(fp, "guest ok = %s", "yes");
+					fprintf(fp, "browseable = %s", "yes");
+					fprintf(fp, "hide dot files = %s", "yes");
+#else
 					fprintf(fp, "dos filetimes = yes\n");
 					fprintf(fp, "fake directory create times = yes\n");
-
+#endif
 					fprintf(fp, "valid users = ");
 					first = 1;
 #ifdef RTCONFIG_PERMISSION_MANAGEMENT
@@ -1139,7 +1180,6 @@ int main(int argc, char *argv[])
 					}
 #endif
 					fprintf(fp, "\n");
-
 					fprintf(fp, "read list = ");
 					first = 1;
 #ifdef RTCONFIG_PERMISSION_MANAGEMENT

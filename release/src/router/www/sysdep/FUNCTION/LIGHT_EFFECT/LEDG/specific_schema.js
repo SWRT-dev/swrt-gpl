@@ -141,6 +141,9 @@ function retune_wave_color(parm){
 		else
 			ledg_rgb = "128,115,0,128,115,0,128,115,0,128,115,0";
 	}
+	else if(parm.productid == "GS7"){
+		ledg_rgb = "128,128,128,128,128,128,128,128,128,128,128,128";
+	}
 	else if(parm.productid == "GT-AX6000"){
 		if(parm.CoBrand == "3"){
 			ledg_rgb = "128,100,0,128,100,0,128,100,0";

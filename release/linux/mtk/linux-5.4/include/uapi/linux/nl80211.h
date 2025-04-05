@@ -2836,33 +2836,23 @@ enum nl80211_attrs {
 	NL80211_ATTR_WIPHY_EDMG_BW_CONFIG,
 
 	NL80211_ATTR_VLAN_ID,
-
 	NL80211_ATTR_HE_BSS_COLOR,
-
 	NL80211_ATTR_IFTYPE_AKM_SUITES,
-
 	NL80211_ATTR_TID_CONFIG,
-
 	NL80211_ATTR_CONTROL_PORT_NO_PREAUTH,
-
 	NL80211_ATTR_PMK_LIFETIME,
 	NL80211_ATTR_PMK_REAUTH_THRESHOLD,
-
 	NL80211_ATTR_RECEIVE_MULTICAST,
 	NL80211_ATTR_WIPHY_FREQ_OFFSET,
 	NL80211_ATTR_CENTER_FREQ1_OFFSET,
 	NL80211_ATTR_SCAN_FREQ_KHZ,
-
 	NL80211_ATTR_HE_6GHZ_CAPABILITY,
-
 	NL80211_ATTR_FILS_DISCOVERY,
-
 	NL80211_ATTR_UNSOL_BCAST_PROBE_RESP,
-
 	NL80211_ATTR_S1G_CAPABILITY,
 	NL80211_ATTR_S1G_CAPABILITY_MASK,
-
 	NL80211_ATTR_SAE_PWE,
+
 	/* add attributes here, update the policy in nl80211.c */
 
 	__NL80211_ATTR_AFTER_LAST,
@@ -6578,20 +6568,21 @@ enum nl80211_obss_pd_attributes {
 
 /**
  * enum nl80211_sae_pwe_mechanism - The mechanism(s) allowed for SAE PWE
- *	derivation. Applicable only when WPA3-Personal SAE authentication is
- *	used.
+ *     derivation. Applicable only when WPA3-Personal SAE authentication is
+ *     used.
  *
  * @NL80211_SAE_PWE_UNSPECIFIED: not specified, used internally to indicate that
- *	attribute is not present from userspace.
+ *     attribute is not present from userspace.
  * @NL80211_SAE_PWE_HUNT_AND_PECK: hunting-and-pecking loop only
  * @NL80211_SAE_PWE_HASH_TO_ELEMENT: hash-to-element only
  * @NL80211_SAE_PWE_BOTH: both hunting-and-pecking loop and hash-to-element
- *	can be used.
+ *     can be used.
  */
 enum nl80211_sae_pwe_mechanism {
-	NL80211_SAE_PWE_UNSPECIFIED,
-	NL80211_SAE_PWE_HUNT_AND_PECK,
-	NL80211_SAE_PWE_HASH_TO_ELEMENT,
-	NL80211_SAE_PWE_BOTH,
+       NL80211_SAE_PWE_UNSPECIFIED,
+       NL80211_SAE_PWE_HUNT_AND_PECK,
+       NL80211_SAE_PWE_HASH_TO_ELEMENT,
+       NL80211_SAE_PWE_BOTH,
 };
+
 #endif /* __LINUX_NL80211_H */

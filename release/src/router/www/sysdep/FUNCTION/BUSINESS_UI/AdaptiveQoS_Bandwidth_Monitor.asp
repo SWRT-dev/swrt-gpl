@@ -452,7 +452,7 @@ function show_clients(priority_type){
             if(clientObj.isUserUplaodImg){
                 code += '<img class="clientIcon" src="' + userIconBase64 + '">';
             }else{
-                code += '<i class="type" style="--svg:url(' + userIconBase64 + ')"></i>';
+                code += '<i class="type" style="--svg:url(' + userIconBase64 + '); background-color: #000;"></i>';
             }
             code += '</div>';
         }
@@ -461,7 +461,7 @@ function show_clients(priority_type){
                 code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIconIE8HACK' + ' qosLevel' + clientObj.qosLevel + '"></div>';
             }
             else{
-                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIcon qosLevel' + clientObj.qosLevel + '"><i class="type' + clientObj.type + '"></i></div>';
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIcon qosLevel' + clientObj.qosLevel + '"><i class="type' + clientObj.type + '" style="background-color: #000;"></i></div>';
             }
         }
         else if(clientObj.vendor != "") {
@@ -478,7 +478,7 @@ function show_clients(priority_type){
                 code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed clientIconIE8HACK qosLevel' + clientObj.qosLevel + '"></div>';
             }
             else{
-                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed qosLevel clientIcon' + clientObj.qosLevel + '"><i class="' + clientListCSS + '"></i></div>';
+                code += '<div id="icon_' + i + '" onclick="show_apps(this);" class="closed qosLevel clientIcon' + clientObj.qosLevel + '"><i class="' + clientListCSS + '" style="background-color: #000;"></i></div>';
             }
         }
 
@@ -705,75 +705,101 @@ function cancel_previous_device_apps(obj){
 }
 
 function render_apps(apps_array, obj_icon, apps_field){
-	var code = "";
-	var img = "";
-	var unit = getTrafficUnit();
-	var scale = 'Kb';
+	let code = "";
+	let unit = getTrafficUnit();
+	let scale = 'Kb';
 	if(unit == '1'){
 		scale = 'Mb';
 	}
 
 	apps_array.sort();	//sort apps' name
-	for(i=0;i<apps_array.length;i++){
-		code +='<tr>';
-		code +='<td style="width:70px;">';
-		img = new Image();
-		img.src = 'https://nw-dlcdnet.asus.com/plugin/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png';	// to check image file exist
-		if(img.height == 0){	//default image, if image file doesn't exist
-			code +='<div class="appIcons"></div>';
-		}
-		else{
-			code +='<div class="appIcons" style="background-image:url(\'https://nw-dlcdnet.asus.com/plugin/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png\')"></div>';
-		}
+	for(let i = 0; i < apps_array.length; i++){
+        const icon = document.querySelector('.appIcons[data-type="'+apps_array[i][3]+'-'+apps_array[i][4]+'"]');
+        let iconCode = '';
+        if(icon){
+            if(icon.classList.contains('cloudIcon')){
+                iconCode += icon.outerHTML;
+            }else{
+                iconCode += `<div class="appIcons noCloudIcon" data-type="${apps_array[i][3]}-${apps_array[i][4]}"></div>`;
+            }
+        }else{
+            iconCode += `<div class="appIcons" data-type="${apps_array[i][3]}-${apps_array[i][4]}"></div>`;
+        }
 
-		code +='</td>';
-		code +='<td style="width:230px;border-top:1px dotted #333;">';
-		code +='<div id="'+ apps_array[i][0] +'" style="font-family:monospace, Courier New, Courier">'+apps_array[i][0]+'</div>';
-		code +='</td>';
-
-		code +='<td style="border-top:1px dotted #333;">';
-		code +='<div style="margin-left:15px;">';
-		code +='<table>';
-		code +='<tr>';
-		code +='<td style="width:305px">';
-		code +='<div style="height:6px;padding:3px;background-color: #dcdcdc;box-shadow: 0px 2px 2px rgb(0 0 0 / 3%), -1px -1px 0px #ffffff, inset 2px 2px 6px rgb(0 47 113 / 5%);border-radius:10px;">';
-		code +='<div id="'+apps_array[i][0]+'_upload_bar" style="width:0%;background:linear-gradient(270deg, #02CBFD 38.31%, #133ED4 100%);height:6px;black;border-radius:5px;"></div>';
-		code +='</div>';
-		code +='</td>';
-		code +='<td style="text-align:right;">';
-		code +='<div id="'+apps_array[i][0]+'_upload">0.00</div>';
-		code +=	'</td>';
-		code +='<td style="width:30px;">';
-		code +='<div id="'+apps_array[i][0]+'_upload_unit">'+ scale +'</div>';
-		code +='</td>';
-		code +='</tr>';
-
-		code +='<tr>';
-		code +='<td>';
-		code +='<div style="height:6px;padding:3px;background-color: #dcdcdc;box-shadow: 0px 2px 2px rgb(0 0 0 / 3%), -1px -1px 0px #ffffff, inset 2px 2px 6px rgb(0 47 113 / 5%);border-radius:10px;">';
-		code +='<div id="'+apps_array[i][0]+'_download_bar" style="width:0%;background:linear-gradient(270deg, #02CBFD 38.31%, #133ED4 100%);height:6px;black;border-radius:5px;"></div>';
-		code +='</div>';
-		code +='</td>';
-		code +='<td style="text-align:right;">';
-		code +='<div id="'+apps_array[i][0]+'_download">0.00</div>';
-		code +='</td>';
-		code +='<td style="width:30px;">';
-		code +='<div id="'+apps_array[i][0]+'_download_unit">'+ scale +'</div>';
-		code +='</td>';
-		code +='</tr>';
-		code +='</table>';
-		code +='</div>';
-		code +='</td>';
-		code +='</tr>';
+        code += `
+            <tr>
+                <td style="width:70px;">${iconCode}</td>
+                <td style="width:230px;border-top:1px dotted #333;">
+                    <div id="${apps_array[i][0]}" style="font-family:monospace, Courier New, Courier">${apps_array[i][0]}</div>
+                </td>
+		        <td style="border-top:1px dotted #333;">
+		            <div style="margin-left:15px;">
+                        <table>
+                            <tr>
+                                <td style="width:305px">
+                                    <div style="height:6px;padding:3px;background-color: #dcdcdc;box-shadow: 0px 2px 2px rgb(0 0 0 / 3%), -1px -1px 0px #ffffff, inset 2px 2px 6px rgb(0 47 113 / 5%);border-radius:10px;">
+                                        <div id="${apps_array[i][0]}_upload_bar" style="width:0%;background:linear-gradient(270deg, #02CBFD 38.31%, #133ED4 100%);height:6px;black;border-radius:5px;"></div>
+                                    </div>
+                                </td>
+                                <td style="text-align:right;">
+                                    <div id="${apps_array[i][0]}_upload">0.00</div>
+                                </td>
+                                <td style="width:30px;">
+                                    <div id="${apps_array[i][0]}_upload_unit">${scale}</div>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td>
+                                    <div style="height:6px;padding:3px;background-color: #dcdcdc;box-shadow: 0px 2px 2px rgb(0 0 0 / 3%), -1px -1px 0px #ffffff, inset 2px 2px 6px rgb(0 47 113 / 5%);border-radius:10px;">
+                                        <div id="${apps_array[i][0]}_download_bar" style="width:0%;background:linear-gradient(270deg, #02CBFD 38.31%, #133ED4 100%);height:6px;black;border-radius:5px;"></div>
+                                    </div>
+                                </td>
+                                <td style="text-align:right;">
+                                    <div id="${apps_array[i][0]}_download">0.00</div>
+                                </td>
+                                <td style="width:30px;">
+                                    <div id="${apps_array[i][0]}_download_unit">${scale}</div>
+                                </td>
+                            </tr>
+                        </table>
+                    </div>
+                </td>
+            </tr>`;
 	}
 
 	if(code == ""){
-		code = "<tr><td colspan='3' style='text-align:center;color:#FFCC00'><div style='padding:5px 0px;border-top:solid 1px #333;'><#Bandwidth_monitor_noList#></div></td></tr>";
+		code = `<tr><td colspan='3' style='text-align:center;color:#FFCC00'><div style='padding:5px 0px;border-top:solid 1px #333;'><#Bandwidth_monitor_noList#></div></td></tr>`;
 	}
 
 	$(apps_field).empty();
 	$(apps_field).append(code);
 	calculate_apps_traffic(apps_array);
+}
+
+function render_app_icon(apps_array){
+	apps_array.sort();	//sort apps' name
+	for(let i = 0; i < apps_array.length; i++){
+        const icon = document.querySelector('.appIcons[data-type="'+apps_array[i][3]+'-'+apps_array[i][4]+'"]');
+        if(icon){
+            if(!icon.classList.contains('cloudIcon') && !icon.classList.contains('noCloudIcon')){
+                fetch('https://nw-dlcdnet.asus.com/plugin/app_icons/'+ apps_array[i][3] +'-'+ apps_array[i][4] +'-0.png')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('Network response was not ok');
+                        }
+                        return response.blob();
+                    })
+                    .then(blob => {
+                        const imageUrl = URL.createObjectURL(blob)
+                        icon.style.backgroundImage = `url(${imageUrl})`;
+                        icon.classList.add('cloudIcon');
+                    })
+                    .catch(error => {
+                        //
+                    })
+            }
+        }
+    }
 }
 
 client_traffic_old = new Array();
@@ -1475,7 +1501,7 @@ function update_apps_tarffic(mac, obj, new_element) {
     },
     success: function(response){
 		render_apps(array_traffic, obj, new_element);
-
+        render_app_icon(array_traffic);
 		apps_time_flag = setTimeout(function(){
 			update_apps_tarffic(mac,obj,new_element)
 		}, detect_interval*1000);    }
@@ -1490,7 +1516,7 @@ function update_apps_tarffic_Dns(mac, obj, new_element) {
     },
     success: function(response){
 		render_apps(array_traffic, obj, new_element);
-		
+        render_app_icon(array_traffic);
 		apps_time_flag = setTimeout(function(){
 			update_apps_tarffic_Dns(mac,obj,new_element)
 		}, detect_interval*1000);
@@ -1553,7 +1579,7 @@ function applyRule(){
 		reset_wan_to_fo.change_wan_mode(document.form);
 
   if(dns_dpi_support)
-    document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
+    document.form.action_script.value = "restart_dnsqd;restart_qos;restart_firewall";
   
 	document.form.qos_rulelist.value = qos_rulelist;
 	showLoading();
@@ -1574,7 +1600,7 @@ function cancel(){
 	$('#iphone_switch').animate({backgroundPosition: -37}, "slow", function() {});
 	document.form.action_script.value = "restart_qos;restart_firewall";
   if(dns_dpi_support)
-		document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
+		document.form.action_script.value = "restart_dnsqd;restart_qos;restart_firewall";
 	document.form.action_wait.value = "5";
 }
 function switch_control(_status){

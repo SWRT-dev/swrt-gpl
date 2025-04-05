@@ -21142,6 +21142,15 @@ _dprintf("test 2. turn off the USB power during %d seconds.\n", reset_seconds[re
 		handle_ds_measure();
 	}
 #endif
+#if defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
+	else if (strstr(script, "chgntfsdrv")) {
+		pid_t pid;
+		char *argv[] = { "chgntfsdrv", NULL };
+
+		dbg("RRR %s: execute chgntfsdrv in background\n", __func__);
+		_eval(argv, ">/dev/console", 0, &pid);
+	}
+#endif
 #ifdef RTCONFIG_FILTER_CUSTOM
 	else if (strcmp(script, "filter_custom") == 0)
 	{

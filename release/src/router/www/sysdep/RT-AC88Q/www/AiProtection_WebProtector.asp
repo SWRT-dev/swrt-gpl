@@ -559,7 +559,7 @@ function edit_table(){
 		if(k == 1)
 			wrs_filter_temp += enable_checkbox;
 		else{
-			wrs_filter_temp += "<" + enable_checkbox;;
+			wrs_filter_temp += "<" + enable_checkbox;
 		}
 
 		wrs_filter_temp += ">" + target_mac + ">";

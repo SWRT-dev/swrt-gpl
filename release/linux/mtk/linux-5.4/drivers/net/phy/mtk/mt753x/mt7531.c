@@ -132,6 +132,10 @@
 #define PHY_DEV1E_REG_189		0x189
 #define PHY_DEV1E_REG_234		0x234
 
+#define PHY_DEV1E_REG_2C7		0x2c7
+#define   MTK_PHY_MAX_GAIN_MASK		GENMASK(4, 0)
+#define   MTK_PHY_MIN_GAIN_MASK		GENMASK(12, 8)
+
 /* Fields of PHY_DEV1E_REG_0C6 */
 #define PHY_POWER_SAVING_S		8
 #define PHY_POWER_SAVING_M		0x300
@@ -856,8 +860,7 @@ static void mt7531_phy_setting(struct gsw_mt753x *gsw)
 	u32 val;
 
 	for (i = 0; i < MT753X_NUM_PHYS; i++) {
-		if (!gsw->direct_access)
-			mt7531_phy_100m_eye_diag_setting(gsw, i);
+		mt7531_phy_100m_eye_diag_setting(gsw, i);
 
 		/* Enable HW auto downshift */
 		gsw->mii_write(gsw, i, 0x1f, 0x1);
@@ -881,14 +884,12 @@ static void mt7531_phy_setting(struct gsw_mt753x *gsw)
 		val |= PHY_LINKDOWN_POWER_SAVING_EN;
 		gsw->mii_write(gsw, i, PHY_EXT_REG_17, val);
 
-		if (!gsw->direct_access) {
-			val = gsw->mmd_read(gsw, i, PHY_DEV1E,
-					    PHY_DEV1E_REG_0C6);
-			val &= ~PHY_POWER_SAVING_M;
-			val |= PHY_POWER_SAVING_TX << PHY_POWER_SAVING_S;
-			gsw->mmd_write(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_0C6,
-				       val);
-		}
+		val = gsw->mmd_read(gsw, i, PHY_DEV1E,
+				    PHY_DEV1E_REG_0C6);
+		val &= ~PHY_POWER_SAVING_M;
+		val |= PHY_POWER_SAVING_TX << PHY_POWER_SAVING_S;
+		gsw->mmd_write(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_0C6,
+			       val);
 
 		/* Timing Recovery for GbE slave mode */
 		mt753x_tr_write(gsw, i, PMA_CH, PMA_NOD, PMA_01, 0x6fb90a);
@@ -901,6 +902,11 @@ static void mt7531_phy_setting(struct gsw_mt753x *gsw)
 		val = gsw->mii_read(gsw, i, MII_ADVERTISE);
 		val |= ADVERTISE_PAUSE_ASYM;
 		gsw->mii_write(gsw, i, MII_ADVERTISE, val);
+
+		/* Adjust RX min/max gain to fix CH395 100Mbps link up fail */
+		gsw->mmd_write(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_2C7,
+			       FIELD_PREP(MTK_PHY_MAX_GAIN_MASK, 0x8) |
+			       FIELD_PREP(MTK_PHY_MIN_GAIN_MASK, 0x13));
 	}
 }
 
@@ -922,8 +928,7 @@ static void mt7531_adjust_line_driving(struct gsw_mt753x *gsw, u32 port)
 	gsw->mmd_write(gsw, port, PHY_DEV1F, TXVLD_DA_273, 0x3000);
 
 	/* Adjust RX Echo path filter */
-	if (!gsw->direct_access)
-		gsw->mmd_write(gsw, port, PHY_DEV1E, PHY_DEV1E_REG_0FE, 0x2);
+	gsw->mmd_write(gsw, port, PHY_DEV1E, PHY_DEV1E_REG_0FE, 0x2);
 
 	/* Adjust RX HVGA bias current */
 	gsw->mmd_write(gsw, port, PHY_DEV1E, PHY_DEV1E_REG_41, 0x3333);
@@ -1095,12 +1100,6 @@ static int mt7988_sw_init(struct gsw_mt753x *gsw)
 	gsw->mmd_read = mt753x_mmd_read;
 	gsw->mmd_write = mt753x_mmd_write;
 
-	for (i = 0; i < MT753X_NUM_PHYS; i++) {
-		val = gsw->mii_read(gsw, i, MII_BMCR);
-		val |= BMCR_ISOLATE;
-		gsw->mii_write(gsw, i, MII_BMCR, val);
-	}
-
 	speed = MAC_SPD_1000;
 	pmcr = (IPG_96BIT_WITH_SHORT_IPG << IPG_CFG_S) |
 		MAC_MODE | MAC_TX_EN | MAC_RX_EN | BKOFF_EN |
@@ -1127,12 +1126,6 @@ static int mt7988_sw_init(struct gsw_mt753x *gsw)
 	/* Disable AFIFO reset for extra short IPG */
 	mt7531_afifo_reset(gsw, 0);
 
-	/* PHY force slave 1G*/
-	for (i = 0; i < MT753X_NUM_PHYS; i++) {
-		gsw->mii_write(gsw, i, MII_CTRL1000, 0x1200);
-		gsw->mii_write(gsw, i, MII_BMCR, 0x140);
-	}
-
 	return 0;
 }
 
@@ -1153,8 +1146,7 @@ static int mt7531_sw_post_init(struct gsw_mt753x *gsw)
 	val |= POWER_ON_OFF;
 	gsw->mmd_write(gsw, 0, PHY_DEV1F, PHY_DEV1F_REG_403, val);
 
-	if (!gsw->direct_access)
-		mt7531_phy_pll_setup(gsw);
+	mt7531_phy_pll_setup(gsw);
 
 	/* Enable Internal PHYs before phy setting */
 	val = gsw->mmd_read(gsw, 0, PHY_DEV1F, PHY_DEV1F_REG_403);
@@ -1179,8 +1171,7 @@ static int mt7531_sw_post_init(struct gsw_mt753x *gsw)
 	for (i = 0; i < MT753X_NUM_PHYS; i++)
 		gsw->mmd_write(gsw, i, PHY_DEV1E, PHY_DEV1E_REG_141, 0x0);
 
-	if (!gsw->direct_access)
-		mt7531_internal_phy_calibration(gsw);
+	mt7531_internal_phy_calibration(gsw);
 
 	/* PHY force slave disable, restart AN*/
 	for (i = 0; i < MT753X_NUM_PHYS; i++) {
@@ -1202,7 +1193,6 @@ struct mt753x_sw_id mt7988_id = {
 	.model = MT7988,
 	.detect = mt7988_sw_detect,
 	.init = mt7988_sw_init,
-	.post_init = mt7531_sw_post_init
 };
 
 MODULE_LICENSE("GPL");

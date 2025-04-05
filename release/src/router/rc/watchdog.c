@@ -5091,11 +5091,11 @@ void timecheck(void)
 #endif
 
 			if (activeNow == 0) {
-				set_wlan_service_status(atoi(tmp), -1, 0);
+				set_wlan_service_status(safe_atoi(tmp), -1, 0);
 				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] off\n", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] off.", tmp);
 			} else {
-				set_wlan_service_status(atoi(tmp), -1, 1);
+				set_wlan_service_status(safe_atoi(tmp), -1, 1);
 				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] on\n", tmp);
 				logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
 			}
@@ -5261,7 +5261,7 @@ end_of_wl_sched:
 #if defined(RTCONFIG_MULTILAN_CFG)
 wifi_band_cap_st band_cap[MAX_BAND_CAP_LIST_SIZE];
 int band_cap_total = 0;
-int is_reserved_if(int unit, int subunit)
+int is_reserved_if(int unit, int subunit, int filter_main)
 {
 	int i, j;
 	char prefix[]="wlXXXXXX";
@@ -5270,13 +5270,42 @@ int is_reserved_if(int unit, int subunit)
 
 	for (i = 0; i < band_cap_total; i++) {
 		for (j = 0; j < band_cap[i].vif_count; j++) {
-			if ((!strcmp(band_cap[i].vif_cap[j].prefix, prefix)) && 
-				((band_cap[i].vif_cap[j].type & VIF_TYPE_NO_USED) == 0)) {
-				return 1;
+			if ((!strcmp(band_cap[i].vif_cap[j].prefix, prefix))) {
+				if (filter_main) {
+					if (((band_cap[i].vif_cap[j].type & VIF_TYPE_NO_USED) == 0))
+						return 1;
+				} else {
+					if (((band_cap[i].vif_cap[j].type & (VIF_TYPE_NO_USED | VIF_TYPE_MAIN)) == 0))
+						return 1;
+				}
 			}
 		}
 	}
 	return 0;
+}
+
+int check_wlX_sched(int unit) {
+	char schedTime[2048];
+	char prefix[]="wlXXXXXX_", tmp[100], tmp2[100];
+	int activeNow = -1;
+
+	// Check
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+
+	//dbG("[watchdog] timecheck unit=%s radio=%s, timesched=%s\n", prefix, nvram_safe_get(strcat_r(prefix, "radio", tmp)), nvram_safe_get(strcat_r(prefix, "timesched", tmp2))); // radio toggle test
+	if (check_timesched_is_set(unit, -1) != 1) { // wlX_timesched is not set
+		return activeNow;
+	}
+
+	if (!nvram_get(strcat_r(prefix, "sched_v2", tmp)))
+	{
+		return activeNow;
+	}
+
+	snprintf(schedTime, sizeof(schedTime), "%s", nvram_safe_get(strcat_r(prefix, "sched_v2", tmp)));
+
+	activeNow = check_sched_v2_on_off(schedTime);
+	return activeNow;
 }
 #endif
 
@@ -5305,7 +5334,10 @@ void timecheck_v2(void)
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_QCA)
 	char sctmp2[32];
 #endif
+	int wlX_activeNow = -1;
 #endif
+	int bss_status;
+	int radio_status;
 
 	// Check whether conversion needed.
 	convert_wl_sched_v1_to_sched_v2();
@@ -5356,6 +5388,7 @@ void timecheck_v2(void)
 		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
 
 #if defined(RTCONFIG_MULTILAN_CFG)
+		wlX_activeNow = check_wlX_sched(unit);
 		subunit = 1;
 		snprintf(nv, sizeof(nv), "wl%d_vifnames", unit);
 		foreach (word2, nvram_safe_get(nv), next2) {
@@ -5372,7 +5405,8 @@ void timecheck_v2(void)
 				continue;
 			}
 
-			if (is_reserved_if(unit, subunit)) {
+			// if wlX_activeNow is equal -1, its represents the scheuler of main wifi is not set. We shoudld not control main interface.
+			if (is_reserved_if(unit, subunit, (wlX_activeNow == -1))) {
 				WL_SCHED_DBG("[wifi-scheduler] [wl%d.%d] is reserved interface. bypass it.\n", unit, subunit);
 				subunit++;
 				continue;
@@ -5385,28 +5419,31 @@ void timecheck_v2(void)
 				nvram_set(strcat_r(prefix2, "sched_v2", tmp), "");
 			}
 
-			if ((timesched & TIMESCHED_ACCESSTIME) > 0) {
-				snprintf(expireTime, sizeof(expireTime), "%s", nvram_safe_get(strcat_r(prefix2, "expiretime", tmp)));
-				expireNow = check_expire_on_off(expireTime);
-				if (expireNow < 0) { // not in expire time period
-					// if access time is enabled and not in expire time preiod, 
-					// we need to check if schedule is enabled too (consider both of access time and schedule are enabled).
-					if ((timesched & TIMESCHED_SCHEDULE) > 0) {
-						memset(schedTime2, 0, sizeof(schedTime2));
-						snprintf(schedTime2, sizeof(schedTime2), "%s", nvram_safe_get(strcat_r(prefix2, "sched_v2", tmp)));
-						activeNow2 = check_sched_v2_on_off(schedTime2);
-					} else {
-						activeNow2 = (expireNow == -2) ? 0 : 1;
-					}
-				} else { // in expire time period
-					activeNow2 = expireNow;
-				}
-			} else if ((timesched & TIMESCHED_SCHEDULE) > 0) {
-				memset(schedTime2, 0, sizeof(schedTime2));
-				snprintf(schedTime2, sizeof(schedTime2), "%s", nvram_safe_get(strcat_r(prefix2, "sched_v2", tmp)));
-				activeNow2 = check_sched_v2_on_off(schedTime2);
+			memset(schedTime2, 0, sizeof(schedTime2));
+			if (wlX_activeNow >= 0) {
+				activeNow2 = wlX_activeNow;
 			} else {
-				activeNow2 = 1;  // both of access time and schedule are not enabled, default is radio on.
+				if ((timesched & TIMESCHED_ACCESSTIME) > 0) {
+					snprintf(expireTime, sizeof(expireTime), "%s", nvram_safe_get(strcat_r(prefix2, "expiretime", tmp)));
+					expireNow = check_expire_on_off(expireTime);
+					if (expireNow < 0) { // not in expire time period
+						// if access time is enabled and not in expire time preiod, 
+						// we need to check if schedule is enabled too (consider both of access time and schedule are enabled).
+						if ((timesched & TIMESCHED_SCHEDULE) > 0) {
+							snprintf(schedTime2, sizeof(schedTime2), "%s", nvram_safe_get(strcat_r(prefix2, "sched_v2", tmp)));
+							activeNow2 = check_sched_v2_on_off(schedTime2);
+						} else {
+							activeNow2 = (expireNow == -2) ? 0 : 1;
+						}
+					} else { // in expire time period
+						activeNow2 = expireNow;
+					}
+				} else if ((timesched & TIMESCHED_SCHEDULE) > 0) {
+					snprintf(schedTime2, sizeof(schedTime2), "%s", nvram_safe_get(strcat_r(prefix2, "sched_v2", tmp)));
+					activeNow2 = check_sched_v2_on_off(schedTime2);
+				} else {
+					activeNow2 = 1;  // both of access time and schedule are not enabled, default is radio on.
+				}
 			}
 
 			memset(tmp2, 0, sizeof(tmp2));
@@ -5418,41 +5455,55 @@ void timecheck_v2(void)
 #else
 			snprintf(tmp, sizeof(tmp), "%d", unit);
 #endif
-			WL_SCHED_DBG("[wifi-scheduler] 3 uschedTime=%s, unit=%d, subunit=%d, activeNow2=%d\n", schedTime, unit, subunit, activeNow2);
+			WL_SCHED_DBG("[wifi-scheduler] 3 uschedTime=%s, unit=%d, subunit=%d, activeNow2=%d, wlX_activeNow=%d\n", schedTime2, unit, subunit, activeNow2, wlX_activeNow);
 
 			if (vif_svcStatus[item][subunit] != activeNow2) {
-#ifdef RTCONFIG_QCA
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_QCA)
 				nvram_set_int(sctmp,activeNow2);
 #endif
 
-#if defined(RTCONFIG_LYRA_5G_SWAP)
-				if (match_radio_status(swap_5g_band(unit), activeNow2)) {
-#else
-				if (match_radio_status(unit, activeNow2)) {
-#endif
-					vif_svcStatus[item][subunit] = activeNow2;
-					subunit++;
-					continue;
-				}
-#else
 				vif_svcStatus[item][subunit] = activeNow2;
-#endif
-
 				if (activeNow2 == 0) {
-					set_wlan_service_status(atoi(tmp), atoi(tmp2), 0);
-					WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off\n", tmp, tmp2);
-					logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] off.", tmp, tmp2);
+					bss_status = get_wlan_service_status(safe_atoi(tmp), safe_atoi(tmp2));
+					if (bss_status == 1) { // radio is on
+						set_wlan_service_status(safe_atoi(tmp), safe_atoi(tmp2), 0);
+						WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off\n", tmp, tmp2);
+						logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] off.", tmp, tmp2);
+					} else {
+						if (bss_status == 0) {
+							WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off. Already off, no need to set it again.\n", tmp, tmp2);
+							//logmessage("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off. Already off, no need to set it again.\n", tmp, tmp2);
+						} else
+							WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off. Error occur(%d).\n", tmp, tmp2, bss_status);
+					}
 				} else {
-					set_wlan_service_status(atoi(tmp), atoi(tmp2), 1);
-					WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on\n", tmp, tmp2);
-					logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] on.", tmp, tmp2);
+					// We must check if radio is on, otherwsie the set set_wlan_service_status will failed.
+					if (wlX_activeNow == 1) {
+						radio_status = get_radio(safe_atoi(tmp), -1);
+						if (radio_status == 0) {
+							set_radio(1, safe_atoi(tmp), -1);
+							SCHED_DAEMON_DBG(" Turn radio [band_index=%s] on", tmp);
+							logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
+						}
+					}
+					bss_status = get_wlan_service_status(safe_atoi(tmp), safe_atoi(tmp2));
+					if (bss_status == 0) { // radio is off
+						set_wlan_service_status(safe_atoi(tmp), safe_atoi(tmp2), 1);
+						WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on\n", tmp, tmp2);
+						logmessage("wifi scheduler", "Turn radio [band_index=%s, subunit=%s] on.", tmp, tmp2);
+					} else {
+						if (bss_status == 1) {
+							WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on. Already on, no need to set it again.\n", tmp, tmp2);
+							//logmessage("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on. Already on, no need to set it again.\n", tmp, tmp2);
+						} else
+							WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on. Error occur(%d).\n", tmp, tmp2, bss_status);
+					}
 				}	
 			}
 		
 			subunit++;
 		}
-#endif	
+#endif	// RTCONFIG_MULTILAN_CFG
 
 		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 #if defined(RTCONFIG_AMAS) && defined(RTCONFIG_QCA)
@@ -5486,33 +5537,37 @@ void timecheck_v2(void)
 		WL_SCHED_DBG("[wifi-scheduler] 3 uschedTime=%s, unit=%d, activeNow=%d\n", schedTime, unit, activeNow);
 
 		if (svcStatus[item] != activeNow) {
-#ifdef RTCONFIG_QCA
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) && defined(RTCONFIG_QCA)
 			nvram_set_int(sctmp,activeNow);
 #endif
 
-#if defined(RTCONFIG_LYRA_5G_SWAP)
-			if (match_radio_status(swap_5g_band(unit), activeNow)) {
-#else
-			if (match_radio_status(unit, activeNow)) {
-#endif
-				svcStatus[item] = activeNow;
-				item++;
-				unit++;
-				continue;
-			}
-#else
 			svcStatus[item] = activeNow;
-#endif
-
 			if (activeNow == 0) {
-				set_wlan_service_status(atoi(tmp), -1, 0);
-				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] off\n", tmp);
-				logmessage("wifi scheduler", "Turn radio [band_index=%s] off.", tmp);
+				radio_status = get_radio(safe_atoi(tmp), -1);
+				if (radio_status == 1) { // radio is on
+					set_radio(0, safe_atoi(tmp), -1);
+					WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] off\n", tmp);
+					logmessage("wifi scheduler", "Turn radio [band_index=%s] off.", tmp);
+				} else {
+					if (radio_status == 0) {
+						WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] off. Already off, no need to set it again.\n", tmp);
+						//logmessage("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] off. Already off, no need to set it again.\n", tmp, tmp2);
+					} else
+						WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] off. Error occur(%d).\n", tmp, bss_status);
+				}
 			} else {
-				set_wlan_service_status(atoi(tmp), -1, 1);
-				WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] on\n", tmp);
-				logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
+				radio_status = get_radio(safe_atoi(tmp), -1);
+				if (radio_status == 0) { // radio is off
+					set_radio(1, safe_atoi(tmp), -1);
+					WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] on\n", tmp);
+					logmessage("wifi scheduler", "Turn radio [band_index=%s] on.", tmp);
+				} else {
+					if (radio_status == 1) {
+						WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] on. Already on, no need to set it again.\n", tmp);
+						//logmessage("[wifi-scheduler] Turn radio [band_index=%s, subunit=%s] on. Already on, no need to set it again.\n", tmp, tmp2);
+					} else
+						WL_SCHED_DBG("[wifi-scheduler] Turn radio [band_index=%s] on. Error occur(%d).\n", tmp, bss_status);
+				}
 			}
 		}
 		item++;
@@ -7146,7 +7201,7 @@ void ddns_check(void)
 	}
 
 	if (nvram_match("ddns_regular_check", "1")&& !nvram_match("ddns_server_x", "WWW.ASUS.COM") && !nvram_match("ddns_server_x", "WWW.ASUS.COM.CN")) {
-		int period = nvram_get_int("ddns_regular_period");
+		int period = nvram_get_int("ddns_regular_period"); //minute(s)
 		if (period < 30) period = 60;
 		if (ddns_check_count >= (period*2)) {
 			regular_ddns_check();
@@ -7173,7 +7228,9 @@ void ddns_check(void)
 			/* Only Time-out, connect_fail, -1 (in asusddns) or not auth_fail (not in asusddns) */
 			if ( !( !strcmp(nvram_safe_get("ddns_return_code_chk"),"Time-out") ||
 				!strcmp(nvram_safe_get("ddns_return_code_chk"),"connect_fail") ||
-				strstr(nvram_safe_get("ddns_return_code_chk"), "-1") ) )
+				strstr(nvram_safe_get("ddns_return_code_chk"), "-1") ||
+				strstr(nvram_safe_get("ddns_return_code_chk"), "390") //Server Error
+				) )
 				return;
 		}
 		else{ //non asusddns service
@@ -7291,7 +7348,7 @@ void dnsqd_check(void)
 {
         if (!pids("dnsqd"))
         {
-                start_dnsqd();
+                notify_rc("start_dnsqd");
         }
 }
 #endif
@@ -7520,6 +7577,8 @@ void dnsmasq_check()
 		get_mtlan(pmtl, &mtl_sz);
 		for (i = 0; i < mtl_sz; i++) {
 			if (pmtl[i].enable) {
+				if (pmtl[i].sdn_t.sdn_idx > 0 && pmtl[i].nw_t.idx == 0)
+					continue;
 				if (pmtl[i].sdn_t.sdn_idx)
 					snprintf(path, sizeof(path), "/var/run/dnsmasq-%d.pid", pmtl[i].sdn_t.sdn_idx);
 				else
@@ -10903,4 +10962,3 @@ static int  _is_moca_mps_ready_to_trigger()
 	}
 }
 #endif
-

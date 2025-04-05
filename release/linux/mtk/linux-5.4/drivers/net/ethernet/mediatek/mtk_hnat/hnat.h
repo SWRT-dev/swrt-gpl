@@ -10,14 +10,19 @@
  *   Copyright (C) 2014-2016 Sean Wang <sean.wang@mediatek.com>
  *   Copyright (C) 2016-2017 John Crispin <blogic@openwrt.org>
  */
+#ifndef NF_HNAT_H
+#define NF_HNAT_H
 
 #include <linux/debugfs.h>
 #include <linux/string.h>
 #include <linux/if.h>
 #include <linux/if_ether.h>
+#include <net/dsa.h>
 #include <net/netevent.h>
+#include <net/netfilter/nf_conntrack_zones.h>
 #include <linux/mod_devicetable.h>
 #include "hnat_mcast.h"
+#include "nf_hnat_mtk.h"
 
 /*--------------------------------------------------------------------------*/
 /* Register Offset*/
@@ -144,7 +149,9 @@
 #define HASH_MODE (0x3 << 14) /* RW */
 #define SCAN_MODE (0x3 << 16) /* RW */
 #define XMODE (0x3 << 18) /* RW */
+#define HASH_DBG (0x3 << 21) /* RW */
 #define TICK_SEL (0x1 << 24) /* RW */
+#define DSCP_TRFC_ECN_EN (0x1 << 25) /* RW */
 
 
 /*PPE_CAH_CTRL mask*/
@@ -182,9 +189,12 @@
 
 /*PPE_GLO_CFG mask*/
 #define PPE_EN (0x1 << 0) /* RW */
+#define TSID_EN (0x1 << 1) /* RW */
 #define TTL0_DRP (0x1 << 4) /* RW */
 #define MCAST_TB_EN (0x1 << 7) /* RW */
 #define MCAST_HASH (0x3 << 12) /* RW */
+#define NEW_IPV4_ID_INC_EN (0x1 << 20) /* RW */
+#define SP_CMP_EN (0x1 << 25) /* RW */
 
 #define MC_P3_PPSE (0xf << 12) /* RW */
 #define MC_P2_PPSE (0xf << 8) /* RW */
@@ -377,8 +387,15 @@ struct hnat_ipv4_hnapt {
 	u16 m_timestamp; /* For mcast*/
 	u16 resv1;
 	u32 resv2;
-	u32 resv3 : 26;
-	u32 act_dp : 6; /* UDF */
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	u32 resv3_1 : 9;
+	u32 eg_keep_ecn : 1;
+	u32 eg_keep_dscp : 1;
+	u32 resv3_2 : 13;
+#else
+	u32 resv3 : 24;
+#endif
+	u32 act_dp : 8; /* UDF */
 	u16 vlan1;
 	u16 etype;
 	u32 dmac_hi;
@@ -432,8 +449,15 @@ struct hnat_ipv4_dslite {
 	u8 flow_lbl[3]; /* in order to consist with Linux kernel (should be 20bits) */
 	u8 priority;    /* in order to consist with Linux kernel (should be 8bits) */
 	u32 hop_limit : 8;
-	u32 resv2 : 18;
-	u32 act_dp : 6; /* UDF */
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	u32 resv2_1 : 1;
+	u32 eg_keep_ecn : 1;
+	u32 eg_keep_cls : 1;
+	u32 resv2_2 : 13;
+#else
+	u32 resv2 : 16;
+#endif
+	u32 act_dp : 8; /* UDF */
 
 	union {
 		struct hnat_info_blk2 iblk2;
@@ -494,8 +518,15 @@ struct hnat_ipv4_mape {
 	u8 flow_lbl[3]; /* in order to consist with Linux kernel (should be 20bits) */
 	u8 priority;    /* in order to consist with Linux kernel (should be 8bits) */
 	u32 hop_limit : 8;
-	u32 resv2 : 18;
-	u32 act_dp : 6; /* UDF */
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+		u32 resv2_1 : 1;
+		u32 eg_keep_ecn : 1;
+		u32 eg_keep_dscp : 1;
+		u32 resv2_2 : 13;
+#else
+	u32 resv2 : 16;
+#endif
+	u32 act_dp : 8; /* UDF */
 
 	union {
 		struct hnat_info_blk2 iblk2;
@@ -560,8 +591,15 @@ struct hnat_ipv6_3t_route {
 	u32 resv1;
 	u32 resv2;
 	u32 resv3;
-	u32 resv4 : 26;
-	u32 act_dp : 6; /* UDF */
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	u32 resv4_1 : 9;
+	u32 eg_keep_ecn : 1;
+	u32 eg_keep_cls : 1;
+	u32 resv4_2 : 13;
+#else
+	u32 resv4 : 24;
+#endif
+	u32 act_dp : 8; /* UDF */
 
 	union {
 		struct hnat_info_blk2 iblk2;
@@ -617,8 +655,15 @@ struct hnat_ipv6_5t_route {
 	u32 resv1;
 	u32 resv2;
 	u32 resv3;
-	u32 resv4 : 26;
-	u32 act_dp : 6; /* UDF */
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	u32 resv4_1 : 9;
+	u32 eg_keep_ecn : 1;
+	u32 eg_keep_cls : 1;
+	u32 resv4_2 : 13;
+#else
+	u32 resv4 : 24;
+#endif
+	u32 act_dp : 8; /* UDF */
 
 	union {
 		struct hnat_info_blk2 iblk2;
@@ -678,10 +723,20 @@ struct hnat_ipv6_6rd {
 	u32 dscp : 8;
 	u32 ttl : 8;
 	u32 flag : 3;
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+	u32 resv1_1 : 6;
+	u32 eg_keep_ecn : 1;
+	u32 eg_keep_cls : 1;
+	u32 eg_keep_tnl_qos : 1;
+	u32 resv1_2 : 4;
+	u32 per_flow_6rd_id : 1;
+	u32 resv2 : 7;
+#else
 	u32 resv1 : 13;
 	u32 per_flow_6rd_id : 1;
-	u32 resv2 : 9;
-	u32 act_dp : 6; /* UDF */
+	u32 resv2 : 7;
+#endif
+	u32 act_dp : 8; /* UDF */
 
 	union {
 		struct hnat_info_blk2 iblk2;
@@ -742,8 +797,8 @@ struct hnat_ipv6_hnapt {
 	u32 eg_ipv6_dir : 1;
 	u32 eg_keep_ecn : 1;
 	u32 eg_keep_cls : 1;
-	u32 resv5 : 15;
-	u32 act_dp : 6; /* UDF */
+	u32 resv5 : 13;
+	u32 act_dp : 8; /* UDF */
 
 	union {
 		struct hnat_info_blk2 iblk2;
@@ -819,6 +874,11 @@ struct foe_entry {
 #endif
 #define CFG_PPE_NUM		(hnat_priv->ppe_num)
 
+/* If the user wants to set skb->mark to prevent hardware acceleration
+ * for the packet flow.
+ */
+#define HNAT_EXCEPTION_TAG	0x99
+
 struct mib_entry {
 	u32 byt_cnt_l;
 	u16 byt_cnt_h;
@@ -831,6 +891,8 @@ struct mib_entry {
 struct hnat_accounting {
 	u64 bytes;
 	u64 packets;
+	struct nf_conntrack_zone zone;
+	u8 dir;
 };
 
 enum mtk_hnat_version {
@@ -847,6 +909,18 @@ struct mtk_hnat_data {
 	bool per_flow_accounting;
 	bool mcast;
 	enum mtk_hnat_version version;
+};
+
+struct map46 {
+	u32 ipv4;
+	struct in6_addr ipv6;
+	struct list_head list;
+};
+
+struct xlat_conf {
+	struct list_head map_list;
+	struct in6_addr prefix;
+	int prefix_len;
 };
 
 struct mtk_hnat {
@@ -890,6 +964,18 @@ struct mtk_hnat {
 	struct timer_list hnat_reset_timestamp_timer;
 	struct timer_list hnat_mcast_check_timer;
 	bool nf_stat_en;
+	struct xlat_conf xlat;
+	spinlock_t		entry_lock;
+	spinlock_t		flow_entry_lock;
+	struct hlist_head *foe_flow[MAX_PPE_NUM];
+};
+
+struct hnat_flow_entry {
+	struct hlist_node list;
+	struct foe_entry data;
+	unsigned long last_update;
+	u16 ppe_index;
+	u16 hash;
 };
 
 struct extdev_entry {
@@ -951,6 +1037,7 @@ enum FoeIpAct {
 #define BIT_IPV6_3T_ROUTE_EN BIT(8)
 #define BIT_IPV6_5T_ROUTE_EN BIT(9)
 #define BIT_IPV6_6RD_EN BIT(10)
+#define BIT_IPV6_464XLAT_EN BIT(11)
 #define BIT_IPV4_NAT_EN BIT(12)
 #define BIT_IPV4_NAPT_EN BIT(13)
 #define BIT_IPV4_DSL_EN BIT(14)
@@ -1023,8 +1110,13 @@ enum FoeIpAct {
 #define entry_hnat_is_bound(e) (e->bfib1.state == BIND)
 #define entry_hnat_state(e) (e->bfib1.state)
 
-#define skb_hnat_is_hashed(skb)                                                \
+#if defined(CONFIG_MEDIATEK_NETSYS_V2) || defined(CONFIG_MEDIATEK_NETSYS_V3)
+#define skb_hnat_is_hashed(skb)                                                 \
+	(skb_hnat_entry(skb) != 0x7fff && skb_hnat_entry(skb) < hnat_priv->foe_etry_num)
+#else
+#define skb_hnat_is_hashed(skb)                                                 \
 	(skb_hnat_entry(skb) != 0x3fff && skb_hnat_entry(skb) < hnat_priv->foe_etry_num)
+#endif
 #define FROM_GE_LAN_GRP(skb) (FROM_GE_LAN(skb) | FROM_GE_LAN2(skb))
 #define FROM_GE_LAN(skb) (skb_hnat_iface(skb) == FOE_MAGIC_GE_LAN)
 #define FROM_GE_LAN2(skb) (skb_hnat_iface(skb) == FOE_MAGIC_GE_LAN2)
@@ -1033,7 +1125,8 @@ enum FoeIpAct {
 #define FROM_GE_VIRTUAL(skb) (skb_hnat_iface(skb) == FOE_MAGIC_GE_VIRTUAL)
 #define FROM_EXT(skb) (skb_hnat_iface(skb) == FOE_MAGIC_EXT)
 #define FROM_WED(skb) ((skb_hnat_iface(skb) == FOE_MAGIC_WED0) ||		\
-		       (skb_hnat_iface(skb) == FOE_MAGIC_WED1))
+		       (skb_hnat_iface(skb) == FOE_MAGIC_WED1) ||		\
+		       (skb_hnat_iface(skb) == FOE_MAGIC_WED2))
 #define FOE_MAGIC_GE_LAN 0x1
 #define FOE_MAGIC_GE_WAN 0x2
 #define FOE_MAGIC_EXT 0x3
@@ -1069,15 +1162,28 @@ enum FoeIpAct {
 #define NR_DISCARD 7
 #define NR_WDMA0_PORT 8
 #define NR_WDMA1_PORT 9
+#define NR_WDMA2_PORT 13
 #define NR_GMAC3_PORT 15
+#define NR_QDMA_TPORT 1
+#define NR_EIP197_TPORT 2
+#define NR_EIP197_QDMA_TPORT 3
+#define NR_TDMA_TPORT 4
+#define NR_TDMA_QDMA_TPORT 5
+#define NR_TDMA_EIP197_TPORT 8
+#define NR_TDMA_EIP197_QDMA_TPORT 9
+#define WAN_DEV_NAME hnat_priv->wan
 #define LAN_DEV_NAME hnat_priv->lan
 #define LAN2_DEV_NAME hnat_priv->lan2
-#define IS_WAN(dev) ((!strncmp((dev)->name, hnat_priv->wan, strlen(hnat_priv->wan))) || (!strncmp((dev)->name, "bond1", 5)))
+#define IS_WAN(dev) ((!strncmp((dev)->name, WAN_DEV_NAME, strlen(WAN_DEV_NAME))) || (!strncmp((dev)->name, "bond1", 5)))
 #define IS_LAN_GRP(dev) (IS_LAN(dev) | IS_LAN2(dev))
-#define IS_LAN(dev) ((!strncmp(dev->name, LAN_DEV_NAME, strlen(LAN_DEV_NAME))) || (!strncmp(dev->name, "bond0", 5)))
-#define IS_LAN2(dev) (!strncmp(dev->name, LAN2_DEV_NAME,			\
-		      strlen(LAN2_DEV_NAME)))
+#define IS_LAN(dev)								\
+	(!strncmp(dev->name, LAN_DEV_NAME, strlen(LAN_DEV_NAME)) ||		\
+	 (!strncmp(dev->name, "bond0", 5) /*IS_BOND(dev)*/))
+#define IS_LAN2(dev)								\
+	(!strncmp(dev->name, LAN2_DEV_NAME, strlen(LAN2_DEV_NAME)) ||		\
+	 IS_BOND(dev))
 #define IS_BR(dev) (!strncmp(dev->name, "br", 2))
+#define IS_BOND(dev) (!strncmp(dev->name, "bond", 4))
 #define IS_WHNAT(dev)								\
 	((hnat_priv->data->whnat &&						\
 	 (get_wifi_hook_if_index_from_dev(dev) != 0)) ? 1 : 0)
@@ -1098,7 +1204,6 @@ enum FoeIpAct {
 	(IS_IPV6_3T_ROUTE(x) | IS_IPV6_5T_ROUTE(x) | IS_IPV6_6RD(x) |          \
 	 IS_IPV4_DSLITE(x) | IS_IPV4_MAPE(x) | IS_IPV4_MAPT(x) |	       \
 	 IS_IPV6_HNAPT(x) | IS_IPV6_HNAT(x))
-#define IS_BOND_MODE (!strncmp(LAN_DEV_NAME, "bond", 4))
 #define IS_GMAC1_MODE ((hnat_priv->gmac_num == 1) ? 1 : 0)
 #define IS_HQOS_MODE (qos_toggle == 1)
 #define IS_PPPQ_MODE (qos_toggle == 2)		/* Per Port Per Queue */
@@ -1135,6 +1240,8 @@ enum FoeIpAct {
 #define IS_DSA_1G_LAN(dev) (!strncmp(dev->name, "lan", 3) &&		       \
 			    strcmp(dev->name, "lan5"))
 #define IS_DSA_WAN(dev) (!strncmp(dev->name, "wan", 3))
+#define IS_DSA_TAG_PROTO_MXL862_8021Q(dp)				       \
+	(dp->cpu_dp->tag_ops->proto == DSA_TAG_PROTO_MXL862_8021Q)
 #define NONE_DSA_PORT 0xff
 #define MAX_CRSN_NUM 32
 #define IPV6_HDR_LEN 40
@@ -1149,33 +1256,74 @@ enum FoeIpAct {
 #define NEXTHDR_IPIP 4
 #endif
 
+#define UDF_PINGPONG_IFIDX GENMASK(6, 0)
+#define UDF_HNAT_ENTRY_LOCKED BIT(7)
+
+#define HQOS_FLAG(dev, skb, qid)			\
+	((IS_HQOS_UL_MODE && IS_WAN(dev)) ||		\
+	 (IS_HQOS_DL_MODE && IS_LAN_GRP(dev)) ||	\
+	 (IS_PPPQ_MODE && (IS_PPPQ_PATH(dev, skb) ||	\
+			   qid >= MAX_PPPQ_PORT_NUM)))
+
+#define HNAT_GMAC_FP(mac_id)						\
+	((IS_GMAC1_MODE || mac_id == MTK_GMAC1_ID) ? NR_GMAC1_PORT :	\
+			  (mac_id == MTK_GMAC2_ID) ? NR_GMAC2_PORT :	\
+			  (mac_id == MTK_GMAC3_ID) ? NR_GMAC3_PORT :	\
+						    -EINVAL)
+
 extern const struct of_device_id of_hnat_match[];
 extern struct mtk_hnat *hnat_priv;
 
-#if defined(CONFIG_NET_DSA_MT7530)
-u32 hnat_dsa_fill_stag(const struct net_device *netdev,
+static inline int is_hnat_entry_locked(struct foe_entry *entry)
+{
+	u32 udf = 0;
+
+	if (IS_IPV4_GRP(entry))
+		udf = entry->ipv4_hnapt.act_dp;
+	else
+		udf = entry->ipv6_5t_route.act_dp;
+
+	return !!(udf & UDF_HNAT_ENTRY_LOCKED);
+}
+
+static inline void hnat_set_entry_lock(struct foe_entry *entry, bool locked)
+{
+	if (IS_IPV4_GRP(entry)) {
+		if (locked)
+			entry->ipv4_hnapt.act_dp |= UDF_HNAT_ENTRY_LOCKED;
+		else
+			entry->ipv4_hnapt.act_dp &= ~UDF_HNAT_ENTRY_LOCKED;
+	} else {
+		if (locked)
+			entry->ipv6_5t_route.act_dp |= UDF_HNAT_ENTRY_LOCKED;
+		else
+			entry->ipv6_5t_route.act_dp &= ~UDF_HNAT_ENTRY_LOCKED;
+	}
+	/* Ensure the lock has been written to the entry before return */
+	wmb();
+}
+
+static inline void hnat_check_release_entry_lock(struct foe_entry *entry)
+{
+	if (is_hnat_entry_locked(entry))
+		hnat_set_entry_lock(entry, false);
+}
+
+int hnat_dsa_fill_stag(const struct net_device *netdev,
 		       struct foe_entry *entry,
 		       struct flow_offload_hw_path *hw_path,
 		       u16 eth_proto, int mape);
-
+int hnat_dsa_get_port(struct net_device **dev);
 static inline bool hnat_dsa_is_enable(struct mtk_hnat *priv)
 {
+#if defined(CONFIG_NET_DSA)
 	return (priv->wan_dsa_port != NONE_DSA_PORT);
-}
 #else
-static inline u32 hnat_dsa_fill_stag(const struct net_device *netdev,
-				     struct foe_entry *entry,
-				     struct flow_offload_hw_path *hw_path,
-				     u16 eth_proto, int mape)
-{
-	return 0;
+	return false;
+#endif
 }
 
-static inline bool hnat_dsa_is_enable(struct mtk_hnat *priv)
-{
-	return false;
-}
-#endif
+struct foe_entry *hnat_get_foe_entry(u32 ppe_id, u32 index);
 
 void hnat_deinit_debugfs(struct mtk_hnat *h);
 int hnat_init_debugfs(struct mtk_hnat *h);
@@ -1186,20 +1334,29 @@ int mtk_hqos_ptype_cb(struct sk_buff *skb, struct net_device *dev,
 		      struct packet_type *pt, struct net_device *unused);
 extern int dbg_cpu_reason;
 extern int debug_level;
+extern int xlat_toggle;
+extern struct hnat_desc headroom[DEF_ETRY_NUM];
 extern int qos_dl_toggle;
 extern int qos_ul_toggle;
 extern int hook_toggle;
 extern int mape_toggle;
 extern int qos_toggle;
-
+extern int tnl_toggle;
+extern int (*mtk_tnl_encap_offload)(struct sk_buff *skb);
+extern int (*mtk_tnl_decap_offload)(struct sk_buff *skb);
+extern bool (*mtk_tnl_decap_offloadable)(struct sk_buff *skb);
+extern bool (*mtk_crypto_offloadable)(struct sk_buff *skb);
+extern int hnat_bind_crypto_entry(struct sk_buff *skb,
+				  const struct net_device *dev,
+				  int fill_inner_info);
 int ext_if_add(struct extdev_entry *ext_entry);
 int ext_if_del(struct extdev_entry *ext_entry);
 void cr_set_field(void __iomem *reg, u32 field, u32 val);
 int mtk_sw_nat_hook_tx(struct sk_buff *skb, int gmac_no);
-int mtk_hnat_eth_hook_tx(struct sk_buff *skb);
-extern int (*eth_hook_tx)(struct sk_buff *skb);
-
+int mtk_hnat_eth_hook_tx(struct sk_buff *skb, struct net_device *dev);
+extern int (*eth_hook_tx)(struct sk_buff *skb, struct net_device *dev);
 int mtk_sw_nat_hook_rx(struct sk_buff *skb);
+void foe_clear_all_bind_entries(void);
 void mtk_ppe_dev_register_hook(struct net_device *dev);
 void mtk_ppe_dev_unregister_hook(struct net_device *dev);
 int nf_hnat_netdevice_event(struct notifier_block *unused, unsigned long event,
@@ -1212,16 +1369,34 @@ int hnat_enable_hook(void);
 int hnat_disable_hook(void);
 void hnat_cache_ebl(int enable);
 void hnat_qos_shaper_ebl(u32 id, u32 enable);
+void exclude_boundary_entry(struct foe_entry *foe_table_cpu);
 void set_gmac_ppe_fwd(int gmac_no, int enable);
 int entry_detail(u32 ppe_id, int index);
 int entry_delete_by_mac(u8 *mac);
+int entry_delete_by_ip(bool is_ipv4, void *addr);
 int entry_delete(u32 ppe_id, int index);
 int hnat_warm_init(void);
+u32 hnat_get_ppe_hash(struct foe_entry *entry);
+int mtk_ppe_get_xlat_v4_by_v6(struct in6_addr *ipv6, u32 *ipv4);
+int mtk_ppe_get_xlat_v6_by_v4(u32 *ipv4, struct in6_addr *ipv6,
+			      struct in6_addr *prefix);
 
 struct hnat_accounting *hnat_get_count(struct mtk_hnat *h, u32 ppe_id,
 				       u32 index, struct hnat_accounting *diff);
-
-static inline u16 foe_timestamp(struct mtk_hnat *h)
+bool hnat_flow_entry_match(struct foe_entry *entry, struct foe_entry *data);
+void hnat_flow_entry_delete(struct hnat_flow_entry *flow_entry);
+static inline u16 foe_timestamp(struct mtk_hnat *h, bool mcast)
 {
-	return (readl(hnat_priv->fe_base + 0x0010)) & 0xffff;
+	u16 time_stamp;
+
+	if (mcast)
+		time_stamp = (readl(h->fe_base + 0x0010)) & 0xffff;
+	else if (h->data->version == MTK_HNAT_V2 || h->data->version == MTK_HNAT_V3)
+		time_stamp = readl(h->fe_base + 0x0010) & (0xFF);
+	else
+		time_stamp = readl(h->fe_base + 0x0010) & (0x7FFF);
+
+	return time_stamp;
 }
+
+#endif /* NF_HNAT_H */

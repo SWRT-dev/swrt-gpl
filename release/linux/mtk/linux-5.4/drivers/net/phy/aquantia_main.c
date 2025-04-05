@@ -8,21 +8,14 @@
  */
 
 #include <linux/kernel.h>
+#include <linux/kthread.h>
 #include <linux/module.h>
 #include <linux/delay.h>
 #include <linux/bitfield.h>
 #include <linux/phy.h>
+#include <linux/of.h>
 
 #include "aquantia.h"
-
-#define PHY_ID_AQ1202	0x03a1b445
-#define PHY_ID_AQ2104	0x03a1b460
-#define PHY_ID_AQR105	0x03a1b4a2
-#define PHY_ID_AQR106	0x03a1b4d0
-#define PHY_ID_AQR107	0x03a1b4e0
-#define PHY_ID_AQCS109	0x03a1b5c2
-#define PHY_ID_AQR405	0x03a1b4b0
-#define PHY_ID_AQR113C	0x31c31c12
 
 #define MDIO_PHYXS_VEND_IF_STATUS		0xe812
 #define MDIO_PHYXS_VEND_IF_STATUS_TYPE_MASK	GENMASK(7, 3)
@@ -32,6 +25,9 @@
 #define MDIO_PHYXS_VEND_IF_STATUS_TYPE_SGMII	6
 #define MDIO_PHYXS_VEND_IF_STATUS_TYPE_OCSGMII	10
 
+#define MDIO_PHYXS_TX_RSVD_VEND_PROV2           0xc441
+#define MDIO_PHYXS_TX_RSVD_VEND_PROV2_ANEG      BIT(3)
+
 #define MDIO_AN_VEND_PROV			0xc400
 #define MDIO_AN_VEND_PROV_1000BASET_FULL	BIT(15)
 #define MDIO_AN_VEND_PROV_1000BASET_HALF	BIT(14)
@@ -39,7 +35,6 @@
 #define MDIO_AN_VEND_PROV_2500BASET_FULL	BIT(10)
 #define MDIO_AN_VEND_PROV_DOWNSHIFT_EN		BIT(4)
 #define MDIO_AN_VEND_PROV_DOWNSHIFT_MASK	GENMASK(3, 0)
-#define MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT	4
 
 #define MDIO_AN_TX_VEND_STATUS1			0xc800
 #define MDIO_AN_TX_VEND_STATUS1_RATE_MASK	GENMASK(3, 1)
@@ -78,6 +73,9 @@
 #define VEND1_GLOBAL_FW_ID_MAJOR		GENMASK(15, 8)
 #define VEND1_GLOBAL_FW_ID_MINOR		GENMASK(7, 0)
 
+#define VEND1_GLOBAL_POR			0x2681
+#define VEND1_GLOBAL_POR_PHY_RESET		BIT(0)
+
 #define VEND1_GLOBAL_RSVD_STAT1			0xc885
 #define VEND1_GLOBAL_RSVD_STAT1_FW_BUILD_ID	GENMASK(7, 4)
 #define VEND1_GLOBAL_RSVD_STAT1_PROV_ID		GENMASK(3, 0)
@@ -111,6 +109,16 @@
 #define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL1	BIT(2)
 #define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL2	BIT(1)
 #define VEND1_GLOBAL_INT_VEND_MASK_GLOBAL3	BIT(0)
+
+#define VEND1_GLOBAL_LED_PROV(x)		(0xc430 + (x - 1))
+#define VEND1_GLOBAL_LED_5000_LINK_EST		BIT(15)
+#define VEND1_GLOBAL_LED_2500_LINK_EST		BIT(14)
+#define VEND1_GLOBAL_LED_10G_LINK_EST		BIT(7)
+#define VEND1_GLOBAL_LED_1000_LINK_EST		BIT(6)
+#define VEND1_GLOBAL_LED_100_LINK_EST		BIT(5)
+#define VEND1_GLOBAL_LED_PROV_RX_ACT		BIT(3)
+#define VEND1_GLOBAL_LED_PROV_TX_ACT		BIT(2)
+#define VEND1_GLOBAL_LED_PROV_ACT_STRETCH_MASK	GENMASK(1, 0)
 
 static int aqr107_get_sset_count(struct phy_device *phydev)
 {
@@ -167,6 +175,40 @@ static void aqr107_get_stats(struct phy_device *phydev,
 
 		data[i] = priv->sgmii_stats[i];
 	}
+}
+
+int aqr107_config_led(struct phy_device *phydev)
+{
+	u16 val;
+	int err;
+
+	val = phy_read_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_LED_PROV(1));
+	val |= VEND1_GLOBAL_LED_10G_LINK_EST;
+	err = phy_write_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_LED_PROV(1), val);
+	if (err < 0)
+		return err;
+
+	val = phy_read_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_LED_PROV(2));
+	val |= VEND1_GLOBAL_LED_100_LINK_EST | VEND1_GLOBAL_LED_1000_LINK_EST |
+	       VEND1_GLOBAL_LED_2500_LINK_EST | VEND1_GLOBAL_LED_5000_LINK_EST;
+	err = phy_write_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_LED_PROV(2), val);
+	if (err < 0)
+		return err;
+
+	val = phy_read_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_LED_PROV(3));
+	val |= VEND1_GLOBAL_LED_PROV_ACT_STRETCH_MASK |
+	       VEND1_GLOBAL_LED_PROV_TX_ACT | VEND1_GLOBAL_LED_PROV_RX_ACT;
+	return phy_write_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_LED_PROV(3), val);
+}
+
+int aqr107_config_usx_aneg_en(struct phy_device *phydev)
+{
+	u16 val;
+
+	val = phy_read_mmd(phydev, MDIO_MMD_PHYXS, MDIO_PHYXS_TX_RSVD_VEND_PROV2);
+	val |= MDIO_PHYXS_TX_RSVD_VEND_PROV2_ANEG;
+
+	return phy_write_mmd(phydev, MDIO_MMD_PHYXS, MDIO_PHYXS_TX_RSVD_VEND_PROV2, val);
 }
 
 static int aqr_config_aneg(struct phy_device *phydev)
@@ -267,17 +309,6 @@ static int aqr_read_status(struct phy_device *phydev)
 	return genphy_c45_read_status(phydev);
 }
 
-static int aqr107_read_downshift_event(struct phy_device *phydev)
-{
-	int val;
-
-	val = phy_read_mmd(phydev, MDIO_MMD_AN, MDIO_AN_TX_VEND_INT_STATUS1);
-	if (val < 0)
-		return val;
-
-	return !!(val & MDIO_AN_TX_VEND_INT_STATUS1_DOWNSHIFT);
-}
-
 static int aqr107_read_rate(struct phy_device *phydev)
 {
 	int val;
@@ -352,20 +383,7 @@ static int aqr107_read_status(struct phy_device *phydev)
 		break;
 	}
 
-	/* Handle the case when the link speed is unknown */
-	if (phydev->speed == SPEED_UNKNOWN) {
-		val = aqr107_read_rate(phydev);
-		if (val < 0)
-			return val;
-	}
-
-	val = aqr107_read_downshift_event(phydev);
-	if (val <= 0)
-		return val;
-
-	phydev_warn(phydev, "Downshift occurred! Cabling may be defective.\n");
-
-	/* Read downshifted rate from vendor register */
+	/* Read possibly downshifted rate from vendor register */
 	return aqr107_read_rate(phydev);
 }
 
@@ -385,7 +403,7 @@ static int aqr107_get_downshift(struct phy_device *phydev, u8 *data)
 	return 0;
 }
 
-static int aqr107_set_downshift(struct phy_device *phydev, u8 cnt)
+int aqr107_set_downshift(struct phy_device *phydev, u8 cnt)
 {
 	int val = 0;
 
@@ -445,7 +463,7 @@ static int aqr107_wait_reset_complete(struct phy_device *phydev)
 	return val ? 0 : -ETIMEDOUT;
 }
 
-static void aqr107_chip_info(struct phy_device *phydev)
+void aqr107_chip_info(struct phy_device *phydev)
 {
 	u8 fw_major, fw_minor, build_id, prov_id;
 	int val;
@@ -464,19 +482,23 @@ static void aqr107_chip_info(struct phy_device *phydev)
 	build_id = FIELD_GET(VEND1_GLOBAL_RSVD_STAT1_FW_BUILD_ID, val);
 	prov_id = FIELD_GET(VEND1_GLOBAL_RSVD_STAT1_PROV_ID, val);
 
-	phydev_dbg(phydev, "FW %u.%u, Build %u, Provisioning %u\n",
+	phydev_info(phydev, "FW %u.%u, Build %u, Provisioning %u\n",
 		   fw_major, fw_minor, build_id, prov_id);
 }
 
 int aqr107_config_mdi(struct phy_device *phydev)
 {
-#ifdef CONFIG_AQUANTIA_PHY_MDI_REVERSED
+	struct device_node *np = phydev->mdio.dev.of_node;
+	u16 val;
+
+	if (of_property_read_u16(np, "mdi-reversal", &val))
+		return -ENOENT;
+
+	if (!FIELD_FIT(PMAPMD_RSVD_VEND_PROV_MDI_CONF, val))
+		return -E2BIG;
+
 	return phy_modify_mmd(phydev, MDIO_MMD_PMAPMD, PMAPMD_RSVD_VEND_PROV,
-			     PMAPMD_RSVD_VEND_PROV_MDI_CONF, 1);
-#else
-	return phy_modify_mmd(phydev, MDIO_MMD_PMAPMD, PMAPMD_RSVD_VEND_PROV,
-			     PMAPMD_RSVD_VEND_PROV_MDI_CONF, 0);
-#endif
+			     PMAPMD_RSVD_VEND_PROV_MDI_CONF, val);
 }
 
 static int aqr107_config_init(struct phy_device *phydev)
@@ -497,17 +519,20 @@ static int aqr107_config_init(struct phy_device *phydev)
 	ret = aqr107_wait_reset_complete(phydev);
 	if (!ret)
 		aqr107_chip_info(phydev);
-
-#if !defined(CONFIG_AQUANTIA_PHY_FW_DOWNLOAD) && defined(CONFIG_AQUANTIA_PHY_MDI_SWAP)
-	aqr107_config_mdi(phydev);
-#endif
-
 #ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
-	aqr_firmware_download(phydev);
+	else
+		return aqr_firmware_download(phydev);
 #endif
 
-	/* ensure that a latched downshift event is cleared */
-	aqr107_read_downshift_event(phydev);
+	ret = aqr107_config_usx_aneg_en(phydev);
+	if (ret)
+		dev_err(&phydev->mdio.dev, "USX autonegotiation disabled, ret: %d\n", ret);
+
+	ret = aqr107_config_led(phydev);
+	if (ret)
+		dev_err(&phydev->mdio.dev, "LED configuration failed, ret: %d\n", ret);
+
+	aqr107_config_mdi(phydev);
 
 	return aqr107_set_downshift(phydev, MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT);
 }
@@ -532,9 +557,6 @@ static int aqcs109_config_init(struct phy_device *phydev)
 	ret = phy_set_max_speed(phydev, SPEED_2500);
 	if (ret)
 		return ret;
-
-	/* ensure that a latched downshift event is cleared */
-	aqr107_read_downshift_event(phydev);
 
 	return aqr107_set_downshift(phydev, MDIO_AN_VEND_PROV_DOWNSHIFT_DFLT);
 }
@@ -586,22 +608,84 @@ static void aqr107_link_change_notify(struct phy_device *phydev)
 
 static int aqr107_suspend(struct phy_device *phydev)
 {
+#ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
+	struct aqr107_priv *priv = phydev->priv;
+
+	if (spin_trylock(&priv->lock)) {
+		if (priv->heartbeat_thread) {
+			kthread_stop(priv->heartbeat_thread);
+			priv->heartbeat_thread = NULL;
+			priv->heartbeat = -1;
+		}
+		spin_unlock(&priv->lock);
+	}
+#endif
 	return phy_set_bits_mmd(phydev, MDIO_MMD_VEND1, MDIO_CTRL1,
 				MDIO_CTRL1_LPOWER);
 }
 
 static int aqr107_resume(struct phy_device *phydev)
 {
+#ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
+	struct aqr107_priv *priv = phydev->priv;
+
+	if (spin_trylock(&priv->lock)) {
+		if (!priv->heartbeat_thread) {
+			priv->heartbeat_thread = kthread_create(aqr_firmware_heartbeat_thread,
+								phydev,
+								"aqr_firmware_heartbeat_thread");
+			if (IS_ERR(priv->heartbeat_thread)) {
+				phydev_err(phydev,
+					   "Failed to create aqr_firmware_heartbeat_thread(%ld)\n",
+					    PTR_ERR(priv->heartbeat_thread));
+				priv->heartbeat_thread = NULL;
+			} else
+				wake_up_process(priv->heartbeat_thread);
+		}
+		spin_unlock(&priv->lock);
+	}
+#endif
 	return phy_clear_bits_mmd(phydev, MDIO_MMD_VEND1, MDIO_CTRL1,
 				  MDIO_CTRL1_LPOWER);
 }
 
+static int aqr107_phy_reset(struct phy_device *phydev)
+{
+	int val, retries = 100;
+
+	/* Set PHY reset */
+	val = phy_write_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_POR,
+			    VEND1_GLOBAL_POR_PHY_RESET);
+	if (val < 0)
+		return val;
+
+	/* Wait PHY reset complete */
+	do {
+		val = phy_read_mmd(phydev, MDIO_MMD_VEND1, VEND1_GLOBAL_POR);
+		if (val < 0)
+			return val;
+		msleep(20);
+	} while (val && --retries);
+
+	return !val ? 0 : -ETIMEDOUT;
+}
+
 static int aqr107_probe(struct phy_device *phydev)
 {
+	int ret;
+
 	phydev->priv = devm_kzalloc(&phydev->mdio.dev,
 				    sizeof(struct aqr107_priv), GFP_KERNEL);
 	if (!phydev->priv)
 		return -ENOMEM;
+
+	ret = aqr107_phy_reset(phydev);
+	if (ret)
+		phydev_warn(phydev, "wait PHY reset timeout\n");
+
+#ifdef CONFIG_AQUANTIA_PHY_MIB
+	aqr107_config_mib(phydev);
+#endif
 
 	return aqr_hwmon_probe(phydev);
 }
@@ -703,6 +787,24 @@ static struct phy_driver aqr_driver[] = {
 	.get_stats      = aqr107_get_stats,
 	.link_change_notify = aqr107_link_change_notify,
 },
+{
+	PHY_ID_MATCH_MODEL(PHY_ID_CUX3410),
+	.name           = "Aquantia CUX3410",
+	.probe          = aqr107_probe,
+	.config_init    = aqr107_config_init,
+	.config_aneg    = aqr_config_aneg,
+	.config_intr    = aqr_config_intr,
+	.ack_interrupt  = aqr_ack_interrupt,
+	.read_status    = aqr107_read_status,
+	.get_tunable    = aqr107_get_tunable,
+	.set_tunable    = aqr107_set_tunable,
+	.suspend        = aqr107_suspend,
+	.resume         = aqr107_resume,
+	.get_sset_count = aqr107_get_sset_count,
+	.get_strings    = aqr107_get_strings,
+	.get_stats      = aqr107_get_stats,
+	.link_change_notify = aqr107_link_change_notify,
+},
 };
 
 module_phy_driver(aqr_driver);
@@ -716,6 +818,7 @@ static struct mdio_device_id __maybe_unused aqr_tbl[] = {
 	{ PHY_ID_MATCH_MODEL(PHY_ID_AQCS109) },
 	{ PHY_ID_MATCH_MODEL(PHY_ID_AQR405) },
 	{ PHY_ID_MATCH_MODEL(PHY_ID_AQR113C) },
+	{ PHY_ID_MATCH_MODEL(PHY_ID_CUX3410) },
 	{ }
 };
 

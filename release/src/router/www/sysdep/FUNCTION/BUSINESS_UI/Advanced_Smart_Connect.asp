@@ -13,7 +13,7 @@
 <link rel="stylesheet" type="text/css" href="form_style.css">
 <link rel="stylesheet" type="text/css" href="/device-map/device-map.css">
 <link rel="stylesheet" href="/css/bootstrap.min.css" />
-<link rel="stylesheet" href="/css/architecture_business.css" />
+<link rel="stylesheet" href="/css/architecture.css" />
 <script src="/js/bootstrap.bundle.min.js"></script>
 <script type="text/javascript" src="/js/jquery.js"></script>
 <script type="text/javascript" src="/calendar/jquery-ui.js"></script> 
@@ -24,6 +24,7 @@
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
 <script type="text/javascript" src="/client_function.js"></script>
+<script type="text/javascript" src="/js/asus_clientlist.js"></script>
 <style>
 .ui-slider {
 	position: relative;
@@ -1802,6 +1803,10 @@ $(document).ready(function() {
     });
 });
 
+function showClientlistModal(){
+	const clientlistModal = new ClientlistModel();
+	clientlistModal.show();
+}
 </script>
 </head>
 
@@ -1895,7 +1900,7 @@ $(document).ready(function() {
                                         <div id="sc_view_list"
                                              style="text-align:right;margin-top:-36px;padding-bottom:3px;">
                                             <input type="button" class="btn_subusage mb-1" value="<#View_List#>"
-                                                   data-bs-toggle="modal" data-bs-target="#clientListModal">
+                                                   onClick="showClientlistModal()">
                                         </div>
                                         <div class="modal fade" id="clientListModal" data-bs-backdrop="static"
                                                                                      data-bs-keyboard="false" tabindex="-1">

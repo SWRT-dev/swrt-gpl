@@ -14,6 +14,7 @@
 /* PHY ID */
 #define PHY_ID_GPYx15B_MASK	0xFFFFFFFC
 #define PHY_ID_GPY21xB_MASK	0xFFFFFFF9
+#define PHY_ID_MXL862XX_MASK	0xFFFFFF00
 #define PHY_ID_GPY2xx		0x67C9DC00
 #define PHY_ID_GPY115B		0x67C9DF00
 #define PHY_ID_GPY115C		0x67C9DF10
@@ -26,6 +27,7 @@
 #define PHY_ID_GPY241B		0x67C9DE40
 #define PHY_ID_GPY241BM		0x67C9DE80
 #define PHY_ID_GPY245B		0x67C9DEC0
+#define PHY_ID_MXL862XX		0xC1335500
 
 #define PHY_MIISTAT		0x18	/* MII state */
 #define PHY_IMASK		0x19	/* interrupt mask */
@@ -352,6 +354,10 @@ static int gpy_read_status(struct phy_device *phydev)
 
 	if (phydev->link)
 		gpy_update_interface(phydev);
+#if 1 // force_down
+	else
+		phydev->speed = -1;
+#endif
 
 	return 0;
 }
@@ -513,6 +519,15 @@ static int gpy115_loopback(struct phy_device *phydev, bool enable)
 		return gpy_loopback(phydev, 0);
 
 	return genphy_soft_reset(phydev);
+}
+
+static int gpy_c45_pma_read_abilities(struct phy_device *phydev)
+{
+	phydev->c45_ids.devices_in_package  |= MDIO_DEVS_AN;
+
+	genphy_c45_pma_read_abilities(phydev);
+
+	return 0;
 }
 
 static struct phy_driver gpy_drivers[] = {
@@ -724,6 +739,22 @@ static struct phy_driver gpy_drivers[] = {
 		.get_wol	= gpy_get_wol,
 		.set_loopback	= gpy_loopback,
 	},
+	{
+		.phy_id		= PHY_ID_MXL862XX,
+		.phy_id_mask	= PHY_ID_MXL862XX_MASK,
+		.name		= "MaxLinear Ethernet MxL862XX",
+		.get_features	= gpy_c45_pma_read_abilities,
+		.config_init	= gpy_config_init,
+		.probe		= gpy_probe,
+		.suspend	= genphy_suspend,
+		.resume		= genphy_resume,
+		.config_aneg	= gpy_config_aneg,
+		.aneg_done	= genphy_c45_aneg_done,
+		.read_status	= gpy_read_status,
+		.config_intr	= gpy_config_intr,
+		.handle_interrupt = gpy_handle_interrupt,
+		.set_loopback	= gpy_loopback,
+	},
 };
 module_phy_driver(gpy_drivers);
 
@@ -740,6 +771,7 @@ static struct mdio_device_id __maybe_unused gpy_tbl[] = {
 	{PHY_ID_MATCH_MODEL(PHY_ID_GPY241B)},
 	{PHY_ID_MATCH_MODEL(PHY_ID_GPY241BM)},
 	{PHY_ID_MATCH_MODEL(PHY_ID_GPY245B)},
+	{PHY_ID_MXL862XX, PHY_ID_MXL862XX_MASK},
 	{ }
 };
 MODULE_DEVICE_TABLE(mdio, gpy_tbl);

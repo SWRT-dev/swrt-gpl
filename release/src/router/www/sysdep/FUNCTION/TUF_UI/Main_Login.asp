@@ -30,10 +30,12 @@ function tryParseJSON (jsonString){
             return o;
         }
     }
-    catch (e) { }
+    catch (e) {
+		// do something
+	}
 
     return false;
-};
+}
 
 var htmlEnDeCode = (function() {
 	var charToEntityRegex,
@@ -109,20 +111,34 @@ var ui_lang = '<% nvram_get("preferred_lang"); %>';
 var based_modelid = '<% nvram_get("productid"); %>';
 var odmpid = '<% nvram_get("odmpid"); %>';
 
+const getQueryString = function(name){
+	var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+	var r = window.location.search.substr(1).match(reg);
+	if (r != null) return unescape(r[2]); return null;
+};
+function loadScript(src, timeout = 2000) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = () => resolve(script);
+        script.onerror = () => reject(new Error(`Failed to load script ${src}`));
+        document.head.appendChild(script);
+        setTimeout(() => {
+			loadScriptTimeout = true;
+            reject(new Error(`Loading script ${src} timed out`));
+        }, timeout);
+    });
+}
+var loadScriptTimeout = false;
 var header_info = [<% get_header_info(); %>][0];
 var ROUTERHOSTNAME = '<#Web_DOMAIN_NAME#>';
-var domainNameUrl = header_info.protocol+"://"+ROUTERHOSTNAME+":"+header_info.port;
-var chdom = function(){window.location.href=domainNameUrl};
-(function(){
-	if(ROUTERHOSTNAME !== header_info.host && ROUTERHOSTNAME != "" && isRouterMode){
-		setTimeout(function(){
-			var s=document.createElement("script");s.type="text/javascript";s.src=domainNameUrl+"/chdom.json?hostname="+header_info.host;var h=document.getElementsByTagName("script")[0];h.parentNode.insertBefore(s,h);
-		}, 1);
-	}
-	if(CoBrand == "8")
-		$('link').last().after('<link rel="stylesheet" type="text/css" href="css/difference.css">');
-})();
-<% login_state_hook(); %>
+var domainNameUrl = `${header_info.protocol}://${ROUTERHOSTNAME}:${header_info.port}`;
+var chdom = function(){if(getQueryString("redirct")!=="false" && !loadScriptTimeout)window.location.href=domainNameUrl};
+if(ROUTERHOSTNAME !== header_info.host && ROUTERHOSTNAME != "" && isRouterMode){
+	setTimeout(() => {
+		loadScript(`${domainNameUrl}/chdom.json?hostname=${header_info.host}`).catch(error => {console.error(error.message);});
+	}, 100);
+}
 
 function isSupport(_ptn){
 	var ui_support = [<% get_ui_support(); %>][0];
@@ -138,8 +154,14 @@ else
 	var captcha_on = false;
 
 var faq_href = "https://nw-dlcdnet.asus.com/support/forward.html?model=&type=SG_TeleStand&lang=&kw=&num=";
+var ATEMODE = '<% nvram_get("ATEMODE"); %>';
+
 function initial(){
 	top.name = "";/* reset cache of state.js win.name */
+
+	if(ATEMODE == "1"){
+		$(".login-title-desc").text("<#Sign_in_title#>" + " (ATE Mode)");
+	}
 
 	/*handle sysdep for ROG or ODM product*/
 	if(odm_support){

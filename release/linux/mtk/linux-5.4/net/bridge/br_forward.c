@@ -43,7 +43,7 @@ int br_dev_queue_push_xmit(struct net *net, struct sock *sk, struct sk_buff *skb
 	     skb->protocol == htons(ETH_P_8021AD))) {
 		int depth;
 
-		if (!__vlan_get_protocol(skb, skb->protocol, &depth))
+		if (!vlan_get_protocol_and_depth(skb, skb->protocol, &depth))
 			goto drop;
 
 		skb_set_network_header(skb, depth);
@@ -118,7 +118,7 @@ static int deliver_clone(const struct net_bridge_port *prev,
 
 	skb = skb_clone(skb, GFP_ATOMIC);
 	if (!skb) {
-		dev->stats.tx_dropped++;
+		DEV_STATS_INC(dev, tx_dropped);
 		return -ENOMEM;
 	}
 
@@ -135,8 +135,9 @@ static int deliver_clone(const struct net_bridge_port *prev,
  *
  * Should be called with rcu_read_lock.
  */
-void br_forward(const struct net_bridge_port *to,
-		struct sk_buff *skb, bool local_rcv, bool local_orig)
+void _br_forward(const struct net_bridge_port *to,
+		struct sk_buff *skb, bool local_rcv, bool local_orig,
+		bool chk_isolate_mode)
 {
 	if (unlikely(!to))
 		goto out;
@@ -151,7 +152,9 @@ void br_forward(const struct net_bridge_port *to,
 		to = backup_port;
 	}
 
-	if (should_deliver(to, skb)) {
+	if (should_deliver(to, skb)
+	 && (!chk_isolate_mode || !(to->flags & BR_ISOLATE_MODE)))
+	{
 		if (local_rcv)
 			deliver_clone(to, skb, local_orig);
 		else
@@ -163,7 +166,7 @@ out:
 	if (!local_rcv)
 		kfree_skb(skb);
 }
-EXPORT_SYMBOL_GPL(br_forward);
+EXPORT_SYMBOL_GPL(_br_forward);
 
 static struct net_bridge_port *maybe_deliver(
 	struct net_bridge_port *prev, struct net_bridge_port *p,
@@ -189,12 +192,15 @@ out:
 
 /* called under rcu_read_lock */
 void br_flood(struct net_bridge *br, struct sk_buff *skb,
-	      enum br_pkt_type pkt_type, bool local_rcv, bool local_orig)
+	      enum br_pkt_type pkt_type, bool local_rcv, bool local_orig,
+	      bool forward)
 {
 	struct net_bridge_port *prev = NULL;
 	struct net_bridge_port *p;
 
 	list_for_each_entry_rcu(p, &br->port_list, list) {
+		if (forward && (p->flags & BR_ISOLATE_MODE))
+			continue;
 		/* Do not flood unicast traffic to ports that turn it off, nor
 		 * other traffic if flood off, except for traffic we originate
 		 */
@@ -245,6 +251,7 @@ static void maybe_deliver_addr(struct net_bridge_port *p, struct sk_buff *skb,
 {
 	struct net_device *dev = BR_INPUT_SKB_CB(skb)->brdev;
 	const unsigned char *src = eth_hdr(skb)->h_source;
+	struct sk_buff *nskb;
 
 	if (!should_deliver(p, skb))
 		return;
@@ -253,12 +260,16 @@ static void maybe_deliver_addr(struct net_bridge_port *p, struct sk_buff *skb,
 	if (skb->dev == p->dev && ether_addr_equal(src, addr))
 		return;
 
-	skb = skb_copy(skb, GFP_ATOMIC);
-	if (!skb) {
-		dev->stats.tx_dropped++;
+	__skb_push(skb, ETH_HLEN);
+	nskb = pskb_copy(skb, GFP_ATOMIC);
+	__skb_pull(skb, ETH_HLEN);
+	if (!nskb) {
+		DEV_STATS_INC(dev, tx_dropped);
 		return;
 	}
 
+	skb = nskb;
+	__skb_pull(skb, ETH_HLEN);
 	if (!is_broadcast_ether_addr(addr))
 		memcpy(eth_hdr(skb)->h_dest, addr, ETH_ALEN);
 

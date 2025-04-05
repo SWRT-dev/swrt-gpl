@@ -51,10 +51,10 @@ define(function(){
 				]
 			},
 			{
-				menuName: Guest_Network_naming,
+				menuName: isSupport("sdn_mwl") ? `<#Network#>` : Guest_Network_naming,
 				index: "menu_GuestNetwork",
 				tab: [
-					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: Guest_Network_naming},
+					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: isSupport("sdn_mwl") ? `<#Network#>` : Guest_Network_naming},
 					{url: "Captive_Portal.asp", tabName: "Free WiFi"},
 					{url: "Captive_Portal_Advanced.asp", tabName: "<#Captive_Portal#>"},
 					{url: "Guest_network_fbwifi.asp", tabName: "Facebook WiFi"},
@@ -277,6 +277,7 @@ define(function(){
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
 					{url: "Advanced_Privacy.asp", tabName: "<#menu_privacy#>"},
 					{url: "Advanced_MultiFuncBtn.asp", tabName: "Multi-Function Button"},
+					{url: "Advanced_Account_Management.asp", tabName: "Account Management"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -374,7 +375,7 @@ define(function(){
 				}
 
 				/* Operation Mode */
-				if(isSwMode("re")){
+				if(isSwMode("RP")){
 					retArray.push("menu_GuestNetwork");
 					retArray.push("menu_AccessControl");
 					retArray.push("menu_TrafficAnalyzer");
@@ -619,7 +620,7 @@ define(function(){
 				else
 					retArray.push("Advanced_DHCP_Content.asp");
 
-				if((!Rawifi_support && ! Rtkwifi_support) || !concurrep_support || !isSwMode("re")){
+				if((!Rawifi_support && ! Rtkwifi_support) || !concurrep_support || !isSwMode("RP")){
 					retArray.push("Advanced_WProxy_Content.asp");
 				}
 				
@@ -667,6 +668,10 @@ define(function(){
 				if(!isSupport("mtlancfg") || !isSupport("mlo")){
 					retArray.push("MLO.asp");
 				}
+				
+				if(isSupport("sdn_mainfh")){
+					retArray.push("Advanced_ACL_Content.asp");
+				}
 
 				if(isSupport("BUSINESS")){
 					retArray.push("APP_Installation.asp");
@@ -687,7 +692,7 @@ define(function(){
 				}
 
 				/* Operation Mode */
-				if(isSwMode("re")){
+				if(isSwMode("RP")){
 					retArray.push("GameBoost.asp");
 					retArray.push("TrafficAnalyzer_Statistic.asp");
 					retArray.push("Advanced_DHCP_Content.asp");
@@ -778,6 +783,10 @@ define(function(){
 					retArray.push("QoS_EZQoS.asp");
 					retArray.push("AdaptiveQoS_WebHistory.asp");
 					retArray.push("Advanced_DHCP_Content.asp");
+				}
+
+				if(!newsite_provisioning_support){
+					retArray.push("Advanced_Account_Management.asp");
 				}
 
 				return retArray;

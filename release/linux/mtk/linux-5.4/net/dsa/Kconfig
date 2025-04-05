@@ -74,11 +74,30 @@ config NET_DSA_TAG_MTK
 	  Say Y or M if you want to enable support for tagging frames for
 	  Mediatek switches.
 
+config NET_DSA_TAG_AIROHA
+	tristate "Tag driver for Airoha switches"
+	help
+	  Say Y or M if you want to enable support for tagging frames for
+	  Airoha switches.
+
 config NET_DSA_TAG_KSZ
 	tristate "Tag driver for Microchip 8795/9477/9893 families of switches"
 	help
 	  Say Y if you want to enable support for tagging frames for the
 	  Microchip 8795/9477/9893 families of switches.
+
+config NET_DSA_TAG_MXL862
+	tristate "Tag driver for MxL862xx switches"
+	help
+	  Say Y or M if you want to enable support for tagging frames for the
+	  Maxlinear MxL862xx switches.
+
+config NET_DSA_TAG_MXL862_8021Q
+	tristate "Tag driver for MxL862xx switches, based on VLAN tags"
+	help
+	  Say Y or M if you want to enable support for tagging frames for the
+	  Maxlinear MxL862xx switches. This tagging variant is based on 4-byte wide VLAN
+	  tags
 
 config NET_DSA_TAG_RTL4_A
 	tristate "Tag driver for Realtek 4 byte protocol A tags"

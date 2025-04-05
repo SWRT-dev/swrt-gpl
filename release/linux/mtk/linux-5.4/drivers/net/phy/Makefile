@@ -1,7 +1,8 @@
 # SPDX-License-Identifier: GPL-2.0
 # Makefile for Linux PHY drivers and MDIO bus drivers
 
-libphy-y			:= phy.o phy-c45.o phy-core.o phy_device.o
+libphy-y			:= phy.o phy-c45.o phy-core.o phy_device.o \
+				   linkmode.o
 mdio-bus-y			+= mdio_bus.o mdio_device.o
 
 ifdef CONFIG_MDIO_DEVICE
@@ -70,8 +71,13 @@ endif
 ifdef CONFIG_AQUANTIA_PHY_FW_DOWNLOAD
 aquantia-objs			+= aquantia_firmware.o
 endif
-obj-$(CONFIG_AIROHA_EN8801S_PHY)	+= en8801s.o
+ifdef CONFIG_AQUANTIA_PHY_MIB
+aquantia-objs			+= aquantia_mib.o
+endif
+obj-$(CONFIG_AIROHA_AN8801_PHY)	+= an8801.o
 obj-$(CONFIG_AIROHA_EN8801SC_PHY)	+= en8801sc.o
+air_en8811h-y := air_en8811h_main.o air_en8811h_api.o
+obj-$(CONFIG_AIROHA_EN8811H_PHY)	+= air_en8811h.o
 obj-$(CONFIG_AQUANTIA_PHY)	+= aquantia.o
 obj-$(CONFIG_AX88796B_PHY)	+= ax88796b.o
 obj-$(CONFIG_AT803X_PHY)	+= at803x.o
@@ -99,8 +105,7 @@ obj-$(CONFIG_LXT_PHY)		+= lxt.o
 obj-$(CONFIG_MARVELL_PHY)	+= marvell.o
 obj-$(CONFIG_MARVELL_10G_PHY)	+= marvell10g.o
 obj-$(CONFIG_MAXLINEAR_GPHY)	+= mxl-gpy.o
-obj-$(CONFIG_MEDIATEK_GE_PHY)	+= mediatek-ge.o
-obj-$(CONFIG_MEDIATEK_2P5GE_PHY)+= mediatek-2p5ge.o
+obj-y				+= mediatek/
 obj-$(CONFIG_MESON_GXL_PHY)	+= meson-gxl.o
 obj-$(CONFIG_MICREL_KS8995MA)	+= spi_ks8995.o
 obj-$(CONFIG_MICREL_PHY)	+= micrel.o
@@ -119,5 +124,6 @@ obj-$(CONFIG_TERANETICS_PHY)	+= teranetics.o
 obj-$(CONFIG_VITESSE_PHY)	+= vitesse.o
 obj-$(CONFIG_XILINX_GMII2RGMII) += xilinx_gmii2rgmii.o
 obj-$(CONFIG_MT753X_GSW)        += mtk/mt753x/
+obj-$(CONFIG_AN8855_GSW)        += airoha/an8855/
 obj-$(CONFIG_RTL8367S_GSW)	+= rtk/
 

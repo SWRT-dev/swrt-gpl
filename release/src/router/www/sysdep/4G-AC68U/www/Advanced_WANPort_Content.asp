@@ -193,7 +193,9 @@ function applyRule(){
 					return false;
 
 			if(wans_mode_orig != "lb" && check_bwdpi_engine_status()) {
-				var confirm_flag = confirm("<#dualwan_lb_dpi_conflict#>");
+				var confirm_str_lb_dpi_conflict = `<#dualwan_lb_dpi_conflict_new#>`;
+                confirm_str_lb_dpi_conflict = confirm_str_lb_dpi_conflict.replace('%@', `<#AiProtection_title#>`);
+                var confirm_flag = confirm(confirm_str_lb_dpi_conflict);
 				if(confirm_flag) {
 					document.form.action_script.value = "dpi_disable;reboot;";
 				}
@@ -1026,10 +1028,16 @@ function remain_origins(){
 															if(wans_caps_primary.indexOf("wan") >= 0 && wans_dualwan_array[0] == "lan"){
 																var cur_parimary_wan = wans_dualwan_array[0].toUpperCase() + " Port " + wans_lanport_orig;
 																var confirm_str = "";
-																if(noWAN_support)
-																	confirm_str = "The current primary wan is \"" + cur_parimary_wan + "\". Disable dual wan will change primary wan to \"Mobile Broadband\", are you sure to do it?"; //untranslated
-																else
-																	confirm_str = "The current primary wan is \"" + cur_parimary_wan + "\". Disable dual wan will change primary wan to \"Ethernet WAN\", are you sure to do it?"; //untranslated
+																if(noWAN_support){
+
+																	var hint_str = `<#dualwan_disable_hint#>`;
+																	confirm_str = hint_str.replace("%1$@", cur_parimary_wan).replaceAll("%2$@", `<#Mobile_title#>`);
+																}
+																else{
+
+																	var hint_str = `<#dualwan_disable_hint#>`;
+																	confirm_str = hint_str.replace("%1$@", cur_parimary_wan).replaceAll("%2$@", `<#Ethernet_wan#>`);
+																}
 																if(!confirm(confirm_str)){
 																	curState = "1";
 																	$('#ad_radio_dualwan_enable').find('.iphone_switch').animate({backgroundPosition: 0}, "slow");

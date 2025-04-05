@@ -315,7 +315,7 @@ function initial(){
 		changeRSSI(wl_user_rssi_onload);
 	else{
 		document.getElementById("rssiTr").style.display = "none";
-		$("#wl_unit_field").toggle(!(isSwMode("re") || isSwMode("ew")))
+		$("#wl_unit_field").toggle(!(isSwMode("RP") || isSwMode("ew")))
 	}
 
 	if(!band5g_support)
@@ -425,7 +425,7 @@ function initial(){
 				inputCtrl(document.form.wl_turbo_qam, 0);
 			}
 			
-			$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#>");
+			$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#> (WiFi 5)");
 			if(QAM1024_support){
 				var desc = ["Up to MCS 9 (802.11ac)", "Up to MCS 11 (NitroQAM/1024-QAM)"];
 				var value = ["1", "2"];
@@ -478,7 +478,7 @@ function initial(){
 					inputCtrl(document.form.wl_turbo_qam, 0);
 				}
 				
-				$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#>");
+				$("#turbo_qam_title").html("<#WLANConfig11b_x_ModulationScheme#> (WiFi 5)");
 				if(QAM1024_support){
 					var desc = ["Up to MCS 7 (802.11n)", "Up to MCS 9 (TurboQAM/256-QAM)", "Up to MCS 11 (NitroQAM/1024-QAM)"];
 					var value = ["0", "1", "2"];
@@ -702,7 +702,7 @@ function initial(){
 
 	control_TimeField();
 
-	if(isSwMode("re")){
+	if(isSwMode("RP")){
 		var _rows = document.getElementById("WAdvTable").rows;
 		for(var i=0; i<_rows.length; i++){
 			if(_rows[i].className.search("rept") == -1){
@@ -914,7 +914,7 @@ function changeRSSI(_switch){
 var reboot_confirm=0;
 function applyRule(){
 	if(lantiq_support && wave_ready != 1){
-		alert("Please wait a minute for wireless ready");
+		alert(`<#Wireless_ready#>`);
 		return false;
 	}
 	

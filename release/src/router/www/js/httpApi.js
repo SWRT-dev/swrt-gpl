@@ -103,15 +103,13 @@ var httpApi ={
 		return retData;
 	},
 
-	"nvramDefaultGet": function(objItems, forceUpdate){
+	"nvramDefaultGet": function(objItems){
 		var queryArray = [];
 		var retData = {};
 
 		var __nvramget = function(_nvrams){
 			return _nvrams.map(function(elem){return "nvram_default_get(" + elem + ")";}).join("%3B");
 		};
-
-		if(forceUpdate) cachedData.clear(objItems);
 
 		objItems.forEach(function(key){
 			if(cachedData.get.hasOwnProperty(key + "_default")){
@@ -153,9 +151,9 @@ var httpApi ={
 			});
 		}
 		else{
-			retData.isError = false;		
+			retData.isError = false;
 		}
-		
+
 		return retData;
 	},
 
@@ -167,10 +165,15 @@ var httpApi ={
 			return _nvrams.map(function(elem){return "nvram_char_to_ascii(" + elem + "," + elem + ")";}).join("%3B");
 		};
 
+		if(forceUpdate) cachedData.clear(objItems.map(item => item + '_ascii'));
+
 		objItems.forEach(function(key){
-			if(asyncData.get.hasOwnProperty(key)){
-				retData[key] = asyncData.get[key];
-				if(forceUpdate) delete asyncData.get[key];
+			if(cachedData.get.hasOwnProperty(key + "_ascii")){
+				retData[key] = cachedData.get[key + "_ascii"];
+			}
+			else if(asyncData.get.hasOwnProperty(key + "_ascii")){
+				retData[key] = cachedData.get[key + "_ascii"] = asyncData.get[key + "_ascii"];
+				if(forceUpdate) delete asyncData.get[key + "_ascii"];
 			}
 			else{
 				queryArray.push(key);
@@ -190,15 +193,15 @@ var httpApi ={
 						url: '/appGet.cgi?hook=' + __nvramget(queryArray),
 						dataType: 'json',
 						error: function(){
-							for(var i=0; i<queryArray.length; i++){asyncData.get[queryArray[i]] = "";}
+							for(var i=0; i<queryArray.length; i++){asyncData.get[queryArray[i] + "_ascii"] = "";}
 						},
 						success: function(response){
-							Object.keys(response).forEach(function(key){asyncData.get[key] = response[key];})
+							Object.keys(response).forEach(function(key){asyncData.get[key + "_ascii"] = response[key];})
 						}
 					});
 				},
 				success: function(response){
-					Object.keys(response).forEach(function(key){retData[key] = response[key];})
+					Object.keys(response).forEach(function(key){retData[key] = cachedData.get[key + "_ascii"] = response[key];})
 					retData.isError = false;
 				}
 			});
@@ -221,10 +224,10 @@ var httpApi ={
 		return reult;
 	},
 
-	"nvramSet": function(postData, handler, async = true){
+	"nvramSet": function(postData, handler, async = true, postMessageToAppFlag = true){
 		delete postData.isError;
 
-		if(this.app_dataHandler){
+		if(this.app_dataHandler && postMessageToAppFlag){
 			if(typeof postMessageToApp == "function")
 				postMessageToApp(postData);
 		}
@@ -239,7 +242,7 @@ var httpApi ={
 				success: function(response){
 					if(handler) handler.call(response);
 
-					if(typeof postMessageToApp == "function"){
+					if(typeof postMessageToApp == "function" && postMessageToAppFlag){
 						if(postData.rc_service == undefined) postData.rc_service = "nvramSet";
 						postMessageToApp({rc_service: postData.rc_service});
 					}
@@ -767,7 +770,9 @@ var httpApi ={
 			"hgw_v6plus":"HGW_V6PLUS",
 			"ocnvc":"OCNVC",
 			"dslite_xpass":"DSLITE_XPASS",
-			"dslite_transix":"DSLITE_TRANSIX"
+			"dslite_transix":"DSLITE_TRANSIX",
+			"v6opt":"V6OPTION",
+			"hgw_v6opt":"HGW_V6OPTION"
 		}
 
 		var retData = {
@@ -806,6 +811,12 @@ var httpApi ={
 		else if(wanInfo.wan46det_state == "7"){
 			retData.wan46State = wanTypeList.dslite_transix;
 		}
+		else if(wanInfo.wan46det_state == "8"){
+			retData.wan46State = wanTypeList.v6opt;
+		}
+		else if(wanInfo.wan46det_state == "9"){
+			retData.wan46State = wanTypeList.hgw_v6opt;
+		}
 
 		return retData;
 	},
@@ -824,6 +835,7 @@ var httpApi ={
 			"v6plus": "<#IPv6_plus#>",
 			"ocnvc": "<#IPv6_ocnvc#>",
 			"dslite": "DS-Lite",
+			"v6opt": "<#IPv6_opt#>",
 			"usb modem": "USB Modem"
 		};
 		var result = {
@@ -897,7 +909,7 @@ var httpApi ={
 	},
 
 	"isConnected": function(_index){
-		var sw_mode = httpApi.nvramGet(["sw_mode"], true).sw_mode;
+		var sw_mode = httpApi.nvramGet(["sw_mode"]).sw_mode;
 		var wan_index = (_index == undefined) ? 0 : _index;
 		var wanInfo = httpApi.nvramGet(["wan" + wan_index + "_state_t", "wan" + wan_index + "_sbstate_t", "wan" + wan_index + "_auxstate_t", "link_internet"], true);
 		return (sw_mode != "1")? (wanInfo.link_internet == "2"):(
@@ -1012,7 +1024,10 @@ var httpApi ={
 		$.ajax({
 			url: '/set_' + eulaType + '_EULA.cgi?' + eulaType + '_EULA=' + enable,
 			error: function(){},
-			success: callback
+			success: function (response) {
+				if (callback)
+					callback(response);
+			}
 		});
 	},
 
@@ -1024,7 +1039,10 @@ var httpApi ={
 					"ASUS_NEW_EULA": enable
 				},
 				dataType: 'json',
-				success: callback
+				success: function (response) {
+					if (callback)
+						callback(response);
+				}
 			});
 		},
 		"get": () => {
@@ -1044,7 +1062,10 @@ var httpApi ={
 				},
 				async: false,
 				dataType: 'json',
-				success: callback
+				success: function (response) {
+					if (callback)
+						callback(response);
+				}
 			});
 		},
 
@@ -1106,7 +1127,10 @@ var httpApi ={
 			$.ajax({
 				url: '/set_security_update.cgi?' + 'security_update=' + enable,
 				async: false,
-				success: callback
+				success: function (response) {
+					if (callback)
+						callback(response);
+				}
 			});
 		},
 
@@ -1129,7 +1153,10 @@ var httpApi ={
 		$.ajax({
 			url: '/unreg_ASUSDDNS.cgi',
 			error: function(){},
-			success: callback
+			success: function (response) {
+				if (callback)
+					callback(response);
+			}
 		});
 	},
 
@@ -2408,7 +2435,7 @@ var httpApi ={
 			if(!isNaN(key) && key.length == 13){
 				logContentArray.push([key, window.localStorage[key]])
 			}
-		};
+		}
 
 		logContentArray.sort(function(a, b){
 			return a[0] - b[0];
@@ -2525,9 +2552,13 @@ var httpApi ={
 	},
 
 	"diag_ping": {
-		"start": function(){
+		"start": function(postData){
 			$.ajax({
 				url: '/dns_ping.cgi',
+				type: "POST",
+				dataType: 'json',
+				data: JSON.stringify(postData),
+				async: true,
 				success: function(response){
 					console.log(response)
 				}

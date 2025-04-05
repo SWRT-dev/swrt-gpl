@@ -54,6 +54,10 @@ var wanObj = {
 		"wan_s46_dslite_mode": "0"
 	},
 
+	"v6opt": {
+		"ipv6_service": "ipv6pt"
+	},
+
 	"wan46": {
 		"wan_proto": "",
 		"ipv6_service": "ipv6pt"
@@ -70,8 +74,6 @@ var wanObj = {
 		"wan_dnsenable_x": "",
 		"wan_pppoe_username": "",
 		"wan_pppoe_passwd": "",
-		"wan_dhcpenable_x": "",
-		"wan_dnsenable_x": "",
 		"wan_ipaddr_x": "",
 		"wan_netmask_x": "",
 		"wan_gateway_x": "",

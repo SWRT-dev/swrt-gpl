@@ -160,7 +160,7 @@ extern int isM2SSDDevice(const char *device_name);
 #else
 static inline int isM2SSDDevice(__attribute__ ((unused)) const char *device_name) { return 0; }
 #endif
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 extern int isMMCDevice(const char *device_name);
 #endif
 

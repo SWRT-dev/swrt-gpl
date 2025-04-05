@@ -142,6 +142,11 @@ config RTCONFIG_BW160M
 	depends on RTCONFIG_DHDAP || RTCONFIG_QCA || RTCONFIG_RALINK
 	default n
 
+config RTCONFIG_BW240M
+	bool "Bandwidth 240MHz support"
+	depends on RTCONFIG_QCA && RTCONFIG_WIFI7 && RTCONFIG_BW160M
+	default n
+
 config RTCONFIG_BW320M
 	bool "Bandwidth 320MHz support"
 	default n
@@ -677,9 +682,19 @@ config RTCONFIG_TUXERA_NTFS
 	depends on RTCONFIG_NTFS
 	default n
 
+config RTCONFIG_KERNEL_NTFS3
+	bool "NTFS Support by kernel 5.15+ or backport to 5.x"
+	depends on RTCONFIG_NTFS
+	default n
+
 config RTCONFIG_OPEN_NTFS3G
 	bool "NTFS-3G Support"
 	depends on RTCONFIG_NTFS
+	default n
+
+config RTCONFIG_OPENPLUSKERNEL_NTFS3
+	bool "NTFS-3G + kernel ntfs3 Support"
+	depends on RTCONFIG_OPEN_NTFS3G
 	default n
 
 config RTCONFIG_OPENPLUSPARAGON_NTFS
@@ -1000,6 +1015,11 @@ config RTCONFIG_PCIE_QCA9984
 
 config RTCONFIG_WIFI_IPQ53XX_QCN6274
 	bool "Qualcomm Atheros QCN6274 WiFi chip"
+	depends on RTCONFIG_QCA
+	default n
+
+config RTCONFIG_WIFI_IPQ53XX_QCN64XX
+	bool "Qualcomm Atheros QCN64XX WiFi chip"
 	depends on RTCONFIG_QCA
 	default n
 
@@ -1703,6 +1723,10 @@ config RTCONFIG_ROG
 config RTCONFIG_ROG_UI
 	bool "ROG theme support"
 	default n
+
+config RTCONFIG_GS_UI
+        bool "GS themme support"
+        default n
 
 config RTCONFIG_TUF_UI
         bool "TUF theme support"
@@ -2936,6 +2960,10 @@ config RTCONFIG_MT799X
         bool " MTK MT799X WiFi platform"
         default n
 
+config RTCONFIG_MT7992
+        bool " MTK MT7992, subset of MT799X"
+        default n
+
 config RTCONFIG_SOC_MT7988A
 	bool "MTK SoC MT7988A"
 	depends on RTCONFIG_MT799X
@@ -2963,12 +2991,20 @@ config RTCONFIG_BSC_SR
         bool " sync bsscolor and enable spatial-reuse"
         default n
 
+config RTCONFIG_MULTISITEAPP
+        bool "multisite app support"
+        default n
+
 config RTCONFIG_WPA3_ENTERPRISE
 	bool "WPA3 enterprise mode/transition mode/suite-b 192 bit mode"
 	default n
 
 config RTCONFIG_MULTI_PPP
 	bool "Multiple PPP connection on single WAN port"
+	default n
+
+config RTCONFIG_IP808AR
+	bool "ip808ar pse control"
 	default n
 
 config RTCONFIG_INTEL_EVO
@@ -3069,10 +3105,6 @@ config RTCONFIG_SWRT_LED_RGB
 
 config RTCONFIG_ENTWARE
 	bool "install entware"
-	default n
-
-config RTCONFIG_NTFS3
-	bool "ntfs3 dirver"
 	default n
 
 config RTCONFIG_EASYMESH

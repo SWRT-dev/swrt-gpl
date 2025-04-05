@@ -27,7 +27,7 @@
 #define DEFAULT_USB_TAG "USB disk"
 #define DEFAULT_M2_SSD_TAG	"M.2 SSD"
 
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 #define MMC_DISK_MAJOR 179
 #define DEFAULT_MMC_TAG "SD card"
 #endif

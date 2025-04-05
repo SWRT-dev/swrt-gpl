@@ -40,7 +40,12 @@ u32 hw_lro_seq_flush_cnt[MTK_HW_LRO_RING_NUM];
 u32 hw_lro_timestamp_flush_cnt[MTK_HW_LRO_RING_NUM];
 u32 hw_lro_norule_flush_cnt[MTK_HW_LRO_RING_NUM];
 u32 mtk_hwlro_stats_ebl;
-static struct proc_dir_entry *proc_hw_lro_stats, *proc_hw_lro_auto_tlb;
+u32 dbg_show_level;
+u32 cur_rss_num;
+int eth_debug_level;
+
+static struct proc_dir_entry *proc_hw_lro_stats, *proc_hw_lro_auto_tlb,
+			     *proc_rss_ctrl;
 typedef int (*mtk_lro_dbg_func) (int par);
 
 struct mtk_eth_debug {
@@ -116,6 +121,27 @@ u32 mt7530_mdio_r32(struct mtk_eth *eth, u32 reg)
 	mutex_unlock(&eth->mii_bus->mdio_lock);
 
 	return (high << 16) | (low & 0xffff);
+}
+
+void mt753x_set_port_link_state(bool up)
+{
+	struct mtk_eth *eth = g_eth;
+	u32 val, i;
+
+	if (!mt7530_exist(eth))
+		return;
+
+	mt798x_iomap();
+	for (i = 0; i < 4; i++) {
+		val = mt7530_mdio_r32(eth, MTK_MT753X_PMCR_P(i));
+		if (up)
+			val |= 0x1;
+		else
+			val &= 0xfffffffe;
+
+		mt7530_mdio_w32(eth, MTK_MT753X_PMCR_P(i), val);
+	}
+	mt798x_iounmap();
 }
 
 void mtk_switch_w32(struct mtk_eth *eth, u32 val, unsigned reg)
@@ -302,10 +328,10 @@ static ssize_t mtketh_mt7530sw_debugfs_write(struct file *file,
 	if (kstrtoul(token, 16, (unsigned long *)&value))
 		return -EINVAL;
 
-	pr_info("%s:phy=%d, reg=0x%x, val=0x%x\n", __func__,
+	pr_info("%s:phy=%d, reg=0x%lx, val=0x%lx\n", __func__,
 		0x1f, reg, value);
 	mt7530_mdio_w32(eth, reg, value);
-	pr_info("%s:phy=%d, reg=0x%x, val=0x%x confirm..\n", __func__,
+	pr_info("%s:phy=%d, reg=0x%lx, val=0x%x confirm..\n", __func__,
 		0x1f, reg, mt7530_mdio_r32(eth, reg));
 
 	return len;
@@ -350,13 +376,13 @@ static ssize_t mtketh_debugfs_write(struct file *file, const char __user *ptr,
 	if (kstrtoul(token, 16, (unsigned long *)&value))
 		return -EINVAL;
 
-	pr_info("%s:phy=%d, reg=0x%x, val=0x%x\n", __func__,
+	pr_info("%s:phy=%ld, reg=0x%lx, val=0x%lx\n", __func__,
 		phy, reg, value);
 
 	mutex_lock(&eth->mii_bus->mdio_lock);
 	_mtk_mdio_write(eth, phy,  reg, value);
 
-	pr_info("%s:phy=%d, reg=0x%x, val=0x%x confirm..\n", __func__,
+	pr_info("%s:phy=%ld, reg=0x%lx, val=0x%x confirm..\n", __func__,
 		phy, reg, _mtk_mdio_read(eth, phy, reg));
 	mutex_unlock(&eth->mii_bus->mdio_lock);
 
@@ -371,7 +397,7 @@ static ssize_t mtketh_debugfs_reset(struct file *file, const char __user *ptr,
 	int count = len;
 	unsigned long dbg_level = 0;
 
-	len = min(count, sizeof(buf) - 1);
+	len = min((size_t)count, sizeof(buf) - 1);
 	if (copy_from_user(buf, ptr, len))
 		return -EFAULT;
 
@@ -382,27 +408,304 @@ static ssize_t mtketh_debugfs_reset(struct file *file, const char __user *ptr,
 	switch(dbg_level)
 	{
 		case 0:
-			if (atomic_read(&reset_lock) == 0)
-				atomic_inc(&reset_lock);
+			atomic_set(&force, 0);
 			break;
 		case 1:
-			if (atomic_read(&force) == 0)
-				atomic_inc(&force);
-			schedule_work(&eth->pending_work);
+			if (atomic_read(&force) == 1)
+				schedule_work(&eth->pending_work);
+			else
+				pr_info(" stat:disable\n");
 			break;
 		case 2:
-			if (atomic_read(&reset_lock) == 1)
-				atomic_dec(&reset_lock);
+			atomic_set(&force, 1);
+			break;
+		case 3:
+			if (atomic_read(&force) == 1) {
+				mtk_reset_flag = MTK_FE_STOP_TRAFFIC;
+				schedule_work(&eth->pending_work);
+			} else
+				pr_info(" device resetting !!!\n");
+			break;
+		case 4:
+			dbg_show_level = 1;
+			break;
+		case 5:
+			dbg_show_level = 0;
 			break;
 		default:
 			pr_info("Usage: echo [level] > /sys/kernel/debug/mtketh/reset\n");
-			pr_info("Commands:	 [level] \n");
-			pr_info("			   0	 disable reset \n");
-			pr_info("			   1	 force reset \n");
+			pr_info("Commands:	 [level]\n");
+			pr_info("			   0	 disable reset\n");
+			pr_info("			   1	 FE and WDMA reset\n");
 			pr_info("			   2	 enable reset\n");
+			pr_info("			   3	 FE reset\n");
+			pr_info("			   4	enable dump reset info\n");
+			pr_info("			   5	disable dump reset info\n");
 			break;
 	}
 	return count;
+}
+
+static int pppq_toggle_read(struct seq_file *m, void *private)
+{
+	struct mtk_eth *eth = m->private;
+
+	pr_info("value=%d, pppq is %s now!\n",
+		eth->pppq_toggle, (eth->pppq_toggle) ? "enabled" : "disabled");
+
+	return 0;
+}
+
+static int pppq_toggle_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pppq_toggle_read, inode->i_private);
+}
+
+static ssize_t pppq_toggle_write(struct file *file, const char __user *ptr,
+				 size_t len, loff_t *off)
+{
+	struct seq_file *m = file->private_data;
+	struct mtk_eth *eth = m->private;
+	char buf[8] = {0};
+
+	if ((len > 8) || copy_from_user(buf, ptr, len))
+		return -EFAULT;
+
+	if (buf[0] == '1' && !eth->pppq_toggle) {
+		eth->pppq_toggle = 1;
+		pr_info("pppq is enabled!\n");
+	} else if (buf[0] == '0' && eth->pppq_toggle) {
+		eth->pppq_toggle = 0;
+		pr_info("pppq is disabled!\n");
+	}
+
+	return len;
+}
+
+static int eth_debug_level_read(struct seq_file *m, void *private)
+{
+	pr_info("eth debug level=%d!\n", eth_debug_level);
+
+	return 0;
+}
+
+static int eth_debug_level_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, eth_debug_level_read, inode->i_private);
+}
+
+static ssize_t eth_debug_level_write(struct file *file, const char __user *ptr,
+				 size_t len, loff_t *off)
+{
+	char *p_delimiter = " \t";
+	char *p_token = NULL;
+	char buf[8] = {0};
+	long arg0 = 0;
+	char *p_buf;
+	int ret;
+
+	if ((len > 8) || copy_from_user(buf, ptr, len))
+		return -EFAULT;
+
+	buf[len] = '\0';
+
+	p_buf = buf;
+	p_token = strsep(&p_buf, p_delimiter);
+	if (!p_token)
+		arg0 = 0;
+	else
+		ret = kstrtol(p_token, 10, &arg0);
+
+	if (ret)
+		arg0 = 0;
+
+	eth_debug_level = arg0;
+	pr_info("Set eth debug level=%d!\n", eth_debug_level);
+
+	return len;
+}
+
+int pse_info_usage(struct seq_file *m, void *private)
+{
+	pr_info("====================Advanced Settings====================\n");
+	pr_info("Usage: echo [port] [option] > /sys/kernel/debug/mtketh/pse_info\n");
+	pr_info("             0~15     0~2      Show PSE info\n");
+	pr_info("                       3       Show PSE legacy info\n");
+
+	return 0;
+}
+
+static int pse_info_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, pse_info_usage, inode->i_private);
+}
+
+void pse_lgc_info_get_v2(struct mtk_eth *eth, int port, u32 dbg1, u32 dbg2)
+{
+	struct mtk_pse_fs_lgc_info_v2 *info;
+	u64 val;
+
+	info = (struct mtk_pse_fs_lgc_info_v2 *)&val;
+
+	val = mtk_r32(eth, dbg1);
+	val |= ((u64)mtk_r32(eth, dbg2) << 32);
+
+	pr_info("PSE port%d legacy FS info (v2)\n", port);
+	pr_info("=========================================\n");
+	pr_info("sport=%d, fport=%d, dr_idx=%d, ppe_crsn=%d\n",
+		info->sport, info->fport, info->dr_idx, info->ppe_crsn);
+	pr_info("l2_len=%d, l3_len=%d, l3_pidx=%d\n",
+		info->l2_len, info->l3_len, info->l3_pidx);
+	pr_info("is_l4f=%d, is_l4vld=%d, is_tack=%d\n",
+		info->is_l4f, info->is_l4vld, info->is_tack);
+	pr_info("is_ip4f=%d, is_ip4=%d, is_ip6=%d\n",
+		info->is_ip4f, info->is_ip4, info->is_ip6);
+	pr_info("=========================================\n");
+}
+
+void pse_lgc_info_get_v3(struct mtk_eth *eth, int port, u32 dbg1, u32 dbg2)
+{
+	struct mtk_pse_fs_lgc_info_v3 *info;
+	u64 val;
+
+	info = (struct mtk_pse_fs_lgc_info_v3 *)&val;
+
+	val = mtk_r32(eth, dbg1);
+	val |= ((u64)mtk_r32(eth, dbg2) << 32);
+
+	pr_info("PSE port%d legacy FS info (v3)\n", port);
+	pr_info("=========================================\n");
+	pr_info("sport=%d, fport=%d, ppe_crsn=%d\n",
+		info->sport, info->fport, info->ppe_crsn);
+	pr_info("l2_len=%d, l3_len=%d, l3_pidx=%d\n",
+		info->l2_len, info->l3_len, info->l3_pidx);
+	pr_info("is_l4f=%d, is_l4vld=%d, is_tack=%d\n",
+		info->is_l4f, info->is_l4vld, info->is_tack);
+	pr_info("is_ip4f=%d, is_ip4=%d, is_ip6=%d\n",
+		info->is_ip4f, info->is_ip4, info->is_ip6);
+	pr_info("is_snap=%d, vofst=%d, pl_end=%d\n",
+		info->is_snap, info->vofst, info->pl_end);
+	pr_info("is_err_pkt=%d, err_pkt_action=%d\n",
+		info->is_err_pkt, info->err_pkt_action);
+	pr_info("=========================================\n");
+}
+
+void pse_info_get_gdm(struct mtk_eth *eth, int port, int index, int options)
+{
+	u32 dbg1[2] = {MTK_FE_GDM1_DBG1, MTK_FE_GDM2_DBG1};
+	u32 dbg2[2] = {MTK_FE_GDM1_DBG2, MTK_FE_GDM2_DBG2};
+
+	if (index < 0 || index > 1)
+		return;
+
+	if (options == 3)
+		pse_lgc_info_get_v2(eth, port, dbg1[index], dbg2[index]);
+	else
+		pr_info("Not supported\n");
+}
+
+void pse_info_get_cdm(struct mtk_eth *eth, int port, int index, int options)
+{
+	u32 dbg1[7] = {MTK_FE_CDM1_DBG1, MTK_FE_CDM2_DBG1, MTK_FE_CDM3_DBG1,
+		       MTK_FE_CDM4_DBG1, MTK_FE_CDM5_DBG1, MTK_FE_CDM6_DBG1,
+		       MTK_FE_CDM7_DBG1};
+	u32 dbg2[7] = {MTK_FE_CDM1_DBG2, MTK_FE_CDM2_DBG2, MTK_FE_CDM3_DBG2,
+		       MTK_FE_CDM4_DBG2, MTK_FE_CDM5_DBG2, MTK_FE_CDM6_DBG2,
+		       MTK_FE_CDM7_DBG2};
+
+	if (index < 0 || index > 6)
+		return;
+
+	if (options == 3) {
+#if defined(CONFIG_MEDIATEK_NETSYS_V3)
+		if (index > 1 && index < 7)
+			return pse_lgc_info_get_v3(eth, port, dbg1[index], dbg2[index]);
+#endif
+		pse_lgc_info_get_v2(eth, port, dbg1[index], dbg2[index]);
+	} else
+		pr_info("Not supported\n");
+}
+
+int pse_info_get(struct mtk_eth *eth, int port, int options)
+{
+	switch (port) {
+	case PSE_GDM1_PORT:
+		pse_info_get_gdm(eth, port, 0, options);
+		break;
+	case PSE_GDM2_PORT:
+		pse_info_get_gdm(eth, port, 1, options);
+		break;
+	case PSE_ADMA_PORT:
+		pse_info_get_cdm(eth, port, 0, options);
+		break;
+	case PSE_QDMA_TX_PORT:
+	case PSE_QDMA_RX_PORT:
+		pse_info_get_cdm(eth, port, 1, options);
+		break;
+	case PSE_WDMA0_PORT:
+		pse_info_get_cdm(eth, port, 2, options);
+		break;
+	case PSE_WDMA1_PORT:
+		pse_info_get_cdm(eth, port, 3, options);
+		break;
+	case PSE_WDMA2_PORT:
+		pse_info_get_cdm(eth, port, 4, options);
+		break;
+	case PSE_TDMA_PORT:
+		pse_info_get_cdm(eth, port, 5, options);
+		break;
+	case PSE_EIP197_PORT:
+		pse_info_get_cdm(eth, port, 6, options);
+		break;
+	default:
+		pr_info("Not supported\n");
+		break;
+	}
+
+	return 0;
+}
+
+static ssize_t pse_info_write(struct file *file, const char __user *buffer,
+			      size_t count, loff_t *off)
+{
+	struct seq_file *m = file->private_data;
+	struct mtk_eth *eth = m->private;
+	long arg0 = 0, arg1 = 0;
+	char buf[32];
+	char *p_buf;
+	char *p_token = NULL;
+	char *p_delimiter = " \t";
+	u32 len = count;
+	int ret;
+
+	if (len >= sizeof(buf)) {
+		pr_info("input handling fail!\n");
+		return -1;
+	}
+
+	if (copy_from_user(buf, buffer, len))
+		return -EFAULT;
+
+	buf[len] = '\0';
+
+	p_buf = buf;
+	p_token = strsep(&p_buf, p_delimiter);
+	if (!p_token)
+		arg0 = 0;
+	else
+		ret = kstrtol(p_token, 10, &arg0);
+
+	if (arg0 >= 0 && arg0 <= 15) {
+		p_token = strsep(&p_buf, p_delimiter);
+		if (!p_token)
+			arg1 = 0;
+		else
+			ret = kstrtol(p_token, 10, &arg1);
+	}
+
+	pse_info_get(eth, arg0, arg1);
+
+	return len;
 }
 
 static const struct file_operations fops_reg_w = {
@@ -419,11 +722,38 @@ static const struct file_operations fops_eth_reset = {
 	.llseek = noop_llseek,
 };
 
+static const struct file_operations fops_pppq_toggle = {
+	.owner = THIS_MODULE,
+	.open = pppq_toggle_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.write = pppq_toggle_write,
+	.release = single_release,
+};
+
+static const struct file_operations fops_pse_info = {
+	.owner = THIS_MODULE,
+	.open = pse_info_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.write = pse_info_write,
+	.release = single_release,
+};
+
 static const struct file_operations fops_mt7530sw_reg_w = {
 	.owner = THIS_MODULE,
 	.open = simple_open,
 	.write = mtketh_mt7530sw_debugfs_write,
 	.llseek = noop_llseek,
+};
+
+static const struct file_operations fops_eth_debug = {
+	.owner = THIS_MODULE,
+	.open = eth_debug_level_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.write = eth_debug_level_write,
+	.release = single_release,
 };
 
 void mtketh_debugfs_exit(struct mtk_eth *eth)
@@ -441,12 +771,18 @@ int mtketh_debugfs_init(struct mtk_eth *eth)
 		ret = -ENOMEM;
 	}
 
+	debugfs_create_file("pse_info", 0444,
+			    eth_debug.root, eth, &fops_pse_info);
+	debugfs_create_file("pppq_toggle", 0444,
+			    eth_debug.root, eth, &fops_pppq_toggle);
 	debugfs_create_file("phy_regs", S_IRUGO,
 			    eth_debug.root, eth, &mtketh_debug_fops);
 	debugfs_create_file("phy_reg_w", S_IFREG | S_IWUSR,
 			    eth_debug.root, eth,  &fops_reg_w);
 	debugfs_create_file("reset", S_IFREG | S_IWUSR,
 			    eth_debug.root, eth,  &fops_eth_reset);
+	debugfs_create_file("eth_debug_level", 0444,
+			    eth_debug.root, eth, &fops_eth_debug);
 	if (mt7530_exist(eth)) {
 		debugfs_create_file("mt7530sw_regs", S_IRUGO,
 				    eth_debug.root, eth,
@@ -464,15 +800,8 @@ void mii_mgr_read_combine(struct mtk_eth *eth, u32 phy_addr, u32 phy_register,
 	if (mt7530_exist(eth) && phy_addr == 31)
 		*read_data = mt7530_mdio_r32(eth, phy_register);
 
-	else {
-#if 1 // SDK v7670
+	else
 		*read_data = mdiobus_read(eth->mii_bus, phy_addr, phy_register);
-#else
-		mutex_lock(&eth->mii_bus->mdio_lock);
-		*read_data = _mtk_mdio_read(eth, phy_addr, phy_register);
-		mutex_unlock(&eth->mii_bus->mdio_lock);
-#endif
-	}
 }
 
 void mii_mgr_write_combine(struct mtk_eth *eth, u16 phy_addr, u16 phy_register,
@@ -481,15 +810,8 @@ void mii_mgr_write_combine(struct mtk_eth *eth, u16 phy_addr, u16 phy_register,
 	if (mt7530_exist(eth) && phy_addr == 31)
 		mt7530_mdio_w32(eth, phy_register, write_data);
 
-	else {
-#if 1 // SDK v7670
+	else
 		mdiobus_write(eth->mii_bus, phy_addr, phy_register, write_data);
-#else
-		mutex_lock(&eth->mii_bus->mdio_lock);
-		_mtk_mdio_write(eth, phy_addr, phy_register, write_data);
-		mutex_unlock(&eth->mii_bus->mdio_lock);
-#endif
-	}
 }
 
 static void mii_mgr_read_cl45(struct mtk_eth *eth, u16 port, u16 devad, u16 reg, u16 *data)
@@ -696,8 +1018,6 @@ void dump_each_port(struct seq_file *seq, struct mtk_eth *eth, u32 base)
 
 int esw_cnt_read(struct seq_file *seq, void *v)
 {
-	unsigned int pkt_cnt = 0;
-	int i = 0;
 	struct mtk_eth *eth = g_eth;
 
 	gdm_cnt_read(eth);
@@ -771,36 +1091,119 @@ static const struct file_operations switch_count_fops = {
 	.release = single_release
 };
 
+void xfi_mib_dump(struct seq_file *seq, u32 gdm_id)
+{
+	struct mtk_eth *eth = g_eth;
+
+	PRINT_FORMATTED_XFI_MIB(seq, TX_PKT_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, TX_ETH_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, TX_PAUSE_CNT, GENMASK(15, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, TX_BYTE_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB64(seq, TX_UC_PKT_CNT);
+	PRINT_FORMATTED_XFI_MIB64(seq, TX_MC_PKT_CNT);
+	PRINT_FORMATTED_XFI_MIB64(seq, TX_BC_PKT_CNT);
+
+	PRINT_FORMATTED_XFI_MIB(seq, RX_PKT_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, RX_ETH_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, RX_PAUSE_CNT, GENMASK(15, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, RX_LEN_ERR_CNT, GENMASK(15, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, RX_CRC_ERR_CNT, GENMASK(15, 0));
+	PRINT_FORMATTED_XFI_MIB64(seq, RX_UC_PKT_CNT);
+	PRINT_FORMATTED_XFI_MIB64(seq, RX_MC_PKT_CNT);
+	PRINT_FORMATTED_XFI_MIB64(seq, RX_BC_PKT_CNT);
+	PRINT_FORMATTED_XFI_MIB(seq, RX_UC_DROP_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, RX_BC_DROP_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, RX_MC_DROP_CNT, GENMASK(31, 0));
+	PRINT_FORMATTED_XFI_MIB(seq, RX_ALL_DROP_CNT, GENMASK(31, 0));
+}
+
+int xfi_cnt_read(struct seq_file *seq, void *v)
+{
+	struct mtk_eth *eth = g_eth;
+	int i;
+
+	seq_puts(seq, "+------------------------------------+\n");
+	seq_puts(seq, "|             <<XFI MAC>>            |\n");
+
+	for (i = MTK_GMAC2_ID; i < MTK_GMAC_ID_MAX; i++) {
+		xfi_mib_dump(seq, i);
+		mtk_m32(eth, 0x1, 0x1, MTK_XFI_MIB_BASE(i) + MTK_XFI_CNT_CTRL);
+		seq_puts(seq, "|                                    |\n");
+	}
+
+	seq_puts(seq, "+------------------------------------+\n");
+
+	return 0;
+}
+
+static int xfi_count_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, xfi_cnt_read, 0);
+}
+
+static const struct file_operations xfi_count_fops = {
+	.owner = THIS_MODULE,
+	.open = xfi_count_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.release = single_release
+};
+
 static struct proc_dir_entry *proc_tx_ring, *proc_hwtx_ring, *proc_rx_ring;
 
 int tx_ring_read(struct seq_file *seq, void *v)
 {
 	struct mtk_eth *eth = g_eth;
-	struct mtk_tx_ring *ring = &g_eth->tx_ring;
+	struct mtk_tx_ring *ring;
 	struct mtk_tx_dma_v2 *tx_ring;
-	int i = 0;
+	dma_addr_t tmp;
+	int i = 0, j = 0;
 
-	seq_printf(seq, "free count = %d\n", (int)atomic_read(&ring->free_count));
-	seq_printf(seq, "cpu next free: %d\n", (int)(ring->next_free - ring->dma));
-	seq_printf(seq, "cpu last free: %d\n", (int)(ring->last_free - ring->dma));
-	for (i = 0; i < MTK_DMA_SIZE; i++) {
-		dma_addr_t tmp = ring->phys +
-				 i * (dma_addr_t)eth->soc->txrx.txd_size;
+	for (j = 0; j < MTK_MAX_TX_RING_NUM; j++) {
+		ring = &eth->tx_ring[j];
+		if (!ring->dma)
+			continue;
 
-		tx_ring = ring->dma + i * eth->soc->txrx.txd_size;
+		seq_printf(seq, "[Ring%d]\n", j);
+		seq_printf(seq, "free count = %d\n", (int)atomic_read(&ring->free_count));
+		seq_printf(seq, "cpu next free: %d\n",
+			   (int)(ring->next_free - ring->dma) / eth->soc->txrx.txd_size);
+		seq_printf(seq, "cpu last free: %d\n",
+			   (int)(ring->last_free - ring->dma) / eth->soc->txrx.txd_size);
+		for (i = 0; i < eth->soc->txrx.tx_dma_size; i++) {
 
-		seq_printf(seq, "%d (%pad): %08x %08x %08x %08x", i, &tmp,
-			   tx_ring->txd1, tx_ring->txd2,
-			   tx_ring->txd3, tx_ring->txd4);
+			if (MTK_HAS_CAPS(eth->soc->caps, MTK_QDMA)) {
+				tmp = ring->phys + i * (dma_addr_t)eth->soc->txrx.txd_size;
+				tx_ring = ring->dma + i * eth->soc->txrx.txd_size;
+			} else {
+				tmp = ring->phys_pdma + i * (dma_addr_t)eth->soc->txrx.txd_size;
+				tx_ring = ring->dma_pdma + i * eth->soc->txrx.txd_size;
+			}
 
-		if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ||
-		    MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
-			seq_printf(seq, " %08x %08x %08x %08x",
-				   tx_ring->txd5, tx_ring->txd6,
-				   tx_ring->txd7, tx_ring->txd8);
+			seq_printf(seq, "%d (%pad): %08x %08x %08x %08x", i, &tmp,
+				   tx_ring->txd1, tx_ring->txd2,
+				   tx_ring->txd3, tx_ring->txd4);
+
+			if (MTK_HAS_CAPS(eth->soc->caps, MTK_QDMA)) {
+				if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ||
+				    MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
+					seq_printf(seq, " %08x %08x %08x %08x",
+						   tx_ring->txd5, tx_ring->txd6,
+						   tx_ring->txd7, tx_ring->txd8);
+				}
+			} else {
+				if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
+					seq_printf(seq, " %08x %08x %08x %08x",
+						   tx_ring->txd5, tx_ring->txd6,
+						   tx_ring->txd7, tx_ring->txd8);
+				}
+			}
+
+			seq_puts(seq, "\n");
 		}
 
-		seq_printf(seq, "\n");
+		if (MTK_HAS_CAPS(eth->soc->caps, MTK_QDMA))
+			break;
 	}
 
 	return 0;
@@ -825,7 +1228,7 @@ int hwtx_ring_read(struct seq_file *seq, void *v)
 	struct mtk_tx_dma_v2 *hwtx_ring;
 	int i = 0;
 
-	for (i = 0; i < MTK_DMA_SIZE; i++) {
+	for (i = 0; i < eth->soc->txrx.fq_dma_size; i++) {
 		dma_addr_t addr = eth->phy_scratch_ring +
 				  i * (dma_addr_t)eth->soc->txrx.txd_size;
 
@@ -864,27 +1267,32 @@ static const struct file_operations hwtx_ring_fops = {
 int rx_ring_read(struct seq_file *seq, void *v)
 {
 	struct mtk_eth *eth = g_eth;
-	struct mtk_rx_ring *ring = &g_eth->rx_ring[0];
+	struct mtk_rx_ring *ring;
 	struct mtk_rx_dma_v2 *rx_ring;
-	int i = 0;
+	int i = 0, j = 0;
 
-	seq_printf(seq, "next to read: %d\n",
-		   NEXT_DESP_IDX(ring->calc_idx, MTK_DMA_SIZE));
-	for (i = 0; i < MTK_DMA_SIZE; i++) {
-		rx_ring = ring->dma + i * eth->soc->txrx.rxd_size;
+	for (j = 0; j < MTK_MAX_RX_RING_NUM; j++) {
+		ring = &g_eth->rx_ring[j];
+		if (!ring->dma)
+			continue;
 
-		seq_printf(seq, "%d: %08x %08x %08x %08x", i,
-			   rx_ring->rxd1, rx_ring->rxd2,
-			   rx_ring->rxd3, rx_ring->rxd4);
+		seq_printf(seq, "[Ring%d] next to read: %d\n", j,
+			   NEXT_DESP_IDX(ring->calc_idx, eth->soc->txrx.rx_dma_size));
+		for (i = 0; i < ring->dma_size; i++) {
+			rx_ring = ring->dma + i * eth->soc->txrx.rxd_size;
 
-		if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ||
-		    MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
-			seq_printf(seq, " %08x %08x %08x %08x",
-				   rx_ring->rxd5, rx_ring->rxd6,
-				   rx_ring->rxd7, rx_ring->rxd8);
+			seq_printf(seq, "%d: %08x %08x %08x %08x", i,
+				   rx_ring->rxd1, rx_ring->rxd2,
+				   rx_ring->rxd3, rx_ring->rxd4);
+
+			if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2)) {
+				seq_printf(seq, " %08x %08x %08x %08x",
+					   rx_ring->rxd5, rx_ring->rxd6,
+					   rx_ring->rxd7, rx_ring->rxd8);
+			}
+
+			seq_puts(seq, "\n");
 		}
-
-		seq_printf(seq, "\n");
 	}
 
 	return 0;
@@ -918,6 +1326,7 @@ static inline u32 mtk_dbg_r32(u32 reg)
 int dbg_regs_read(struct seq_file *seq, void *v)
 {
 	struct mtk_eth *eth = g_eth;
+	u32 i;
 
 	seq_puts(seq, "   <<DEBUG REG DUMP>>\n");
 
@@ -976,16 +1385,45 @@ int dbg_regs_read(struct seq_file *seq, void *v)
 		   mtk_r32(eth, MTK_PRX_CRX_IDX0));
 	seq_printf(seq, "| PDMA_DRX_IDX	: %08x |\n",
 		   mtk_r32(eth, MTK_PRX_DRX_IDX0));
-	seq_printf(seq, "| QDMA_CTX_IDX	: %08x |\n",
-		   mtk_r32(eth, MTK_QTX_CTX_PTR));
-	seq_printf(seq, "| QDMA_DTX_IDX	: %08x |\n",
-		   mtk_r32(eth, MTK_QTX_DTX_PTR));
-	seq_printf(seq, "| QDMA_FQ_CNT	: %08x |\n",
-		   mtk_r32(eth, MTK_QDMA_FQ_CNT));
-	seq_printf(seq, "| QDMA_FWD_CNT	: %08x |\n",
-		   mtk_r32(eth, MTK_QDMA_FWD_CNT));
-	seq_printf(seq, "| QDMA_FSM	: %08x |\n",
-		   mtk_r32(eth, MTK_QDMA_FSM));
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_RSS)) {
+		for (i = 1; i < eth->soc->rss_num; i++) {
+			seq_printf(seq, "| PDMA_CRX_IDX%d	: %08x |\n",
+				   i, mtk_r32(eth, MTK_PRX_CRX_IDX_CFG(i)));
+			seq_printf(seq, "| PDMA_DRX_IDX%d	: %08x |\n",
+				   i, mtk_r32(eth, MTK_PRX_DRX_IDX_CFG(i)));
+		}
+	}
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_HWLRO)) {
+		for (i = 0; i < MTK_HW_LRO_RING_NUM; i++) {
+			seq_printf(seq, "| PDMA_CRX_IDX%d	: %08x |\n",
+				   MTK_HW_LRO_RING(i),
+				   mtk_r32(eth, MTK_PRX_CRX_IDX_CFG(MTK_HW_LRO_RING(i))));
+			seq_printf(seq, "| PDMA_DRX_IDX%d	: %08x |\n",
+				   MTK_HW_LRO_RING(i),
+				   mtk_r32(eth, MTK_PRX_DRX_IDX_CFG(MTK_HW_LRO_RING(i))));
+		}
+	}
+
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_QDMA)) {
+		seq_printf(seq, "| QDMA_CTX_IDX	: %08x |\n",
+			   mtk_r32(eth, MTK_QTX_CTX_PTR));
+		seq_printf(seq, "| QDMA_DTX_IDX	: %08x |\n",
+			   mtk_r32(eth, MTK_QTX_DTX_PTR));
+		seq_printf(seq, "| QDMA_FQ_CNT	: %08x |\n",
+			   mtk_r32(eth, MTK_QDMA_FQ_CNT));
+		seq_printf(seq, "| QDMA_FWD_CNT	: %08x |\n",
+			   mtk_r32(eth, MTK_QDMA_FWD_CNT));
+		seq_printf(seq, "| QDMA_FSM	: %08x |\n",
+			   mtk_r32(eth, MTK_QDMA_FSM));
+	} else {
+		for (i = 0; i < MTK_MAX_TX_RING_NUM; i++) {
+			seq_printf(seq, "| PDMA_CTX_IDX%d	: %08x |\n",
+				   i, mtk_r32(eth, MTK_PTX_CTX_IDX_CFG(i)));
+			seq_printf(seq, "| PDMA_DTX_IDX%d	: %08x |\n",
+				   i, mtk_r32(eth, MTK_PTX_DTX_IDX_CFG(i)));
+		}
+	}
+
 	seq_printf(seq, "| FE_PSE_FREE	: %08x |\n",
 		   mtk_r32(eth, MTK_FE_PSE_FREE));
 	seq_printf(seq, "| FE_DROP_FQ	: %08x |\n",
@@ -1018,7 +1456,16 @@ int dbg_regs_read(struct seq_file *seq, void *v)
 		seq_printf(seq, "| MAC_P3_FSM	: %08x |\n",
 			   mtk_r32(eth, MTK_MAC_FSM(2)));
 	}
-
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
+		seq_printf(seq, "| XMAC_P1_MCR	: %08x |\n",
+			   mtk_r32(eth, MTK_XMAC_MCR(1)));
+		seq_printf(seq, "| XMAC_P2_MCR	: %08x |\n",
+			   mtk_r32(eth, MTK_XMAC_MCR(2)));
+		seq_printf(seq, "| XMAC_P1_STS	: %08x |\n",
+			   mtk_r32(eth, MTK_XGMAC_STS(1)));
+		seq_printf(seq, "| XMAC_P2_STS	: %08x |\n",
+			   mtk_r32(eth, MTK_XGMAC_STS(2)));
+	}
 	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ||
 	    MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
 		seq_printf(seq, "| FE_CDM1_FSM	: %08x |\n",
@@ -1033,10 +1480,14 @@ int dbg_regs_read(struct seq_file *seq, void *v)
 			   mtk_r32(eth, MTK_FE_CDM5_FSM));
 		seq_printf(seq, "| FE_CDM6_FSM	: %08x |\n",
 			   mtk_r32(eth, MTK_FE_CDM6_FSM));
+		seq_printf(seq, "| FE_CDM7_FSM	: %08x |\n",
+			   mtk_r32(eth, MTK_FE_CDM7_FSM));
 		seq_printf(seq, "| FE_GDM1_FSM	: %08x |\n",
 			   mtk_r32(eth, MTK_FE_GDM1_FSM));
 		seq_printf(seq, "| FE_GDM2_FSM	: %08x |\n",
 			   mtk_r32(eth, MTK_FE_GDM2_FSM));
+		seq_printf(seq, "| FE_GDM3_FSM	: %08x |\n",
+			   mtk_r32(eth, MTK_FE_GDM3_FSM));
 		seq_printf(seq, "| SGMII_EFUSE	: %08x |\n",
 			   mtk_dbg_r32(MTK_SGMII_EFUSE));
 		seq_printf(seq, "| SGMII0_RX_CNT : %08x |\n",
@@ -1068,13 +1519,84 @@ static const struct file_operations dbg_regs_fops = {
 	.release = single_release
 };
 
+static int mtk_rss_set_indr_tbl(struct mtk_eth *eth, int num)
+{
+	struct mtk_rss_params *rss_params = &eth->rss_params;
+	u32 i;
+
+	if (num <= 0 || num > MTK_RX_NAPI_NUM)
+		return -EOPNOTSUPP;
+
+	for (i = 0; i < MTK_RSS_MAX_INDIRECTION_TABLE; i++)
+		rss_params->indirection_table[i] = i % num;
+
+	for (i = 0; i < MTK_RSS_MAX_INDIRECTION_TABLE / 16; i++)
+		mtk_w32(eth, mtk_rss_indr_table(rss_params, i),
+			eth->soc->reg_map->pdma.rss_indr_table_dw0 + (i * 0x4));
+
+	return 0;
+}
+
+ssize_t rss_ctrl_write(struct file *file, const char __user *buffer,
+		       size_t count, loff_t *data)
+{
+	char buf[32];
+	char *p_buf;
+	char *p_token = NULL;
+	char *p_delimiter = " \t";
+	long num = 4;
+	u32 len = count;
+	int ret;
+
+	if (len >= sizeof(buf)) {
+		pr_info("Input handling fail!\n");
+		return -1;
+	}
+
+	if (copy_from_user(buf, buffer, len))
+		return -EFAULT;
+
+	buf[len] = '\0';
+
+	p_buf = buf;
+	p_token = strsep(&p_buf, p_delimiter);
+	if (!p_token)
+		num = 4;
+	else
+		ret = kstrtol(p_token, 10, &num);
+
+	if (!mtk_rss_set_indr_tbl(g_eth, num))
+		cur_rss_num = num;
+
+	return count;
+}
+
+int rss_ctrl_read(struct seq_file *seq, void *v)
+{
+	pr_info("ADMA is using %d-RSS.\n", cur_rss_num);
+	return 0;
+}
+
+static int rss_ctrl_open(struct inode *inode, struct file *file)
+{
+	return single_open(file, rss_ctrl_read, 0);
+}
+
+static const struct file_operations rss_ctrl_fops = {
+	.owner = THIS_MODULE,
+	.open = rss_ctrl_open,
+	.read = seq_read,
+	.llseek = seq_lseek,
+	.write = rss_ctrl_write,
+	.release = single_release
+};
+
 void hw_lro_stats_update(u32 ring_no, struct mtk_rx_dma_v2 *rxd)
 {
 	struct mtk_eth *eth = g_eth;
 	u32 idx, agg_cnt, agg_size;
 
-	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ||
-	    MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2)) {
 		idx = ring_no - 4;
 		agg_cnt = RX_DMA_GET_AGG_CNT_V2(rxd->rxd6);
 	} else {
@@ -1098,8 +1620,7 @@ void hw_lro_flush_stats_update(u32 ring_no, struct mtk_rx_dma_v2 *rxd)
 	struct mtk_eth *eth = g_eth;
 	u32 idx, flush_reason;
 
-	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ||
-	    MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3)) {
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2)) {
 		idx = ring_no - 4;
 		flush_reason = RX_DMA_GET_FLUSH_RSN_V2(rxd->rxd6);
 	} else {
@@ -1349,8 +1870,7 @@ int hw_lro_stats_read_wrapper(struct seq_file *seq, void *v)
 {
 	struct mtk_eth *eth = g_eth;
 
-	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V2) ||
-	    MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_V3))
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2))
 		hw_lro_stats_read_v2(seq, v);
 	else
 		hw_lro_stats_read_v1(seq, v);
@@ -1374,49 +1894,67 @@ static const struct file_operations hw_lro_stats_fops = {
 
 int hwlro_agg_cnt_ctrl(int cnt)
 {
+	struct mtk_eth *eth = g_eth;
 	int i;
 
-	for (i = 1; i <= MTK_HW_LRO_RING_NUM; i++)
-		SET_PDMA_RXRING_MAX_AGG_CNT(g_eth, i, cnt);
+	for (i = 0; i < MTK_HW_LRO_RING_NUM; i++) {
+		int idx = MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2) ? i : i + 1;
+
+		SET_PDMA_RXRING_MAX_AGG_CNT(eth, idx, cnt);
+	}
 
 	return 0;
 }
 
 int hwlro_agg_time_ctrl(int time)
 {
+	struct mtk_eth *eth = g_eth;
 	int i;
 
-	for (i = 1; i <= MTK_HW_LRO_RING_NUM; i++)
-		SET_PDMA_RXRING_AGG_TIME(g_eth, i, time);
+	for (i = 0; i < MTK_HW_LRO_RING_NUM; i++) {
+		int idx = MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2) ? i : i + 1;
+
+		SET_PDMA_RXRING_AGG_TIME(eth, idx, time);
+	}
 
 	return 0;
 }
 
 int hwlro_age_time_ctrl(int time)
 {
+	struct mtk_eth *eth = g_eth;
 	int i;
 
-	for (i = 1; i <= MTK_HW_LRO_RING_NUM; i++)
-		SET_PDMA_RXRING_AGE_TIME(g_eth, i, time);
+	for (i = 0; i < MTK_HW_LRO_RING_NUM; i++) {
+		int idx = MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2) ? i : i + 1;
+
+		SET_PDMA_RXRING_AGE_TIME(eth, idx, time);
+	}
 
 	return 0;
 }
 
 int hwlro_threshold_ctrl(int bandwidth)
 {
-	SET_PDMA_LRO_BW_THRESHOLD(g_eth, bandwidth);
+	struct mtk_eth *eth = g_eth;
+
+	SET_PDMA_LRO_BW_THRESHOLD(eth, bandwidth);
 
 	return 0;
 }
 
 int hwlro_ring_enable_ctrl(int enable)
 {
+	struct mtk_eth *eth = g_eth;
 	int i;
 
 	pr_info("[%s] %s HW LRO rings\n", __func__, (enable) ? "Enable" : "Disable");
 
-	for (i = 1; i <= MTK_HW_LRO_RING_NUM; i++)
-		SET_PDMA_RXRING_VALID(g_eth, i, enable);
+	for (i = 0; i < MTK_HW_LRO_RING_NUM; i++) {
+		int idx = MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2) ? i : i + 1;
+
+		SET_PDMA_RXRING_VALID(eth, idx, enable);
+	}
 
 	return 0;
 }
@@ -1478,29 +2016,30 @@ ssize_t hw_lro_auto_tlb_write(struct file *file, const char __user *buffer,
 
 void hw_lro_auto_tlb_dump_v1(struct seq_file *seq, u32 index)
 {
-	int i;
+	struct mtk_eth *eth = g_eth;
 	struct mtk_lro_alt_v1 alt;
 	__be32 addr;
 	u32 tlb_info[9];
 	u32 dw_len, cnt, priority;
 	u32 entry;
+	int i;
 
 	if (index > 4)
 		index = index - 1;
 	entry = (index * 9) + 1;
 
 	/* read valid entries of the auto-learn table */
-	mtk_w32(g_eth, entry, MTK_FE_ALT_CF8);
+	mtk_w32(eth, entry, MTK_FE_ALT_CF8);
 
 	for (i = 0; i < 9; i++)
-		tlb_info[i] = mtk_r32(g_eth, MTK_FE_ALT_SEQ_CFC);
+		tlb_info[i] = mtk_r32(eth, MTK_FE_ALT_SEQ_CFC);
 
 	memcpy(&alt, tlb_info, sizeof(struct mtk_lro_alt_v1));
 
 	dw_len = alt.alt_info7.dw_len;
 	cnt = alt.alt_info6.cnt;
 
-	if (mtk_r32(g_eth, MTK_PDMA_LRO_CTRL_DW0) & MTK_LRO_ALT_PKT_CNT_MODE)
+	if (mtk_r32(eth, eth->soc->reg_map->pdma.lro_ctrl_dw0) & MTK_LRO_ALT_PKT_CNT_MODE)
 		priority = cnt;		/* packet count */
 	else
 		priority = dw_len;	/* byte count */
@@ -1536,21 +2075,22 @@ void hw_lro_auto_tlb_dump_v1(struct seq_file *seq, u32 index)
 
 void hw_lro_auto_tlb_dump_v2(struct seq_file *seq, u32 index)
 {
-	int i;
+	struct mtk_eth *eth = g_eth;
 	struct mtk_lro_alt_v2 alt;
 	u32 score = 0, ipv4 = 0;
 	u32 ipv6[4] = { 0 };
 	u32 tlb_info[12];
+	int i;
 
 	/* read valid entries of the auto-learn table */
-	mtk_w32(g_eth, index << MTK_LRO_ALT_INDEX_OFFSET, MTK_LRO_ALT_DBG);
+	mtk_w32(eth, index << MTK_LRO_ALT_INDEX_OFFSET, eth->soc->reg_map->pdma.lro_alt_dbg);
 
 	for (i = 0; i < 11; i++)
-		tlb_info[i] = mtk_r32(g_eth, MTK_LRO_ALT_DBG_DATA);
+		tlb_info[i] = mtk_r32(eth, eth->soc->reg_map->pdma.lro_alt_dbg_data);
 
 	memcpy(&alt, tlb_info, sizeof(struct mtk_lro_alt_v2));
 
-	if (mtk_r32(g_eth, MTK_PDMA_LRO_CTRL_DW0) & MTK_LRO_ALT_PKT_CNT_MODE)
+	if (mtk_r32(eth, eth->soc->reg_map->pdma.lro_ctrl_dw0) & MTK_LRO_ALT_PKT_CNT_MODE)
 		score = 1;	/* packet count */
 	else
 		score = 0;	/* byte count */
@@ -1606,6 +2146,8 @@ void hw_lro_auto_tlb_dump_v2(struct seq_file *seq, u32 index)
 
 int hw_lro_auto_tlb_read(struct seq_file *seq, void *v)
 {
+	struct mtk_eth *eth = g_eth;
+	const struct mtk_reg_map *reg_map = eth->soc->reg_map;
 	int i;
 	u32 reg_val;
 	u32 reg_op1, reg_op2, reg_op3, reg_op4;
@@ -1621,14 +2163,13 @@ int hw_lro_auto_tlb_read(struct seq_file *seq, void *v)
 	seq_puts(seq, "[4] = hwlro_ring_enable_ctrl\n");
 	seq_puts(seq, "[5] = hwlro_stats_enable_ctrl\n\n");
 
-	if (MTK_HAS_CAPS(g_eth->soc->caps, MTK_NETSYS_V2) ||
-	    MTK_HAS_CAPS(g_eth->soc->caps, MTK_NETSYS_V3)) {
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2)) {
 		for (i = 1; i <= 8; i++)
 			hw_lro_auto_tlb_dump_v2(seq, i);
 	} else {
 		/* Read valid entries of the auto-learn table */
-		mtk_w32(g_eth, 0, MTK_FE_ALT_CF8);
-		reg_val = mtk_r32(g_eth, MTK_FE_ALT_SEQ_CFC);
+		mtk_w32(eth, 0, MTK_FE_ALT_CF8);
+		reg_val = mtk_r32(eth, MTK_FE_ALT_SEQ_CFC);
 
 		seq_printf(seq,
 			   "HW LRO Auto-learn Table: (MTK_FE_ALT_SEQ_CFC=0x%x)\n",
@@ -1643,11 +2184,13 @@ int hw_lro_auto_tlb_read(struct seq_file *seq, void *v)
 	/* Read the agg_time/age_time/agg_cnt of LRO rings */
 	seq_puts(seq, "\nHW LRO Ring Settings\n");
 
-	for (i = 1; i <= MTK_HW_LRO_RING_NUM; i++) {
-		reg_op1 = mtk_r32(g_eth, MTK_LRO_CTRL_DW1_CFG(i));
-		reg_op2 = mtk_r32(g_eth, MTK_LRO_CTRL_DW2_CFG(i));
-		reg_op3 = mtk_r32(g_eth, MTK_LRO_CTRL_DW3_CFG(i));
-		reg_op4 = mtk_r32(g_eth, MTK_PDMA_LRO_CTRL_DW2);
+	for (i = 0; i < MTK_HW_LRO_RING_NUM; i++) {
+		int idx = MTK_HAS_CAPS(eth->soc->caps, MTK_NETSYS_RX_V2) ? i : i + 1;
+
+		reg_op1 = mtk_r32(eth, reg_map->pdma.lro_rx_ctrl_dw0 + 0x4 + (idx * 0x40));
+		reg_op2 = mtk_r32(eth, reg_map->pdma.lro_rx_ctrl_dw0 + 0x8 + (idx * 0x40));
+		reg_op3 = mtk_r32(eth, reg_map->pdma.lro_rx_ctrl_dw0 + 0xc + (idx * 0x40));
+		reg_op4 = mtk_r32(eth, reg_map->pdma.lro_ctrl_dw0 + 0x8);
 
 		agg_cnt =
 		    ((reg_op3 & 0x3) << 6) |
@@ -1658,8 +2201,7 @@ int hw_lro_auto_tlb_read(struct seq_file *seq, void *v)
 		    ((reg_op1 >> MTK_LRO_RING_AGE_TIME_L_OFFSET) & 0x3ff);
 		seq_printf(seq,
 			   "Ring[%d]: MAX_AGG_CNT=%d, AGG_TIME=%d, AGE_TIME=%d, Threshold=%d\n",
-			   (MTK_HAS_CAPS(g_eth->soc->caps, MTK_NETSYS_V1)) ? i : i+3,
-			   agg_cnt, agg_time, age_time, reg_op4);
+			   MTK_HW_LRO_RING(i), agg_cnt, agg_time, age_time, reg_op4);
 	}
 
 	seq_puts(seq, "\n");
@@ -1740,7 +2282,8 @@ static const struct file_operations reset_event_fops = {
 
 
 struct proc_dir_entry *proc_reg_dir;
-static struct proc_dir_entry *proc_esw_cnt, *proc_dbg_regs, *proc_reset_event;
+static struct proc_dir_entry *proc_esw_cnt, *proc_xfi_cnt,
+			     *proc_dbg_regs, *proc_reset_event;
 
 int debug_proc_init(struct mtk_eth *eth)
 {
@@ -1769,10 +2312,30 @@ int debug_proc_init(struct mtk_eth *eth)
 	if (!proc_esw_cnt)
 		pr_notice("!! FAIL to create %s PROC !!\n", PROCREG_ESW_CNT);
 
+	if (MTK_HAS_CAPS(g_eth->soc->caps, MTK_NETSYS_V3)) {
+		proc_xfi_cnt =
+		    proc_create(PROCREG_XFI_CNT, 0,
+				proc_reg_dir, &xfi_count_fops);
+		if (!proc_xfi_cnt)
+			pr_notice("!! FAIL to create %s PROC !!\n",
+				  PROCREG_XFI_CNT);
+	}
+
 	proc_dbg_regs =
 	    proc_create(PROCREG_DBG_REGS, 0, proc_reg_dir, &dbg_regs_fops);
 	if (!proc_dbg_regs)
 		pr_notice("!! FAIL to create %s PROC !!\n", PROCREG_DBG_REGS);
+
+	if (MTK_HAS_CAPS(eth->soc->caps, MTK_RSS)) {
+		proc_rss_ctrl =
+			proc_create(PROCREG_RSS_CTRL, 0, proc_reg_dir,
+				    &rss_ctrl_fops);
+		if (!proc_rss_ctrl)
+			pr_info("!! FAIL to create %s PROC !!\n",
+				PROCREG_RSS_CTRL);
+
+		cur_rss_num = g_eth->soc->rss_num;
+	}
 
 	if (g_eth->hwlro) {
 		proc_hw_lro_stats =
@@ -1793,7 +2356,7 @@ int debug_proc_init(struct mtk_eth *eth)
 	    proc_create(PROCREG_RESET_EVENT, 0, proc_reg_dir, &reset_event_fops);
 	if (!proc_reset_event)
 		pr_notice("!! FAIL to create %s PROC !!\n", PROCREG_RESET_EVENT);
-
+	dbg_show_level = 1;
 	return 0;
 }
 
@@ -1809,11 +2372,17 @@ void debug_proc_exit(void)
 	if (proc_esw_cnt)
 		remove_proc_entry(PROCREG_ESW_CNT, proc_reg_dir);
 
+	if (proc_xfi_cnt)
+		remove_proc_entry(PROCREG_XFI_CNT, proc_reg_dir);
+
 	if (proc_reg_dir)
 		remove_proc_entry(PROCREG_DIR, 0);
 
 	if (proc_dbg_regs)
 		remove_proc_entry(PROCREG_DBG_REGS, proc_reg_dir);
+
+	if (proc_rss_ctrl)
+		remove_proc_entry(PROCREG_RSS_CTRL, proc_reg_dir);
 
 	if (g_eth->hwlro) {
 		if (proc_hw_lro_stats)

@@ -107,6 +107,33 @@ void phy_print_status(struct phy_device *phydev)
 EXPORT_SYMBOL(phy_print_status);
 
 /**
+ * phy_get_rate_matching - determine if rate matching is supported
+ * @phydev: The phy device to return rate matching for
+ * @iface: The interface mode to use
+ *
+ * This determines the type of rate matching (if any) that @phy supports
+ * using @iface. @iface may be %PHY_INTERFACE_MODE_NA to determine if any
+ * interface supports rate matching.
+ *
+ * Return: The type of rate matching @phy supports for @iface, or
+ *         %RATE_MATCH_NONE.
+ */
+int phy_get_rate_matching(struct phy_device *phydev,
+			  phy_interface_t iface)
+{
+	int ret = RATE_MATCH_NONE;
+
+	if (phydev->drv->get_rate_matching) {
+		mutex_lock(&phydev->lock);
+		ret = phydev->drv->get_rate_matching(phydev, iface);
+		mutex_unlock(&phydev->lock);
+	}
+
+	return ret;
+}
+EXPORT_SYMBOL_GPL(phy_get_rate_matching);
+
+/**
  * phy_clear_interrupt - Ack the phy device's interrupt
  * @phydev: the phy_device struct
  *
@@ -380,6 +407,7 @@ void phy_ethtool_ksettings_get(struct phy_device *phydev,
 
 	cmd->base.speed = phydev->speed;
 	cmd->base.duplex = phydev->duplex;
+	cmd->base.rate_matching = phydev->rate_matching;
 	if (phydev->interface == PHY_INTERFACE_MODE_MOCA)
 		cmd->base.port = PORT_BNC;
 	else

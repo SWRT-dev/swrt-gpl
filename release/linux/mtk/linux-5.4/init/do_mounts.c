@@ -579,7 +579,8 @@ void __init mount_root(void)
 	}
 #endif
 #ifdef CONFIG_MTD_ROOTFS_ROOT_DEV
-	if (!mount_ubi_rootfs())
+	extern bool dual_boot;
+	if (!dual_boot && !mount_ubi_rootfs())
 		return;
 #endif
 #ifdef CONFIG_BLOCK
@@ -689,7 +690,10 @@ struct file_system_type rootfs_fs_type = {
 
 void __init init_rootfs(void)
 {
-	if (IS_ENABLED(CONFIG_TMPFS) && !saved_root_name[0] &&
-		(!root_fs_names || strstr(root_fs_names, "tmpfs")))
-		is_tmpfs = true;
+	if (IS_ENABLED(CONFIG_TMPFS)) {
+		if (!saved_root_name[0] && !root_fs_names)
+			is_tmpfs = true;
+		else if (root_fs_names && !!strstr(root_fs_names, "tmpfs"))
+			is_tmpfs = true;
+	}
 }

@@ -46,3 +46,15 @@ int mtk_snand_log(struct mtk_snand_plat_dev *pdev,
 
 	return 0;
 }
+
+void mtk_snand_control_poll_mode(struct mtk_snand_plat_dev *pdev, bool enable)
+{
+	if (!pdev)
+		return;
+
+	if (pdev->poll_mode != enable)
+		dev_info(pdev->dev, "Poll mode %s\b", enable ? "enabled" :
+			 "disabled");
+
+	pdev->poll_mode = enable;
+}

@@ -75,6 +75,9 @@ extern int ppp_unit_number(struct ppp_channel *);
 /* Get the device name associated with a channel, or NULL if none */
 extern char *ppp_dev_name(struct ppp_channel *);
 
+/* Get the socket structure of a given ppp netdev */
+extern struct sock *ppp_netdev_get_sock(struct net_device *dev);
+
 /*
  * SMP locking notes:
  * The channel code must ensure that when it calls ppp_unregister_channel,

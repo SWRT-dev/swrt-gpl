@@ -19,6 +19,8 @@ extern int iface_name_to_vport(const char *iface);
 #define PORT_UNITS 6
 #elif defined(RTAX59U)
 #define PORT_UNITS 4
+#elif defined(GS7)
+#define PORT_UNITS 1
 #else
 #define PORT_UNITS 6
 #endif
@@ -36,6 +38,8 @@ static const char *query_ifname[PORT_UNITS] = { //Aimesh RE
 	"lan5", "lan4", "lan3", "lan2", "lan1", "eth1"
 #elif defined(RTAX59U)
         "lan3", "lan2", "lan1", "eth1"	
+#elif defined(GS7)
+	"eth1"
 #else
 //      P0      P1      P2      P3      P4      P5
 //        NULL,   NULL,   NULL,   NULL,   NULL,   NULL
@@ -79,6 +83,11 @@ int wl_get_bw(int unit)
 		case 3:
 			return 160;
 			break;
+#if defined(RTCONFIG_BW320M)
+		case 7:
+			return 320;
+			break;
+#endif
 		default:
 			break;
 	}
@@ -89,10 +98,19 @@ int wl_get_bw(int unit)
 #ifdef RTCONFIG_AMAS
 char *get_pap_bssid(int unit, char bssid_str[])
 {
+	struct iwreq wrq;
 	const char *ifname;
 	char data[12];
-	struct iwreq wrq;
 
+#if defined(RTCONFIG_MLO) && defined(RTCONFIG_NL80211)
+	struct apcli_mlo_info ami;
+
+	get_apcli_mlo_info(APCLI_2G, &ami);
+	if (ami.link_status && unit >= 0 && (ami.link_path & (1U << unit))) {	//is mlo interface
+		ether_etoa(&ami.link_addr[unit], bssid_str);
+		return bssid_str;
+	}
+#endif
 	ifname = get_staifname(unit);
 
 	memset(data, 0x00, sizeof(data));
@@ -127,17 +145,21 @@ int wl_get_bw_cap(int unit, int *bwcap)
 		return -1;
 	if (unit == 0)
 		*bwcap = 0x01 | 0x02;		/* 40MHz */
-	else if (unit == 1)
-	{
-		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
-#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+	else if (unit == 1) {
+		*bwcap = 0x01 | 0x02 | 0x04;	/* 80MHz */
+#if defined(RTCONFIG_BW160M)
 		*bwcap |= 0x08;
 #endif
 	}
-#ifdef RTCONFIG_HAS_5G_2
-	else if (unit == 2)
-		*bwcap = 0x01 | 0x02 | 0x04;	/* 11AC 80MHz */
+	else if (unit == 2) {
+		*bwcap = 0x01 | 0x02 | 0x04;	/* 80MHz */
+#if defined(RTCONFIG_BW160M)
+		*bwcap |= 0x08;
 #endif
+#if defined(RTCONFIG_BW320M)
+		*bwcap |= 0x10;
+#endif
+	}
 	else
 		return -1;
 
@@ -146,6 +168,19 @@ int wl_get_bw_cap(int unit, int *bwcap)
 
 int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 {
+#if defined(RTCONFIG_NL80211)
+	int band = get_wifi_unit(ifname);
+
+	if ((band == WL_5G_BAND
+#if defined(RTCONFIG_HAS_5G_2)
+	  || band == WL_5G_2_BAND
+#endif
+	    ) && get_dfs_cac_status(ifname)) {
+		//dbg("%s: skip... because band(%d) is during CAC\n", __func__, band);
+		return -1;
+	}
+	doSystem("mwctl phy phy%d set channel num=%d bw=%d", band, channel, bw);
+#else /* !RTCONFIG_NL80211 */
 	if (set_bw_nctrlsb(ifname, bw, nctrlsb) < 0) {
 		dbg("set %s bw (%d) or nctrlsb (%d) failed", ifname, bw, nctrlsb);
 		return -1;
@@ -155,6 +190,7 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 		dbg("set %s channel (%d) failed", ifname, channel);
 		return -1;
 	}
+#endif /* RTCONFIG_NL80211 */
 
 	return 0;
 }
@@ -188,7 +224,7 @@ void get_control_channel(int unit, int *channel, int *bw, int *nctrlsb)
 
 int get_psta_status(int unit)
 {
-#if defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_SWRTMESH) || defined(RTCONFIG_NL80211)
 	int ret;
 	const char *sta;
 
@@ -250,12 +286,16 @@ void vsie_operation(int unit, int subunit, int flag, int opt, char *hexdata)
 	snprintf(cmd_data, sizeof(cmd_data), "vie_op=%d-frm_map:%d-oui:%02X%02X%02X-length:%d-ctnt:%s",
 		opt, flag, (uint8_t)OUI_ASUS[0], (uint8_t)OUI_ASUS[1], (uint8_t)OUI_ASUS[2], len, hexdata);
 
+#if defined(RTCONFIG_NL80211)
+	eval(IWPRIV, ifname, "set", cmd_data);
+#else
 	wrq.u.data.length = strlen(cmd_data) + 1;
 	wrq.u.data.pointer = cmd_data;
 	wrq.u.data.flags = 0;
 
         if (wl_ioctl(ifname, RTPRIV_IOCTL_SET, &wrq) < 0)
                 dbg("wl_ioctl failed on %s (%d)\n", __FUNCTION__, __LINE__);
+#endif
 
     return;
 }
@@ -428,30 +468,6 @@ void wait_connection_finished(int band)
     }
 }
 
-int get_wlan_service_status(int bssidx, int vifidx)
-{
-    if (nvram_get_int("wlready") == 0) return -1;
-
-    char *ifname = NULL;
-    char tmp[128] = {0}, prefix[] = "wlXXXXXXXXXX_";
-    char wl_radio[] = "wlXXXX_radio";
-
-    snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
-    if (nvram_get_int(wl_radio) == 0)
-        return -2;
-
-    if (vifidx > 0)
-        snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
-    else
-        snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
-
-    ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
-
-    if (is_intf_up(ifname) > 0) return get_radio(bssidx, vifidx);
-
-    return 0;
-}
-
 #ifdef RTCONFIG_BHCOST_OPT
 #ifdef RTCONFIG_AMAS_ETHDETECT
 unsigned int get_uplinkports_linkrate(char *ifname)
@@ -547,6 +563,34 @@ int get_uplinkports_status(char *ifname)
 #endif	/* RTCONFIG_BHCOST_OPT */
 #endif 
 
+int get_wlan_service_status(int bssidx, int vifidx)
+{
+    if (nvram_get_int("wlready") == 0) return -1;
+
+    char *ifname = NULL;
+    char tmp[128] = {0}, prefix[] = "wlXXXXXXXXXX_";
+    char wl_radio[] = "wlXXXX_radio";
+
+    snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+    if (nvram_get_int(wl_radio) == 0)
+        return -2;
+
+    if (vifidx > 0)
+        snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
+    else
+        snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
+
+    ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+
+#if defined(RTCONFIG_NL80211)
+	return get_no_bcn(ifname) ? 0 : 1;
+#else
+    if (is_intf_up(ifname) > 0) return get_radio(bssidx, vifidx);
+
+    return 0;
+#endif
+}
+
 void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 {
     if (nvram_get_int("wlready") == 0) return;
@@ -567,9 +611,13 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 	if(unlikely(r < 0))
 		dbg("snprintf failed\n");
     ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+#if defined(RTCONFIG_NL80211)
+	set_no_bcn(ifname, enabled ? 0 : 1);
+#else
     if (!enabled && bssidx)
         doSystem("iwpriv %s set DfsCacClean=1", ifname);
     eval("ifconfig", ifname, enabled? "up":"down");
+#endif
 }
 
 #if defined(RTCONFIG_MLO)
@@ -1084,6 +1132,148 @@ double get_wifi_5GH_maxpower()
 double get_wifi_6G_maxpower()
 {
 	return 0;
+}
+#endif
+
+#if defined(RTCONFIG_MULTILAN_CFG)
+/* get all wireless interfaces except onboarding/prelink interface */
+char* get_wlan_ifnames(void)
+{
+	int band;
+	char word[16], *next;
+	char nv[16], result[256];
+#if defined(RTCONFIG_VIF_ONBOARDING)
+	char *obvif = NULL;
+
+	snprintf(nv, sizeof(nv), "wl0.%d_ifname",
+		(!nvram_get_int("re_mode")) ? nvram_get_int("obvif_cap_subunit") : nvram_get_int("obvif_re_subunit"));
+	obvif = nvram_safe_get(nv);
+#endif
+#if defined(RTCONFIG_PRELINK)
+	char *plkif = NULL;
+
+	snprintf(nv, sizeof(nv), "wl%d.%d_ifname",
+		(num_of_wl_if() - 1),
+		(!nvram_get_int("re_mode")) ? nvram_get_int("plk_cap_subunit") : nvram_get_int("plk_re_subunit"));
+	plkif = nvram_safe_get(nv);
+#endif
+
+	memset(result, 0, sizeof(result));
+	snprintf(result, sizeof(result), "%s ", nvram_safe_get("wl_ifnames"));
+
+	for (band = 0; band < MAX_NR_WL_IF; ++band) {
+		SKIP_ABSENT_BAND(band);
+		snprintf(nv, sizeof(nv), "wl%d_vifs", band);
+		foreach (word, nvram_safe_get(nv), next) {
+#if defined(RTCONFIG_VIF_ONBOARDING)
+			if (obvif && !strcmp(word, obvif))
+				continue;
+#endif
+#if defined(RTCONFIG_PRELINK)
+			if (plkif && !strcmp(word, plkif))
+				continue;
+#endif
+			strlcat(result, word, sizeof(result));
+			strlcat(result, " ", sizeof(result));
+		}
+	}
+
+	return strdup(result);
+}
+#endif
+
+// nmp
+static void akm_suite_selector(char *tmp, char *wl_auth, int auth_len)
+{
+	if(!strcmp(tmp, "1")) {
+		strlcpy(wl_auth, "802.1x", auth_len);
+	} else if(!strcmp(tmp, "2")) {
+		strlcpy(wl_auth, "WPA-PSK", auth_len);
+	} else if(!strcmp(tmp, "3")) {
+		strlcpy(wl_auth, "FT-802.1x", auth_len);
+	} else if(!strcmp(tmp, "4")) {
+		strlcpy(wl_auth, "WPA-PSK-FT", auth_len);
+	} else if(!strcmp(tmp, "5")) {
+		strlcpy(wl_auth, "802.1x-SHA256", auth_len);
+	} else if(!strcmp(tmp, "6")) {
+		strlcpy(wl_auth, "WPA-PSK-SHA256", auth_len);
+	} else if(!strcmp(tmp, "7")) {
+		strlcpy(wl_auth, "TDLS", auth_len);
+	} else if(!strcmp(tmp, "8")) {
+		strlcpy(wl_auth, "WPA3-SAE", auth_len);
+	} else if(!strcmp(tmp, "9")) {
+		strlcpy(wl_auth, "FT-SAE", auth_len);
+	} else if(!strcmp(tmp, "10")) {
+		strlcpy(wl_auth, "AP-PEER-KEY", auth_len);
+	} else if(!strcmp(tmp, "11")) {
+		strlcpy(wl_auth, "802.1x-suite-B", auth_len);
+	} else if(!strcmp(tmp, "12")) {
+		strlcpy(wl_auth, "802.1x-suite-B-192", auth_len);
+	} else if(!strcmp(tmp, "13")) {
+		strlcpy(wl_auth, "FT-802.1x-SHA384", auth_len);
+	} else if(!strcmp(tmp, "14")) {
+		strlcpy(wl_auth, "FILS-SHA256", auth_len);
+	} else if(!strcmp(tmp, "15")) {
+		strlcpy(wl_auth, "FILS-SHA384", auth_len);
+	} else if(!strcmp(tmp, "16")) {
+		strlcpy(wl_auth, "FT-FILS-SHA256", auth_len);
+	} else if(!strcmp(tmp, "17")) {
+		strlcpy(wl_auth, "FT-FILS-SHA384", auth_len);
+	} else if(!strcmp(tmp, "18")) {
+		strlcpy(wl_auth, "OWE", auth_len);
+	} else if(!strcmp(tmp, "19")) {
+		strlcpy(wl_auth, "FT-WPA2-PSK-SHA384", auth_len);
+	} else if(!strcmp(tmp, "20")) {
+		strlcpy(wl_auth, "WPA2-PSK-SHA384", auth_len);
+	} else if(!strcmp(tmp, "21")) {
+		strlcpy(wl_auth, "PASN", auth_len);
+	} else if(!strcmp(tmp, "22")) {
+		strlcpy(wl_auth, "FT-802-1X-SHA384", auth_len);
+	} else if(!strcmp(tmp, "23")) {
+		strlcpy(wl_auth, "802_1X_SHA384", auth_len);
+	} else if(!strcmp(tmp, "24")) {
+		strlcpy(wl_auth, "SAE-EXT-KEY", auth_len);
+	} else if(!strcmp(tmp, "25")) {
+		strlcpy(wl_auth, "FT-SAE-EXT-KEY", auth_len);
+	} else {
+		strlcpy(wl_auth, "undefined", auth_len);
+	}
+}
+
+#ifdef RTCONFIG_MULTILAN_CFG
+void check_wireless_auth_from_sdn(char *mac, char *ifname, char *wl_auth, int auth_len)
+{
+	FILE *fp;
+	char cmd[128] = {0}, tmp[8] = {0};
+
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -i %s sta %s | grep AKMSuiteSelector 2>/dev/null", ifname, mac);
+	if ((fp = popen(cmd, "r")) != NULL) {
+		if (fscanf(fp, "AKMSuiteSelector=00-0f-ac-%s", tmp) == 1) {
+			akm_suite_selector(tmp, wl_auth, auth_len);
+		}
+		pclose(fp);
+	}
+}
+#else
+void check_wireless_auth(char *mac, char *wl_auth, int auth_len)
+{
+	FILE *fp;
+	char word[256], *next;
+	char cmd[128] = {0}, tmp[8] = {0};
+	int ret = 0;
+
+	foreach (word, nvram_safe_get("wl_ifnames"), next)
+	{
+		snprintf(cmd, sizeof(cmd), "hostapd_cli -i %s sta %s | grep AKMSuiteSelector 2>/dev/null", word, mac);
+		if ((fp = popen(cmd, "r")) != NULL) {
+			if (fscanf(fp, "AKMSuiteSelector=00-0f-ac-%s", tmp) == 1) {
+				akm_suite_selector(tmp, wl_auth, auth_len);
+			}
+			pclose(fp);
+			if(ret)
+				break;
+		}
+	}
 }
 #endif
 

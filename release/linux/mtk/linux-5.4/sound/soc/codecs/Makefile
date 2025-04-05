@@ -176,6 +176,7 @@ snd-soc-alc5632-objs := alc5632.o
 snd-soc-sigmadsp-objs := sigmadsp.o
 snd-soc-sigmadsp-i2c-objs := sigmadsp-i2c.o
 snd-soc-sigmadsp-regmap-objs := sigmadsp-regmap.o
+snd-soc-si3218x-spi-objs := si3218x-spi.o
 snd-soc-si476x-objs := si476x.o
 snd-soc-sirf-audio-codec-objs := sirf-audio-codec.o
 snd-soc-spdif-tx-objs := spdif_transmitter.o
@@ -563,3 +564,7 @@ obj-$(CONFIG_SND_SOC_MAX9877)	+= snd-soc-max9877.o
 obj-$(CONFIG_SND_SOC_MAX98504)	+= snd-soc-max98504.o
 obj-$(CONFIG_SND_SOC_SIMPLE_AMPLIFIER)	+= snd-soc-simple-amplifier.o
 obj-$(CONFIG_SND_SOC_TPA6130A2)	+= snd-soc-tpa6130a2.o
+
+# Proslic si3218x
+#obj-$(CONFIG_SND_SOC_SI3218X)	+= si3218x/
+obj-$(CONFIG_SND_SOC_SI3218X_SPI) += snd-soc-si3218x-spi.o

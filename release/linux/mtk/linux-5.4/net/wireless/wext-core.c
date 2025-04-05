@@ -255,6 +255,15 @@ static const struct iw_ioctl_description standard_ioctl[] = {
 		.min_tokens	= sizeof(struct iw_pmksa),
 		.max_tokens	= sizeof(struct iw_pmksa),
 	},
+#if 1	//ASUS_EXT
+	[IW_IOCTL_IDX(SIOCSIWPMKSA)+1] = {
+		.header_type	= IW_HEADER_TYPE_POINT,
+		.token_size	= 1,
+		.min_tokens	= 1,
+		.max_tokens	= 10240,
+		.flags		= IW_DESCR_FLAG_NOMAX,
+	},
+#endif
 };
 static const unsigned int standard_ioctl_num = ARRAY_SIZE(standard_ioctl);
 
@@ -795,6 +804,12 @@ static int ioctl_standard_iw_point(struct iw_point *iwp, unsigned int cmd,
 			 */
 		}
 	}
+
+	/* Sanity-check to ensure we never end up _allocating_ zero
+	 * bytes of data for extra.
+	 */
+	if (extra_size <= 0)
+		return -EFAULT;
 
 	/* kzalloc() ensures NULL-termination for essid_compat. */
 	extra = kzalloc(extra_size, GFP_KERNEL);

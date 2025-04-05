@@ -138,8 +138,9 @@ static const struct mtk_fixed_factor infra_divs[] __initconst = {
 	FACTOR(CK_INFRA_USB_XHCI_O, "infra_usb_xhci_o", "usb_xhci", 1, 1),
 	FACTOR(CK_INFRA_USB_XHCI_O_P1, "infra_usb_xhci_o_p1", "usb_xhci_p1", 1,
 	       1),
-	FACTOR(CK_INFRA_USB_PIPE_O, "infra_usb_pipe_o", "clkxtal", 1, 1),
-	FACTOR(CK_INFRA_USB_PIPE_O_P1, "infra_usb_pipe_o_p1", "clkxtal", 1, 1),
+	FACTOR(CK_INFRA_USB_PIPE_O, "infra_usb_pipe_o", "sspxtp_sel", 1, 1),
+	FACTOR(CK_INFRA_USB_PIPE_O_P1, "infra_usb_pipe_o_p1", "usb_phy_sel", 1,
+	       1),
 	FACTOR(CK_INFRA_USB_UTMI_O, "infra_usb_utmi_o", "clkxtal", 1, 1),
 	FACTOR(CK_INFRA_USB_UTMI_O_P1, "infra_usb_utmi_o_p1", "clkxtal", 1, 1),
 	FACTOR(CK_INFRA_PCIE_PIPE_OCC_P0, "infra_pcie_pipe_ck_occ_p0",
@@ -396,26 +397,31 @@ static struct mtk_mux top_muxes[] = {
 			     7, 0x1C4, 5),
 	MUX_GATE_CLR_SET_UPD(CK_TOP_SGM_0_SEL, "sgm_0_sel", sgm_0_parents,
 			     0x090, 0x094, 0x098, 8, 1, 15, 0x1C4, 6),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_SGM_SBUS_0_SEL, "sgm_sbus_0_sel",
-			     usxgmii_sbus_0_parents, 0x090, 0x094, 0x098, 16, 1,
-			     23, 0x1C4, 7),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_SGM_SBUS_0_SEL, "sgm_sbus_0_sel",
+				usxgmii_sbus_0_parents,
+				0x090, 0x094, 0x098, 16, 1,
+				23, 0x1C4, 7, CLK_IS_CRITICAL),
 	MUX_GATE_CLR_SET_UPD(CK_TOP_SGM_1_SEL, "sgm_1_sel", sgm_0_parents,
 			     0x090, 0x094, 0x098, 24, 1, 31, 0x1C4, 8),
 	/* CLK_CFG_10 */
-	MUX_GATE_CLR_SET_UPD(CK_TOP_SGM_SBUS_1_SEL, "sgm_sbus_1_sel",
-			     usxgmii_sbus_0_parents, 0x0A0, 0x0A4, 0x0A8, 0, 1,
-			     7, 0x1C4, 9),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_SGM_SBUS_1_SEL, "sgm_sbus_1_sel",
+				usxgmii_sbus_0_parents,
+				0x0A0, 0x0A4, 0x0A8, 0, 1,
+				7, 0x1C4, 9, CLK_IS_CRITICAL),
 	MUX_GATE_CLR_SET_UPD(CK_TOP_XFI_PHY_0_XTAL_SEL, "xfi_phy_0_xtal_sel",
 			     sspxtp_parents, 0x0A0, 0x0A4, 0x0A8, 8, 1, 15,
 			     0x1C4, 10),
 	MUX_GATE_CLR_SET_UPD(CK_TOP_XFI_PHY_1_XTAL_SEL, "xfi_phy_1_xtal_sel",
 			     sspxtp_parents, 0x0A0, 0x0A4, 0x0A8, 16, 1, 23,
 			     0x1C4, 11),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_SYSAXI_SEL, "sysaxi_sel", axi_infra_parents,
-			     0x0A0, 0x0A4, 0x0A8, 24, 1, 31, 0x1C4, 12),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_SYSAXI_SEL, "sysaxi_sel",
+				axi_infra_parents,
+				0x0A0, 0x0A4, 0x0A8, 24, 1, 31,
+				 0x1C4, 12, CLK_IS_CRITICAL),
 	/* CLK_CFG_11 */
-	MUX_GATE_CLR_SET_UPD(CK_TOP_SYSAPB_SEL, "sysapb_sel", sysapb_parents,
-			     0x0B0, 0x0B4, 0x0B8, 0, 1, 7, 0x1C4, 13),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_SYSAPB_SEL, "sysapb_sel",
+				sysapb_parents, 0x0B0, 0x0B4, 0x0B8, 0, 1, 7,
+				0x1C4, 13, CLK_IS_CRITICAL),
 	MUX_GATE_CLR_SET_UPD(CK_TOP_ETH_REFCK_50M_SEL, "eth_refck_50m_sel",
 			     eth_refck_50m_parents, 0x0B0, 0x0B4, 0x0B8, 8, 1,
 			     15, 0x1C4, 14),
@@ -435,28 +441,30 @@ static struct mtk_mux top_muxes[] = {
 	MUX_GATE_CLR_SET_UPD(CK_TOP_NPU_TOPS_SEL, "npu_tops_sel",
 			     npu_tops_parents, 0x0C0, 0x0C4, 0x0C8, 16, 1, 23,
 			     0x1C4, 19),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_DRAMC_SEL, "dramc_sel", sspxtp_parents,
-			     0x0C0, 0x0C4, 0x0C8, 24, 1, 31, 0x1C4, 20),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_DRAMC_SEL, "dramc_sel",
+				sspxtp_parents, 0x0C0, 0x0C4, 0x0C8, 24, 1, 31,
+				0x1C4, 20, CLK_IS_CRITICAL),
 	/* CLK_CFG_13 */
-	MUX_GATE_CLR_SET_UPD(CK_TOP_DRAMC_MD32_SEL, "dramc_md32_sel",
-			     dramc_md32_parents, 0x0D0, 0x0D4, 0x0D8, 0, 2, 7,
-			     0x1C4, 21),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_INFRA_F26M_SEL, "csw_infra_f26m_sel",
-			     sspxtp_parents, 0x0D0, 0x0D4, 0x0D8, 8, 1, 15,
-			     0x1C4, 22),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_PEXTP_P0_SEL, "pextp_p0_sel",
-			     sspxtp_parents, 0x0D0, 0x0D4, 0x0D8, 16, 1, 23,
-			     0x1C4, 23),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_PEXTP_P1_SEL, "pextp_p1_sel",
-			     sspxtp_parents, 0x0D0, 0x0D4, 0x0D8, 24, 1, 31,
-			     0x1C4, 24),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_DRAMC_MD32_SEL, "dramc_md32_sel",
+				dramc_md32_parents,
+				0x0D0, 0x0D4, 0x0D8, 0, 2, 7,
+				0x1C4, 21, CLK_IS_CRITICAL),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_INFRA_F26M_SEL, "csw_infra_f26m_sel",
+				sspxtp_parents, 0x0D0, 0x0D4, 0x0D8, 8, 1, 15,
+				0x1C4, 22, CLK_IS_CRITICAL),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_PEXTP_P0_SEL, "pextp_p0_sel",
+				sspxtp_parents, 0x0D0, 0x0D4, 0x0D8, 16, 1, 23,
+				0x1C4, 23, CLK_IS_CRITICAL),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_PEXTP_P1_SEL, "pextp_p1_sel",
+				sspxtp_parents, 0x0D0, 0x0D4, 0x0D8, 24, 1, 31,
+				0x1C4, 24, CLK_IS_CRITICAL),
 	/* CLK_CFG_14 */
-	MUX_GATE_CLR_SET_UPD(CK_TOP_PEXTP_P2_SEL, "pextp_p2_sel",
-			     sspxtp_parents, 0x0E0, 0x0E4, 0x0E8, 0, 1, 7,
-			     0x1C4, 25),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_PEXTP_P3_SEL, "pextp_p3_sel",
-			     sspxtp_parents, 0x0E0, 0x0E4, 0x0E8, 8, 1, 15,
-			     0x1C4, 26),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_PEXTP_P2_SEL, "pextp_p2_sel",
+				sspxtp_parents, 0x0E0, 0x0E4, 0x0E8, 0, 1, 7,
+				0x1C4, 25, CLK_IS_CRITICAL),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_PEXTP_P3_SEL, "pextp_p3_sel",
+				sspxtp_parents, 0x0E0, 0x0E4, 0x0E8, 8, 1, 15,
+				0x1C4, 26, CLK_IS_CRITICAL),
 	MUX_GATE_CLR_SET_UPD(CK_TOP_DA_XTP_GLB_P0_SEL, "da_xtp_glb_p0_sel",
 			     da_xtp_glb_p0_parents, 0x0E0, 0x0E4, 0x0E8, 16, 1,
 			     23, 0x1C4, 27),
@@ -481,10 +489,11 @@ static struct mtk_mux top_muxes[] = {
 	MUX_GATE_CLR_SET_UPD(CK_TOP_TOPS_P2_26M_SEL, "tops_p2_26m_sel",
 			     sspxtp_parents, 0x0100, 0x104, 0x108, 8, 1, 15,
 			     0x1C8, 3),
-	MUX_GATE_CLR_SET_UPD(CK_TOP_MCUSYS_BACKUP_625M_SEL,
-			     "mcusys_backup_625m_sel",
-			     mcusys_backup_625m_parents, 0x0100, 0x104, 0x108,
-			     16, 1, 23, 0x1C8, 4),
+	MUX_GATE_CLR_SET_UPD_FLAGS(CK_TOP_MCUSYS_BACKUP_625M_SEL,
+				"mcusys_backup_625m_sel",
+				mcusys_backup_625m_parents,
+				0x0100, 0x104, 0x108,
+				16, 1, 23, 0x1C8, 4, CLK_IS_CRITICAL),
 	MUX_GATE_CLR_SET_UPD(CK_TOP_NETSYS_SYNC_250M_SEL,
 			     "netsys_sync_250m_sel", pcie_mbist_250m_parents,
 			     0x0100, 0x104, 0x108, 24, 1, 31, 0x1C8, 5),
@@ -675,6 +684,13 @@ static const struct mtk_gate_regs infra3_cg_regs = {
 		.ops = &mtk_clk_gate_ops_setclr,                               \
 	}
 
+#define GATE_CRITICAL(_id, _name, _parent, _regs, _shift) {	\
+		.id = _id, .name = _name, .parent_name = _parent,              \
+		.regs = _regs, .shift = _shift,                      \
+		.flags = CLK_IS_CRITICAL,    \
+		.ops = &mtk_clk_gate_ops_setclr,                               \
+	}
+
 static const struct mtk_gate infra_clks[] __initconst = {
 	/* INFRA0 */
 	GATE_INFRA0(CK_INFRA_PCIE_PERI_26M_CK_P0,
@@ -683,8 +699,9 @@ static const struct mtk_gate infra_clks[] __initconst = {
 		    "infra_pcie_peri_ck_26m_ck_p1", "infra_f26m_o0", 8),
 	GATE_INFRA0(CK_INFRA_PCIE_PERI_26M_CK_P2,
 		    "infra_pcie_peri_ck_26m_ck_p2", "infra_f26m_o0", 9),
-	GATE_INFRA0(CK_INFRA_PCIE_PERI_26M_CK_P3,
-		    "infra_pcie_peri_ck_26m_ck_p3", "infra_f26m_o0", 10),
+	GATE_CRITICAL(CK_INFRA_PCIE_PERI_26M_CK_P3,
+		    "infra_pcie_peri_ck_26m_ck_p3", "infra_f26m_o0",
+			&infra0_cg_regs, 10),
 	/* INFRA1 */
 	GATE_INFRA1(CK_INFRA_66M_GPT_BCK, "infra_hf_66m_gpt_bck",
 		    "infra_66m_mck", 0),
@@ -720,8 +737,8 @@ static const struct mtk_gate infra_clks[] __initconst = {
 		    18),
 	GATE_INFRA1(CK_INFRA_DRAMC_F26M, "infra_dramc_f26m", "infra_ck_f26m",
 		    19),
-	GATE_INFRA1(CK_INFRA_133M_DBG_ACKM, "infra_hf_133m_dbg_ackm",
-		    "infra_133m_mck", 20),
+	GATE_CRITICAL(CK_INFRA_133M_DBG_ACKM, "infra_hf_133m_dbg_ackm",
+			"infra_133m_mck", &infra1_cg_regs, 20),
 	GATE_INFRA1(CK_INFRA_66M_AP_DMA_BCK, "infra_66m_ap_dma_bck",
 		    "infra_66m_mck", 21),
 	GATE_INFRA1(CK_INFRA_66M_SEJ_BCK, "infra_hf_66m_sej_bck",
@@ -740,8 +757,8 @@ static const struct mtk_gate infra_clks[] __initconst = {
 		    "infra_mux_uart2_sel", 5),
 	GATE_INFRA2(CK_INFRA_NFI, "infra_f_fnfi", "infra_nfi_o", 9),
 	GATE_INFRA2(CK_INFRA_SPINFI, "infra_f_fspinfi", "infra_spinfi_o", 10),
-	GATE_INFRA2(CK_INFRA_66M_NFI_HCK, "infra_hf_66m_nfi_hck",
-		    "infra_66m_mck", 11),
+	GATE_CRITICAL(CK_INFRA_66M_NFI_HCK, "infra_hf_66m_nfi_hck",
+			"infra_66m_mck", &infra2_cg_regs, 11),
 	GATE_INFRA2(CK_INFRA_104M_SPI0, "infra_hf_104m_spi0",
 		    "infra_mux_spi0_sel", 12),
 	GATE_INFRA2(CK_INFRA_104M_SPI1, "infra_hf_104m_spi1",
@@ -756,7 +773,8 @@ static const struct mtk_gate infra_clks[] __initconst = {
 		    "infra_66m_mck", 17),
 	GATE_INFRA2(CK_INFRA_66M_FLASHIF_AXI, "infra_hf_66m_flashif_axi",
 		    "infra_66m_mck", 18),
-	GATE_INFRA2(CK_INFRA_RTC, "infra_f_frtc", "infra_lb_mux_frtc", 19),
+	GATE_CRITICAL(CK_INFRA_RTC, "infra_f_frtc", "infra_lb_mux_frtc",
+			&infra2_cg_regs, 19),
 	GATE_INFRA2(CK_INFRA_26M_ADC_BCK, "infra_f_26m_adc_bck",
 		    "infra_f26m_o1", 20),
 	GATE_INFRA2(CK_INFRA_RC_ADC, "infra_f_frc_adc", "infra_f_26m_adc_bck",
@@ -790,10 +808,10 @@ static const struct mtk_gate infra_clks[] __initconst = {
 		    "infra_usb_sys_o_p1", 5),
 	GATE_INFRA3(CK_INFRA_USB_REF, "infra_usb_ref", "infra_usb_o", 6),
 	GATE_INFRA3(CK_INFRA_USB_CK_P1, "infra_usb_ck_p1", "infra_usb_o_p1", 7),
-	GATE_INFRA3(CK_INFRA_USB_FRMCNT, "infra_usb_frmcnt",
-		    "infra_usb_frmcnt_o", 8),
-	GATE_INFRA3(CK_INFRA_USB_FRMCNT_CK_P1, "infra_usb_frmcnt_ck_p1",
-		    "infra_usb_frmcnt_o_p1", 9),
+	GATE_CRITICAL(CK_INFRA_USB_FRMCNT, "infra_usb_frmcnt",
+			"infra_usb_frmcnt_o", &infra3_cg_regs, 8),
+	GATE_CRITICAL(CK_INFRA_USB_FRMCNT_CK_P1, "infra_usb_frmcnt_ck_p1",
+			"infra_usb_frmcnt_o_p1", &infra3_cg_regs, 9),
 	GATE_INFRA3(CK_INFRA_USB_PIPE, "infra_usb_pipe", "infra_usb_pipe_o",
 		    10),
 	GATE_INFRA3(CK_INFRA_USB_PIPE_CK_P1, "infra_usb_pipe_ck_p1",
@@ -955,8 +973,8 @@ static const struct mtk_pll_data plls[] = {
 	    HAVE_RST_BAR, 23, 32, 0x0144, 4, 0, 0, 0, 0x0148, 0, 0x0144,
 	    "clkxtal"),
 	PLL(CK_APMIXED_NET2PLL, "net2pll", 0x0154, 0x0160, 0xff000001,
-	    HAVE_RST_BAR, 23, 32, 0x0154, 4, 0, 0, 0, 0x0158, 0, 0x0154,
-	    "clkxtal"),
+		HAVE_RST_BAR | PLL_AO, 23, 32, 0x0154, 4, 0, 0, 0, 0x0158,
+		0, 0x0154, "clkxtal"),
 	PLL(CK_APMIXED_WEDMCUPLL, "wedmcupll", 0x0164, 0x0170, 0x00000001, 0, 0,
 	    32, 0x0164, 4, 0, 0, 0, 0x0168, 0, 0x0164, "clkxtal"),
 	PLL(CK_APMIXED_SGMPLL, "sgmpll", 0x0174, 0x0180, 0x00000001, 0, 0, 32,
@@ -978,26 +996,6 @@ static struct clk_onecell_data *mt7988_infra_ao_clk_data __initdata;
 static struct clk_onecell_data *mt7988_top_clk_data __initdata;
 static struct clk_onecell_data *mt7988_pll_clk_data __initdata;
 
-static void __init mtk_clk_enable_critical(void)
-{
-	if (!mt7988_infra_clk_data || !mt7988_infra_ao_clk_data
-	    || !mt7988_top_clk_data || !mt7988_pll_clk_data)
-		return;
-
-	clk_prepare_enable(mt7988_pll_clk_data->clks[CK_APMIXED_ARM_B]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_SYSAXI_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_SYSAPB_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_DRAMC_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_DRAMC_MD32_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_INFRA_F26M_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_PEXTP_P0_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_PEXTP_P1_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_PEXTP_P2_SEL]);
-	clk_prepare_enable(mt7988_top_clk_data->clks[CK_TOP_PEXTP_P3_SEL]);
-	clk_prepare_enable(
-		mt7988_infra_ao_clk_data->clks[CK_INFRA_PCIE_PERI_26M_CK_P3]);
-}
-
 static void __init mtk_infracfg_init(struct device_node *node)
 {
 	int r;
@@ -1013,8 +1011,6 @@ static void __init mtk_infracfg_init(struct device_node *node)
 	if (r)
 		pr_err("%s(): could not register clock provider: %d\n",
 		       __func__, r);
-
-	mtk_clk_enable_critical();
 }
 CLK_OF_DECLARE(mtk_infracfg, "mediatek,mt7988-infracfg", mtk_infracfg_init);
 
@@ -1043,8 +1039,6 @@ static void __init mtk_topckgen_init(struct device_node *node)
 	if (r)
 		pr_err("%s(): could not register clock provider: %d\n",
 		       __func__, r);
-
-	mtk_clk_enable_critical();
 }
 CLK_OF_DECLARE(mtk_topckgen, "mediatek,mt7988-topckgen", mtk_topckgen_init);
 
@@ -1072,8 +1066,6 @@ static void __init mtk_infracfg_ao_init(struct device_node *node)
 	if (r)
 		pr_err("%s(): could not register clock provider: %d\n",
 		       __func__, r);
-
-	mtk_clk_enable_critical();
 }
 CLK_OF_DECLARE(mtk_infracfg_ao, "mediatek,mt7988-infracfg_ao",
 	       mtk_infracfg_ao_init);
@@ -1093,8 +1085,6 @@ static void __init mtk_apmixedsys_init(struct device_node *node)
 	if (r)
 		pr_err("%s(): could not register clock provider: %d\n",
 		       __func__, r);
-
-	mtk_clk_enable_critical();
 }
 CLK_OF_DECLARE(mtk_apmixedsys, "mediatek,mt7988-apmixedsys",
 	       mtk_apmixedsys_init);

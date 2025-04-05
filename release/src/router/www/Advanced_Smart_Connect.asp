@@ -21,6 +21,7 @@
 <script type="text/javascript" src="/popup.js"></script>
 <script type="text/javascript" src="/validator.js"></script>
 <script type="text/javascript" src="/client_function.js"></script>
+<script type="text/javascript" src="/js/asus_clientlist.js"></script>
 <style>
 .ui-slider {
 	position: relative;
@@ -1839,6 +1840,11 @@ function set_lg_power(power_value,flag,idx){
 	check_power(power_value,'phyrate');	
 }
 
+function showClientlistModal(){
+    const clientlistModal = new ClientlistModel();
+    clientlistModal.show();
+}
+
 </script>
 </head>
 
@@ -1926,7 +1932,7 @@ function set_lg_power(power_value,flag,idx){
 		  <div class="formfonttitle"><#Network_Tools#> - <#smart_connect_rule#></div>
      	 <div style="margin:10px 0 10px 5px;" class="splitLine"></div>
       	  <div class="formfontdesc"><#smart_connect_hint#></div>
-		  <div style="text-align:right;margin-top:-36px;padding-bottom:3px;"><input type="button" class="button_gen" value="<#View_List#>" onClick="pop_clientlist_listview(true)"></div>
+		  <div style="text-align:right;margin-top:-36px;padding-bottom:3px;"><input type="button" class="button_gen" value="<#View_List#>" onClick="showClientlistModal()"></div>
 		  <div id="bsd_steering_div"></div>
 
 		  <div id="bsd_sta_select_div"></div>

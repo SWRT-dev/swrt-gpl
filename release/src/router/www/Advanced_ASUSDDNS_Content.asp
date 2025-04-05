@@ -20,6 +20,7 @@
 <script type="text/javascript" src="/switcherplugin/jquery.iphone-switch.js"></script>
 <script type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/asus_policy.js"></script>
+<script type="text/javascript" src="/form.js"></script>
 <style type="text/css">
     * {
         box-sizing: content-box;
@@ -62,175 +63,6 @@
     .cert_status_val {
         width: 76%;
         padding-left: 10px;
-    }
-
-    .popup_container {
-        width: 70%;
-    }
-
-    .feature_desc_container .title {
-        font-weight: 600;
-        font-size: 16px;
-        letter-spacing: 0.2px;
-        text-transform: uppercase;
-        color: rgb(97 173 255);
-    }
-
-    .feature_desc_container .desc {
-        font-weight: 500;
-        font-size: 15px;
-        color: rgb(255, 255, 255);
-        line-height: 24px;
-        margin-top: 12px;
-    }
-
-    .blur_effect {
-        -webkit-filter: blur(4px); /* Chrome, Opera */
-        -moz-filter: blur(4px);
-        -ms-filter: blur(4px);
-        filter: blur(4px);
-    }
-
-    .popup_container {
-        font-family: Arial, Helvetica, sans-serif, "Microsoft JhengHei";
-        display: none;
-        height: auto;
-        top: 4%;
-        width: 70%;
-        max-width: 540px;
-        position: absolute;
-        margin: auto;
-        z-index: 300;
-        left: 0;
-        right: 0;
-        align-items: center;
-        line-height: 180%;
-        -webkit-tap-highlight-color: transparent;
-        -webkit-touch-callout: none;
-        -webkit-user-select: none;
-        -khtml-user-select: none;
-        -moz-user-select: none;
-        -ms-user-select: none;
-        user-select: none;
-        font-size: 14px;
-    }
-
-    .popup_container.fit_width {
-        max-width: 90%;
-        width: 90%;
-    }
-
-    .popup_container.full_width {
-        max-width: 100%;
-        width: 100%;
-    }
-
-    .popup_container.popup_element_second {
-        z-index: 500;
-    }
-
-    .popup_container.popup_customize_alert {
-        z-index: 700;
-        top: 12%;
-    }
-
-    .popup_container .setting_content_container {
-        margin-bottom: 24px;
-    }
-
-    .popup_container .popup_title_container > .close_btn,
-    .popup_container .popup_title_container > .del_btn {
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        color: #FFFFFF;
-        width: 24px;
-        height: 24px;
-        cursor: pointer;
-        background: grey;
-        border-radius: 50%;
-    }
-
-    .popup_container .popup_title_container {
-        display: flex;
-        justify-content: space-between;
-        align-items: center;
-        position: relative;
-        margin-bottom: 12px;
-    }
-
-    .popup_container .popup_title_container .title {
-        min-height: 40px;
-        height: auto;
-        color: hsl(0deg 0% 100%);
-        font-size: 24px;
-        font-weight: 600;
-        letter-spacing: -0.2px;
-        line-height: 40px;
-        padding-left: 12px;
-    }
-
-    .popup_container .popup_content_container {
-        position: relative;
-        background: linear-gradient(0deg, rgba(255, 255, 255, 0.16), rgba(255, 255, 255, 0.16)), linear-gradient(0deg, rgba(0, 0, 0, 0.8), rgba(0, 0, 0, 0.8)), #1067A8;
-        border: 1px solid rgba(255, 255, 255, 0.02);
-        box-shadow: 0px 2px 4px 0px rgb(0 0 0 / 20%), 0px 1px 4px 0px rgb(60 60 60 / 30%);
-        border-radius: 8px;
-        padding: 5%;
-    }
-
-    .popup_container.mobile_view .popup_content_container {
-        box-shadow: initial;
-        background: rgb(5 41 88 / 30%);
-    }
-
-    .popup_container > div {
-        width: 100%;
-    }
-
-    .popup_container .popup_content_container.profile_setting {
-        padding: initial;
-    }
-
-    .popup_container .popup_content_container .profile_setting_item,
-    .popup_container .popup_content_container .profile_setting_two_item {
-        background: rgba(0, 0, 0, 0.1);
-        min-width: initial;
-        height: 88px;
-    }
-
-    .popup_container .popup_content_container .profile_setting_two_item {
-        height: auto;
-    }
-
-    .popup_container .popup_content_container .category_slide_title {
-        background: rgba(0, 0, 0, 0.1);
-    }
-
-    .popup_container .popup_content_container .category_slide_title.expand {
-        background: rgba(0, 133, 255, 0.1);
-    }
-
-    .customize_alert .action_btn_container,
-    .del_profile .action_btn_container {
-        display: flex;
-        justify-content: flex-end;
-        margin-top: 30px;
-        position: relative;
-    }
-
-    .customize_alert .action_btn_container .btn,
-    .del_profile .action_btn_container .btn {
-        width: 117px;
-        height: 38px;
-        line-height: 40px;
-        font-size: 14px;
-        font-weight: 500;
-        text-align: center;
-        letter-spacing: 0.1px;
-        border-radius: 8px;
-        margin-left: 16px;
-        cursor: pointer;
     }
 
     .icon_switch {
@@ -351,94 +183,39 @@
         background: #f7f7f7;
     }
 
-    .text-list {
-        display: flex;
-        align-items: center;
-        margin: 10px 0px;
-        gap: 5px;
-    }
-
-    .text-list i {
-        height: 15px;
-        width: 15px;
-    }
-
-    .text-list a {
-        margin-left: 5px;
-        text-decoration: underline;
-    }
-
     .formfonttitle_help {
         text-align: right;
     }
 
-    div.icon-circle-mask {
-        display: inline-block;
-        border-radius: 50%;
-        padding: 0.5em;
-        background: #43525D;
-    }
-
-    i.icon-comments {
-        -webkit-mask: url(/images/New_ui/icon_comments.svg) no-repeat;
-        mask: url(/images/New_ui/icon_comments.svg) no-repeat;
+    i.icon-clone {
+        -webkit-mask-repeat: no-repeat;
+        mask-repeat: no-repeat;
+        -webkit-mask-size: 100%;
+        mask-size: 100%;
+        -webkit-mask-image: url(/images/clone.svg);
+        mask-image: url(/images/clone.svg);
         height: 20px;
         width: 20px;
         display: inline-block;
-        background-color: #FFFFFF;
     }
-
-    i.icon-clone {
-    	-webkit-mask-repeat: no-repeat;
-    	mask-repeat: no-repeat;
-    	-webkit-mask-size: 100%;
-    	mask-size: 100%;
-    	-webkit-mask-image: url(/images/clone.svg);
-    	mask-image: url(/images/clone.svg);
-    	height: 20px;
-    	width: 20px;
-    	display: inline-block;
-    }
-
-    i.icon_help {
-    	-webkit-mask-repeat: no-repeat;
-    	mask-repeat: no-repeat;
-    	-webkit-mask-size: 100%;
-    	mask-size: 100%;
-    	-webkit-mask-image: url(/images/help.svg);
-    	mask-image: url(/images/help.svg);
-    	height: 24px;
-    	width: 24px;
-    	display: inline-block;
-    }
-
-    .icon_help,
     .icon-clone {
         background: #47A2FF;
     }
-    .icon_help:hover,
     .icon-clone:hover {
         background: #0b5ed7;
     }
-
-    i.icon_help.rog,
     i.icon-clone.rog {
         background: #91071f;
     }
-    i.icon_help.rog:hover,
     i.icon-clone.rog:hover {
         background: #cf0a2c;
     }
-
-    i.icon_help.tuf,
     i.icon-clone.tuf {
         background: #ffa523;
     }
-    i.icon_help.tuf:hover,
     i.icon-clone.tuf:hover {
         background: #D0982C;
     }
-
 </style>
 
 <script>
@@ -474,10 +251,16 @@ var aae_ddnsinfo = httpApi.nvramGet(["aae_ddnsinfo"], true).aae_ddnsinfo;
 var ipv6_service = httpApi.nvramGet(["ipv6_service"], true).ipv6_service;
 var asusddns_token_state = httpApi.nvramGet(["asusddns_token_state"], true).asusddns_token_state;
 var ddns_accournt_remove_note = stringSafeGet("<#asusddns_rm_account_hint#>");
+var current_page = window.location.pathname.split("/").pop();
+var faq_index_tmp = get_faq_index(FAQ_List, current_page, 1);
 
 function init(){
 	show_menu();
 	document.getElementById("faq").href=faq_href;
+
+	var $desc_tmp_div = (top.webWrapper)? "<div style='max-width:95%'><#LANHostConfig_x_DDNSEnable_sectiondesc#></div>" : `<#LANHostConfig_x_DDNSEnable_sectiondesc#>`;
+	$(".formfontdesc_help_left").html($desc_tmp_div);
+
 	ddns_load_body();
 	update_ddns_wan_unit_option();
 
@@ -492,14 +275,24 @@ function init(){
 
 	setTimeout(show_warning_message, 1000);
 
-	if(ddns_enable_x == "1" && ddns_server_x.indexOf("WWW.ASUS.COM") != -1){
-        if(policy_status.PP==0||policy_status.PP_time==""){
-            const policyModal = new PolicyModalComponent({
-                policy: "PP",
-                submit_reload: 1
-            });
-            policyModal.show();
-        }
+	if (ddns_enable_x == "1" && ddns_server_x.indexOf("WWW.ASUS.COM") != -1) {
+		const policyStatus = PolicyStatus()
+				.then(data => {
+					if (data.PP == 0 || data.PP_time == "") {
+						const policyModal = new PolicyModalComponent({
+							policy: "PP",
+							policyStatus: data,
+							agreeCallback: () => {
+								location.reload();
+							},
+							knowRiskCallback: () => {
+								alert(`<#ASUS_POLICY_Function_Confirm#>`);
+								location.reload();
+							}
+						});
+						policyModal.show();
+					}
+				});
 	}
 
 	if(oauth_auth_status == "2"){
@@ -513,11 +306,9 @@ function init(){
     $('#ddns_security_info_2').attr({'style':'text-decoration: underline','href':'https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang='+ui_lang+'&kw=&num=107'});
 
     if(isSupport("rog")){
-        document.querySelector('#ddns_help').classList.add('rog');
         document.querySelector('#ddns_copy').classList.add('rog');
     }
     else if(isSupport("tuf")){
-        document.querySelector('#ddns_help').classList.add('tuf');
         document.querySelector('#ddns_copy').classList.add('tuf');
     }
 }
@@ -746,24 +537,36 @@ function get_cert_info(){
 }
 
 function apply_eula_check(){
-	if(document.form.ddns_enable_x.value == "1" && document.form.ddns_server_x.value.indexOf("WWW.ASUS.COM") != -1){
-        if(policy_status.PP==0||policy_status.PP_time==""){
-            const policyModal = new PolicyModalComponent({
-                policy: "PP",
-                submit_reload: 1,
-                agreeCallback: applyRule,
-                disagreeCallback: ()=>{
-                    alert(`<#ASUS_POLICY_Function_Confirm#>`);
-                }
-            });
-            policyModal.show();
-            return false;
-        }else{
-            applyRule();
-        }
-	}else{
-        applyRule();
-	}
+	const policyStatus = PolicyStatus()
+			.then(data => {
+				if (document.form.ddns_enable_x.value == "1" && document.form.ddns_server_x.value.indexOf("WWW.ASUS.COM") != -1) {
+					if (data.PP == 0 || data.PP_time == "") {
+						const policyModal = new PolicyModalComponent({
+							policy: "PP",
+							policyStatus: data,
+							agreeCallback: () => {
+								$("#policy_popup_modal").remove();
+								applyRule();
+								PolicyStatus();
+							},
+							knowRiskCallback: () => {
+								alert(`<#ASUS_POLICY_Function_Confirm#>`);
+								$("#radio_ddns_enable").removeClass("on");
+								$('input[name="ddns_enable_x"][value="0"]').prop('checked', true);
+								change_common_radio(this, 'LANHostConfig', 'ddns_enable_x', '0')
+								$("#policy_popup_modal").remove();
+								PolicyStatus();
+							}
+						});
+						policyModal.show();
+						return false;
+					} else {
+						applyRule();
+					}
+				} else {
+					applyRule();
+				}
+			});
 }
 
 function applyRule(){
@@ -790,70 +593,75 @@ function applyRule(){
 
 function validForm(){
 	if(document.form.ddns_enable_x.value == "1"){		//ddns enable
-		if(document.form.ddns_server_x.value.indexOf("WWW.ASUS.COM") != -1){		//WWW.ASUS.COM	or WWW.ASUS.COM.CN
-			if(document.form.DDNSName.value == ""){
-				alert("<#LANHostConfig_x_DDNS_alarm_14#>");
-				document.form.DDNSName.focus();
-				document.form.DDNSName.select();
-				return false;
-			}else{
-				if(!validate_ddns_hostname(document.form.DDNSName)){
+		if(document.form.ddns_server_x.value === ""){
+			alert(`<#LANHostConfig_x_DDNS_alarm_server#>`);
+			return false;
+		}
+		else{
+			if(document.form.ddns_server_x.value.indexOf("WWW.ASUS.COM") != -1){		//WWW.ASUS.COM	or WWW.ASUS.COM.CN
+				if(document.form.DDNSName.value == ""){
+					alert(`<#LANHostConfig_x_DDNS_alarm_14#>`);
 					document.form.DDNSName.focus();
 					document.form.DDNSName.select();
 					return false;
-				}
+				}else{
+					if(!validate_ddns_hostname(document.form.DDNSName)){
+						document.form.DDNSName.focus();
+						document.form.DDNSName.select();
+						return false;
+					}
 
-				if(letsencrypt_support){
-					if( document.form.le_enable[0].checked == true && document.form.letsEncryptTerm_check.checked != true){
-						if(!confirm("<#LANHostConfig_x_DDNSLetsEncrypt_Disagree#>")){
-							document.form.letsEncryptTerm_check.focus();
-							return false;
-						}
-						else{
-							document.form.le_enable[2].checked = true;
+					if(letsencrypt_support){
+						if( document.form.le_enable[0].checked == true && document.form.letsEncryptTerm_check.checked != true){
+							if(!confirm("<#LANHostConfig_x_DDNSLetsEncrypt_Disagree#>")){
+								document.form.letsEncryptTerm_check.focus();
+								return false;
+							}
+							else{
+								document.form.le_enable[2].checked = true;
+							}
 						}
 					}
+
+					return true;
+				}
+			}else{
+				if(document.form.ddns_server_x.value != "WWW.ORAY.COM" && document.form.ddns_hostname_x.value == ""){
+					alert("<#LANHostConfig_x_DDNS_alarm_14#>");
+					document.form.ddns_hostname_x.focus();
+					document.form.ddns_hostname_x.select();
+					return false;
+				}else if(!validator.string(document.form.ddns_hostname_x)){
+					return false;
+				}
+
+				if(document.form.ddns_server_x.value != "DNS.HE.NET" && document.form.ddns_username_x.value == ""){
+					alert("<#QKSet_account_nameblank#>");
+					document.form.ddns_username_x.focus();
+					document.form.ddns_username_x.select();
+					return false;
+				}else if(!validator.string(document.form.ddns_username_x)){
+					return false;
+				}
+
+				if(document.form.ddns_passwd_x.value == ""){
+					alert("<#File_Pop_content_alert_desc6#>");
+					document.form.ddns_passwd_x.focus();
+					document.form.ddns_passwd_x.select();
+					return false;
+				}else if(!validator.string(document.form.ddns_passwd_x)){
+					return false;
+				}
+
+				if(document.form.ddns_regular_period.value < 30){
+					alert("<#period_time_validation#> : 30");
+					document.form.ddns_regular_period.focus();
+					document.form.ddns_regular_period.select();
+					return false;
 				}
 
 				return true;
 			}
-		}else{		
-			if(document.form.ddns_server_x.value != "WWW.ORAY.COM" && document.form.ddns_hostname_x.value == ""){
-				alert("<#LANHostConfig_x_DDNS_alarm_14#>");
-				document.form.ddns_hostname_x.focus();
-				document.form.ddns_hostname_x.select();
-				return false;
-			}else if(!validator.string(document.form.ddns_hostname_x)){
-				return false;
-			}
-			if(document.form.ddns_server_x.value != "CUSTOM"){             // Not CUSTOM
-			if(document.form.ddns_server_x.value != "DNS.HE.NET" && document.form.ddns_username_x.value == ""){
-				alert("<#QKSet_account_nameblank#>");
-				document.form.ddns_username_x.focus();
-				document.form.ddns_username_x.select();
-				return false;
-			}else if(!validator.string(document.form.ddns_username_x)){
-				return false;
-			}
-			
-			if(document.form.ddns_passwd_x.value == ""){
-				alert("<#File_Pop_content_alert_desc6#>");
-				document.form.ddns_passwd_x.focus();
-				document.form.ddns_passwd_x.select();
-				return false;
-			}else if(!validator.string(document.form.ddns_passwd_x)){
-				return false;
-			}
-			}
-			
-			if(document.form.ddns_regular_period.value < 30){
-				alert("<#period_time_validation#> : 30");
-				document.form.ddns_regular_period.focus();
-				document.form.ddns_regular_period.select();
-				return false;
-			}
-		
-			return true;
 		}
 	}
 	else
@@ -987,6 +795,7 @@ function change_ddns_setting(v){
 			document.getElementById("ddns_hostname_info_tr").style.display = "none";
 			document.getElementById("ddns_hostname_tr").style.display="";
 			document.form.ddns_hostname_x.parentNode.style.display = "none";
+			document.form.ddns_hostname_x.parentNode.parentNode.parentNode.style.display = "";
 			document.form.DDNSName.parentNode.style.display = "";
 			if(v.indexOf(".CN") != -1)
 				$("#domain_text").text(".asuscomm.cn");
@@ -1051,9 +860,27 @@ function change_ddns_setting(v){
 		showhide("check_ddns_field", 0);
 		inputCtrl(document.form.ddns_regular_period, 0);
 	}
+	else if(v === ""){
+		document.getElementById("ddns_hostname_info_tr").style.display = "none";
+		document.getElementById("ddns_hostname_tr").style.display = "none";
+		inputCtrl(document.form.ddns_username_x, 0);
+		inputCtrl(document.form.ddns_passwd_x, 0);
+		document.form.ddns_wildcard_x[0].disabled= 1;
+		document.form.ddns_wildcard_x[1].disabled= 1;
+		showhide("wildcard_field",0);
+		document.form.ddns_regular_check.value = 0;
+		showhide("check_ddns_field", 0);
+		inputCtrl(document.form.ddns_regular_period, 0);
+		showhide("ddns_ipv6update_tr", 0);
+		document.getElementById("ddns_status_tr").style.display = "none";
+		document.getElementById("ddns_result_tr").style.display = "none";
+		showhide("link", 0);
+		showhide("linkToHome", 0);
+	}
 	else{
 			document.getElementById("ddns_hostname_info_tr").style.display = "none";
 			document.getElementById("ddns_hostname_tr").style.display="";
+		document.form.ddns_hostname_x.parentNode.parentNode.parentNode.style.display = "";
 			document.form.ddns_hostname_x.parentNode.style.display = "";
 			document.form.DDNSName.parentNode.style.display = "none";
 			if(v == "DNS.HE.NET")
@@ -1166,7 +993,10 @@ function change_cert_method(cert_method){
 				html_code += '<div style="display:table-cell"><input class="btn_subusage button_gen" onclick="open_upload_window();" type="button" value="<#CTL_upload#>"/><img id="loadingicon" style="margin-left:5px;display:none;" src="/images/InternetScan.gif"></div>';
 				document.getElementById("cert_act").innerHTML = html_code;
 				document.getElementById("cert_act").style.display = "";
-				document.getElementById("CAcert_details").style.display = "";
+				if(document.form.casignedcert.value != "1")
+					document.getElementById("CAcert_details").style.display = "none";
+				else
+					document.getElementById("CAcert_details").style.display = "";
 				document.getElementById("cert_details").style.display = "";
 
 				break;
@@ -1245,6 +1075,10 @@ function upload_cert_key(){
 	}
 }
 
+function save_cacert_key(){
+	location.href = "cacert_key.tar";
+}
+
 function save_cert_key(){
 	location.href = "cert_key.tar";
 }
@@ -1313,49 +1147,6 @@ function check_unregister_result(){
 
 }
 
-function show_feature_desc(){
-	$(".container").addClass("blur_effect");
-	if($(".popup_container.popup_element").css("display") == "flex"){
-		$(".popup_container.popup_element").addClass("blur_effect");
-	}
-	$(".popup_element_second").css("display", "flex");
-	$(".popup_container.popup_element_second").empty();
-	$(".popup_container.popup_element_second").append(Get_Component_Feature_Desc());
-
-    function close_popup(){
-    	$(".popup_element_second").hide();
-    	$(".container, .qis_container").removeClass("blur_effect");
-    	$(".popup_container.popup_element").removeClass().addClass("popup_container popup_element").empty();
-    }
-
-	function Get_Component_Feature_Desc(){
-		var $container = $("<div>");
-		var $popup_title_container = $("<div>").addClass("popup_title_container");
-		$popup_title_container.appendTo($container);
-		$("<div>").addClass("title").html("<#NewFeatureAbout#>").appendTo($popup_title_container);
-		var $close_btn = $("<div>").addClass("close_btn").html('&times;');
-		$close_btn.appendTo($popup_title_container);
-		$close_btn.unbind("click").click(function(e){
-			e = e || event;
-			e.stopPropagation();
-            close_popup();
-		});
-
-		var $popup_content_container = $("<div>").addClass("popup_content_container");
-		$popup_content_container.appendTo($container);
-
-		var $feature_desc_cntr = $("<div>").addClass("feature_desc_container").appendTo($popup_content_container);
-		$("<div>").addClass("title").html("FAQ").appendTo($feature_desc_cntr);
-		$("<div>").addClass("desc").html(
-			'<div class="text-list"><div class="icon-circle-mask"><i class="icon-comments"></i></div><a target="_blank" href="https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang='+ui_lang+'&kw=&num=168"><#LANHostConfig_x_DDNSEnable_faq1#></a></div>'+
-            '<div class="text-list"><div class="icon-circle-mask"><i class="icon-comments"></i></div><a target="_blank" href="https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang='+ui_lang+'&kw=&num=169"><#LANHostConfig_x_DDNSEnable_faq2#></a></div>'+
-            '<div class="text-list"><div class="icon-circle-mask"><i class="icon-comments"></i></div><a target="_blank" href="https://nw-dlcdnet.asus.com/support/forward.html?model=&type=Faq&lang='+ui_lang+'&kw=&num=170"><#LANHostConfig_x_DDNSEnable_faq3#></a></div>'
-		).appendTo($feature_desc_cntr);/* untranslated */
-
-		return $container;
-	}
-}
-
 function copyDdnsInputValue(e) {
     let text = '';
     if($('#ddnsname_input').css('display') !== 'none'){
@@ -1418,6 +1209,7 @@ function showDescTooltip(e){
 <input type="hidden" name="preferred_lang" id="preferred_lang" value="<% nvram_get("preferred_lang"); %>">
 <input type="hidden" name="firmver" value="<% nvram_get("firmver"); %>">
 <input type="hidden" name="ddns_enable_x" value="<% nvram_get("ddns_enable_x"); %>">
+<input type="hidden" name="casignedcert" value="<% nvram_get("casignedcert"); %>" disabled>
 
 <table class="content" align="center" cellpadding="0" cellspacing="0">
 	<tr>
@@ -1441,14 +1233,13 @@ function showDescTooltip(e){
 		  		<td bgcolor="#4D595D" valign="top">
 		  		<div class="container">
 		  		<div class="page_title_div">
+                    <div>&nbsp;</div>
                     <div class="formfonttitle"><#menu5_3#> - <#menu5_3_6#> </div>
-                    <div class="formfonttitle_help"><i id="ddns_help" onclick="show_feature_desc()" class="icon_help"></i></div>
+                    <div class="formfonttitle_help"><i id="ddns_help" onclick="show_feature_desc(`<#LANHostConfig_x_DDNSEnable_faq1#>`, `<#LANHostConfig_x_DDNSEnable_faq2#>`, `<#LANHostConfig_x_DDNSEnable_faq3#>`)" class="icon_help"></i></div>
 		  		</div>
 		  		<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 
-		 		<div class="formfontdesc formfontdesc_help_left">
-					<div><#LANHostConfig_x_DDNSEnable_sectiondesc#></div>
-				</div>
+		 		<div class="formfontdesc formfontdesc_help_left"></div>
 
 				<div class="formfontdesc hint-color" id="wan_ip_hide2" style="color:#FC0; display:none;"><#LANHostConfig_x_DDNSEnable_sectiondesc4#><#LANHostConfig_x_DDNSEnable_sectiondesc2#></div>
 				<div class="formfontdesc hint-color" id="lb_note" style="color:#FC0; display:none;"><#lb_note_ddns#></div>
@@ -1503,8 +1294,8 @@ function showDescTooltip(e){
 				<th><#LANHostConfig_x_DDNSServer_itemname#></th>
 				<td>
 					<select id="ddns_server_x" name="ddns_server_x" class="input_option" onchange="change_ddns_setting(this.value); change_cert_method();">
+                        <option value="" selected><#Select_menu_default#></option>
 						<option value="WWW.ASUS.COM" <% nvram_match("ddns_server_x", "WWW.ASUS.COM","selected"); %>>WWW.ASUS.COM</option>
-						<option value="WWW.ASUS.COM.CN" <% nvram_match("ddns_server_x", "WWW.ASUS.COM.CN","selected"); %>>WWW.ASUS.COM.CN</option>
 						<option value="WWW.CLOUDFLARE.COM" <% nvram_match("ddns_server_x", "WWW.CLOUDFLARE.COM","selected"); %>>WWW.CLOUDFLARE.COM</option>
 						<option value="DOMAINS.GOOGLE.COM" <% nvram_match("ddns_server_x", "DOMAINS.GOOGLE.COM","selected"); %>>DOMAINS.GOOGLE.COM</option>
 						<option value="WWW.DYNDNS.ORG" <% nvram_match("ddns_server_x", "WWW.DYNDNS.ORG","selected"); %>>WWW.DYNDNS.ORG</option>
@@ -1627,6 +1418,9 @@ function showDescTooltip(e){
 						<div class="cert_status_title"><#vpn_openvpn_KC_expire#> :</div>
 						<div id="CAexpireOn" class="cert_status_val"></div>
 					</div>
+					<div>
+						<input class="button_gen" onclick="save_cacert_key();" type="button" value="<#btn_Export#>" />
+					</div>
 				</td>
 			</tr>
 			<tr id="cert_details" style="display:none;">
@@ -1702,4 +1496,3 @@ function showDescTooltip(e){
 </form>
 </body>
 </html>
-

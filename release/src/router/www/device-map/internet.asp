@@ -371,7 +371,11 @@ function update_connection_type(dualwan_unit){
 	else if(wanlink_type_conv == "v6plus")
 		wanlink_type_conv = "<#IPv6_plus#>";
 	else if(wanlink_type_conv == "ocnvc")
-                wanlink_type_conv = "<#IPv6_ocnvc#>";
+		wanlink_type_conv = "<#IPv6_ocnvc#>";
+	else if(wanlink_type_conv == "dslite")
+		wanlink_type_conv = "DS-Lite";
+	else if(wanlink_type_conv == "v6opt")
+		wanlink_type_conv = "<#IPv6_opt#>";
 	else if(gobi_support && wanlink_type_conv == "USB Modem"){
 		if(modem_operation != "")
 			wanlink_type_conv = modem_operation;
@@ -1182,7 +1186,6 @@ function manualSetup(){
 <tr id="sitesurvey_tr" style="display:none">
   <td height="50" style="padding:10px 15px 0px 15px;">
   	<p class="formfonttitle_nwm" style="float:left;"><#APSurvey_action_search_again_hint2#></p>
-	<div class="line_horizontal"></div>     
 	<input type="button" class="button_gen" onclick="gotoSiteSurvey();" value="<#QIS_rescan#>" style="float:right;margin: 5px 0;">
   </td>
 </tr>

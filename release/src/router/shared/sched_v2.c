@@ -1209,6 +1209,34 @@ int check_expire_on_off(const char *sched_str) {
 	}
 }
 
+/*
+	return	0 : wlX_timesched and wlX.Y_timesched are all not set.
+			1 : wlX_timesched is set.
+			2 : wlX.Y_timesched is set.
+*/
+int check_timesched_is_set(int unit, int subunit) {
+	char tmp[128];
+	char prefix[] = "wlXXXX_";
+	int wlX_timesched;
+	int wlX_Y_timesched, ret;
+	ret = snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	if(unlikely(ret < 0))
+		dbg("snprintf failed\n");
+	wlX_timesched = nvram_get_int(strcat_r(prefix, "timesched", tmp));
+	if (wlX_timesched > 0)
+		return 1;
+
+	if (subunit >= 0) {
+		ret = snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
+		if(unlikely(ret < 0))
+			dbg("snprintf failed\n");
+		wlX_Y_timesched = nvram_get_int(strcat_r(prefix, "timesched", tmp));
+		if ((wlX_timesched == 0 && wlX_Y_timesched > 0))
+			return 2;
+	}
+	return 0;
+}
+
 /*For wireless scheduler*/
 void convert_wl_sched_v1_to_sched_v2() {
 	char wl_ifnames[512];
@@ -1319,6 +1347,12 @@ void convert_pc_sched_v1_to_sched_v2() {
 		snprintf(str_sched_v1, sizeof(str_sched_v1), "%s", nvram_safe_get("MULTIFILTER_MACFILTER_DAYTIME"));
 		snprintf(str_sched_v2, sizeof(str_sched_v2), "%s", "");
 
+		if (strlen(str_sched_v1) == 0 && 
+			strlen(nvram_safe_get("MULTIFILTER_MAC")) == 0 && 
+			strlen(nvram_safe_get("MULTIFILTER_ENABLE")) == 0) { //all rules are empty, we also write empty rule.
+			snprintf(str_sched_v2, sizeof(str_sched_v2), "%s", "");
+			changed = 1;
+		} else {
 		//if (!nvram_get("MULTIFILTER_MACFILTER_DAYTIME_V2")) {
 			foreach_62_keep_empty_string(count, word, str_sched_v1, next_word) {
 				snprintf(tmp_str_sched_v2, sizeof(tmp_str_sched_v2), "%s", "");
@@ -1339,6 +1373,7 @@ void convert_pc_sched_v1_to_sched_v2() {
 
 			if (strlen(str_sched_v2) && str_sched_v2[strlen(str_sched_v2)-1] == '>')
 				str_sched_v2[strlen(str_sched_v2)-1] = '\0'; // strip the last char '<'
+		}
 
 			SCHED_DBG("final : %s", str_sched_v2);
 
@@ -1351,3 +1386,4 @@ void convert_pc_sched_v1_to_sched_v2() {
 	}
 }
 /*For parental control scheduler*/
+

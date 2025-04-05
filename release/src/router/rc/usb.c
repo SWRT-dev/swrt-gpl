@@ -1389,10 +1389,9 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 #ifdef RTCONFIG_OPENPLUS_TFAT
 			if(nvram_match("usb_fatfs_mod", "tuxera")){
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_QCA)
-				if(nvram_get_int("stop_iostreaming"))
-					sprintf(options + strlen(options), ",nodev" + (options[0] ? 0 : 1));
-				else
-					sprintf(options + strlen(options), ",nodev,iostreaming" + (options[0] ? 0 : 1));
+				sprintf(options + strlen(options), ",nodev" + (options[0] ? 0 : 1));
+				if(!nvram_get_int("stop_iostreaming"))
+					sprintf(options + strlen(options), ",iostreaming" + (options[0] ? 0 : 1));
 #if defined(BCM49XX)
 				sprintf(options + strlen(options), ",inode32" + (options[0] ? 0 : 1));
 #endif
@@ -1406,10 +1405,9 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 #endif
 #elif defined(RTCONFIG_TFAT)
 #if defined(RTCONFIG_BCMARM) || defined(RTCONFIG_QCA)
-			if(nvram_get_int("stop_iostreaming"))
-				sprintf(options + strlen(options), ",nodev" + (options[0] ? 0 : 1));
-			else
-				sprintf(options + strlen(options), ",nodev,iostreaming" + (options[0] ? 0 : 1));
+			sprintf(options + strlen(options), ",nodev" + (options[0] ? 0 : 1));
+			if(!nvram_get_int("stop_iostreaming"))
+				sprintf(options + strlen(options), ",iostreaming" + (options[0] ? 0 : 1));
 #if defined(BCM49XX)
 			sprintf(options + strlen(options), ",inode32" + (options[0] ? 0 : 1));
 #endif
@@ -1427,11 +1425,10 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 		}
 		else if (strncmp(type, "ntfs", 4) == 0) {
 			sprintf(options, "umask=0000,nodev");
-#if defined(RTCONFIG_NTFS3)
-			if (nvram_invmatch("smbd_cset", ""))
-				sprintf(options + strlen(options), "%snls=%s%s", options[0] ? "," : "",
-						isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "",
-						nvram_get("smbd_cset"));
+#if defined(RTCONFIG_KERNEL_NTFS3)
+			if (!nvram_match("smbd_cset", ""))
+				sprintf(options + strlen(options), "%siocharset=%s%s", options[0] ? "," : "",
+					isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "",	nvram_get("smbd_cset"));
 			sprintf(options + strlen(options), "%s%s", options[0] ? "," : "", "force,prealloc,sparse");
 #else
 			if(nvram_match("smbd_cset", "utf8"))
@@ -1439,7 +1436,7 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 			else{
 				if(nvram_invmatch("smbd_cset", ""))
 						sprintf(options + strlen(options), "%snls=%s%s", options[0] ? "," : "", isdigit(nvram_get("smbd_cset")[0]) ? "cp" : "", nvram_get("smbd_cset"));
-#endif
+
 #if defined(RTCONFIG_REALTEK) && defined(RTCONFIG_TUXERA_NTFS)
 			/* TUXERA module not support codepage options. */
 #else
@@ -1459,9 +1456,9 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 					nvram_set("smbd_nlsmod", flagfn);
 				}
 #endif
-#if !defined(RTCONFIG_NTFS3)
 			}
-#endif
+#endif	/* RTCONFIG_KERNEL_NTFS3 */
+
 #ifndef RTCONFIG_BCMARM
 			sprintf(options + strlen(options), ",noatime" + (options[0] ? 0 : 1));
 #endif
@@ -1567,16 +1564,30 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 			/* try ntfs-3g in case it's installed */
 			if (ret != 0 && strncmp(type, "ntfs", 4) == 0) {
 				if (nvram_get_int("usb_fs_ntfs")) {
-#if defined(RTCONFIG_NTFS3)
-					eval("ntfsfix", "-b", "-d", mnt_dev);// clean dirty flag
-					ret = eval("mount", "-t", "ntfs3", "-o", options, mnt_dev, mnt_dir);
-#else
 #ifdef RTCONFIG_OPEN_NTFS3G
-#if defined(RTCONFIG_OPENPLUSPARAGON_NTFS) || defined(RTCONFIG_OPENPLUSTUXERA_NTFS)
+#if defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
+					if (nvram_match("usb_ntfs_mod", "open")) {
+						int first;
+						char cmd[sizeof("ntfsfix -d /dev/sda1XXXXXX|logger")];
+
+						for (first = 1; first >= 0; --first) {
+							if (first <= 0) {
+								snprintf(cmd, sizeof(cmd), "ntfsfix -d %s|logger", mnt_dev);
+								doSystem(cmd);
+							}
+
+							ret = eval("ntfs-3g", "-o", options, mnt_dev, mnt_dir);
+							if (!ret)
+								break;
+						}
+					}
+#else
+#if defined(RTCONFIG_OPENPLUSPARAGON_NTFS)|| defined(RTCONFIG_OPENPLUSTUXERA_NTFS)
 					if(nvram_match("usb_ntfs_mod", "open"))
 #endif
 						ret = eval("ntfs-3g", "-o", options, mnt_dev, mnt_dir);
-#endif
+#endif	/* RTCONFIG_OPENPLUSKERNEL_NTFS3 */
+#endif	/* RTCONFIG_OPEN_NTFS3G */
 #if defined(RTCONFIG_TUXERA_NTFS)
 #if defined(RTCONFIG_OPENPLUSTUXERA_NTFS)
 					else
@@ -1598,7 +1609,23 @@ int mount_r(char *mnt_dev, char *mnt_dir, char *_type)
 							ret = eval("mount", "-t", "ufsd", "-o", options, "-o", "force", mnt_dev, mnt_dir);
 					}
 #endif
+#if defined(RTCONFIG_KERNEL_NTFS3)
+#if defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
+					else
 #endif
+					{
+						int first;
+						for (first = 1; first >= 0; --first) {
+							if (first <= 0) {
+								eval("ntfsfix", "-b", "-d", mnt_dev);// clean dirty flag
+							}
+							ret = eval("mount", "-t", "ntfs3", "-o", options, mnt_dev, mnt_dir);
+							if (!ret)
+								break;
+						}
+					}
+#endif
+
 					if(ret != 0){
 						syslog(LOG_INFO, "USB %s(%s) failed to mount as NTFS!" , mnt_dev, type);
 						TRACE_PT("USB %s(%s) failed to mount as NTFS!\n", mnt_dev, type);
@@ -5723,6 +5750,128 @@ _dprintf("diskremove: host=%d, channel=%d, id=%d, lun=%d.\n", host, channel, id,
 #else
 int diskremove_main(int argc, char *argv[]){
 	return 0;
+}
+#endif
+
+#if defined(RTCONFIG_OPENPLUSKERNEL_NTFS3)
+static inline int is_ntfs_driver(const char *drv)
+{
+	int ret = 0;
+
+	if (!drv)
+		return 0;
+
+	ret = !strcmp(drv, "ntfs3")
+#if defined(RTCONFIG_OPEN_NTFS3G)
+	/* Not only ntfs-3g use fuseblk. Check fuseblk if ntfs-3g is enabled. */
+	   || !strcmp(drv, "fuseblk")
+#endif
+	   || !strcmp(drv, "tntfs")
+	   ;
+
+	return ret;
+}
+
+/* Check mounted NTFS prtitions that are not mount with selected NTFS driver.
+ * If found, stop nasapp, eject found partitions, mount found partitions with
+ * selected NTFS driver, and then start nas app.
+ */
+int chgntfsdrv_main(int argc, char *argv[])
+{
+	int c, lock, restart, stopped = 0, ret = 0;
+	FILE *f;
+	char cur_ntfsdrv[sizeof("ntfs3XXXXXX")], *p;
+	char pdev_path[sizeof("/dev/sda1XXXX")];
+	struct partitions_s {
+		char pdev[sizeof("sdaXXX")];	/* partition dev, e.g., sda1 */
+	} part_tbl[32], *part;			/* 16 partition device node per disk. */
+
+	struct mntent *m;
+
+	if (!d_exists("/sys/bus/usb/devices")) {
+		_dprintf("/sys/bus/usb/devices is not supported!\n");
+		return -1;
+	}
+	if ((c = pidof(argv[0])) != getpid()) {
+		_dprintf("%s is running. (pid %d/%d)\n", argv[0], c, getpid());
+		return -2;
+	}
+
+	strlcpy(cur_ntfsdrv, nvram_safe_get("usb_ntfs_mod"), sizeof(cur_ntfsdrv));
+	if (*cur_ntfsdrv == '\0')
+		return -3;
+	_dprintf("Current NTFS driver: %s\n", cur_ntfsdrv);
+	if (!strcmp(cur_ntfsdrv, "open"))
+		strlcpy(cur_ntfsdrv, "fuseblk", sizeof(cur_ntfsdrv));
+
+	do {
+		if ((f = setmntent("/proc/mounts", "r")) == NULL)
+			return -4;
+
+		/* Find-out all partitions mount with another ntfs driver. */
+		*part_tbl[0].pdev = '\0';
+		for (c = 0, part = &part_tbl[0];
+		     c < ARRAY_SIZE(part_tbl);
+		    )
+		{
+			if (!(m = getmntent(f)))
+				break;
+
+			/* ignore rootfs mount, non-sdXX, non-ntfs partition */
+			if (!strcmp(m->mnt_fsname, "rootfs")
+			 || strncmp(m->mnt_fsname, "/dev/sd", 7))
+				continue;
+			if (!is_ntfs_driver(m->mnt_type))
+				continue;
+
+			if (!strcmp(m->mnt_type, cur_ntfsdrv))
+				continue;
+
+			/* save partition device node name, reuse buffer if possible */
+			if (!(p = strrchr(m->mnt_fsname, '/')))
+				p = m->mnt_fsname;
+			else
+				p++;
+			strlcpy(part->pdev, p, sizeof(part->pdev));
+
+			_dprintf("Add pdev %s to remount list. (type %s dir %s)\n",
+				part->pdev, m->mnt_type, m->mnt_dir);
+			part++;
+			c++;
+		}
+		endmntent(f);
+		if (ret || *part_tbl[0].pdev == '\0')
+			break;
+
+		*part->pdev = '\0';
+		restart = 0;
+		if (c >= ARRAY_SIZE(part_tbl))
+			restart = 1;
+
+		/* Stop NAS apps. */
+		if (!stopped) {
+			restart_nas_services(1, 0, 1);
+			stopped = 1;
+		}
+
+		/* Umount found partitions, unmount non-ntfs partitions of same disk too.
+		 * Because unauthorize a disk means unplug disk with mounted partition(s).
+		 */
+		lock = file_lock("usb");
+		for (part = &part_tbl[0]; *part->pdev != '\0'; ++part) {
+			snprintf(pdev_path, sizeof(pdev_path), "/dev/%s", part->pdev);
+			/* "USB partition unmounted from /PATH/TO/MNTDIR" is printed in syslog if successful. */
+			umount_partition(pdev_path, -1, NULL, NULL, EFH_HP_REMOVE);
+			mount_partition(pdev_path, -1, NULL, part->pdev, EFH_HP_ADD);
+		}
+		file_unlock(lock);
+	} while (restart == 1);
+
+	/* Start NAS apps. */
+	if (stopped)
+		restart_nas_services(0, 1, 0);
+
+	return ret;
 }
 #endif
 

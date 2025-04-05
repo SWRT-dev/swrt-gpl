@@ -378,6 +378,9 @@ static inline char *wan_if_eth(void)
 #define HE_DLOFDMA		"he_dl_ofdma"
 #define HE_ULOFDMA		"he_ul_ofdma"
 #define HE_ULMIMO		"he_ul_mimo"
+#define IW			"iw"
+#elif defined(RTCONFIG_RALINK) && defined(RTCONFIG_NL80211)
+#define IWPRIV			"mwctl"
 #else
 #define IWPRIV			"iwpriv"
 #define HE_DLOFDMA		"he_dlofdma"
@@ -624,6 +627,8 @@ enum {
 #define CFG_BW_40M	(1U << 1)
 #define CFG_BW_80M	(1U << 2)
 #define CFG_BW_160M	(1U << 3)
+#define CFG_BW_320M	(1U << 4)
+#define CFG_BW_240M	(1U << 5)
 
 #ifdef RTCONFIG_CFGSYNC
 #define CFG_PREFIX      "CFG"
@@ -1733,7 +1738,13 @@ enum wl_band_id {
 	WL_NR_BANDS				/* Maximum number of Wireless bands of all models. */
 };
 
-#if defined(RTCONFIG_WIFI7_NO_6G)
+#if defined(RTCONFIG_HAS_5G) || defined(RTCONFIG_HAS_5G_2)
+static inline int is_5g(int unit) { return (unit == WL_5G_BAND || unit == WL_5G_2_BAND)? 1 : 0; }
+#else
+static inline int is_5g(int unit) { return 0; }
+#endif
+
+#if defined(RTCONFIG_WIFI7_NO_6G) || (!defined(RTCONFIG_HAS_6G) && !defined(RTCONFIG_HAS_6G_2))
 static inline int is_6g(int unit) { return 0; }
 #elif defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
 static inline int is_6g(int unit)
@@ -1753,15 +1764,22 @@ static inline int is_6g(int unit)
 }
 #endif
 
+static inline int is_5g_bw(int bw)
+{
+	/* QCA WiFi7 supports 240MHz via 320MHz + puncture out 80MHz after ch144. */
+	return (bw == 20 || bw == 40 || bw == 80 || bw == 160 || bw == 240 || bw == 320)? 1 : 0;
+}
+
 #if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
 enum wl_bandwidth_id {
 	WL_BW_20 = 0,
-	WL_BW_AUTO = 1,		/* 2G: 20/40MHz, 5G: 20/40/80/(80+80)/(160) */
+	WL_BW_AUTO = 1,		/* 2G: 20/40MHz, 5G: 20/40/80/(80+80)/(160)/(240) */
 	WL_BW_40 = 2,
 	WL_BW_80 = 3,
 	WL_BW_80_80 = 4,
 	WL_BW_160 = 5,
-	WL_BW_320 = 6,
+	WL_BW_240 = 6,		/* 5G: 240MHz (QCA WiFi7 only), 6G: 320MHz */
+	WL_BW_320 = 6,		/* 5G: 240MHz (QCA WiFi7 only), 6G: 320MHz */
 
 	WL_BW_2160 = 10,	/* 60G: 2.16GHz */
 	WL_BW_4320 = 11,	/* 60G: 4.32GHz */
@@ -1770,7 +1788,7 @@ enum wl_bandwidth_id {
 
 	WL_NR_BW
 };
-#elif defined(BCMWL5)
+#elif defined(CONFIG_BCMWL5) || defined(CONFIG_BCMWL6)
 enum wl_bandwidth_id {
 	WL_BW_AUTO = 0,		/* 2G: 20/40MHz, 5G: 20/40/80/(80+80)/(160) */
 	WL_BW_20 = 1,
@@ -1969,31 +1987,22 @@ static inline int __is_rp_wlc_band(int __attribute__((unused)) sw_mode, int __at
 static inline int is_rp_wlc_band(int __attribute__((unused)) band) { return 0; }
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
-#if defined(RTCONFIG_WIFI_IPQ53XX_QCN6274)
-static inline char *sta_default_mode(int band)
-{
-	if (band == WL_5G_BAND || band == WL_5G_2_BAND) {
-#if defined(RTCONFIG_BW160M)
-		return "11AEHT160";
+#if defined(RTCONFIG_BW240M)
+extern int __w75g_240m_capable(int band, uint64_t chlist_m);
+extern int w75g_240m_capable(int band);
 #else
-		return "11AEHT80";
+static inline int __w75g_240m_capable(int __attribute__((__unused__)) band, uint64_t __attribute__((__unused__)) chlist_m) { return 0; }
+static inline int w75g_240m_capable(int __attribute__((__unused__)) band) { return 0; }
 #endif
-	} else
-	{	
-#if defined(RTCONFIG_MLO)		
-		if(band == WL_2G_BAND && nvram_get_int("qca_mlo_sta"))
-			return "11GEHT40";
-		else	
-#endif			
-			return "AUTO";
-	}	
-}
+
+#if defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX)
+extern char *sta_default_mode(int band, int allow_dfs_ch);
 #elif defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP)
-static inline char *sta_default_mode(int band)
+static inline char *sta_default_mode(int band, int allow_dfs_ch)
 {
-	if (band == WL_5G_BAND || band == WL_5G_2_BAND) {
+	if (is_5g(band)) {
 #if defined(RTCONFIG_BW160M)
-		return "11AHE160";
+		return allow_dfs_ch? "11AHE160" : "11AHE80";
 #else
 		return "11AHE80";
 #endif
@@ -2001,7 +2010,7 @@ static inline char *sta_default_mode(int band)
 		return "AUTO";
 }
 #else
-static inline char *sta_default_mode(int __attribute__((__unused__)) band) { return "AUTO"; }
+static inline char *sta_default_mode(int __attribute__((__unused__)) band, int __attribute__((unused)) allow_dfs_ch ) { return "AUTO"; }
 #endif
 
 #if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
@@ -2539,6 +2548,7 @@ extern int get_switch_model(void);
 
 // PHY_PROT FLAG
 #define PHY_PORT_FLAG_BYPASS_CABLE_DIAG		(1U << 0)
+#define PHY_PORT_FLAG_CANNOT_USE_AS_WAN		(1U << 1)
 typedef struct _usb_device_info usb_device_info_t;
 
 #if 1
@@ -2704,6 +2714,9 @@ extern int shartd_get_channel(const char *ifname);
 extern unsigned long long get_bitrate(const char *ifname);
 extern char *get_wififname(int band);
 extern char *get_staifname(int band);
+#if defined(RTCONFIG_NL80211)
+extern void set_wpa_cli_cmd(int band, const char *cmd, int chk_reply);
+#endif
 #endif
 #if defined(RTCONFIG_QCA)
 extern char *__get_wlifname(int band, int subunit, char *buf);
@@ -3077,6 +3090,7 @@ extern int shared_set_channel(const char* ifname, int channel);
 extern int set_bw_nctrlsb(const char* ifname, int bw, int nctrlsb);
 extern int get_channel_info(const char *ifname, int *channel, int *bw, int *nctrlsb);
 extern char *get_wififname(int band);
+extern int get_wififname_unit(const char *ifname);
 extern char *get_staifname(int band);
 extern int get_sta_ifname_unit(const char *ifname);
 extern int get_regular_class(const char* ifname);
@@ -3141,6 +3155,13 @@ extern char *set_steer(const char *mac,int val);
 extern void set_power_save_mode(void);
 #else
 static inline void set_power_save_mode(void) { }
+#endif
+
+/* nmp */
+#ifdef RTCONFIG_MULTILAN_CFG
+extern void check_wireless_auth_from_sdn(char *mac, char *ifname, char *wl_auth, int auth_len);
+#else
+extern void check_wireless_auth(char *mac, char *wl_auth, int auth_len);
 #endif
 
 /* sysdeps/broadcom/ *.c */
@@ -3684,6 +3705,7 @@ extern uint32_t nums_str_to_u32_mask(const char *str);
 extern unsigned int netdev_calc(char *ifname, char *ifname_desc, unsigned long long *rx, unsigned long long *tx, char *ifname_desc2, unsigned long long *rx2, unsigned long long *tx2, char *nv_lan_ifname, char *nv_lan_ifnames);
 extern void disable_dpi_engine_setting(void);
 extern int get_iface_hwaddr(char *name, unsigned char *hwaddr);
+extern int get_lower_iface_of_vlan_iface(const char *viface, char *iface);
 #if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
 extern int __set_iface_ps(const char *ifname, int nr_rx_mask, const unsigned int *rx_mask, int nr_tx_mask, const unsigned int *tx_mask);
 static inline int set_iface_ps2(const char *ifname, unsigned int rx_mask, unsigned tx_mask)
@@ -3716,6 +3738,7 @@ extern int set_irq_smp_affinity_by_name(const char *name, int order, unsigned in
 extern int get_active_fw_num(void);
 extern int exec_and_return_string(const char *cmd, const char *keyword, char *buf, size_t buf_len);
 extern int exec_and_parse(const char *cmd, const char *keyword, const char *fmt, int cnt, ...);
+extern int read_and_parse(const char *fn, const char *keyword, const char *fmt, int cnt, ...);
 extern char *iwpriv_get(const char *iface, char *cmd);
 extern int iwpriv_get_int(const char *iface, char *cmd, int *result);
 extern int readdir_wrapper(const char *path, const char *keyword, int (*handler)(const char *path, const struct dirent *de, size_t de_size, void *arg), void *arg);
@@ -3725,51 +3748,114 @@ extern void set_no_internet_ready(void);
 extern unsigned int num_of_mssid_support(unsigned int unit);
 extern enum led_id get_wl_led_id(int band);
 extern char *get_wl_led_gpio_nv(int band);
-#define CH1_M	(1U << 0)
-#define CH2_M	(1U << 1)
-#define CH3_M	(1U << 2)
-#define CH4_M	(1U << 3)
-#define CH5_M	(1U << 4)
-#define CH6_M	(1U << 5)
-#define CH7_M	(1U << 6)
-#define CH8_M	(1U << 7)
-#define CH9_M	(1U << 8)
-#define CH10_M	(1U << 9)
-#define CH11_M	(1U << 10)
-#define CH12_M	(1U << 11)
-#define CH13_M	(1U << 12)
-#define CH32_M	(1U << 0)
-#define CH36_M	(1U << 1)
-#define CH40_M	(1U << 2)
-#define CH44_M	(1U << 3)
-#define CH48_M	(1U << 4)
-#define CH52_M	(1U << 5)
-#define CH56_M	(1U << 6)
-#define CH60_M	(1U << 7)
-#define CH64_M	(1U << 8)
-#define CH68_M	(1U << 9)
-#define CH96_M	(1U << 10)
-#define CH100_M	(1U << 11)
-#define CH104_M	(1U << 12)
-#define CH108_M	(1U << 13)
-#define CH112_M	(1U << 14)
-#define CH116_M	(1U << 15)
-#define CH120_M	(1U << 16)
-#define CH124_M	(1U << 17)
-#define CH128_M	(1U << 18)
-#define CH132_M	(1U << 19)
-#define CH136_M	(1U << 20)
-#define CH140_M	(1U << 21)
-#define CH144_M	(1U << 22)
-#define CH149_M	(1U << 23)
-#define CH153_M	(1U << 24)
-#define CH157_M	(1U << 25)
-#define CH161_M	(1U << 26)
-#define CH165_M	(1U << 27)
-#define CH169_M	(1U << 28)
-#define CH173_M	(1U << 29)
-#define CH177_M	(1U << 30)
+#define CH1_M	(UINT64_C(1) << 0)
+#define CH2_M	(UINT64_C(1) << 1)
+#define CH3_M	(UINT64_C(1) << 2)
+#define CH4_M	(UINT64_C(1) << 3)
+#define CH5_M	(UINT64_C(1) << 4)
+#define CH6_M	(UINT64_C(1) << 5)
+#define CH7_M	(UINT64_C(1) << 6)
+#define CH8_M	(UINT64_C(1) << 7)
+#define CH9_M	(UINT64_C(1) << 8)
+#define CH10_M	(UINT64_C(1) << 9)
+#define CH11_M	(UINT64_C(1) << 10)
+#define CH12_M	(UINT64_C(1) << 11)
+#define CH13_M	(UINT64_C(1) << 12)
+#define CH32_M	(UINT64_C(1) << 0)
+#define CH36_M	(UINT64_C(1) << 1)
+#define CH40_M	(UINT64_C(1) << 2)
+#define CH44_M	(UINT64_C(1) << 3)
+#define CH48_M	(UINT64_C(1) << 4)
+#define CH52_M	(UINT64_C(1) << 5)
+#define CH56_M	(UINT64_C(1) << 6)
+#define CH60_M	(UINT64_C(1) << 7)
+#define CH64_M	(UINT64_C(1) << 8)
+#define CH68_M	(UINT64_C(1) << 9)
+#define CH96_M	(UINT64_C(1) << 10)
+#define CH100_M	(UINT64_C(1) << 11)
+#define CH104_M	(UINT64_C(1) << 12)
+#define CH108_M	(UINT64_C(1) << 13)
+#define CH112_M	(UINT64_C(1) << 14)
+#define CH116_M	(UINT64_C(1) << 15)
+#define CH120_M	(UINT64_C(1) << 16)
+#define CH124_M	(UINT64_C(1) << 17)
+#define CH128_M	(UINT64_C(1) << 18)
+#define CH132_M	(UINT64_C(1) << 19)
+#define CH136_M	(UINT64_C(1) << 20)
+#define CH140_M	(UINT64_C(1) << 21)
+#define CH144_M	(UINT64_C(1) << 22)
+#define CH149_M	(UINT64_C(1) << 23)
+#define CH153_M	(UINT64_C(1) << 24)
+#define CH157_M	(UINT64_C(1) << 25)
+#define CH161_M	(UINT64_C(1) << 26)
+#define CH165_M	(UINT64_C(1) << 27)
+#define CH169_M	(UINT64_C(1) << 28)
+#define CH173_M	(UINT64_C(1) << 29)
+#define CH177_M	(UINT64_C(1) << 30)
+#define NON_DFS_CH_M	(CH36_M | CH40_M | CH44_M | CH48_M | CH149_M | CH153_M | CH157_M | CH161_M)
 #define DFS_CH_M	(CH52_M | CH56_M | CH60_M | CH64_M | CH68_M | CH96_M | CH100_M | CH104_M | CH108_M | CH112_M | CH116_M | CH120_M | CH124_M | CH128_M | CH132_M | CH136_M | CH140_M | CH144_M)
+#define BW240_CH_M	(CH100_M | CH104_M | CH108_M | CH112_M | CH116_M | CH120_M | CH124_M | CH128_M | CH132_M | CH136_M | CH140_M | CH144_M)
+/* bit0~58 = ch1~233; ch2 is not supported! */
+#define B6GCH_M(ch)	(UINT64_C(1) << ((ch) - 1) >> 2)
+#define B6GCH1_M	(UINT64_C(1) << 0)
+#define B6GCH5_M	(UINT64_C(1) << 1)
+#define B6GCH9_M	(UINT64_C(1) << 2)
+#define B6GCH13_M	(UINT64_C(1) << 3)
+#define B6GCH17_M	(UINT64_C(1) << 4)
+#define B6GCH21_M	(UINT64_C(1) << 5)
+#define B6GCH25_M	(UINT64_C(1) << 6)
+#define B6GCH29_M	(UINT64_C(1) << 7)
+#define B6GCH33_M	(UINT64_C(1) << 8)
+#define B6GCH37_M	(UINT64_C(1) << 9)
+#define B6GCH41_M	(UINT64_C(1) << 10)
+#define B6GCH45_M	(UINT64_C(1) << 11)
+#define B6GCH49_M	(UINT64_C(1) << 12)
+#define B6GCH53_M	(UINT64_C(1) << 13)
+#define B6GCH57_M	(UINT64_C(1) << 14)
+#define B6GCH61_M	(UINT64_C(1) << 15)
+#define B6GCH65_M	(UINT64_C(1) << 16)
+#define B6GCH69_M	(UINT64_C(1) << 17)
+#define B6GCH73_M	(UINT64_C(1) << 18)
+#define B6GCH77_M	(UINT64_C(1) << 19)
+#define B6GCH81_M	(UINT64_C(1) << 20)
+#define B6GCH85_M	(UINT64_C(1) << 21)
+#define B6GCH89_M	(UINT64_C(1) << 22)
+#define B6GCH93_M	(UINT64_C(1) << 23)
+#define B6GCH97_M	(UINT64_C(1) << 24)
+#define B6GCH101_M	(UINT64_C(1) << 25)
+#define B6GCH105_M	(UINT64_C(1) << 26)
+#define B6GCH109_M	(UINT64_C(1) << 27)
+#define B6GCH113_M	(UINT64_C(1) << 28)
+#define B6GCH117_M	(UINT64_C(1) << 29)
+#define B6GCH121_M	(UINT64_C(1) << 30)
+#define B6GCH125_M	(UINT64_C(1) << 31)
+#define B6GCH129_M	(UINT64_C(1) << 32)
+#define B6GCH133_M	(UINT64_C(1) << 33)
+#define B6GCH137_M	(UINT64_C(1) << 34)
+#define B6GCH141_M	(UINT64_C(1) << 35)
+#define B6GCH145_M	(UINT64_C(1) << 36)
+#define B6GCH149_M	(UINT64_C(1) << 37)
+#define B6GCH153_M	(UINT64_C(1) << 38)
+#define B6GCH157_M	(UINT64_C(1) << 39)
+#define B6GCH161_M	(UINT64_C(1) << 40)
+#define B6GCH165_M	(UINT64_C(1) << 41)
+#define B6GCH169_M	(UINT64_C(1) << 42)
+#define B6GCH173_M	(UINT64_C(1) << 43)
+#define B6GCH177_M	(UINT64_C(1) << 44)
+#define B6GCH181_M	(UINT64_C(1) << 45)
+#define B6GCH185_M	(UINT64_C(1) << 46)
+#define B6GCH189_M	(UINT64_C(1) << 47)
+#define B6GCH193_M	(UINT64_C(1) << 48)
+#define B6GCH197_M	(UINT64_C(1) << 49)
+#define B6GCH201_M	(UINT64_C(1) << 50)
+#define B6GCH205_M	(UINT64_C(1) << 51)
+#define B6GCH209_M	(UINT64_C(1) << 52)
+#define B6GCH213_M	(UINT64_C(1) << 53)
+#define B6GCH217_M	(UINT64_C(1) << 54)
+#define B6GCH221_M	(UINT64_C(1) << 55)
+#define B6GCH225_M	(UINT64_C(1) << 56)
+#define B6GCH229_M	(UINT64_C(1) << 57)
+#define B6GCH233_M	(UINT64_C(1) << 58)
 extern int ch2g2bit(int ch);
 extern int ch5g2bit(int ch);
 extern uint64_t ch2g2bitmask(int ch);
@@ -3782,7 +3868,8 @@ extern char *__bitmask2chlist2g(uint64_t mask, char *sep, char *ch_list, size_t 
 extern char *__bitmask2chlist5g(uint64_t mask, char *sep, char *ch_list, size_t ch_list_len);
 extern char *bitmask2chlist2g(uint64_t mask, char *sep);
 extern char *bitmask2chlist5g(uint64_t mask, char *sep);
-#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+#if defined(RTCONFIG_WIFI6E) \
+ || (defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G))
 extern int ch6g2bit(int ch);
 extern uint64_t ch6g2bitmask(int ch);
 extern int bit2ch6g(int bit);
@@ -3796,6 +3883,12 @@ extern int bit2ch(enum wl_band_id band, int bit);
 extern uint64_t chlist2bitmask(enum wl_band_id band, char *ch_list, char *sep);
 extern char *__bitmask2chlist(enum wl_band_id band, uint64_t mask, char *sep, char *ch_list, size_t ch_list_len);
 extern char *bitmask2chlist(enum wl_band_id band, uint64_t mask, char *sep);
+extern int *bitmask2iary2g(uint64_t mask, size_t *length, int *array);
+extern int *bitmask2iary5g(uint64_t mask, size_t *length, int *array);
+extern int *bitmask2iary6g(uint64_t mask, size_t *length, int *array);
+extern int *bitmask2iary(enum wl_band_id band, uint64_t mask, size_t *length, int *array);
+extern int select_rand_ch_from_mask(enum wl_band_id band, uint64_t mask);
+extern uint64_t get_cur_channel_mask(const char *ifname);
 #if defined(RTCONFIG_QCA)
 extern char *get_wsup_drvname(int band);
 extern void disassoc_sta(char *ifname, char *sta_addr);
@@ -3988,6 +4081,24 @@ static inline int is_mswan_enabled()
 }
 #endif
 
+static inline int is_iptv_enabled()
+{
+	if ((nvram_get_int("switch_stb_x") > 0) || !nvram_match("switch_wantag", "none"))
+		return 1;
+	return 0;
+}
+
+static inline int check_default_wan_as_wan()
+{
+#if defined(RTCONFIG_MULTISERVICE_WAN)
+	if (is_mswan_enabled())
+		return 1;
+#endif
+	if (is_iptv_enabled())
+		return 1;
+	return 0;
+}
+
 static inline void add_sw_wan_cap(phy_port_mapping *port_mapping, int wan, uint32_t cap)
 {
 	int i;
@@ -4014,14 +4125,11 @@ static inline void add_sw_wan_cap(phy_port_mapping *port_mapping, int wan, uint3
 					port_mapping->port[i].cap |= cap;
 				//_dprintf("%s 2WANS_DUALWAN_IF_WAN is wan. cap1=%u, cap2=%u\n", port_mapping->port[i].label_name, cap, port_mapping->port[i].cap);
 					break;
-				}
-#if defined(RTCONFIG_MULTISERVICE_WAN)
-				else if (is_mswan_enabled() && (port_mapping->port[i].cap & PHY_PORT_CAP_WAN)) {
+				} else if (check_default_wan_as_wan() && (port_mapping->port[i].cap & PHY_PORT_CAP_WAN)) {
 					port_mapping->port[i].cap |= cap;
 				//_dprintf("%s 3WANS_DUALWAN_IF_WAN is wan. cap1=%u, cap2=%u\n", port_mapping->port[i].label_name, cap, port_mapping->port[i].cap);
 					break;
 				}
-#endif
 #if !defined(RTCONFIG_DUALWAN)
 				else if ((port_mapping->port[i].cap & PHY_PORT_CAP_WAN)) {
 					port_mapping->port[i].cap |= cap;
@@ -4122,7 +4230,9 @@ static inline void add_default_primary_wan(phy_port_mapping *port_mapping)
 				}
 			}
 		}
-	} else {
+	}
+#if 0 // No need to handle ap mode, repeater mode and media bridge mode
+	else {
 		for(i = 0; i < port_mapping->count; i++) {
 			if (((port_mapping->port[i].cap & PHY_PORT_CAP_WAN) > 0) || 
 				(!strncmp(port_mapping->port[i].label_name, "W", 1))) {
@@ -4131,6 +4241,7 @@ static inline void add_default_primary_wan(phy_port_mapping *port_mapping)
 			}
 		}
 	}
+#endif
 }
 
 static inline void add_sw_cap(phy_port_mapping *port_mapping)
@@ -4179,8 +4290,12 @@ static inline void add_sw_cap(phy_port_mapping *port_mapping)
 		}
 	}
 #else //#if defined(RTCONFIG_DUALWAN)
-	if (!strcmp(nvram_safe_get("wans_cap"), "wan"))
-		add_sw_wan_cap(port_mapping, WANS_DUALWAN_IF_WAN, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
+	if (!is_router_mode())
+		add_default_primary_wan(port_mapping);
+	else {
+		if (!strcmp(nvram_safe_get("wans_cap"), "wan"))
+			add_sw_wan_cap(port_mapping, WANS_DUALWAN_IF_WAN, PHY_PORT_CAP_DUALWAN_PRIMARY_WAN);
+	}
 #endif
 #if defined(RTCONFIG_MULTICAST_IPTV)
 	add_sw_iptv_cap(port_mapping, nvram_safe_get("iptv_stb_port"), PHY_PORT_CAP_IPTV_STB);
@@ -4408,7 +4523,8 @@ static inline int turbo_led_control(__attribute__ ((unused)) int onoff) { return
 static inline int boost_led_control(__attribute__ ((unused)) int onoff) { return 0; }
 #endif
 
-#if defined(RTCONFIG_LED_BTN) || defined(RTCONFIG_WPS_ALLLED_BTN) || defined(RTCONFIG_TURBO_BTN) || (!defined(RTCONFIG_WIFI_TOG_BTN) && !defined(RTCONFIG_QCA))
+#if defined(RTCONFIG_LED_BTN) || defined(RTCONFIG_WPS_ALLLED_BTN) || defined(RTCONFIG_TURBO_BTN) \
+ || defined(RTCONFIG_SW_CTRL_ALLLED) || (!defined(RTCONFIG_WIFI_TOG_BTN) && !defined(RTCONFIG_QCA))
 static inline int inhibit_led_on(void) { return !nvram_get_int("AllLED"); }
 #else
 static inline int inhibit_led_on(void) { return 0; }
@@ -5468,27 +5584,27 @@ extern int asus_openssl_crypt(char *key, char *salt, char *out, int out_len);
 
 enum{
 	ASUS_NV_PP_1 = 1,
-	ASUS_NV_PP_2,
-	ASUS_NV_PP_3,
-	ASUS_NV_PP_4,
-	ASUS_NV_PP_5,
-	ASUS_NV_PP_6,
-	ASUS_NV_PP_7,
-	ASUS_NV_PP_8,
-	ASUS_NV_PP_9,
-	ASUS_NV_PP_10,
-	ASUS_NV_PP_11,
+	ASUS_NV_PP_2 = 2,
+	ASUS_NV_PP_3 = 3,
+	ASUS_NV_PP_4 = 4,
+	ASUS_NV_PP_5 = 5,
+	ASUS_NV_PP_6 = 6,
+	ASUS_NV_PP_7 = 7,
+	ASUS_NV_PP_8 = 8,
+	ASUS_NV_PP_9 = 9,
+	ASUS_NV_PP_10 = 10,
+	ASUS_NV_PP_11 = 11,
 	ASUS_NV_PP_MAX
 };
 
 enum{
-	ASUS_PP_AUTOUPGRADE,
-	ASUS_PP_ASD,
-	ASUS_PP_AHS,
-	ASUS_PP_ACCOUNT_BINDING,
-	ASUS_PP_CONFIG_TRANSFER,
-	ASUS_PP_DDNS,
-	ASUS_PP_MAX,
+	ASUS_PP_AUTOUPGRADE = 1,
+	ASUS_PP_ASD = 2,
+	ASUS_PP_AHS = 3,
+	ASUS_PP_ACCOUNT_BINDING = 4,
+	ASUS_PP_CONFIG_TRANSFER = 5,
+	ASUS_PP_DDNS = 6,
+	ASUS_PP_MAX
 };
 
 struct ASUS_PP_table {
@@ -5561,4 +5677,3 @@ extern int cpu_plltype(void);
 #define unlikely(x) __builtin_expect(!!(x), 0)
 #endif
 #endif	/* !__SHARED_H__ */
-

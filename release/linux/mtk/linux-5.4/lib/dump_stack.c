@@ -50,10 +50,11 @@ static void dump_print_maps(void)
 		while (vma != 0){
 			f = vma->vm_file;
 			if (f && (vma->vm_flags & VM_EXEC)) {
-				printk("%08lx - %08lx, [%s]", vma->vm_start, vma->vm_end, f->f_path.dentry->d_iname);
+				printk("%08lx - %08lx, [%s]\n", vma->vm_start, vma->vm_end, f->f_path.dentry->d_iname);
 			}
 			vma = vma->vm_next;
 		}
+		mmput(mm);
 	}
 	rcu_read_unlock();
 }

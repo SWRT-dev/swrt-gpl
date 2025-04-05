@@ -51,10 +51,10 @@ define(function(){
 				]
 			},
 			{
-				menuName: Guest_Network_naming,
+				menuName: isSupport("sdn_mwl") ? `<#Network#>` : Guest_Network_naming,
 				index: "menu_GuestNetwork",
 				tab: [
-					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: Guest_Network_naming},
+					{url: (isSupport("mtlancfg") ? "SDN.asp" : "Guest_network.asp"), tabName: isSupport("sdn_mwl") ? `<#Network#>` : Guest_Network_naming},
 					{url: "Captive_Portal.asp", tabName: "Free WiFi"},
 					{url: "Captive_Portal_Advanced.asp", tabName: "<#Captive_Portal#>"},
 					{url: "Guest_network_fbwifi.asp", tabName: "Facebook WiFi"},
@@ -89,6 +89,7 @@ define(function(){
 					{url: "AiProtection_WebProtector.asp", tabName: "<#AiProtection_filter#>"},
 					{url: "ParentalControl.asp", tabName: "<#Time_Scheduling#>"},
 					{url: "YandexDNS.asp", tabName: "<#YandexDNS#>"},
+					{url: "adGuard_DNS.asp", tabName: "AdGuard"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				] 
 			},
@@ -278,6 +279,7 @@ define(function(){
 					{url: "Advanced_Notification_Content.asp", tabName: "Notification"},
 					{url: "Advanced_Privacy.asp", tabName: "<#menu_privacy#>"},
 					{url: "Advanced_MultiFuncBtn.asp", tabName: "Multi-Function Button"},
+					{url: "Advanced_Account_Management.asp", tabName: "Account Management"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -329,12 +331,13 @@ define(function(){
 				if(!bwdpi_support){
 					retArray.push("menu_AiProtection");
 					retArray.push("menu_TrafficAnalyzer");
+					retArray.push("menu_BandwidthMonitor");
 				}
 
 				if(!adaptiveqos_support){	
 					for(i=0; i<menuTree.list.length; i++){
 						if(menuTree.list[i].menuName == '<#Adaptive_QoS#>'){
-							menuTree.list[i].menuName = '<#Menu_TrafficManager#>';
+							menuTree.list[i].menuName = '<#menu5_3_2#>';
 						}
 					}
 				}
@@ -522,7 +525,11 @@ define(function(){
 					retArray.push("YandexDNS.asp");
 				}
 
-				if(!frs_feedback_support) {		
+				if(!isSupport("adguard_dns")){
+					retArray.push("adGuard_DNS.asp");
+				}
+
+				if(!frs_feedback_support) {
 					retArray.push("Advanced_Feedback.asp");
 					retArray.push("Feedback_Info.asp");
 				}
@@ -701,6 +708,10 @@ define(function(){
 					retArray.push("MLO.asp");
 				}
 
+				if(isSupport("sdn_mainfh")){
+					retArray.push("Advanced_ACL_Content.asp");
+				}
+
 				if(isSupport("BUSINESS")){
 					retArray.push("APP_Installation.asp");
 					retArray.push("aidisk.asp");
@@ -708,10 +719,6 @@ define(function(){
 					retArray.push("Advanced_Modem_Content.asp");
 					retArray.push("Advanced_TimeMachine.asp");
 					retArray.push("fileflex.asp");
-				}
-
-				if(!isSupport("sw_btn")){
-					retArray.push("Advanced_MultiFuncBtn.asp");
 				}
 
 				if(isSupport("wifi7")){
@@ -803,6 +810,10 @@ define(function(){
 
 				if(!internetSpeed_support && !internetSpeed_lite_support){
 					retArray.push("AdaptiveQoS_InternetSpeed.asp");
+				}
+
+				if(!newsite_provisioning_support){
+					retArray.push("Advanced_Account_Management.asp");
 				}
 
 				return retArray;

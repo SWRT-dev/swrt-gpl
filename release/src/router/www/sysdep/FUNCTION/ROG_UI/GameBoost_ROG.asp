@@ -1243,7 +1243,7 @@ function regen_qos_rule(obj, priority){
 
 function applyRule(){
   if(dns_dpi_support)
-		document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
+		document.form.action_script.value = "restart_dnsqd;restart_qos;restart_firewall";
 	document.form.qos_rulelist.value = qos_rulelist;
 	document.form.submit();
 }
@@ -1265,7 +1265,7 @@ function eula_confirm(){
 		if(ctf_disable == 1){
 			document.form.action_script.value = "restart_qos;restart_firewall";
       if(dns_dpi_support)
-		    document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
+		    document.form.action_script.value = "restart_dnsqd;restart_qos;restart_firewall";
 		}
 		else{
 			if(ctf_fa_mode == "2"){
@@ -1277,7 +1277,7 @@ function eula_confirm(){
 				else{
 					document.form.action_script.value = "restart_qos;restart_firewall";
           if(dns_dpi_support)
-		        document.form.action_script.value = "restart_nfcm;restart_dnsqd;restart_qos;restart_firewall";
+		        document.form.action_script.value = "restart_dnsqd;restart_qos;restart_firewall";
 				}
 			}
 		}

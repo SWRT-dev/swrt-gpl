@@ -86,6 +86,7 @@ typedef struct apg_br_info_t {
 #define BIT_XX(x)  ((1 << x))
 #endif
 
+#define VIF_TYPE_ALL		0
 #define VIF_TYPE_NO_USED	BIT_XX(0)
 #define VIF_TYPE_PRELINK	BIT_XX(1)
 #define VIF_TYPE_FRONTHAUL 	BIT_XX(2)
@@ -122,6 +123,25 @@ typedef struct apg_br_info_t {
 #define NV_APG_X_DUT_LIST	    "apg%d_dut_list"
 #define NV_APG_X_MLO	        "apg%d_mlo"
 #define NV_APG_X_EXPIRETIME     "apg%d_expiretime"
+#define NV_APG_X_11EB           "apg%d_11be"
+#define NV_APG_X_DISABLED       "apg%d_disabled"
+
+#define NV_APX_X_ENABLE         "ap%s%d_enable"
+#define NV_APX_X_SSID           "ap%s%d_ssid"
+#define NV_APX_X_HIDE_SSID      "ap%s%d_hide_ssid"
+#define NV_APX_X_SECURITY       "ap%s%d_security"
+#define NV_APX_X_BW_LIMIT       "ap%s%d_bw_limit"
+#define NV_APX_X_TIMESCHED      "ap%s%d_timesched"
+#define NV_APX_X_SCHED          "ap%s%d_sched"
+#define NV_APX_X_AP_ISOLATE     "ap%s%d_ap_isolate"
+#define NV_APX_X_MACMODE        "ap%s%d_macmode"
+#define NV_APX_X_MACLIST        "ap%s%d_maclist"
+#define NV_APX_X_IOT_MAX_CMPT   "ap%s%d_iot_max_cmpt"
+#define NV_APX_X_DUT_LIST       "ap%s%d_dut_list"
+#define NV_APX_X_MLO            "ap%s%d_mlo"
+#define NV_APX_X_EXPIRETIME     "ap%s%d_expiretime"
+#define NV_APX_X_11BE     		"ap%s%d_11be"
+#define NV_APX_X_DISABLED       "ap%s%d_disabled"
 
 const static char APGx_NVRAM_LIST[] = {
     NV_APG_X_ENABLE","\

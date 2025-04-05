@@ -352,6 +352,50 @@ static int mtk_snand_mtd_write_oob(struct mtd_info *mtd, loff_t to,
 	return ret;
 }
 
+static int mtk_snand_mtd_panic_write(struct mtd_info *mtd, loff_t to,
+				     size_t len, size_t *retlen,
+				     const u_char *buf)
+{
+	struct mtk_snand_mtd *msm = mtd_to_msm(mtd);
+	size_t chklen, wrlen = 0;
+	uint32_t col;
+	int ret;
+
+	/* Disable IRQ and enter poll mode */
+	disable_irq(msm->irq);
+	mtk_snand_control_poll_mode(&msm->pdev, true);
+
+	col = to & mtd->writesize_mask;
+	to &= ~mtd->writesize_mask;
+
+	while (len) {
+		/* Move data */
+		chklen = mtd->writesize - col;
+		if (chklen > len)
+			chklen = len;
+
+		if (chklen < mtd->writesize)
+			memset(msm->page_cache, 0xff, mtd->writesize);
+		memcpy(msm->page_cache + col, buf + wrlen, chklen);
+
+		len -= chklen;
+		col = 0; /* (col + chklen) %  */
+		wrlen += chklen;
+
+		ret = mtk_snand_write_page(msm->snf, to, msm->page_cache,
+					   NULL, false);
+		if (ret)
+			break;
+
+		to += mtd->writesize;
+	}
+
+	if (retlen)
+		*retlen = wrlen;
+
+	return ret;
+}
+
 static int mtk_snand_mtd_block_isbad(struct mtd_info *mtd, loff_t offs)
 {
 	struct mtk_snand_mtd *msm = mtd_to_msm(mtd);
@@ -663,6 +707,7 @@ static int mtk_snand_probe(struct platform_device *pdev)
 	mtd->_erase = mtk_snand_mtd_erase;
 	mtd->_read_oob = mtk_snand_mtd_read_oob;
 	mtd->_write_oob = mtk_snand_mtd_write_oob;
+	mtd->_panic_write = mtk_snand_mtd_panic_write;
 	mtd->_block_isbad = mtk_snand_mtd_block_isbad;
 	mtd->_block_markbad = mtk_snand_mtd_block_markbad;
 

@@ -583,17 +583,19 @@
 	min-width: 360px;
 	position: relative;
 }
-.profile_policy_item {
-	display: flex;
-	align-items: center;
-	height: 56px;
-	border-bottom: 1px solid rgba(171, 180, 194, 0.2);
+.profile_setting_item.policy{
+	height: 56px !important;
+	justify-content: center !important;
+	color: rgba(171, 180, 194, 0.87) !important;
+	font-weight: bolder;
 }
-
-.profile_policy_item .text_content {
-	font-weight: 100;
-	font-size: 12px;
-	margin-left: 4%;
+.profile_setting_item.policy .text_content{
+	padding: 0 4%;
+}
+.profile_setting_item.policy .text_content > a{
+	color: rgb(43, 163, 255);
+	text-decoration: underline;
+	cursor: pointer;
 }
 .profile_setting_item.nowrap{
 	height: 48px !important;
@@ -634,7 +636,8 @@
 	max-width: 160px;
 	margin-top: initial;
 }
-.profile_setting_item.keys_item .title{
+.profile_setting_item.keys_item .title,
+.profile_setting_item.help_item .title{
 	position: absolute;
 	max-width: 290px;
 }
@@ -672,9 +675,13 @@
 .btn_item .btn_container .text.create_ssk_account{
 	width: 155px;
 }
+.btn_item .btn_container .text.create_nord_account{
+	width: 155px;
+}
 .btn_item .btn_container .text.import_file:before,
 .btn_item .btn_container .text.create_account:before,
-.text.create_ssk_account:before{
+.text.create_ssk_account:before,
+.text.create_nord_account:before{
 	position: absolute;
 	content: "";
 	background-image: url(/images/New_ui/vpn_icon_all_collect.svg);
@@ -685,6 +692,9 @@
 	left: -40px;
 }
 .text.create_ssk_account:before{
+	background-position: -54px -163px !important;
+}
+.text.create_nord_account:before{
 	background-position: -54px -163px !important;
 }
 .btn_item .btn_container .text.create_account:before{
@@ -717,7 +727,8 @@
 	display: flex;
 }
 .profile_setting_item.nowrap.switch_item .input_container,
-.profile_setting_item.keys_item .input_container{
+.profile_setting_item.keys_item .input_container,
+.profile_setting_item.help_item .input_container{
 	flex: 0 0 95%;
 	min-width: 350px;
 	max-width: initial;
@@ -1196,7 +1207,7 @@
 	font-size: 20px;
 	font-weight: 600;
 	letter-spacing: -0.18px;
-	height: auto;;
+	height: auto;
 }
 .function_desc_container{
 	display: flex;
@@ -1218,6 +1229,9 @@
 	height: 24px;
 	margin-right: 16px;
 	cursor: pointer;
+}
+.profile_setting_item.help_item .vpnc_help_icon{
+	margin-right: initial;
 }
 .input_container .vpnc_help_icon{
 	margin-right: initial;
@@ -1584,10 +1598,17 @@
 		border: 2px solid #1E2A41;
 	}
 }
-
-.ssk_promote{
-	max-width: 360px;
-	max-height: 155px;
+.profile_setting_item.promote_img{
+	height: 160px !important;
+}
+.promote_img_container{
+	width: 100%;
+	height: 100%;
+	display: flex;
+	justify-content: center;
+}
+.promote_img_container > img{
+	max-width: 100%;
 }
 @media (min-width: 992px) {
 	.profile_setting_item, .popup_container .popup_content_container .profile_setting_item{
@@ -1610,7 +1631,8 @@
 		max-width: none;
 		margin: initial;
 	}
-	.profile_setting_item.keys_item .input_container{
+	.profile_setting_item.keys_item .input_container,
+	.profile_setting_item.help_item .input_container{
 		flex: 0 0 92%;
 		max-width: none;
 		margin-left: 4%;
@@ -1641,10 +1663,16 @@
 		width: 92% !important;
 	}
 	.profile_setting_item.nowrap.switch_item .input_container,
-	.profile_setting_item.keys_item .input_container{
+	.profile_setting_item.keys_item .input_container,
+	.profile_setting_item.help_item .input_container{
 		min-width: initial !important;
 	}
 	#ssk_promote_img{
 		width: 280px !important;
+	}
+}
+@media (max-width: 400px) {
+	.profile_setting_item.promote_img{
+		height: 150px !important;
 	}
 }

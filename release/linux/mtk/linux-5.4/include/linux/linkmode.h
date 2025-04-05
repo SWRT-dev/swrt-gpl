@@ -82,4 +82,10 @@ static inline int linkmode_equal(const unsigned long *src1,
 	return bitmap_equal(src1, src2, __ETHTOOL_LINK_MODE_MASK_NBITS);
 }
 
+void linkmode_resolve_pause(unsigned long *local_adv,
+			    unsigned long *partner_adv,
+			    bool *tx_pause, bool *rx_pause);
+
+void linkmode_set_pause(unsigned long *advertisement, bool tx, bool rx);
+
 #endif /* __LINKMODE_H */

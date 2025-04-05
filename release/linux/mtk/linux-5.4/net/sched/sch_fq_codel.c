@@ -188,7 +188,7 @@ static int fq_codel_enqueue(struct sk_buff *skb, struct Qdisc *sch,
 	struct fq_codel_sched_data *q = qdisc_priv(sch);
 	unsigned int idx, prev_backlog, prev_qlen;
 	struct fq_codel_flow *flow;
-	int uninitialized_var(ret);
+	int ret;
 	unsigned int pkt_len;
 	bool memory_limited;
 
@@ -473,10 +473,14 @@ static int fq_codel_init(struct Qdisc *sch, struct nlattr *opt,
 #ifdef CONFIG_X86_64
 	q->memory_limit = 32 << 20; /* 32 MBytes */
 #else
+#if defined(CONFIG_PINCTRL_MT7981)
 	if (!strncmp(qdisc_dev_name(sch), "eth", 3))
 		q->memory_limit = 4 << 20; /* 4 MBytes */
 	else
 		q->memory_limit = 1 << 19; /* 512 KiB */
+#else // MT7986
+	q->memory_limit = 4 << 20; /* 4 MBytes */
+#endif
 #endif
 	q->drop_batch_size = 64;
 	q->quantum = psched_mtu(qdisc_dev(sch));

@@ -1,1 +1,0 @@
-../../GT-AXE11000/www/Advanced_Wireless_Content.asp

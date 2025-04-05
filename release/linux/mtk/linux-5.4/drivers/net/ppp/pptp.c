@@ -33,12 +33,16 @@
 #include <net/route.h>
 #include <net/gre.h>
 #include <net/pptp.h>
+#include <net/netfilter/nf_flow_table.h>
 
 #include <linux/uaccess.h>
 
 #define PPTP_DRIVER_VERSION "0.8.5"
 
 #define MAX_CALLID 65535
+
+int (*mtk_pptp_seq_next)(u16 call_id, u32 *val) = NULL;
+EXPORT_SYMBOL(mtk_pptp_seq_next);
 
 static DECLARE_BITMAP(callid_bitmap, MAX_CALLID + 1);
 static struct pppox_sock __rcu **callid_sock;
@@ -128,6 +132,26 @@ static void del_chan(struct pppox_sock *sock)
 	spin_unlock(&chan_lock);
 }
 
+#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+static int pptp_flow_offload_check(struct ppp_channel *chan,
+				   struct flow_offload_hw_path *path)
+{
+	struct sock *sk = (struct sock *)chan->private;
+	struct pppox_sock *po = pppox_sk(sk);
+
+	if (path->flags & FLOW_OFFLOAD_PATH_TNL)
+		return -EEXIST;
+
+	if (sk_pppox(po)->sk_state & PPPOX_DEAD)
+		return -EINVAL;
+
+	path->flags |= FLOW_OFFLOAD_PATH_TNL;
+	path->tnl_type = FLOW_OFFLOAD_TNL_PPTP;
+
+	return 0;
+}
+#endif /* IS_ENABLED(CONFIG_NF_FLOW_TABLE) */
+
 static int pptp_xmit(struct ppp_channel *chan, struct sk_buff *skb)
 {
 	struct sock *sk = (struct sock *) chan->private;
@@ -140,6 +164,7 @@ static int pptp_xmit(struct ppp_channel *chan, struct sk_buff *skb)
 	int islcp;
 	int len;
 	unsigned char *data;
+	u32 seq_sent_hw;
 	__u32 seq_recv;
 
 
@@ -204,7 +229,14 @@ static int pptp_xmit(struct ppp_channel *chan, struct sk_buff *skb)
 	hdr->gre_hd.protocol = GRE_PROTO_PPP;
 	hdr->call_id = htons(opt->dst_addr.call_id);
 
-	hdr->seq = htonl(++opt->seq_sent);
+	if (mtk_pptp_seq_next && !mtk_pptp_seq_next(opt->dst_addr.call_id,
+						    &seq_sent_hw)) {
+		opt->seq_sent = seq_sent_hw;
+		hdr->seq = htonl(opt->seq_sent);
+	} else {
+		hdr->seq = htonl(++opt->seq_sent);
+	}
+
 	if (opt->ack_sent != seq_recv)	{
 		/* send ack with this message */
 		hdr->gre_hd.flags |= GRE_ACK;
@@ -307,6 +339,15 @@ static int pptp_rcv_core(struct sock *sk, struct sk_buff *skb)
 		if ((payload[0] == PPP_ALLSTATIONS) && (payload[1] == PPP_UI) &&
 				(PPP_PROTOCOL(payload) == PPP_LCP) &&
 				((payload[4] == PPP_LCP_ECHOREQ) || (payload[4] == PPP_LCP_ECHOREP)))
+			goto allow_packet;
+
+		/*
+		 * Updating seq_recv and checking seq of data packets causes
+		 * severe packet drop in multi-core scenario. It is bypassed
+		 * here as a workaround solution.
+		 */
+		if ((payload[0] == PPP_ALLSTATIONS) && (payload[1] == PPP_UI) &&
+				!PPP_PROTOCOL_CTRL(payload))
 			goto allow_packet;
 	} else {
 		opt->seq_recv = seq;
@@ -598,6 +639,9 @@ static int pptp_ppp_ioctl(struct ppp_channel *chan, unsigned int cmd,
 static const struct ppp_channel_ops pptp_chan_ops = {
 	.start_xmit = pptp_xmit,
 	.ioctl      = pptp_ppp_ioctl,
+#if IS_ENABLED(CONFIG_NF_FLOW_TABLE)
+	.flow_offload_check = pptp_flow_offload_check,
+#endif /* IS_ENABLED(CONFIG_NF_FLOW_TABLE) */
 };
 
 static struct proto pptp_sk_proto __read_mostly = {

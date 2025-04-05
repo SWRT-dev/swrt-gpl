@@ -577,7 +577,7 @@ chk_inlan(char *chk_ip)
         return ret;
 }
 
-static int
+extern int
 add_lan_routes(char *lan_ifname)
 {
 	return add_routes("lan_", "route", lan_ifname);
@@ -2851,6 +2851,9 @@ void hotplug_net(void)
 	unsigned int vid, pid;
 	char buf[32];
 	int i = 0;
+#if defined(RTCONFIG_USB_WAN_BACKUP ) && defined (RTCONFIG_DUALWAN)
+	char dualwan[32];
+#endif
 #endif
 #if defined(RTCONFIG_HND_ROUTER) && (defined(RTCONFIG_DPSTA) || defined(RTCONFIG_SW_SPDLED))
 	char *link;
@@ -3135,63 +3138,6 @@ NEITHER_WDS_OR_PSTA:
 			logmessage("hotplug", "add net %s.", interface);
 			_dprintf("hotplug net: add net %s.\n", interface);
 
-#if defined(RTCONFIG_USB_WAN_BACKUP ) && defined (RTCONFIG_DUALWAN)
-			if(nvram_match("wans_usb_bk", "1"))
-			{
-#ifdef RTCONFIG_MULTIWAN_PROFILE
-				char wans_mt_ioport[32] = {0};
-				nvram_safe_get_r("wans_mt_ioport", wans_mt_ioport, sizeof(wans_mt_ioport));
-				if (!nvram_get_int("mtwan1_enable")	//Default Multi-WAN profile disabled and single wan
-				 && !strchr(wans_mt_ioport, ' ')
-				 && (!strstr(wans_mt_ioport, "usb") || !strstr(wans_mt_ioport, "U"))	//not usb wan
-				) {
-#ifdef RTCONFIG_NEW_PHYMAP
-					strlcat(wans_mt_ioport, " U1", sizeof(wans_mt_ioport));
-#else
-					strlcat(wans_mt_ioport, " usb", sizeof(wans_mt_ioport));
-#endif
-					nvram_set("wans_mt_ioport", wans_mt_ioport);
-					nvram_set("mtwan1_mt_group", "1 2");
-					nvram_set("mtwan1_mt_weight", "1 1");
-					nvram_set_int("mtwan1_enable", 1);
-					nvram_set_int("mtwan1_mode", MTWAN_MODE_ALL);
-					nvram_set_int("mtwan1_fb", 0);
-					nvram_set_int("mtwan1_group", 1);
-					nvram_set("mtwan1_order", "1 2");
-					mtwan_init_nvram();
-					mtwanduck_update_profile();
-					nvram_set_int("wans_usb_bk_act", 1);
-#if defined(RTCONFIG_NOTIFICATION_CENTER)
-					_nc_send_usb_tethering_event();
-#endif
-				}
-#else
-				int wans = get_wans_dualwan();
-				_dprintf("[%s, %d]wans=%x\n", __FUNCTION__, __LINE__, wans);
-				char dualwan[32],  *p;
-				if(get_dualwan_by_unit(WAN_UNIT_SECOND) ==  WANS_DUALWAN_IF_NONE	// must be single wan
-					&&  !(wans & WANSCAP_USB)	//not usb wan
-#ifdef RTCONFIG_MULTIWAN_IF
-					&& !(mtwan_get_wans_type() & WANSCAP_USB)
-#endif
-				) {
-					_dprintf("[%s, %d]\n", __FUNCTION__, __LINE__);
-					get_wans_dualwan_str(dualwan, sizeof(dualwan));
-					p = strstr(dualwan, "none");
-					if(!p)
-						strlcat(dualwan, " usb", sizeof(dualwan));
-					else
-						strlcpy(p, "usb", sizeof(dualwan) - (p - dualwan));
-					nvram_set("wans_dualwan", dualwan);
-					nvram_set_int("wans_usb_bk_act", 1);
-#if defined(RTCONFIG_NOTIFICATION_CENTER)
-					_nc_send_usb_tethering_event();
-#endif
-				}
-#endif	//RTCONFIG_MULTIWAN_PROFILE
-			}
-#endif
-
 			snprintf(device_path, sizeof(device_path), "%s/%s/device", SYS_NET, interface);
 
 			memset(usb_path, 0, PATH_MAX);
@@ -3241,15 +3187,24 @@ NEITHER_WDS_OR_PSTA:
 				nvram_set(strcat_r(prefix2, "act_path", tmp2), usb_node); // needed by find_modem_type.sh.
 
 #ifdef RTCONFIG_MODEM_BRIDGE
-			if(!(sw_mode() == SW_MODE_AP && nvram_get_int("modem_bridge")))
+			if(sw_mode() == SW_MODE_AP && nvram_get_int("modem_bridge"))
+				return;
+#endif
+
+#if defined(RTCONFIG_USB_WAN_BACKUP ) && defined (RTCONFIG_DUALWAN)
+			get_wans_dualwan_str(dualwan, sizeof(dualwan));
+			if(nvram_get_int("wans_usb_bk") == 1 && (!strcmp(dualwan, "wan none") || !strcmp(dualwan, "wan usb"))){
+				unit = 1;
+			}
+			else
 #endif
 			{
-				if((unit = get_wanunit_by_type(get_wantype_by_modemunit(modem_unit))) == WAN_UNIT_NONE){
-					_dprintf("(%s): in the current dual wan mode, didn't support the USB modem.\n", interface);
-					return;
-				}
-				snprintf(prefix, sizeof(prefix), "wan%d_", unit);
+			if((unit = get_wanunit_by_type(get_wantype_by_modemunit(modem_unit))) == WAN_UNIT_NONE){
+				_dprintf("(%s): in the current dual wan mode, didn't support the USB modem.\n", interface);
+				return;
 			}
+			}
+			snprintf(prefix, sizeof(prefix), "wan%d_", unit);
 
 			snprintf(buf, sizeof(buf), "unit=%d", modem_unit);
 			putenv(buf);
@@ -3349,6 +3304,63 @@ NEITHER_WDS_OR_PSTA:
 			}
 #endif
 
+#if defined(RTCONFIG_USB_WAN_BACKUP ) && defined (RTCONFIG_DUALWAN)
+			if(nvram_match("wans_usb_bk", "1"))
+			{
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+				char wans_mt_ioport[32] = {0};
+				nvram_safe_get_r("wans_mt_ioport", wans_mt_ioport, sizeof(wans_mt_ioport));
+				if (!nvram_get_int("mtwan1_enable")	//Default Multi-WAN profile disabled and single wan
+				 && !strchr(wans_mt_ioport, ' ')
+				 && (!strstr(wans_mt_ioport, "usb") || !strstr(wans_mt_ioport, "U"))	//not usb wan
+				) {
+#ifdef RTCONFIG_NEW_PHYMAP
+					strlcat(wans_mt_ioport, " U1", sizeof(wans_mt_ioport));
+#else
+					strlcat(wans_mt_ioport, " usb", sizeof(wans_mt_ioport));
+#endif
+					nvram_set("wans_mt_ioport", wans_mt_ioport);
+					nvram_set("mtwan1_mt_group", "1 2");
+					nvram_set("mtwan1_mt_weight", "1 1");
+					nvram_set_int("mtwan1_enable", 1);
+					nvram_set_int("mtwan1_mode", MTWAN_MODE_ALL);
+					nvram_set_int("mtwan1_fb", 0);
+					nvram_set_int("mtwan1_group", 1);
+					nvram_set("mtwan1_order", "1 2");
+					mtwan_init_nvram();
+					mtwanduck_update_profile();
+					nvram_set_int("wans_usb_bk_act", 1);
+#if defined(RTCONFIG_NOTIFICATION_CENTER)
+					_nc_send_usb_tethering_event();
+#endif
+				}
+#else
+				int wans = get_wans_dualwan();
+				_dprintf("[%s, %d]wans=%x\n", __FUNCTION__, __LINE__, wans);
+				char *p;
+				if(get_dualwan_by_unit(WAN_UNIT_SECOND) ==  WANS_DUALWAN_IF_NONE	// must be single wan
+					&&  !(wans & WANSCAP_USB)	//not usb wan
+#ifdef RTCONFIG_MULTIWAN_IF
+					&& !(mtwan_get_wans_type() & WANSCAP_USB)
+#endif
+				) {
+					_dprintf("[%s, %d]\n", __FUNCTION__, __LINE__);
+					get_wans_dualwan_str(dualwan, sizeof(dualwan));
+					p = strstr(dualwan, "none");
+					if(!p)
+						strlcat(dualwan, " usb", sizeof(dualwan));
+					else
+						strlcpy(p, "usb", sizeof(dualwan) - (p - dualwan));
+					nvram_set("wans_dualwan", dualwan);
+					nvram_set_int("wans_usb_bk_act", 1);
+#if defined(RTCONFIG_NOTIFICATION_CENTER)
+					_nc_send_usb_tethering_event();
+#endif
+				}
+#endif	//RTCONFIG_MULTIWAN_PROFILE
+			}
+#endif
+
 #if defined(RTCONFIG_DUALWAN) && !defined(RTCONFIG_ALPINE) && !defined(RTCONFIG_LANTIQ) && !defined(RTCONFIG_INTERNAL_GOBI)
 			// avoid the busy time of every start_wan when booting.
 			if(!strcmp(nvram_safe_get("success_start_service"), "0")
@@ -3390,10 +3402,13 @@ NEITHER_WDS_OR_PSTA:
 				return;
 
 			snprintf(nvram_name, sizeof(nvram_name), "usb_path%s_act", port_path);
-			if(strcmp(nvram_safe_get(nvram_name), interface))
-				return;
+			strlcpy(tmp, nvram_safe_get(nvram_name), sizeof(tmp));
+			if(*tmp != '\0'){
+				nvram_unset(nvram_name);
 
-			nvram_unset(nvram_name);
+				if(strcmp(tmp, interface))
+					return;
+			}
 
 			clean_modem_state(modem_unit, 1);
 
@@ -3446,7 +3461,7 @@ NEITHER_WDS_OR_PSTA:
 				}
 #else
 				int wan1_type, wan2_type;
-				char dualwan[32],  *p;
+				char *p;
 
 				wan1_type = get_dualwan_by_unit(WAN_UNIT_FIRST);
 				wan2_type = get_dualwan_by_unit(WAN_UNIT_SECOND);
@@ -3542,56 +3557,6 @@ NEITHER_WDS_OR_PSTA:
 			logmessage("hotplug", "add net %s.", interface);
 			_dprintf("hotplug net: add net %s.\n", interface);
 
-#if defined(RTCONFIG_USB_WAN_BACKUP ) && defined (RTCONFIG_DUALWAN)
-			if(nvram_match("wans_usb_bk", "1"))
-			{
-#ifdef RTCONFIG_MULTIWAN_PROFILE
-				char wans_mt_ioport[32] = {0};
-				nvram_safe_get_r("wans_mt_ioport", wans_mt_ioport, sizeof(wans_mt_ioport));
-				if (!nvram_get_int("mtwan1_enable")	//Default Multi-WAN profile disabled and single wan
-				 && !strchr(wans_mt_ioport, ' ')
-				 && !strstr(wans_mt_ioport, "usb")	//not usb wan
-				) {
-					strlcat(wans_mt_ioport, " usb", sizeof(wans_mt_ioport));
-					nvram_set("wans_mt_ioport", wans_mt_ioport);
-					nvram_set("wans_mt_group", "1 2");
-					nvram_set("wans_mt_weight", "1 1");
-					nvram_set_int("mtwan1_enable", 1);
-					nvram_set_int("mtwan1_mode", MTWAN_MODE_ALL);
-					nvram_set_int("mtwan1_fb", 0);
-					nvram_set_int("mtwan1_group", 1);
-					nvram_set("mtwan1_order", "1 2");
-					mtwan_init_nvram();
-					nvram_set_int("wans_usb_bk_act", 1);
-#if defined(RTCONFIG_NOTIFICATION_CENTER)
-					_nc_send_usb_tethering_event();
-#endif
-				}
-#else
-				int wans = get_wans_dualwan();
-				char dualwan[32], *p;
-				if(get_dualwan_by_unit(WAN_UNIT_SECOND) ==  WANS_DUALWAN_IF_NONE	// must be single wan
-					&&  !(wans & WANSCAP_USB)	//not usb wan
-#ifdef RTCONFIG_MULTIWAN_IF
-					&& !(mtwan_get_wans_type() & WANSCAP_USB)
-#endif
-				) {
-					get_wans_dualwan_str(dualwan, sizeof(dualwan));
-					p = strstr(dualwan, "none");
-					if(!p)
-						strlcat(dualwan, " usb", sizeof(dualwan));
-					else
-						strlcpy(p, "usb", sizeof(dualwan) - (p - dualwan));
-					nvram_set("wans_dualwan", dualwan);
-					nvram_set_int("wans_usb_bk_act", 1);
-#if defined(RTCONFIG_NOTIFICATION_CENTER)
-					_nc_send_usb_tethering_event();
-#endif
-				}
-#endif	//RTCONFIG_MULTIWAN_PROFILE
-			}
-#endif
-
 			snprintf(device_path, sizeof(device_path), "%s/%s/device", SYS_NET, interface);
 
 			i = 0;
@@ -3639,9 +3604,18 @@ NEITHER_WDS_OR_PSTA:
 			else if(strlen(buf) <= 0)
 				nvram_set(strcat_r(prefix2, "act_path", tmp2), usb_node); // needed by find_modem_type.sh.
 
+#if defined(RTCONFIG_USB_WAN_BACKUP ) && defined (RTCONFIG_DUALWAN)
+			get_wans_dualwan_str(dualwan, sizeof(dualwan));
+			if(nvram_get_int("wans_usb_bk") == 1 && (!strcmp(dualwan, "wan none") || !strcmp(dualwan, "wan usb"))){
+				unit = 1;
+			}
+			else
+#endif
+			{
 			if((unit = get_wanunit_by_type(get_wantype_by_modemunit(modem_unit))) == WAN_UNIT_NONE){
 				_dprintf("(%s): in the current dual wan mode, didn't support the USB modem.\n", interface);
 				return;
+			}
 			}
 			snprintf(prefix, sizeof(prefix), "wan%d_", unit);
 
@@ -3674,6 +3648,56 @@ NEITHER_WDS_OR_PSTA:
 				logmessage("hotplug", "android skip to set net %s.", interface);
 				_dprintf("hotplug net: android skip set net %s.\n", interface);
 			}
+
+#if defined(RTCONFIG_USB_WAN_BACKUP ) && defined (RTCONFIG_DUALWAN)
+			if(nvram_match("wans_usb_bk", "1"))
+			{
+#ifdef RTCONFIG_MULTIWAN_PROFILE
+				char wans_mt_ioport[32] = {0};
+				nvram_safe_get_r("wans_mt_ioport", wans_mt_ioport, sizeof(wans_mt_ioport));
+				if (!nvram_get_int("mtwan1_enable")	//Default Multi-WAN profile disabled and single wan
+				 && !strchr(wans_mt_ioport, ' ')
+				 && !strstr(wans_mt_ioport, "usb")	//not usb wan
+				) {
+					strlcat(wans_mt_ioport, " usb", sizeof(wans_mt_ioport));
+					nvram_set("wans_mt_ioport", wans_mt_ioport);
+					nvram_set("wans_mt_group", "1 2");
+					nvram_set("wans_mt_weight", "1 1");
+					nvram_set_int("mtwan1_enable", 1);
+					nvram_set_int("mtwan1_mode", MTWAN_MODE_ALL);
+					nvram_set_int("mtwan1_fb", 0);
+					nvram_set_int("mtwan1_group", 1);
+					nvram_set("mtwan1_order", "1 2");
+					mtwan_init_nvram();
+					nvram_set_int("wans_usb_bk_act", 1);
+#if defined(RTCONFIG_NOTIFICATION_CENTER)
+					_nc_send_usb_tethering_event();
+#endif
+				}
+#else
+				int wans = get_wans_dualwan();
+				char *p;
+				if(get_dualwan_by_unit(WAN_UNIT_SECOND) ==  WANS_DUALWAN_IF_NONE	// must be single wan
+					&&  !(wans & WANSCAP_USB)	//not usb wan
+#ifdef RTCONFIG_MULTIWAN_IF
+					&& !(mtwan_get_wans_type() & WANSCAP_USB)
+#endif
+				) {
+					get_wans_dualwan_str(dualwan, sizeof(dualwan));
+					p = strstr(dualwan, "none");
+					if(!p)
+						strlcat(dualwan, " usb", sizeof(dualwan));
+					else
+						strlcpy(p, "usb", sizeof(dualwan) - (p - dualwan));
+					nvram_set("wans_dualwan", dualwan);
+					nvram_set_int("wans_usb_bk_act", 1);
+#if defined(RTCONFIG_NOTIFICATION_CENTER)
+					_nc_send_usb_tethering_event();
+#endif
+				}
+#endif	//RTCONFIG_MULTIWAN_PROFILE
+			}
+#endif
 
 #if defined(RTCONFIG_DUALWAN) && !defined(RTCONFIG_ALPINE) && !defined(RTCONFIG_LANTIQ)
 			// avoid the busy time of every start_wan when booting.
@@ -3711,10 +3735,13 @@ NEITHER_WDS_OR_PSTA:
 				return;
 
 			snprintf(nvram_name, sizeof(nvram_name), "usb_path%s_act", port_path);
-			if(strcmp(nvram_safe_get(nvram_name), interface))
-				return;
+			strlcpy(tmp, nvram_safe_get(nvram_name), sizeof(tmp));
+			if(*tmp != '\0'){
+				nvram_unset(nvram_name);
 
-			nvram_unset(nvram_name);
+				if(strcmp(tmp, interface))
+					return;
+			}
 
 			clean_modem_state(modem_unit, 1);
 
@@ -3754,7 +3781,7 @@ NEITHER_WDS_OR_PSTA:
 				}
 #else
 				int wan1_type, wan2_type;
-				char dualwan[32],  *p;
+				char *p;
 
 				wan1_type = get_dualwan_by_unit(WAN_UNIT_FIRST);
 				wan2_type = get_dualwan_by_unit(WAN_UNIT_SECOND);
@@ -4754,13 +4781,20 @@ void stop_lan_wl(void)
 				wlconf_ra_down(ifname);
 			}
 
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 			if (!strncmp(ifname, "lan", 3)
 			 || (!strncmp(ifname, "bond", 4) && isdigit(ifname[4])))
 				continue;
 #endif
+#if defined(BT8) || defined(BT8P)
+			if (!strncmp(ifname, "eth2", 4)) continue;
+#endif
 #elif defined(RTCONFIG_QCA)
-				/* do nothing */
+#if defined(BD4D5) || defined(BD4_OD)
+			if (!strncmp(ifname, "eth1", 4)) continue;
+#else			
+			/* do nothing */
+#endif
 #elif defined(RTCONFIG_REALTEK)
 			if (!strncmp(ifname, "wlan", 4))
 				stop_wds_rtk(lan_ifname, ifname);
@@ -4794,14 +4828,14 @@ void stop_lan_wl(void)
 gmac3_no_swbr:
 #endif
 #ifdef RTCONFIG_QSR10G
-			if(strcmp(ifname, "host0") != 0)
-				ifconfig(ifname, 0, NULL, NULL);
-#else
-#ifdef RTCONFIG_DPSTA
+			if (strcmp(ifname, "host0"))
+#elif defined(RTCONFIG_DPSTA)
 			if (strcmp(ifname, "dpsta"))
+#elif defined(RTCONFIG_RALINK) && defined(RTCONFIG_NL80211)
+			if (strncmp(ifname, "ra", 2) && strncmp(ifname, "apcli", 5))
 #endif
+
 			ifconfig(ifname, 0, NULL, NULL);
-#endif
 #ifdef RTCONFIG_EMF
 			if (nvram_get_int("emf_enable")
 #if defined(RTCONFIG_BCMWL6) && !defined(HND_ROUTER)
@@ -5080,7 +5114,7 @@ void start_lan_wl(void)
 					continue;
 				}
 #elif defined RTCONFIG_RALINK
-#if defined(RTCONFIG_MT798X)
+#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 				if (!strncmp(ifname, "lan", 3)
 				 || (!strncmp(ifname, "bond", 4) && isdigit(ifname[4])))
 					continue;
@@ -5289,6 +5323,12 @@ void start_lan_wl(void)
 					/* Don't up VAP interface here. */
 				}
 				else
+#elif defined(RTCONFIG_RALINK) && (defined(RTCONFIG_NL80211) || defined(RTCONFIG_SWRTMESH))
+				if (!ifup_vap && (!strncmp(ifname, "ra", 2) || !strncmp(ifname, "apcli", 5))) {
+					/* VAP does not currently exist */
+				}
+				else
+
 #endif
 				{
 					// bring up interface
@@ -5811,11 +5851,17 @@ void lanaccess_mssid(const char *limited_ifname, int mode)
 	if (!is_router_mode()) return;
 
 	strlcpy(lifname, limited_ifname, sizeof(lifname));
-	gn_in_lan = find_word(nvram_safe_get("lan_ifnames"), lifname)? 1 : 0;
 
 #if defined(RTCONFIG_MULTILAN_CFG)
 	if (is_ap_group_if(lifname))
 		return;
+	/* SDN doesn't use ebtables to prevent client of guest network from access
+	 * LAN/main-WiFi if guest network share same network with LAN.
+	 * To skip improper wlx.y_lanaccess nvram variables, set gn_in_lan as 1.
+	 */
+	gn_in_lan = 1;
+#else
+	gn_in_lan = find_word(nvram_safe_get("lan_ifnames"), lifname)? 1 : 0;
 #endif	// defined(RTCONFIG_MULTILAN_CFG)
 
 #ifdef RTAC87U

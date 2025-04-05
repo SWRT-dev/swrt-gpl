@@ -99,9 +99,15 @@ int isM2SSDDevice(const char *device_name)
 }
 #endif
 
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 int isMMCDevice(const char *device_name){
+#if defined(JDCBE6500)
+	if(!strcmp(device_name, "mmcblk0p29"))
+#elif defined(JDCAX1800)
+	if(!strcmp(device_name, "mmcblk0p27"))
+#else
 	if(!strncmp(device_name, "mmcblk", 6))
+#endif
 		return 1;
 
 	return 0;
@@ -125,7 +131,7 @@ int get_device_type_by_device(const char *device_name)
 	}
 
 	if(isStorageDevice(device_name)
-#ifdef BCM_MMC
+#if defined(BCM_MMC) || defined(RTCONFIG_EMMC)
 			|| isMMCDevice(device_name) // SD card.
 #endif
 			){

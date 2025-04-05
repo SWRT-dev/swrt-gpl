@@ -31,7 +31,7 @@
 #include <nvram/bcmnvram.h>
 #endif
 
-
+static int nv_locked = 0;
 /* If UBOOT_CFG_ENV_SIZE is defined as non-zero value,
  * we have to skip first UBOOT_CFG_ENV_SIZE bytes of MTD partition.
  */
@@ -815,7 +815,36 @@ static void kzlib_exit(void)
 {
 	free_workspaces();
 }
-#endif
+
+/* Reserve allocated COMPRESS_NVRAM memory */
+struct mms {
+	unsigned char *mem;
+	unsigned long size;
+} cmprnv = {
+	NULL,
+	0
+};
+
+inline int cmprnv_alloc(struct mms *pmms, unsigned long size, gfp_t flags)
+{
+retry:
+	if (pmms->mem == NULL) {
+		pmms->mem = kmalloc(size, flags);
+		if (pmms->mem == NULL) {
+			pr_crit("%s: @@@@@@@@@@@@@ fail @@@@@@@@@@@@@\n", __func__);
+			return -1;
+		}
+		pmms->size = size;
+	}
+	else if (pmms->size < size) {
+		kfree(pmms->mem);
+		pmms->mem = NULL;
+		goto retry;
+	}
+
+	return 0;
+}
+#endif /* COMPRESS_NVRAM */
 
 /*
  * Read raw nvram data from nvram MTD partition of FLASH. Include nvram_header and variables.
@@ -920,17 +949,17 @@ _nvram_read(char *buf)
 			ptr = buf + skip;
 			clen = rlen - skip;
 
-			cbuf = kmalloc(rlen, GFP_ATOMIC);
-			if (!cbuf) {
+			if (cmprnv_alloc(&cmprnv, rlen, GFP_ATOMIC)) {
 				printk("%s: cbuf kmalloc failed\n", __func__);
 				goto exit__nvram_read;
 			}
+			cbuf = cmprnv.mem;
 			memcpy(cbuf, buf, rlen);
 
 			cptr = cbuf + skip;
 			dlen = NVRAM_SPACE - skip;
 			if (kzlib_decompress(cptr, ptr, clen, &dlen)) {
-				printk("%s: decompress nvram failed\n", __func__);
+				pr_crit("%s: decompress nvram failed\n", __func__);
 				goto exit__nvram_read;
 			}
 			//printk("%s: decompress nvram %d into %d bytes\n", __func__, clen, dlen);
@@ -952,11 +981,6 @@ _nvram_read(char *buf)
 	}
 
 exit__nvram_read:
-#ifdef COMPRESS_NVRAM
-	if (cbuf)
-		kfree(cbuf);
-#endif
-
 	if (recover_flag) {
 		/* Maybe we can recover some data from early initialization */
 		memcpy(buf, nvram_buf, NVRAM_SPACE);
@@ -1128,6 +1152,10 @@ nvram_commit(void)
 	unsigned int i;
 #endif	/* WL_NVRAM */
 
+	if (nv_locked) {
+		// pr_crit("[%s:%d] under reboot, skip!\n", __func__, __LINE__);
+		return 0;
+	}
 	printk(KERN_DEBUG "%s(): pid %d comm [%s]\n", __func__, current->pid, current->comm);
 	if (!nvram_mtd) {
 		printk("nvram_commit: NVRAM not found\n");
@@ -1158,11 +1186,11 @@ nvram_commit(void)
 	ptr = (char *)header + skip;
 	dlen = header->len - skip;
 
-	cbuf = kmalloc((nvram_mtd->size - rsv_blk_size), GFP_ATOMIC);
-	if (!cbuf) {
+	if (cmprnv_alloc(&cmprnv, (nvram_mtd->size - rsv_blk_size), GFP_ATOMIC)) {
 		printk("%s: cbuf kmalloc failed\n", __func__);
 		goto compress_fail;
 	}
+	cbuf = cmprnv.mem;
 	memcpy(cbuf, (char *)header, skip);
 
 	cptr = cbuf + skip;
@@ -1335,10 +1363,6 @@ start_erase_write:
 #endif	/* WL_NVRAM */
 
  done:
-#ifdef COMPRESS_NVRAM
-	if (cbuf)
-		kfree(cbuf);
-#endif
 	mutex_unlock(&nvram_sem);
 	return ret;
 }
@@ -1512,6 +1536,9 @@ dev_nvram_do_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		nvram_free();
 		/* reload nvram */
 		_nvram_init(sbh);
+		return 0;
+	} else if (cmd == 0x0004) {
+		nv_locked = 1;
 		return 0;
 	}
 	if (cmd != NVRAM_MAGIC)
@@ -2047,3 +2074,4 @@ MODULE_LICENSE("GPL");
 #endif	// ASUS_NVRAM
 
 MODULE_VERSION("V0.01");
+

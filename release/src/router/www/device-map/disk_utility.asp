@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
 <html xmlns="http://www.w3.org/1999/xhtml">
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
@@ -84,7 +84,7 @@ function initial(){
 		delete disk_list_array.health;
 		delete disk_list_array.format;
 	}
-	if(usb_fatfs_mod != "tuxera" && usb_ntfs_mod != "tuxera" && usb_hfs_mod != "tuxera" && usb_ntfs_mod != "open") {
+	if(usb_fatfs_mod != "tuxera" && usb_ntfs_mod != "tuxera" && usb_hfs_mod != "tuxera" && usb_ntfs_mod != "open" && usb_ntfs_mod != "ntfs3") {
 		delete disk_list_array.format;
 	}
 	$('#diskTab').html(parent.gen_tab_menu(disk_list_array, "health"));
@@ -484,7 +484,7 @@ function reset_force_stop(){
 				</tr>
 			</table>	
 		</div>
-		<div id="progressBar" style="margin-left:9px;;margin-top:10px;display:none">
+		<div id="progressBar" style="margin-left:9px;margin-top:10px;display:none">
 			<div id="scan_message"></div>
 			<div id="updateProgress_bg">
 				<div>
@@ -638,3 +638,4 @@ function reset_force_stop(){
 </form>
 </body>
 </html>
+

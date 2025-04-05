@@ -237,6 +237,8 @@ function get_wl_vlan_id(wireless_unit, wireless_subunit){
 var color_table = ["#c6dafc", "#7baaf7", "#4285f4", "#3367d6"];
 var led_table = ["Off", "Low", "Medium", "Highest"];
 function initial(){
+	const get_header_info = httpApi.hookGet("get_header_info");
+	window.parent.postMessage('router.asp', `${get_header_info.protocol}://${get_header_info.host}:${get_header_info.port}`);
 	var wl_subunit = '<% nvram_get("wl_subunit"); %>';
 	if(parent.lantiq_support){
 		$("#led_tr").show();
@@ -919,7 +921,7 @@ function detect_qtn_ready(){
 
 function submitForm(){
 	if(parent.lantiq_support && wave_ready != 1){
-		alert("Please wait a minute for wireless ready");
+		alert(`<#Wireless_ready#>`);
 		return false;
 	}
 

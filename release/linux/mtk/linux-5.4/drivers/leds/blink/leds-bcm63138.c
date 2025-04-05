@@ -228,6 +228,7 @@ static void bcm63138_leds_create_led(struct bcm63138_leds *leds,
 	led->cdev.max_brightness = BCM63138_MAX_BRIGHTNESS;
 	led->cdev.brightness_set = bcm63138_leds_brightness_set;
 	led->cdev.blink_set = bcm63138_leds_blink_set;
+	led->cdev.default_trigger = of_get_property(np, "linux,default-trigger", NULL);
 
 	err = devm_led_classdev_register_ext(dev, &led->cdev, &init_data);
 	if (err) {

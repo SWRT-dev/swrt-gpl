@@ -931,6 +931,7 @@ static int __spi_map_msg(struct spi_controller *ctlr, struct spi_message *msg)
 	else
 		rx_dev = ctlr->dev.parent;
 
+	ret = -ENOMSG;
 	list_for_each_entry(xfer, &msg->transfers, transfer_list) {
 		if (!ctlr->can_dma(ctlr, msg->spi, xfer))
 			continue;
@@ -954,6 +955,9 @@ static int __spi_map_msg(struct spi_controller *ctlr, struct spi_message *msg)
 			}
 		}
 	}
+	/* No transfer has been mapped, bail out with success */
+	if (ret)
+		return 0;
 
 	ctlr->cur_msg_mapped = true;
 
@@ -1112,12 +1116,11 @@ static int spi_transfer_wait(struct spi_controller *ctlr,
 int spi_do_calibration(struct spi_controller *ctlr, struct spi_device *spi,
 	int (*cal_read)(void *priv, u32 *addr, int addrlen, u8 *buf, int readlen), void *drv_priv)
 {
-	int datalen = ctlr->cal_rule->datalen;
-	int addrlen = ctlr->cal_rule->addrlen;
+	int datalen, addrlen;
 	u8 *buf;
 	int ret;
 	int i;
-	struct list_head *cal_head, *listptr;
+	struct list_head *pos, *tmp;
 	struct spi_cal_target *target;
 
 	/* Calculate calibration result */
@@ -1125,8 +1128,15 @@ int spi_do_calibration(struct spi_controller *ctlr, struct spi_device *spi,
 	bool hit;
 
 	/* Make sure we can start calibration */
-	if(!ctlr->cal_target || !ctlr->cal_rule || !ctlr->append_caldata)
+	if(!ctlr->cal_target || !ctlr->cal_rule) {
 		return 0;
+	} else if(!ctlr->append_caldata) {
+		pr_err("%s: calibration is enabled but no controller data.\n",
+		       __func__);
+		return -EINVAL;
+	}
+	datalen = ctlr->cal_rule->datalen;
+	addrlen = ctlr->cal_rule->addrlen;
 
 	buf = kzalloc(datalen * sizeof(u8), GFP_KERNEL);
 	if(!buf)
@@ -1136,9 +1146,8 @@ int spi_do_calibration(struct spi_controller *ctlr, struct spi_device *spi,
 	if (ret)
 		goto cal_end;
 
-	cal_head = ctlr->cal_target;
-	list_for_each(listptr, cal_head) {
-		target = list_entry(listptr, struct spi_cal_target, list);
+	list_for_each_safe(pos, tmp, ctlr->cal_target) {
+		target = list_entry(pos, struct spi_cal_target, list);
 
 		hit = false;
 		hit_val = 0;
@@ -1162,9 +1171,16 @@ int spi_do_calibration(struct spi_controller *ctlr, struct spi_device *spi,
 			*target->cal_item = DIV_ROUND_CLOSEST(hit_val, total_hit);
 			dev_info(&spi->dev, "calibration result: 0x%x", *target->cal_item);
 		} else {
+			/* We don't return error in this case because you don't know calibration
+			 * failure is caused by bus error or wrong calibration data provided by
+			 * user or driver.
+			 */
 			*target->cal_item = origin;
 			dev_warn(&spi->dev, "calibration failed, fallback to default: 0x%x", origin);
 		}
+
+		list_del(pos);
+		kfree(target);
 	}
 
 cal_end:

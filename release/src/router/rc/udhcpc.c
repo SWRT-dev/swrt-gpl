@@ -342,6 +342,10 @@ bound(int renew)
 	size_t mtl_sz = 0;
 	int i, conflict = 0;
 #endif
+
+	ifunit = wan_prefix(wan_ifname, wanprefix);
+_dprintf("%s(%d): ifunit=%d, if=%s.\n", __func__, getpid(), ifunit, wan_ifname);
+
 #ifdef RTCONFIG_AUTO_WANPORT
 	char lan_ifname[16], lan_ip[16], lan_net[16];
 	char autowan_detected_ifname[8];
@@ -349,7 +353,9 @@ bound(int renew)
 	int br_no;
 	char if_name[16];
 
-	if(is_auto_wanport_enabled() == 1){
+	if(is_auto_wanport_enabled() == 1
+			&& !strcmp(wan_ifname, "br0")
+			){
 		strlcpy(autowan_detected_ifname, nvram_safe_get("autowan_detected_ifname"), sizeof(autowan_detected_ifname));
 
 		if(strcmp(autowan_detected_ifname, "") && strcmp(autowan_detected_ifname, wan_ifname)){
@@ -378,6 +384,9 @@ bound(int renew)
 				_dprintf("%s(%lu): auto_wanport: Fail to get gateway_mac & restore the LAN IP of router.\n", __func__, getpid());
 				ifconfig(lan_ifname, IFUP, "0.0.0.0", NULL);
 				ifconfig(lan_ifname, IFUP, lan_ip, lan_net);
+
+				add_lan_routes(lan_ifname);
+
 				return -1;
 			}
 			_dprintf("%s(%lu): auto_wanport: Got gateway's MAC %s.\n", __func__, getpid(), gateway_mac);
@@ -387,6 +396,9 @@ bound(int renew)
 				_dprintf("%s(%lu): auto_wanport: Canot get gateway's br_no.\n", __func__, getpid());
 				ifconfig(lan_ifname, IFUP, "0.0.0.0", NULL);
 				ifconfig(lan_ifname, IFUP, lan_ip, lan_net);
+
+				add_lan_routes(lan_ifname);
+
 				return -1;
 			}
 
@@ -398,6 +410,8 @@ bound(int renew)
 			_dprintf("%s(%lu): auto_wanport: restore the LAN IP of router.\n", __func__, getpid());
 			ifconfig(lan_ifname, IFUP, "0.0.0.0", NULL);
 			ifconfig(lan_ifname, IFUP, lan_ip, lan_net);
+
+			add_lan_routes(lan_ifname);
 
 			_dprintf("%s(%lu): auto_wanport: Choose the WAN interface %s because of DHCP.\n", __func__, getpid(), wan_ifname);
 			set_auto_wanport(wan_ifname, 1);
@@ -411,7 +425,7 @@ bound(int renew)
 	else
 #endif
 	/* Figure out nvram variable name prefix for this i/f */
-	if ((ifunit = wan_prefix(wan_ifname, wanprefix)) < 0)
+	if (ifunit < 0)
 		return -1;
 
 	if ((unit = wan_ifunit(wan_ifname)) < 0
@@ -658,11 +672,12 @@ bound(int renew)
 
 	wan_up(wan_ifname);
 
-	logmessage("dhcp client", "%s %s/%s via %s for %d seconds.",
+	logmessage("dhcp client", "%s %s/%s via %s @ %s for %d seconds.",
 		renew ? "renew" : "bound",
 		nvram_safe_get(strcat_r(prefix, "ipaddr", tmp)),
 		nvram_safe_get(strcat_r(prefix, "netmask", tmp)),
 		nvram_safe_get(strcat_r(prefix, "gateway", tmp)),
+		wan_ifname,
 		nvram_get_int(strcat_r(prefix, "lease", tmp)));
 
 	_dprintf("udhcpc:: %s done\n", __FUNCTION__);

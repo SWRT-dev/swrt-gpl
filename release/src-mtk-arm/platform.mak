@@ -1,13 +1,7 @@
 export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 
 ifeq ($(EXTRACFLAGS),)
-ifeq ($(MT798X),y)
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mfpu=neon -mfloat-abi=softfp -mcpu=cortex-a53 -fsigned-char
-else
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
-#export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
-#export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp
-endif
 endif
 
 export RTVER := 0.9.30.1
@@ -52,6 +46,24 @@ export CONFIGURE := ./configure --host=aarch64-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
 export ENTRYADDR := 48080000
 export LOADADDR := $(ENTRYADDR)
+else ifeq ($(MT799X),y)
+export MUSL64=y
+export PLATFORM_ROUTER := mt799x
+export PLATFORM := arm-musl
+export PLATFORM_ARCH := arm-musl
+export TOOLS := /opt/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl
+export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-
+export CROSS_COMPILER := $(CROSS_COMPILE)
+export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-readelf
+export KERNELCC := $(TOOLS)/bin/aarch64-openwrt-linux-gcc
+export KERNELLD := $(TOOLS)/bin/aarch64-openwrt-linux-ld
+export STAGING_DIR := $(TOOLS)
+export ARCH := arm64
+export HOST := aarch64-linux
+export CONFIGURE := ./configure --host=aarch64-linux --build=$(BUILD)
+export HOSTCONFIG := linux-aarch64
+export ENTRYADDR := 48080000
+export LOADADDR := $(ENTRYADDR)
 else
 export MUSL32=y
 export PLATFORM_ROUTER := mt7629
@@ -74,20 +86,8 @@ endif
 export DTS_DIR := $(LINUXDIR)/arch/$(ARCH)/boot/dts
 export STAGING_DIR:=$(TOOLS)
 
-#ifeq ($(RT4GAC86U),y)
 EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST
-#else
-#EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -mfpu=vfpv3-d16 -mfloat-abi=softfp
-#endif
-ifeq ($(RTACRH18),y)
-EXTRA_CFLAGS += -march=armv7-a -D_GNU_SOURCE -DMUSL_LIBC -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
-endif
-ifeq ($(RT4GAC86U),y)
-EXTRA_CFLAGS += -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
-endif
-ifeq ($(MT798X),y)
-EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=neon -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC -fsigned-char  -DKERNEL5_MUSL64
-endif
+EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=neon -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC -fsigned-char -DKERNEL5_MUSL64
 
 export CONFIG_LINUX26=y
 export CONFIG_RALINK=y
@@ -135,8 +135,21 @@ define platformRouterOptions
 		sed -i "/RTCONFIG_MFP\>/d" $(1); \
 		echo "RTCONFIG_MFP=y" >>$(1); \
 	else \
-		sed -i "/RTCONFIG_RALINK_MT798X/d" $(1); \
-		echo "# RTCONFIG_RALINK_MT798X is not set" >>$(1); \
+		sed -i "/RTCONFIG_MT798X/d" $(1); \
+		echo "# RTCONFIG_MT798X is not set" >>$(1); \
+	fi; \
+	if [ "$(MT799X)" = "y" ]; then \
+		sed -i "/RTCONFIG_MT799X\>/d" $(1); \
+		echo "RTCONFIG_MT799X=y" >>$(1); \
+		sed -i "/RTCONFIG_MFP\>/d" $(1); \
+		echo "RTCONFIG_MFP=y" >>$(1); \
+		sed -i "/RTCONFIG_SWITCH_MT7988\>/d" $(1); \
+		echo "RTCONFIG_SWITCH_MT7988=y" >>$(1); \
+		sed -i "/RTCONFIG_NL80211\>/d" $(1); \
+		echo "RTCONFIG_NL80211=y" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_MT799X/d" $(1); \
+		echo "# RTCONFIG_MT799X is not set" >>$(1); \
 	fi; \
 	if [ "$(MT7986A)" = "y" ]; then \
 		sed -i "/RTCONFIG_SOC_MT7986A/d" $(1); \
@@ -166,6 +179,13 @@ define platformRouterOptions
 		sed -i "/RTCONFIG_SOC_MT7981/d" $(1); \
 		echo "# RTCONFIG_SOC_MT7981 is not set" >>$(1); \
 	fi; \
+	if [ "$(MT7988A)" = "y" ]; then \
+		sed -i "/RTCONFIG_SOC_MT7988A\>/d" $(1); \
+		echo "RTCONFIG_SOC_MT7988A=y" >>$(1); \
+	elif [ "$(MT7988D)" = "y" ]; then \
+		sed -i "/RTCONFIG_SOC_MT7988D\>/d" $(1); \
+		echo "RTCONFIG_SOC_MT7988D=y" >>$(1); \
+	fi; \
 	if [ "$(BUILD_NAME)" = "RM-AX6000" ]; then \
 		sed -i "/RTCONFIG_ZENWIFI_RGBLED\>/d" $(1); \
 		echo "RTCONFIG_ZENWIFI_RGBLED=y" >>$(1); \
@@ -181,6 +201,16 @@ define platformRouterOptions
 		echo "RTCONFIG_ZENWIFI_RGBLED=y" >>$(1); \
 		sed -i "/RTCONFIG_PWMX3_RGBLED\>/d" $(1); \
 		echo "RTCONFIG_PWMX3_RGBLED=y" >>$(1); \
+	fi; \
+	if [ "$(BUILD_NAME)" = "GS7" ]; then \
+		sed -i "/RTCONFIG_AURA_RGBLED\>/d" $(1); \
+		echo "RTCONFIG_AURA_RGBLED=y" >>$(1); \
+		sed -i "/RTCONFIG_PWMX3_RGBLED\>/d" $(1); \
+		echo "RTCONFIG_PWMX3_RGBLED=y" >>$(1); \
+	fi; \
+	if [ "$(MT7992)" = "y" ]; then \
+		sed -i "/RTCONFIG_MT7992\>/d" $(1); \
+		echo "RTCONFIG_MT7992=y" >>$(1); \
 	fi; \
 	)
 endef
@@ -370,6 +400,10 @@ define platformKernelConfig
 		sed -i "/CONFIG_DUMP_PREV_OOPS_MSG/d" $(1); \
 		echo "# CONFIG_DUMP_PREV_OOPS_MSG is not set" >>$(1); \
 	fi; \
+	if [ "$(IPV6SUPP)" = "y" ]; then \
+		sed -i "/CONFIG_IPV6_MULTIPLE_TABLES/d" $(1); \
+		echo "# CONFIG_IPV6_MULTIPLE_TABLES is not set" >>$(1); \
+	fi; \
 	if [ "$(NFCM)" = "y" ]; then \
 		sed -i "/CONFIG_MTK_HNAT_FORCE_CT_ACCOUNTING/d" $(1); \
 		echo "CONFIG_MTK_HNAT_FORCE_CT_ACCOUNTING=y" >>$(1); \
@@ -398,6 +432,16 @@ define platformKernelConfig
 		echo "CONFIG_CRYPTO_NHPOLY1305_NEON=y" >>$(1); \
 		echo "CONFIG_CRYPTO_AES_ARM64_BS=y" >>$(1); \
 	fi; \
+	if [ "$(MXL862XX)" = "y" ]; then \
+		sed -i "/CONFIG_NET_DSA_TAG_8021Q\>/d" $(1); \
+		echo "CONFIG_NET_DSA_TAG_8021Q=y" >>$(1); \
+		sed -i "/CONFIG_NET_DSA_TAG_MXL862\>/d" $(1); \
+		echo "CONFIG_NET_DSA_TAG_MXL862=y" >>$(1); \
+		sed -i "/CONFIG_NET_DSA_TAG_MXL862_8021Q\>/d" $(1); \
+		echo "CONFIG_NET_DSA_TAG_MXL862_8021Q=y" >>$(1); \
+		sed -i "/CONFIG_NET_DSA_MXL862\>/d" $(1); \
+		echo "CONFIG_NET_DSA_MXL862=y" >>$(1); \
+	fi; \
 	if [ "$(TS_UI)" = "y" ]; then \
 		sed -i "/CONFIG_OVERLAY_FS\>/d" $(1); \
 		echo "CONFIG_OVERLAY_FS=y" >>$(1); \
@@ -423,6 +467,13 @@ define platformKernelConfig
 	elif [ "$(BUILD_NAME)" = "PRT-AX57_GO" ] ; then \
 		sed -i "/CONFIG_PWM_MTK_MM\>/d" $(1); \
 		echo "CONFIG_PWM_MTK_MM=y" >>$(1); \
+	elif [ "$(BUILD_NAME)" = "GS7" ]; then \
+		sed -i "/CONFIG_PWM_MTK_MM\>/d" $(1); \
+		echo "CONFIG_PWM_MTK_MM=y" >>$(1); \
+	fi; \
+	if [ "$(MT7992)" = "y" ]; then \
+		sed -i "/CONFIG_FACTORY_NR_LEB\>/d" $(1); \
+		echo "CONFIG_FACTORY_NR_LEB=15" >>$(1); \
 	fi; \
 	if [ "$(SWRTMESH)" = "y" ]; then \
 		sed -i "/CONFIG_CFG80211_SUPPORT/d" $(1); \

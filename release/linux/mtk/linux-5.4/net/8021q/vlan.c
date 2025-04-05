@@ -118,6 +118,8 @@ void unregister_vlan_dev(struct net_device *dev, struct list_head *head)
 	vlan_vid_del(real_dev, vlan->vlan_proto, vlan_id);
 }
 
+EXPORT_SYMBOL(unregister_vlan_dev);
+
 int vlan_check_real_dev(struct net_device *real_dev,
 			__be16 protocol, u16 vlan_id,
 			struct netlink_ext_ack *extack)
@@ -200,6 +202,8 @@ out_vid_del:
 	vlan_vid_del(real_dev, vlan->vlan_proto, vlan_id);
 	return err;
 }
+
+EXPORT_SYMBOL(register_vlan_dev);
 
 /*  Attach a VLAN device to a mac address (ie Ethernet Card).
  *  Returns 0 if the device was created or a negative error code otherwise.
@@ -381,7 +385,11 @@ static int vlan_device_event(struct notifier_block *unused, unsigned long event,
 		vlan_vid_add(dev, htons(ETH_P_8021Q), 0);
 	}
 	if (event == NETDEV_DOWN &&
-	    (dev->features & NETIF_F_HW_VLAN_CTAG_FILTER))
+	    (dev->features & NETIF_F_HW_VLAN_CTAG_FILTER)
+#if defined(CONFIG_NET_DSA_TAG_MXL862_8021Q) /* ASUS fix */
+	 && !(dev->name && memcmp(dev->name, "lan", 3) == 0)
+#endif
+	)
 		vlan_vid_del(dev, htons(ETH_P_8021Q), 0);
 
 	vlan_info = rtnl_dereference(dev->vlan_info);
