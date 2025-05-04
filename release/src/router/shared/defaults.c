@@ -5025,7 +5025,8 @@ struct nvram_tuple router_defaults[] = {
 	{ "swrt_uu", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #if defined(RTCONFIG_ENTWARE)
-#if defined(RTAC86U) || defined(GTAC2900) || defined(GTAC5300) || defined(RTAX68U) || defined(RTAX86U) || defined(RTAX88U) || defined(RTAX92U) || defined(GTAX6000) || defined(GTAX11000) || defined(GTAXE11000) || defined(GTAXE16000)
+#if defined(BCM4908) || defined(BCM4912) || defined(BCM4915) || defined(BCM4916) \
+	|| defined(RTCONFIG_SOC_IPQ53XX) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	{ "entware_arch", "aarch64-k3.10", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #elif defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK_MT7622)
 	{ "entware_arch", "armv7sf-k3.2", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
