@@ -251,7 +251,7 @@ struct pcmcia_dev {
 #endif /* defined(CONFIG_PCMCIA) || defined(CONFIG_PCMCIA_MODULE) */
 
 /* Global ASSERT type flag */
-uint32 g_assert_type = 0;
+uint32 g_assert_type = 1;
 module_param(g_assert_type, int, 0);
 
 #ifdef	BCM_SECURE_DMA
@@ -1074,7 +1074,7 @@ osl_pktfastfree(osl_t *osh, struct sk_buff *skb)
 #endif /* CTFPOOL_SPINLOCK */
 
 #if LINUX_VERSION_CODE >= KERNEL_VERSION(2, 6, 14)
-	skb->tstamp.tv.sec = 0;
+	skb->tstamp = ktime_set(0, 0);
 #else
 	skb->stamp.tv_sec = 0;
 #endif

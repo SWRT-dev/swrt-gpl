@@ -2676,6 +2676,17 @@ void load_wl()
 	if(!*nvram_safe_get("chiprev"))
 		chk_reboot = 1;
 #endif
+#if defined(RTCONFIG_BCM_7114)
+	unit = 0;
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if (nvram_pf_match(prefix, "failed", "3")) {
+			nvram_pf_set_int(prefix, "failed", 0);
+			nvram_commit();
+		}
+		unit++;
+	}
+#endif
 _dprintf("load_wl(): starting...\n");
 
 	memset(modules, 0, sizeof(modules));

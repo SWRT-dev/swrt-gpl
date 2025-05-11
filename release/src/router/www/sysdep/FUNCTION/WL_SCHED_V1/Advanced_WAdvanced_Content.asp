@@ -850,7 +850,8 @@ function initial(){
 	if(wifi7_support){
 		document.getElementById('wifi7_mode_field').style.display = '';
 		document.getElementById('he_mode_field').style.display = 'none';
-	}
+	}else if(!band5g_11ax_support)
+		document.getElementById('he_mode_field').style.display = 'none';
 	
 	if(isSupport("sdn_mainfh")){
 		document.getElementById('wifi7_mode_field').style.display = 'none';

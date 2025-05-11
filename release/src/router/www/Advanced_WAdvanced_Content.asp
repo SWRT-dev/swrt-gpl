@@ -856,7 +856,8 @@ function initial(){
 		document.getElementById('mbo_field').style.display = '';
 		document.getElementById('twt_field').style.display = '';
 		document.getElementById('he_mode_field').style.display = 'none';
-	}
+	}else if(!band5g_11ax_support)
+		document.getElementById('he_mode_field').style.display = 'none';
 	if(isSupport("sdn_mainfh")){
 		$(".mainBH").hide();
 	}
@@ -1658,8 +1659,13 @@ function regen_mode(){	//please sync to initial() : //Change wireless mode help 
 		add_options_x2(document.form.wl_nmode_x, _temp, _temp_value, _nmode_x);
 	}
 	else if(is_unit_5g(wl_unit_value) || is_unit_5g_2(wl_unit_value)){
-		_temp = ['<#Auto#>', 'AX only', 'N/AC/AX mixed', 'Legacy'];
-		_temp_value = ['0', '9', '8', '2'];
+		if(band5g_11ax_support){
+			_temp = ['<#Auto#>', 'AX only', 'N/AC/AX mixed', 'Legacy'];
+			_temp_value = ['0', '9', '8', '2'];
+		}else{
+			_temp = ['<#Auto#>', 'N only', 'N/AC mixed', 'Legacy'];
+			_temp_value = ['0', '1', '8', '2'];
+		}
 		add_options_x2(document.form.wl_nmode_x, _temp, _temp_value, _nmode_x);
 	}
 	else if(is_unit_6g(wl_unit_value)){
