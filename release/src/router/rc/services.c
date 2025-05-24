@@ -5279,7 +5279,8 @@ start_ddns(char *caller)
 				fprintf(fp, "secure-ssl = false\n");
 #ifdef RTCONFIG_IPV6
 			/* For DYNDNS ok, but not for NO-IP and ASUS.COM */
-			if(nvram_get_int("ddns_ipv6_update") && (strncmp(server, "WWW.DYNDNS.ORG", 14) == 0))
+			if(nvram_get_int("ddns_ipv6_update") && (strncmp(server, "WWW.DYNDNS.ORG", 14) == 0
+				|| strcmp(server, "WWW.CLOUDFLARE.COM") == 0))
 				fprintf(fp, "allow-ipv6 = true\n");
 #endif
 

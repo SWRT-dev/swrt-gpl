@@ -87,3 +87,4 @@ header-y += xt_time.h
 header-y += xt_u32.h
 header-y += xt_ethport.h
 header-y += xt_geoip.h
+header-y += xt_IMQ.h

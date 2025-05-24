@@ -24,6 +24,7 @@
 #include <linux/sched.h>
 #include <linux/slab.h>
 #include <linux/string.h>
+#include <linux/completion.h>
 #include "internal.h"
 
 LIST_HEAD(crypto_alg_list);
@@ -31,7 +32,7 @@ EXPORT_SYMBOL_GPL(crypto_alg_list);
 DECLARE_RWSEM(crypto_alg_sem);
 EXPORT_SYMBOL_GPL(crypto_alg_sem);
 
-BLOCKING_NOTIFIER_HEAD(crypto_chain);
+SRCU_NOTIFIER_HEAD(crypto_chain);
 EXPORT_SYMBOL_GPL(crypto_chain);
 
 static struct crypto_alg *crypto_larval_wait(struct crypto_alg *alg);
@@ -236,10 +237,10 @@ int crypto_probing_notify(unsigned long val, void *v)
 {
 	int ok;
 
-	ok = blocking_notifier_call_chain(&crypto_chain, val, v);
+	ok = srcu_notifier_call_chain(&crypto_chain, val, v);
 	if (ok == NOTIFY_DONE) {
 		request_module("cryptomgr");
-		ok = blocking_notifier_call_chain(&crypto_chain, val, v);
+		ok = srcu_notifier_call_chain(&crypto_chain, val, v);
 	}
 
 	return ok;
@@ -609,6 +610,18 @@ int crypto_has_alg(const char *name, u32 type, u32 mask)
 	return ret;
 }
 EXPORT_SYMBOL_GPL(crypto_has_alg);
+
+void crypto_req_done(struct crypto_async_request *req, int err)
+{
+	struct crypto_wait *wait = req->data;
+
+	if (err == -EINPROGRESS)
+		return;
+
+	wait->err = err;
+	complete(&wait->completion);
+}
+EXPORT_SYMBOL_GPL(crypto_req_done);
 
 MODULE_DESCRIPTION("Cryptographic core API");
 MODULE_LICENSE("GPL");

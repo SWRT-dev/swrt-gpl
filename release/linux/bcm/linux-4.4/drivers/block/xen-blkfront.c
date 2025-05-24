@@ -662,7 +662,8 @@ static int blkif_queue_rw_req(struct request *req)
 		ring_req->u.rw.handle = info->handle;
 		ring_req->operation = rq_data_dir(req) ?
 			BLKIF_OP_WRITE : BLKIF_OP_READ;
-		if (req->cmd_flags & (REQ_FLUSH | REQ_FUA)) {
+		if ((req->cmd_flags & REQ_FLUSH) ||
+		    rq_data_dir(req) && (req->cmd_flags & REQ_FUA)) {
 			/*
 			 * Ideally we can do an unordered flush-to-disk.
 			 * In case the backend onlysupports barriers, use that.
@@ -1235,6 +1236,7 @@ static int blkif_completion(unsigned long *id,
 	int i = 0;
 	struct scatterlist *sg;
 	int num_sg, num_grant;
+	struct blk_shadow *s = &info->shadow[*id];
 	struct copy_from_grant data = {
 		.s = s,
 		.grant_idx = 0,

@@ -1053,6 +1053,8 @@ hfsc_change_class(struct Qdisc *sch, u32 classid, u32 parentid,
 		if (parent == NULL)
 			return -ENOENT;
 	}
+	if (!(parent->cl_flags & HFSC_FSC) && parent != &q->root)
+		return -EINVAL;
 
 	if (classid == 0 || TC_H_MAJ(classid ^ sch->handle) != 0)
 		return -EINVAL;
@@ -1529,6 +1531,7 @@ hfsc_reset_qdisc(struct Qdisc *sch)
 	q->eligible = RB_ROOT;
 	INIT_LIST_HEAD(&q->droplist);
 	qdisc_watchdog_cancel(&q->watchdog);
+	sch->qstats.backlog = 0;
 	sch->q.qlen = 0;
 }
 
@@ -1559,14 +1562,6 @@ hfsc_dump_qdisc(struct Qdisc *sch, struct sk_buff *skb)
 	struct hfsc_sched *q = qdisc_priv(sch);
 	unsigned char *b = skb_tail_pointer(skb);
 	struct tc_hfsc_qopt qopt;
-	struct hfsc_class *cl;
-	unsigned int i;
-
-	sch->qstats.backlog = 0;
-	for (i = 0; i < q->clhash.hashsize; i++) {
-		hlist_for_each_entry(cl, &q->clhash.hash[i], cl_common.hnode)
-			sch->qstats.backlog += cl->qdisc->qstats.backlog;
-	}
 
 	qopt.defcls = q->defcls;
 	if (nla_put(skb, TCA_OPTIONS, sizeof(qopt), &qopt))
@@ -1583,6 +1578,7 @@ hfsc_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 {
 	struct hfsc_class *cl;
 	int uninitialized_var(err);
+	bool first;
 
 	cl = hfsc_classify(skb, sch, &err);
 	if (cl == NULL) {
@@ -1592,6 +1588,7 @@ hfsc_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 		return err;
 	}
 
+	first = !cl->qdisc->q.qlen;
 	err = qdisc_enqueue(skb, cl->qdisc);
 	if (unlikely(err != NET_XMIT_SUCCESS)) {
 		if (net_xmit_drop_count(err)) {
@@ -1601,9 +1598,10 @@ hfsc_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 		return err;
 	}
 
-	if (cl->qdisc->q.qlen == 1)
+	if (first)
 		set_active(cl, qdisc_pkt_len(skb));
 
+	qdisc_qstats_backlog_inc(sch, skb);
 	sch->q.qlen++;
 
 	return NET_XMIT_SUCCESS;
@@ -1672,6 +1670,7 @@ hfsc_dequeue(struct Qdisc *sch)
 
 	qdisc_unthrottled(sch);
 	qdisc_bstats_update(sch, skb);
+	qdisc_qstats_backlog_dec(sch, skb);
 	sch->q.qlen--;
 
 	return skb;
@@ -1695,6 +1694,7 @@ hfsc_drop(struct Qdisc *sch)
 			}
 			cl->qstats.drops++;
 			qdisc_qstats_drop(sch);
+			sch->qstats.backlog -= len;
 			sch->q.qlen--;
 			return len;
 		}

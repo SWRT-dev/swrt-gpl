@@ -93,8 +93,6 @@
 #define ipv6_dst_lookup_flow(a, b, c, d) ipv6_dst_lookup_flow(b, c, d)
 #elif (LINUX_VERSION_CODE < KERNEL_VERSION(5, 4, 5) && LINUX_VERSION_CODE >= KERNEL_VERSION(5, 4, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(5, 3, 18) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 20, 0) && !defined(ISUBUNTU1904)) || (!defined(ISRHEL8) && !defined(ISDEBIAN) && !defined(ISUBUNTU1804) && LINUX_VERSION_CODE < KERNEL_VERSION(4, 19, 119) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 15, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 181) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 10, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 9, 224) && LINUX_VERSION_CODE >= KERNEL_VERSION(4, 5, 0)) || (LINUX_VERSION_CODE < KERNEL_VERSION(4, 4, 224) && !defined(ISUBUNTU1604) && !defined(ISRHEL7))
 #define ipv6_dst_lookup_flow(a, b, c, d) ipv6_dst_lookup(a, b, &dst, c) + (void *)0 ?: dst
-#elif defined(CONFIG_BCM47XX)
-#define ipv6_dst_lookup_flow(a, b, c, d) ipv6_dst_lookup(a, b, &dst, c) + (void *)0 ?: dst
 #endif
 
 #if LINUX_VERSION_CODE < KERNEL_VERSION(3, 12, 0) && IS_ENABLED(CONFIG_IPV6) && !defined(ISRHEL7)
@@ -719,34 +717,6 @@ static inline void cpu_to_le32_array(u32 *buf, unsigned int words)
 	while (words--) {
 		__cpu_to_le32s(buf);
 		buf++;
-	}
-}
-#endif
-
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 14, 0)
-#include <crypto/algapi.h>
-static inline void crypto_xor_cpy(u8 *dst, const u8 *src1, const u8 *src2,
-				  unsigned int size)
-{
-	if (IS_ENABLED(CONFIG_HAVE_EFFICIENT_UNALIGNED_ACCESS) &&
-	    __builtin_constant_p(size) &&
-	    (size % sizeof(unsigned long)) == 0) {
-		unsigned long *d = (unsigned long *)dst;
-		unsigned long *s1 = (unsigned long *)src1;
-		unsigned long *s2 = (unsigned long *)src2;
-
-		while (size > 0) {
-			*d++ = *s1++ ^ *s2++;
-			size -= sizeof(unsigned long);
-		}
-	} else {
-		if (unlikely(dst != src1))
-			memmove(dst, src1, size);
-#if LINUX_VERSION_CODE < KERNEL_VERSION(4, 11, 0)
-		crypto_xor(dst, src2, size);
-#else
-		__crypto_xor(dst, src2, size);
-#endif
 	}
 }
 #endif

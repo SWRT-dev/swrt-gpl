@@ -23,8 +23,6 @@
 #include <linux/socket.h>
 #include <linux/if_ether.h>
 #include <linux/if_pppol2tp.h>
-#include <linux/if_pppolac.h>
-#include <linux/if_pppopns.h>
 
 /* For user-space programs to pick up these definitions
  * which they wouldn't get otherwise without defining __KERNEL__
@@ -49,6 +47,7 @@ struct pppoe_addr {
  */
 struct pptp_addr {
 	__u16		call_id;
+	__u16		pad;
 	struct in_addr	sin_addr;
 };
 
@@ -58,9 +57,7 @@ struct pptp_addr {
 #define PX_PROTO_OE    0 /* Currently just PPPoE */
 #define PX_PROTO_OL2TP 1 /* Now L2TP also */
 #define PX_PROTO_PPTP  2
-#define PX_PROTO_OLAC  3
-#define PX_PROTO_OPNS  4
-#define PX_MAX_PROTO   5
+#define PX_MAX_PROTO   3
 
 struct sockaddr_pppox {
 	__kernel_sa_family_t sa_family;       /* address family, AF_PPPOX */

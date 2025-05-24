@@ -53,7 +53,6 @@ __nilfs_get_page_block(struct page *page, unsigned long block, pgoff_t index,
 	first_block = (unsigned long)index << (PAGE_CACHE_SHIFT - blkbits);
 	bh = nilfs_page_get_nth_block(page, block - first_block);
 
-	touch_buffer(bh);
 	wait_on_buffer(bh);
 	return bh;
 }
@@ -78,6 +77,7 @@ struct buffer_head *nilfs_grab_buffer(struct inode *inode,
 		page_cache_release(page);
 		return NULL;
 	}
+	bh->b_bdev = inode->i_sb->s_bdev;
 	return bh;
 }
 
@@ -92,7 +92,8 @@ void nilfs_forget_buffer(struct buffer_head *bh)
 	const unsigned long clear_bits =
 		(1 << BH_Uptodate | 1 << BH_Dirty | 1 << BH_Mapped |
 		 1 << BH_Async_Write | 1 << BH_NILFS_Volatile |
-		 1 << BH_NILFS_Checked | 1 << BH_NILFS_Redirected);
+		 1 << BH_NILFS_Checked | 1 << BH_NILFS_Redirected |
+		 1 << BH_Delay);
 
 	lock_buffer(bh);
 	set_mask_bits(&bh->b_state, clear_bits, 0);
@@ -388,7 +389,15 @@ void nilfs_clear_dirty_pages(struct address_space *mapping, bool silent)
 			struct page *page = pvec.pages[i];
 
 			lock_page(page);
-			nilfs_clear_dirty_page(page, silent);
+
+			/*
+			 * This page may have been removed from the address
+			 * space by truncation or invalidation when the lock
+			 * was acquired.  Skip processing in that case.
+			 */
+			if (likely(page->mapping == mapping))
+				nilfs_clear_dirty_page(page, silent);
+
 			unlock_page(page);
 		}
 		pagevec_release(&pvec);
@@ -416,13 +425,15 @@ void nilfs_clear_dirty_page(struct page *page, bool silent)
 
 	ClearPageUptodate(page);
 	ClearPageMappedToDisk(page);
+	ClearPageChecked(page);
 
 	if (page_has_buffers(page)) {
 		struct buffer_head *bh, *head;
 		const unsigned long clear_bits =
 			(1 << BH_Uptodate | 1 << BH_Dirty | 1 << BH_Mapped |
 			 1 << BH_Async_Write | 1 << BH_NILFS_Volatile |
-			 1 << BH_NILFS_Checked | 1 << BH_NILFS_Redirected);
+			 1 << BH_NILFS_Checked | 1 << BH_NILFS_Redirected |
+			 1 << BH_Delay);
 
 		bh = head = page_buffers(page);
 		do {

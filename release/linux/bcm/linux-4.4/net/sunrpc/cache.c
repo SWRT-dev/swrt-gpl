@@ -54,9 +54,6 @@ static void cache_init(struct cache_head *h, struct cache_detail *detail)
 	h->last_refresh = now;
 }
 
-static inline int cache_is_valid(struct cache_head *h);
-static void cache_fresh_locked(struct cache_head *head, time_t expiry,
-				struct cache_detail *detail);
 static void cache_fresh_unlocked(struct cache_head *head,
 				struct cache_detail *detail);
 
@@ -101,9 +98,6 @@ struct cache_head *sunrpc_cache_lookup(struct cache_detail *detail,
 			if (cache_is_expired(detail, tmp)) {
 				hlist_del_init(&tmp->cache_list);
 				detail->entries --;
-				if (cache_is_valid(tmp) == -EAGAIN)
-					set_bit(CACHE_NEGATIVE, &tmp->flags);
-				cache_fresh_locked(tmp, 0, detail);
 				freeme = tmp;
 				break;
 			}
@@ -1627,11 +1621,13 @@ static void remove_cache_proc_entries(struct cache_detail *cd, struct net *net)
 	remove_proc_entry(cd->name, sn->proc_net_rpc);
 }
 
-#ifdef CONFIG_PROC_FS
 static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
 {
 	struct proc_dir_entry *p;
 	struct sunrpc_net *sn;
+
+	if (!IS_ENABLED(CONFIG_PROC_FS))
+		return 0;
 
 	sn = net_generic(net, sunrpc_net_id);
 	cd->u.procfs.proc_ent = proc_mkdir(cd->name, sn->proc_net_rpc);
@@ -1668,12 +1664,6 @@ out_nomem:
 	remove_cache_proc_entries(cd, net);
 	return -ENOMEM;
 }
-#else /* CONFIG_PROC_FS */
-static int create_cache_proc_entries(struct cache_detail *cd, struct net *net)
-{
-	return 0;
-}
-#endif
 
 void __init cache_initialize(void)
 {

@@ -453,8 +453,8 @@ void rfkill_remove_epo_lock(void)
 /**
  * rfkill_is_epo_lock_active - returns true EPO is active
  *
- * Returns 0 (false) if there is NOT an active EPO contidion,
- * and 1 (true) if there is an active EPO contition, which
+ * Returns 0 (false) if there is NOT an active EPO condition,
+ * and 1 (true) if there is an active EPO condition, which
  * locks all radios in one of the BLOCKED states.
  *
  * Can be called in atomic context.
@@ -802,7 +802,8 @@ void rfkill_resume_polling(struct rfkill *rfkill)
 }
 EXPORT_SYMBOL(rfkill_resume_polling);
 
-static __maybe_unused int rfkill_suspend(struct device *dev)
+#ifdef CONFIG_PM_SLEEP
+static int rfkill_suspend(struct device *dev)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 
@@ -811,7 +812,7 @@ static __maybe_unused int rfkill_suspend(struct device *dev)
 	return 0;
 }
 
-static __maybe_unused int rfkill_resume(struct device *dev)
+static int rfkill_resume(struct device *dev)
 {
 	struct rfkill *rfkill = to_rfkill(dev);
 	bool cur;
@@ -827,13 +828,17 @@ static __maybe_unused int rfkill_resume(struct device *dev)
 }
 
 static SIMPLE_DEV_PM_OPS(rfkill_pm_ops, rfkill_suspend, rfkill_resume);
+#define RFKILL_PM_OPS (&rfkill_pm_ops)
+#else
+#define RFKILL_PM_OPS NULL
+#endif
 
 static struct class rfkill_class = {
 	.name		= "rfkill",
 	.dev_release	= rfkill_release,
 	.dev_groups	= rfkill_dev_groups,
 	.dev_uevent	= rfkill_dev_uevent,
-	.pm		= IS_ENABLED(CONFIG_RFKILL_PM) ? &rfkill_pm_ops : NULL,
+	.pm		= RFKILL_PM_OPS,
 };
 
 bool rfkill_blocked(struct rfkill *rfkill)
@@ -936,10 +941,13 @@ static void rfkill_sync_work(struct work_struct *work)
 int __must_check rfkill_register(struct rfkill *rfkill)
 {
 	static unsigned long rfkill_no;
-	struct device *dev = &rfkill->dev;
+	struct device *dev;
 	int error;
 
-	BUG_ON(!rfkill);
+	if (!rfkill)
+		return -EINVAL;
+
+	dev = &rfkill->dev;
 
 	mutex_lock(&rfkill_global_mutex);
 

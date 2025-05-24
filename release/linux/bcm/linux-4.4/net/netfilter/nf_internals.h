@@ -18,11 +18,7 @@ unsigned int nf_iterate(struct list_head *head, struct sk_buff *skb,
 
 /* nf_queue.c */
 int nf_queue(struct sk_buff *skb, struct nf_hook_ops *elem,
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 	     struct nf_hook_state *state, unsigned int queuenum, unsigned int queuetype);
-#else
-	     struct nf_hook_state *state, unsigned int queuenum);
-#endif
 void nf_queue_nf_hook_drop(struct net *net, struct nf_hook_ops *ops);
 int __init netfilter_queue_init(void);
 

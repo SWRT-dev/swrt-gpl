@@ -65,13 +65,13 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 	seq_printf(m,
 		"MemTotal:       %8lu kB\n"
 		"MemFree:        %8lu kB\n"
-		"MemAvailable:   %8lu kB\n"
+		"MemShared:      %8lu kB\n"
 		"Buffers:        %8lu kB\n"
 		"Cached:         %8lu kB\n"
 		"SwapCached:     %8lu kB\n"
 		"Active:         %8lu kB\n"
 		"Inactive:       %8lu kB\n"
-		"MemShared:      %8lu kB\n"
+		"MemAvailable:   %8lu kB\n"
 		"Active(anon):   %8lu kB\n"
 		"Inactive(anon): %8lu kB\n"
 		"Active(file):   %8lu kB\n"
@@ -123,13 +123,13 @@ static int meminfo_proc_show(struct seq_file *m, void *v)
 		,
 		K(i.totalram),
 		K(i.freeram),
-		K(available),
+		K(i.sharedram),
 		K(i.bufferram),
 		K(cached),
 		K(total_swapcache_pages()),
 		K(pages[LRU_ACTIVE_ANON]   + pages[LRU_ACTIVE_FILE]),
 		K(pages[LRU_INACTIVE_ANON] + pages[LRU_INACTIVE_FILE]),
-		K(i.sharedram),
+		K(available),
 		K(pages[LRU_ACTIVE_ANON]),
 		K(pages[LRU_INACTIVE_ANON]),
 		K(pages[LRU_ACTIVE_FILE]),

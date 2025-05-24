@@ -155,7 +155,7 @@ static inline struct rtable *ip_route_output_ports(struct net *net, struct flowi
 	flowi4_init_output(fl4, oif, sk ? sk->sk_mark : 0, tos,
 			   RT_SCOPE_UNIVERSE, proto,
 			   sk ? inet_sk_flowi_flags(sk) : 0,
-			   daddr, saddr, dport, sport, sock_net_uid(net, sk));
+			   daddr, saddr, dport, sport);
 	if (sk)
 		security_sk_classify_flow(sk, flowi4_to_flowi(fl4));
 	return ip_route_output_flow(net, fl4, sk);
@@ -210,6 +210,9 @@ unsigned int inet_addr_type_dev_table(struct net *net,
 void ip_rt_multicast_event(struct in_device *);
 int ip_rt_ioctl(struct net *, unsigned int cmd, void __user *arg);
 void ip_rt_get_source(u8 *src, struct sk_buff *skb, struct rtable *rt);
+struct rtable *rt_dst_alloc(struct net_device *dev,
+			     unsigned int flags, u16 type,
+			     bool nopolicy, bool noxfrm, bool will_cache);
 
 struct in_ifaddr;
 void fib_add_ifaddr(struct in_ifaddr *);
@@ -268,8 +271,7 @@ static inline void ip_route_connect_init(struct flowi4 *fl4, __be32 dst, __be32 
 		flow_flags |= FLOWI_FLAG_ANYSRC;
 
 	flowi4_init_output(fl4, oif, sk->sk_mark, tos, RT_SCOPE_UNIVERSE,
-			   protocol, flow_flags, dst, src, dport, sport,
-			   sk->sk_uid);
+			   protocol, flow_flags, dst, src, dport, sport);
 }
 
 static inline struct rtable *ip_route_connect(struct flowi4 *fl4,

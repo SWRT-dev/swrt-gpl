@@ -6096,9 +6096,9 @@ fi;
 	else \
 		sed -i "/CONFIG_BCM_GMAC3/d" $(1); \
 		echo "# CONFIG_BCM_GMAC3 is not set" >>$(1); \
-		if [ "$(HND_ROUTER)" != "y" ]; then \
+		if [ "$(HND_ROUTER)" != "y" ] && [ "$(SFE)" != "y" ]; then \
 			sed -i "/CONFIG_BCM_FA/d" $(1); \
-			echo "# CONFIG_BCM_FA is not set" >>$(1); \
+			echo "CONFIG_BCM_FA=y" >>$(1); \
 		fi; \
 	fi;
 	if [ "$(NODHD)" = "y" ]; then \

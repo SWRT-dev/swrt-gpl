@@ -72,6 +72,10 @@
 #define CONFIG_IP_PIMSM	1
 #endif
 
+#ifdef CONFIG_PROC_STRIPPED
+#undef CONFIG_PROC_FS
+#endif
+
 struct mr_table {
 	struct list_head	list;
 	possible_net_t		net;
@@ -183,7 +187,6 @@ static int ipmr_rule_action(struct fib_rule *rule, struct flowi *flp,
 	case FR_ACT_UNREACHABLE:
 		return -ENETUNREACH;
 	case FR_ACT_PROHIBIT:
-	case FR_ACT_POLICY_FAILED:
 		return -EACCES;
 	case FR_ACT_BLACKHOLE:
 	default:
@@ -267,7 +270,9 @@ static int __net_init ipmr_rules_init(struct net *net)
 	return 0;
 
 err2:
+	rtnl_lock();
 	ipmr_free_table(mrt);
+	rtnl_unlock();
 err1:
 	fib_rules_unregister(ops);
 	return err;

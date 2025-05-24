@@ -117,12 +117,13 @@ static int mqprio_init(struct Qdisc *sch, struct nlattr *opt)
 	/* pre-allocate qdisc, attachment can't fail */
 	priv->qdiscs = kcalloc(dev->num_tx_queues, sizeof(priv->qdiscs[0]),
 			       GFP_KERNEL);
+
 	if (!priv->qdiscs)
 		return -ENOMEM;
 
 	for (i = 0; i < dev->num_tx_queues; i++) {
 		dev_queue = netdev_get_tx_queue(dev, i);
-		qdisc = qdisc_create_dflt(dev_queue, &fq_codel_qdisc_ops,
+		qdisc = qdisc_create_dflt(dev_queue, default_qdisc_ops,
 					  TC_H_MAKE(TC_H_MAJ(sch->handle),
 						    TC_H_MIN(i + 1)));
 		if (!qdisc)
@@ -355,7 +356,8 @@ static int mqprio_dump_class_stats(struct Qdisc *sch, unsigned long cl,
 		struct netdev_queue *dev_queue = mqprio_queue_get(sch, cl);
 
 		sch = dev_queue->qdisc_sleeping;
-		if (gnet_stats_copy_basic(d, NULL, &sch->bstats) < 0 ||
+		if (gnet_stats_copy_basic(d, sch->cpu_bstats,
+					  &sch->bstats) < 0 ||
 		    gnet_stats_copy_queue(d, NULL,
 					  &sch->qstats, sch->q.qlen) < 0)
 			return -1;

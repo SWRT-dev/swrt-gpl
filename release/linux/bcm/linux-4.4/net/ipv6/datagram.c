@@ -40,7 +40,8 @@ static bool ipv6_mapped_addr_any(const struct in6_addr *a)
 	return ipv6_addr_v4mapped(a) && (a->s6_addr32[3] == 0);
 }
 
-static int __ip6_datagram_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
+int __ip6_datagram_connect(struct sock *sk, struct sockaddr *uaddr,
+			   int addr_len)
 {
 	struct sockaddr_in6	*usin = (struct sockaddr_in6 *) uaddr;
 	struct inet_sock	*inet = inet_sk(sk);
@@ -165,7 +166,6 @@ ipv4_connected:
 	fl6.flowi6_mark = sk->sk_mark;
 	fl6.fl6_dport = inet->inet_dport;
 	fl6.fl6_sport = inet->inet_sport;
-	fl6.flowi6_uid = sk->sk_uid;
 
 	if (!fl6.flowi6_oif)
 		fl6.flowi6_oif = np->sticky_pktinfo.ipi6_ifindex;
@@ -180,7 +180,7 @@ ipv4_connected:
 	final_p = fl6_update_dst(&fl6, opt, &final);
 	rcu_read_unlock();
 
-	dst = ip6_dst_lookup_flow(sk, &fl6, final_p);
+	dst = ip6_dst_lookup_flow(sock_net(sk), sk, &fl6, final_p);
 	err = 0;
 	if (IS_ERR(dst)) {
 		err = PTR_ERR(dst);
@@ -214,6 +214,7 @@ out:
 	fl6_sock_release(flowlabel);
 	return err;
 }
+EXPORT_SYMBOL_GPL(__ip6_datagram_connect);
 
 int ip6_datagram_connect(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 {
@@ -435,7 +436,7 @@ int ipv6_recv_error(struct sock *sk, struct msghdr *msg, int len, int *addr_len)
 				ipv6_iface_scope_id(&sin->sin6_addr,
 						    IP6CB(skb)->iif);
 		} else {
-			ipv6_addr_set_v4mapped(*(__be32 *)(nh + serr->addr_offset),
+			ipv6_addr_set_v4mapped(net_hdr_word(nh + serr->addr_offset),
 					       &sin->sin6_addr);
 			sin->sin6_scope_id = 0;
 		}
@@ -773,12 +774,12 @@ int ip6_datagram_send_ctl(struct net *net, struct sock *sk,
 			}
 
 			if (fl6->flowlabel&IPV6_FLOWINFO_MASK) {
-				if ((fl6->flowlabel^*(__be32 *)CMSG_DATA(cmsg))&~IPV6_FLOWINFO_MASK) {
+				if ((fl6->flowlabel^net_hdr_word(CMSG_DATA(cmsg)))&~IPV6_FLOWINFO_MASK) {
 					err = -EINVAL;
 					goto exit_f;
 				}
 			}
-			fl6->flowlabel = IPV6_FLOWINFO_MASK & *(__be32 *)CMSG_DATA(cmsg);
+			fl6->flowlabel = IPV6_FLOWINFO_MASK & net_hdr_word(CMSG_DATA(cmsg));
 			break;
 
 		case IPV6_2292HOPOPTS:

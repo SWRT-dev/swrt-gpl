@@ -82,6 +82,7 @@
 #include <linux/slab.h>
 #include <linux/sched.h>
 #include <linux/mutex.h>
+#include <linux/rwsem.h>
 #include <linux/string.h>
 #include <linux/mm.h>
 #include <linux/socket.h>
@@ -97,6 +98,9 @@
 #include <net/net_namespace.h>
 #include <net/sock.h>
 #include <linux/rtnetlink.h>
+#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
+#include <linux/imq.h>
+#endif
 #include <linux/stat.h>
 #include <net/dst.h>
 #include <net/dst_metadata.h>
@@ -137,9 +141,6 @@
 #include <linux/errqueue.h>
 #include <linux/hrtimer.h>
 #include <linux/netfilter_ingress.h>
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-#include <linux/imq.h>
-#endif
 
 #include "net-sysfs.h"
 
@@ -152,7 +153,6 @@
 #define BCMFASTPATH
 #endif
 
-/* Instead of increasing this, you should create a hash table. */
 #define MAX_GRO_SKBS 8
 
 /* This should be increased if a protocol with a bigger head is added. */
@@ -163,6 +163,7 @@ static DEFINE_SPINLOCK(offload_lock);
 struct list_head ptype_base[PTYPE_HASH_SIZE] __read_mostly;
 struct list_head ptype_all __read_mostly;	/* Taps */
 static struct list_head offload_base __read_mostly;
+static struct workqueue_struct *napi_workq __read_mostly;
 
 static int netif_rx_internal(struct sk_buff *skb);
 static int call_netdevice_notifiers_info(unsigned long val,
@@ -195,9 +196,9 @@ EXPORT_SYMBOL(dev_base_lock);
 static DEFINE_SPINLOCK(napi_hash_lock);
 
 static unsigned int napi_gen_id = NR_CPUS;
-static DEFINE_READ_MOSTLY_HASHTABLE(napi_hash, 8);
+static DEFINE_HASHTABLE(napi_hash, 8);
 
-static seqcount_t devnet_rename_seq;
+static DECLARE_RWSEM(devnet_rename_sem);
 
 static inline void dev_base_seq_inc(struct net *net)
 {
@@ -219,14 +220,14 @@ static inline struct hlist_head *dev_index_hash(struct net *net, int ifindex)
 static inline void rps_lock(struct softnet_data *sd)
 {
 #ifdef CONFIG_RPS
-	spin_lock(&sd->input_pkt_queue.lock);
+	raw_spin_lock(&sd->input_pkt_queue.raw_lock);
 #endif
 }
 
 static inline void rps_unlock(struct softnet_data *sd)
 {
 #ifdef CONFIG_RPS
-	spin_unlock(&sd->input_pkt_queue.lock);
+	raw_spin_unlock(&sd->input_pkt_queue.raw_lock);
 #endif
 }
 
@@ -676,6 +677,7 @@ __setup("netdev=", netdev_boot_setup);
 			    Device Interface Subroutines
 
 *******************************************************************************/
+int netdev_skb_tstamp __read_mostly = 1;
 
 /**
  *	dev_get_iflink	- get 'iflink' value of a interface
@@ -874,33 +876,28 @@ EXPORT_SYMBOL(dev_get_by_index);
  *	@net: network namespace
  *	@name: a pointer to the buffer where the name will be stored.
  *	@ifindex: the ifindex of the interface to get the name from.
- *
- *	The use of raw_seqcount_begin() and cond_resched() before
- *	retrying is required as we want to give the writers a chance
- *	to complete when CONFIG_PREEMPT is not set.
  */
 int netdev_get_name(struct net *net, char *name, int ifindex)
 {
 	struct net_device *dev;
-	unsigned int seq;
+	int ret;
 
-retry:
-	seq = raw_seqcount_begin(&devnet_rename_seq);
+	down_read(&devnet_rename_sem);
 	rcu_read_lock();
+
 	dev = dev_get_by_index_rcu(net, ifindex);
 	if (!dev) {
-		rcu_read_unlock();
-		return -ENODEV;
+		ret = -ENODEV;
+		goto out;
 	}
 
 	strcpy(name, dev->name);
-	rcu_read_unlock();
-	if (read_seqcount_retry(&devnet_rename_seq, seq)) {
-		cond_resched();
-		goto retry;
-	}
 
-	return 0;
+	ret = 0;
+out:
+	rcu_read_unlock();
+	up_read(&devnet_rename_sem);
+	return ret;
 }
 
 /**
@@ -1165,10 +1162,10 @@ int dev_change_name(struct net_device *dev, const char *newname)
 	if (dev->flags & IFF_UP)
 		return -EBUSY;
 
-	write_seqcount_begin(&devnet_rename_seq);
+	down_write(&devnet_rename_sem);
 
 	if (strncmp(newname, dev->name, IFNAMSIZ) == 0) {
-		write_seqcount_end(&devnet_rename_seq);
+		up_write(&devnet_rename_sem);
 		return 0;
 	}
 
@@ -1176,7 +1173,7 @@ int dev_change_name(struct net_device *dev, const char *newname)
 
 	err = dev_get_valid_name(net, dev, newname);
 	if (err < 0) {
-		write_seqcount_end(&devnet_rename_seq);
+		up_write(&devnet_rename_sem);
 		return err;
 	}
 
@@ -1191,11 +1188,11 @@ rollback:
 	if (ret) {
 		memcpy(dev->name, oldname, IFNAMSIZ);
 		dev->name_assign_type = old_assign_type;
-		write_seqcount_end(&devnet_rename_seq);
+		up_write(&devnet_rename_sem);
 		return ret;
 	}
 
-	write_seqcount_end(&devnet_rename_seq);
+	up_write(&devnet_rename_sem);
 
 	netdev_adjacent_rename_links(dev, oldname);
 
@@ -1216,7 +1213,7 @@ rollback:
 		/* err >= 0 after dev_alloc_name() or stores the first errno */
 		if (err >= 0) {
 			err = ret;
-			write_seqcount_begin(&devnet_rename_seq);
+			down_write(&devnet_rename_sem);
 			memcpy(dev->name, oldname, IFNAMSIZ);
 			memcpy(oldname, newname, IFNAMSIZ);
 			dev->name_assign_type = old_assign_type;
@@ -1772,12 +1769,13 @@ static inline void net_timestamp_set(struct sk_buff *skb)
 {
 	skb->tstamp.tv64 = 0;
 	if (static_key_false(&netstamp_needed))
-		__net_timestamp(skb);
+		if (netdev_skb_tstamp)
+			__net_timestamp(skb);
 }
 
 #define net_timestamp_check(COND, SKB)			\
 	if (static_key_false(&netstamp_needed)) {		\
-		if ((COND) && !(SKB)->tstamp.tv64)	\
+		if (netdev_skb_tstamp && (COND) && !(SKB)->tstamp.tv64)	\
 			__net_timestamp(SKB);		\
 	}						\
 
@@ -2311,6 +2309,7 @@ static inline void __netif_reschedule(struct Qdisc *q)
 	sd->output_queue_tailp = &q->next_sched;
 	raise_softirq_irqoff(NET_TX_SOFTIRQ);
 	local_irq_restore(flags);
+	preempt_check_resched_rt();
 }
 
 void __netif_schedule(struct Qdisc *q)
@@ -2395,6 +2394,7 @@ void __dev_kfree_skb_irq(struct sk_buff *skb, enum skb_free_reason reason)
 	__this_cpu_write(softnet_data.completion_queue, skb);
 	raise_softirq_irqoff(NET_TX_SOFTIRQ);
 	local_irq_restore(flags);
+	preempt_check_resched_rt();
 }
 EXPORT_SYMBOL(__dev_kfree_skb_irq);
 
@@ -2402,8 +2402,10 @@ void __dev_kfree_skb_any(struct sk_buff *skb, enum skb_free_reason reason)
 {
 	if (in_irq() || irqs_disabled())
 		__dev_kfree_skb_irq(skb, reason);
+	else if (unlikely(reason == SKB_REASON_DROPPED))
+		kfree_skb(skb);
 	else
-		dev_kfree_skb(skb);
+		consume_skb(skb);
 }
 EXPORT_SYMBOL(__dev_kfree_skb_any);
 
@@ -2784,14 +2786,12 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 {
 	unsigned int len;
 	int rc;
-	
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
+
 	/*
 	 * If this skb has been fast forwarded then we don't want it to
 	 * go to any taps (by definition we're trying to bypass them).
 	 */
 	if (!skb->fast_forwarded) {
-#endif
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 		if ((!list_empty(&ptype_all) || !list_empty(&dev->ptype_all)) &&
                        !(skb->imq_flags & IMQ_F_ENQUEUE))
@@ -2799,14 +2799,20 @@ static int xmit_one(struct sk_buff *skb, struct net_device *dev,
 		if (!list_empty(&ptype_all) || !list_empty(&dev->ptype_all))
 #endif
 			dev_queue_xmit_nit(skb, dev);
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	}
-#endif
 
-	len = skb->len;
-	trace_net_dev_start_xmit(skb, dev);
-	rc = netdev_start_xmit(skb, dev, txq, more);
-	trace_net_dev_xmit(skb, rc, dev, len);
+#ifdef CONFIG_ETHERNET_PACKET_MANGLE
+		if (!dev->eth_mangle_tx ||
+		    (skb = dev->eth_mangle_tx(dev, skb)) != NULL)
+#else
+		if (1)
+#endif
+		{
+			len = skb->len;
+			trace_net_dev_start_xmit(skb, dev);
+			rc = netdev_start_xmit(skb, dev, txq, more);
+			trace_net_dev_xmit(skb, rc, dev, len);
+		}
 
 	return rc;
 }
@@ -2828,7 +2834,7 @@ struct sk_buff * BCMFASTPATH_HOST dev_hard_start_xmit(struct sk_buff *first, str
 		}
 
 		skb = next;
-		if (netif_xmit_stopped(txq) && skb) {
+		if (netif_tx_queue_stopped(txq) && skb) {
 			rc = NETDEV_TX_BUSY;
 			break;
 		}
@@ -2962,10 +2968,14 @@ static void qdisc_pkt_len_init(struct sk_buff *skb)
 				hdr_len += sizeof(struct udphdr);
 		}
 
-		if (shinfo->gso_type & SKB_GSO_DODGY)
-			gso_segs = DIV_ROUND_UP(skb->len - hdr_len,
-						shinfo->gso_size);
+		if (unlikely(shinfo->gso_type & SKB_GSO_DODGY)) {
+			int payload = skb->len - hdr_len;
 
+			/* Malicious packet. */
+			if (payload <= 0)
+				return;
+			gso_segs = DIV_ROUND_UP(payload, shinfo->gso_size);
+		}
 		qdisc_skb_cb(skb)->pkt_len += (gso_segs - 1) * hdr_len;
 	}
 }
@@ -2986,7 +2996,11 @@ static inline int __dev_xmit_skb(struct sk_buff *skb, struct Qdisc *q,
 	 * This permits __QDISC___STATE_RUNNING owner to get the lock more
 	 * often and dequeue packets faster.
 	 */
+#ifdef CONFIG_PREEMPT_RT_FULL
+	contended = true;
+#else
 	contended = qdisc_is_running(q);
+#endif
 	if (unlikely(contended))
 		spin_lock(&q->busylock);
 
@@ -3046,10 +3060,45 @@ static void skb_update_prio(struct sk_buff *skb)
 #define skb_update_prio(skb)
 #endif
 
+#ifdef CONFIG_PREEMPT_RT_FULL
+
+static inline int xmit_rec_read(void)
+{
+       return current->xmit_recursion;
+}
+
+static inline void xmit_rec_inc(void)
+{
+       current->xmit_recursion++;
+}
+
+static inline void xmit_rec_dec(void)
+{
+       current->xmit_recursion--;
+}
+
+#else
+
 DEFINE_PER_CPU(int, xmit_recursion);
 EXPORT_SYMBOL(xmit_recursion);
 
-#define RECURSION_LIMIT 10
+static inline int xmit_rec_read(void)
+{
+	return __this_cpu_read(xmit_recursion);
+}
+
+static inline void xmit_rec_inc(void)
+{
+	__this_cpu_inc(xmit_recursion);
+}
+
+static inline void xmit_rec_dec(void)
+{
+	__this_cpu_dec(xmit_recursion);
+}
+#endif
+
+#define RECURSION_LIMIT 8
 
 /**
  *	dev_loopback_xmit - loop back @skb
@@ -3243,7 +3292,7 @@ static int BCMFASTPATH_HOST __dev_queue_xmit(struct sk_buff *skb, void *accel_pr
 
 		if (txq->xmit_lock_owner != cpu) {
 
-			if (__this_cpu_read(xmit_recursion) > RECURSION_LIMIT)
+			if (xmit_rec_read() > RECURSION_LIMIT)
 				goto recursion_alert;
 
 			skb = validate_xmit_skb(skb, dev);
@@ -3253,9 +3302,9 @@ static int BCMFASTPATH_HOST __dev_queue_xmit(struct sk_buff *skb, void *accel_pr
 			HARD_TX_LOCK(dev, txq, cpu);
 
 			if (!netif_xmit_stopped(txq)) {
-				__this_cpu_inc(xmit_recursion);
+				xmit_rec_inc();
 				skb = dev_hard_start_xmit(skb, dev, txq, &rc);
-				__this_cpu_dec(xmit_recursion);
+				xmit_rec_dec();
 				if (dev_xmit_complete(rc)) {
 					HARD_TX_UNLOCK(dev, txq);
 					goto out;
@@ -3308,6 +3357,7 @@ EXPORT_SYMBOL(netdev_max_backlog);
 
 int netdev_tstamp_prequeue __read_mostly = 1;
 int netdev_budget __read_mostly = 300;
+unsigned int __read_mostly netdev_budget_usecs = 2000;
 int weight_p __read_mostly = 64;            /* old backlog weight */
 
 /* Called with irq disabled */
@@ -3327,6 +3377,7 @@ u32 rps_cpu_mask __read_mostly;
 EXPORT_SYMBOL(rps_cpu_mask);
 
 struct static_key rps_needed __read_mostly;
+EXPORT_SYMBOL(rps_needed);
 
 static struct rps_dev_flow *
 set_rps_cpu(struct net_device *dev, struct sk_buff *skb,
@@ -3420,8 +3471,10 @@ static int get_rps_cpu(struct net_device *dev, struct sk_buff *skb,
 		u32 next_cpu;
 		u32 ident;
 
-		/* First check into global flow table if there is a match */
-		ident = sock_flow_table->ents[hash & sock_flow_table->mask];
+		/* First check into global flow table if there is a match.
+		 * This READ_ONCE() pairs with WRITE_ONCE() from rps_record_sock_flow().
+		 */
+		ident = READ_ONCE(sock_flow_table->ents[hash & sock_flow_table->mask]);
 		if ((ident ^ hash) & ~rps_cpu_mask)
 			goto try_rps;
 
@@ -3629,6 +3682,7 @@ drop:
 	rps_unlock(sd);
 
 	local_irq_restore(flags);
+	preempt_check_resched_rt();
 
 	atomic_long_inc(&skb->dev->rx_dropped);
 	kfree_skb(skb);
@@ -3647,7 +3701,7 @@ static int BCMFASTPATH_HOST netif_rx_internal(struct sk_buff *skb)
 		struct rps_dev_flow voidflow, *rflow = &voidflow;
 		int cpu;
 
-		preempt_disable();
+		migrate_disable();
 		rcu_read_lock();
 
 		cpu = get_rps_cpu(skb->dev, skb, &rflow);
@@ -3657,13 +3711,13 @@ static int BCMFASTPATH_HOST netif_rx_internal(struct sk_buff *skb)
 		ret = enqueue_to_backlog(skb, cpu, &rflow->last_qtail);
 
 		rcu_read_unlock();
-		preempt_enable();
+		migrate_enable();
 	} else
 #endif
 	{
 		unsigned int qtail;
-		ret = enqueue_to_backlog(skb, get_cpu(), &qtail);
-		put_cpu();
+		ret = enqueue_to_backlog(skb, get_cpu_light(), &qtail);
+		put_cpu_light();
 	}
 	return ret;
 }
@@ -3697,15 +3751,43 @@ int netif_rx_ni(struct sk_buff *skb)
 
 	trace_netif_rx_ni_entry(skb);
 
-	preempt_disable();
+	local_bh_disable();
 	err = netif_rx_internal(skb);
-	if (local_softirq_pending())
-		do_softirq();
-	preempt_enable();
+	local_bh_enable();
 
 	return err;
 }
 EXPORT_SYMBOL(netif_rx_ni);
+
+#ifdef CONFIG_PREEMPT_RT_FULL
+/*
+ * RT runs ksoftirqd as a real time thread and the root_lock is a
+ * "sleeping spinlock". If the trylock fails then we can go into an
+ * infinite loop when ksoftirqd preempted the task which actually
+ * holds the lock, because we requeue q and raise NET_TX softirq
+ * causing ksoftirqd to loop forever.
+ *
+ * It's safe to use spin_lock on RT here as softirqs run in thread
+ * context and cannot deadlock against the thread which is holding
+ * root_lock.
+ *
+ * On !RT the trylock might fail, but there we bail out from the
+ * softirq loop after 10 attempts which we can't do on RT. And the
+ * task holding root_lock cannot be preempted, so the only downside of
+ * that trylock is that we need 10 loops to decide that we should have
+ * given up in the first one :)
+ */
+static inline int take_root_lock(spinlock_t *lock)
+{
+	spin_lock(lock);
+	return 1;
+}
+#else
+static inline int take_root_lock(spinlock_t *lock)
+{
+	return spin_trylock(lock);
+}
+#endif
 
 static void net_tx_action(struct softirq_action *h)
 {
@@ -3748,7 +3830,7 @@ static void net_tx_action(struct softirq_action *h)
 			head = head->next_sched;
 
 			root_lock = qdisc_lock(q);
-			if (spin_trylock(root_lock)) {
+			if (take_root_lock(root_lock)) {
 				smp_mb__before_atomic();
 				clear_bit(__QDISC_STATE_SCHED,
 					  &q->state);
@@ -3895,10 +3977,8 @@ void netdev_rx_handler_unregister(struct net_device *dev)
 }
 EXPORT_SYMBOL_GPL(netdev_rx_handler_unregister);
 
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 int (*fast_nat_recv)(struct sk_buff *skb) __rcu __read_mostly;
 EXPORT_SYMBOL_GPL(fast_nat_recv);
-#endif
 
 /*
  * Limit the use of PFMEMALLOC reserves to those protocols that implement
@@ -3942,13 +4022,12 @@ static int __netif_receive_skb_core(struct sk_buff *skb, bool pfmemalloc)
 	bool deliver_exact = false;
 	int ret = NET_RX_DROP;
 	__be16 type;
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	int (*fast_recv)(struct sk_buff *skb);
-#endif
 
 	net_timestamp_check(!netdev_tstamp_prequeue, skb);
 
 	trace_netif_receive_skb(skb);
+
 
 	orig_dev = skb->dev;
 
@@ -3970,13 +4049,12 @@ another_round:
 		if (unlikely(!skb))
 			goto out;
 	}
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
+
 	fast_recv = rcu_dereference(fast_nat_recv);
 	if (fast_recv && fast_recv(skb)) {
 		ret = NET_RX_SUCCESS;
 		goto out;
 	}
-#endif
 
 #ifdef CONFIG_NET_CLS_ACT
 	if (skb->tc_verd & TC_NCLS) {
@@ -4172,6 +4250,27 @@ int BCMFASTPATH_HOST netif_receive_skb(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(netif_receive_skb);
 
+/**
+ *	netif_receive_skb_list - process many receive buffers from network
+ *	@head: list of skbs to process.
+ *
+ *	For now, just calls netif_receive_skb() in a loop, ignoring the
+ *	return value.
+ *
+ *	This function may only be called from softirq context and interrupts
+ *	should be enabled.
+ */
+void netif_receive_skb_list(struct list_head *head)
+{
+	struct sk_buff *skb, *next;
+
+	list_for_each_entry_safe(skb, next, head, list) {
+		skb_list_del_init(skb);
+		netif_receive_skb(skb);
+	}
+}
+EXPORT_SYMBOL(netif_receive_skb_list);
+
 /* Network device is going away, flush any packets still pending
  * Called with irqs disabled.
  */
@@ -4185,7 +4284,7 @@ static void flush_backlog(void *arg)
 	skb_queue_walk_safe(&sd->input_pkt_queue, skb, tmp) {
 		if (skb->dev == dev) {
 			__skb_unlink(skb, &sd->input_pkt_queue);
-			kfree_skb(skb);
+			__skb_queue_tail(&sd->tofree_queue, skb);
 			input_queue_head_incr(sd);
 		}
 	}
@@ -4194,10 +4293,13 @@ static void flush_backlog(void *arg)
 	skb_queue_walk_safe(&sd->process_queue, skb, tmp) {
 		if (skb->dev == dev) {
 			__skb_unlink(skb, &sd->process_queue);
-			kfree_skb(skb);
+			__skb_queue_tail(&sd->tofree_queue, skb);
 			input_queue_head_incr(sd);
 		}
 	}
+
+	if (!skb_queue_empty(&sd->tofree_queue))
+		raise_softirq_irqoff(NET_RX_SOFTIRQ);
 }
 
 static int BCMFASTPATH_HOST napi_gro_complete(struct sk_buff *skb)
@@ -4234,42 +4336,50 @@ out:
 	return netif_receive_skb_internal(skb);
 }
 
-/* napi->gro_list contains packets ordered by age.
+static void BCMFASTPATH_HOST __napi_gro_flush_chain(struct napi_struct *napi, u32 index,
+				   bool flush_old)
+{
+	struct list_head *head = &napi->gro_hash[index].list;
+	struct sk_buff *skb, *p;
+
+	list_for_each_entry_safe_reverse(skb, p, head, list) {
+		if (flush_old && NAPI_GRO_CB(skb)->age == jiffies)
+			return;
+		list_del(&skb->list);
+		skb->next = NULL;
+		napi_gro_complete(skb);
+		napi->gro_hash[index].count--;
+	}
+
+	if (!napi->gro_hash[index].count)
+		__clear_bit(index, &napi->gro_bitmask);
+}
+
+/* napi->gro_hash[].list contains packets ordered by age.
  * youngest packets at the head of it.
  * Complete skbs in reverse order to reduce latencies.
  */
 void BCMFASTPATH_HOST napi_gro_flush(struct napi_struct *napi, bool flush_old)
 {
-	struct sk_buff *skb, *prev = NULL;
+	u32 i;
 
-	/* scan list and build reverse chain */
-	for (skb = napi->gro_list; skb != NULL; skb = skb->next) {
-		skb->prev = prev;
-		prev = skb;
+	for (i = 0; i < GRO_HASH_BUCKETS; i++) {
+		if (test_bit(i, &napi->gro_bitmask))
+			__napi_gro_flush_chain(napi, i, flush_old);
 	}
-
-	for (skb = prev; skb; skb = prev) {
-		skb->next = NULL;
-
-		if (flush_old && NAPI_GRO_CB(skb)->age == jiffies)
-			return;
-
-		prev = skb->prev;
-		napi_gro_complete(skb);
-		napi->gro_count--;
-	}
-
-	napi->gro_list = NULL;
 }
 EXPORT_SYMBOL(napi_gro_flush);
 
-static void gro_list_prepare(struct napi_struct *napi, struct sk_buff *skb)
+static struct list_head *gro_list_prepare(struct napi_struct *napi,
+					  struct sk_buff *skb)
 {
-	struct sk_buff *p;
 	unsigned int maclen = skb->dev->hard_header_len;
 	u32 hash = skb_get_hash_raw(skb);
+	struct list_head *head;
+	struct sk_buff *p;
 
-	for (p = napi->gro_list; p; p = p->next) {
+	head = &napi->gro_hash[hash & (GRO_HASH_BUCKETS - 1)].list;
+	list_for_each_entry(p, head, list) {
 		unsigned long diffs;
 
 		NAPI_GRO_CB(p)->flush = 0;
@@ -4291,9 +4401,11 @@ static void gro_list_prepare(struct napi_struct *napi, struct sk_buff *skb)
 				       maclen);
 		NAPI_GRO_CB(p)->same_flow = !diffs;
 	}
+
+	return head;
 }
 
-static void skb_gro_reset_offset(struct sk_buff *skb)
+static inline void skb_gro_reset_offset(struct sk_buff *skb, u32 nhoff)
 {
 	const struct skb_shared_info *pinfo = skb_shinfo(skb);
 	const skb_frag_t *frag0 = &pinfo->frags[0];
@@ -4302,9 +4414,9 @@ static void skb_gro_reset_offset(struct sk_buff *skb)
 	NAPI_GRO_CB(skb)->frag0 = NULL;
 	NAPI_GRO_CB(skb)->frag0_len = 0;
 
-	if (skb_mac_header(skb) == skb_tail_pointer(skb) &&
-	    pinfo->nr_frags &&
-	    !PageHighMem(skb_frag_page(frag0))) {
+	if (!skb_headlen(skb) && pinfo->nr_frags &&
+	    !PageHighMem(skb_frag_page(frag0)) &&
+	    (!NET_IP_ALIGN || !((frag0->page_offset + nhoff) & 3))) {
 		NAPI_GRO_CB(skb)->frag0 = skb_frag_address(frag0);
 		NAPI_GRO_CB(skb)->frag0_len = min_t(unsigned int,
 						    skb_frag_size(frag0),
@@ -4333,14 +4445,36 @@ static void gro_pull_from_frag0(struct sk_buff *skb, int grow)
 	}
 }
 
+static void gro_flush_oldest(struct list_head *head)
+{
+	struct sk_buff *oldest;
+
+	oldest = list_last_entry(head, struct sk_buff, list);
+
+	/* We are called with head length >= MAX_GRO_SKBS, so this is
+	 * impossible.
+	 */
+	if (WARN_ON_ONCE(!oldest))
+		return;
+
+	/* Do not adjust napi->gro_hash[].count, caller is adding a new
+	 * SKB to the chain.
+	 */
+	list_del(&oldest->list);
+	oldest->next = NULL;
+	napi_gro_complete(oldest);
+}
+
 static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 {
-	struct sk_buff **pp = NULL;
+	u32 hash = skb_get_hash_raw(skb) & (GRO_HASH_BUCKETS - 1);
+	struct list_head *head = &offload_base;
 	struct packet_offload *ptype;
 	__be16 type = skb->protocol;
-	struct list_head *head = &offload_base;
-	int same_flow;
+	struct list_head *gro_head;
+	struct sk_buff *pp = NULL;
 	enum gro_result ret;
+	int same_flow;
 	int grow;
 
 	if (skb->gro_skip)
@@ -4352,7 +4486,7 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 	if (skb_is_gso(skb) || skb_has_frag_list(skb) || skb->csum_bad)
 		goto normal;
 
-	gro_list_prepare(napi, skb);
+	gro_head = gro_list_prepare(napi, skb);
 
 	rcu_read_lock();
 	list_for_each_entry_rcu(ptype, head, list) {
@@ -4366,6 +4500,7 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 		NAPI_GRO_CB(skb)->free = 0;
 		NAPI_GRO_CB(skb)->encap_mark = 0;
 		NAPI_GRO_CB(skb)->recursion_counter = 0;
+		NAPI_GRO_CB(skb)->is_fou = 0;
 		NAPI_GRO_CB(skb)->gro_remcsum_start = 0;
 
 		/* Setup for GRO checksum validation */
@@ -4384,7 +4519,7 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 			NAPI_GRO_CB(skb)->csum_valid = 0;
 		}
 
-		pp = ptype->callbacks.gro_receive(&napi->gro_list, skb);
+		pp = ptype->callbacks.gro_receive(gro_head, skb);
 		break;
 	}
 	rcu_read_unlock();
@@ -4396,12 +4531,10 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 	ret = NAPI_GRO_CB(skb)->free ? GRO_MERGED_FREE : GRO_MERGED;
 
 	if (pp) {
-		struct sk_buff *nskb = *pp;
-
-		*pp = nskb->next;
-		nskb->next = NULL;
-		napi_gro_complete(nskb);
-		napi->gro_count--;
+		list_del(&pp->list);
+		pp->next = NULL;
+		napi_gro_complete(pp);
+		napi->gro_hash[hash].count--;
 	}
 
 	if (same_flow)
@@ -4410,26 +4543,16 @@ static enum gro_result BCMFASTPATH_HOST dev_gro_receive(struct napi_struct *napi
 	if (NAPI_GRO_CB(skb)->flush)
 		goto normal;
 
-	if (unlikely(napi->gro_count >= MAX_GRO_SKBS)) {
-		struct sk_buff *nskb = napi->gro_list;
-
-		/* locate the end of the list to select the 'oldest' flow */
-		while (nskb->next) {
-			pp = &nskb->next;
-			nskb = *pp;
-		}
-		*pp = NULL;
-		nskb->next = NULL;
-		napi_gro_complete(nskb);
+	if (unlikely(napi->gro_hash[hash].count >= MAX_GRO_SKBS)) {
+		gro_flush_oldest(gro_head);
 	} else {
-		napi->gro_count++;
+		napi->gro_hash[hash].count++;
 	}
 	NAPI_GRO_CB(skb)->count = 1;
 	NAPI_GRO_CB(skb)->age = jiffies;
 	NAPI_GRO_CB(skb)->last = skb;
 	skb_shinfo(skb)->gso_size = skb_gro_len(skb);
-	skb->next = napi->gro_list;
-	napi->gro_list = skb;
+	list_add(&skb->list, gro_head);
 	ret = GRO_HELD;
 
 pull:
@@ -4437,6 +4560,13 @@ pull:
 	if (grow > 0)
 		gro_pull_from_frag0(skb, grow);
 ok:
+	if (napi->gro_hash[hash].count) {
+		if (!test_bit(hash, &napi->gro_bitmask))
+			__set_bit(hash, &napi->gro_bitmask);
+	} else if (test_bit(hash, &napi->gro_bitmask)) {
+		__clear_bit(hash, &napi->gro_bitmask);
+	}
+
 	return ret;
 
 normal:
@@ -4505,11 +4635,12 @@ static gro_result_t BCMFASTPATH_HOST napi_skb_finish(gro_result_t ret, struct sk
 	return ret;
 }
 
+
 gro_result_t BCMFASTPATH_HOST napi_gro_receive(struct napi_struct *napi, struct sk_buff *skb)
 {
 	trace_napi_gro_receive_entry(skb);
 
-	skb_gro_reset_offset(skb);
+	skb_gro_reset_offset(skb, 0);
 
 	return napi_skb_finish(dev_gro_receive(napi, skb), skb);
 }
@@ -4594,7 +4725,7 @@ static struct sk_buff *napi_frags_skb(struct napi_struct *napi)
 	napi->skb = NULL;
 
 	skb_reset_mac_header(skb);
-	skb_gro_reset_offset(skb);
+	skb_gro_reset_offset(skb, hlen);
 
 	if (unlikely(skb_gro_header_hard(skb, hlen))) {
 		eth = skb_gro_header_slow(skb, hlen, 0);
@@ -4671,6 +4802,7 @@ static void net_rps_action_and_irq_enable(struct softnet_data *sd)
 		sd->rps_ipi_list = NULL;
 
 		local_irq_enable();
+		preempt_check_resched_rt();
 
 		/* Send pending IPI's to kick RPS processing on remote cpus. */
 		while (remsd) {
@@ -4684,6 +4816,7 @@ static void net_rps_action_and_irq_enable(struct softnet_data *sd)
 	} else
 #endif
 		local_irq_enable();
+	preempt_check_resched_rt();
 }
 
 static bool sd_has_rps_ipi_waiting(struct softnet_data *sd)
@@ -4762,12 +4895,19 @@ void __napi_schedule(struct napi_struct *n)
 {
 	unsigned long flags;
 
+	if (test_bit(NAPI_STATE_THREADED, &n->state)) {
+		queue_work(napi_workq, &n->work);
+		return;
+	}
+
 	local_irq_save(flags);
 	____napi_schedule(this_cpu_ptr(&softnet_data), n);
 	local_irq_restore(flags);
+	preempt_check_resched_rt();
 }
 EXPORT_SYMBOL(__napi_schedule);
 
+#ifndef CONFIG_PREEMPT_RT_FULL
 /**
  * __napi_schedule_irqoff - schedule for receive
  * @n: entry to schedule
@@ -4776,9 +4916,18 @@ EXPORT_SYMBOL(__napi_schedule);
  */
 void __napi_schedule_irqoff(struct napi_struct *n)
 {
-	____napi_schedule(this_cpu_ptr(&softnet_data), n);
+	if (test_bit(NAPI_STATE_THREADED, &n->state)) {
+		queue_work(napi_workq, &n->work);
+		return;
+	}
+
+	if (!IS_ENABLED(CONFIG_PREEMPT_RT))
+		____napi_schedule(this_cpu_ptr(&softnet_data), n);
+	else
+		__napi_schedule(n);
 }
 EXPORT_SYMBOL(__napi_schedule_irqoff);
+#endif
 
 void __napi_complete(struct napi_struct *n)
 {
@@ -4801,7 +4950,7 @@ void napi_complete_done(struct napi_struct *n, int work_done)
 	if (unlikely(test_bit(NAPI_STATE_NPSVC, &n->state)))
 		return;
 
-	if (n->gro_list) {
+	if (n->gro_bitmask) {
 		unsigned long timeout = 0;
 
 		if (work_done)
@@ -4878,33 +5027,127 @@ static enum hrtimer_restart napi_watchdog(struct hrtimer *timer)
 	struct napi_struct *napi;
 
 	napi = container_of(timer, struct napi_struct, timer);
-	if (napi->gro_list)
+	if (napi->gro_bitmask)
 		napi_schedule(napi);
 
 	return HRTIMER_NORESTART;
 }
 
+static int __napi_poll(struct napi_struct *n, bool *repoll)
+{
+	int work, weight;
+
+	weight = n->weight;
+
+	/* This NAPI_STATE_SCHED test is for avoiding a race
+	 * with netpoll's poll_napi().  Only the entity which
+	 * obtains the lock and sees NAPI_STATE_SCHED set will
+	 * actually make the ->poll() call.  Therefore we avoid
+	 * accidentally calling ->poll() when NAPI is not scheduled.
+	 */
+	work = 0;
+	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
+		work = n->poll(n, weight);
+		trace_napi_poll(n);
+	}
+
+	if (unlikely(work > weight))
+		pr_err_once("NAPI poll function %pS returned %d, exceeding its budget of %d.\n",
+			    n->poll, work, weight);
+
+	if (likely(work < weight))
+		return work;
+
+	/* Drivers must not modify the NAPI state if they
+	 * consume the entire weight.  In such cases this code
+	 * still "owns" the NAPI instance and therefore can
+	 * move the instance around on the list at-will.
+	 */
+	if (unlikely(napi_disable_pending(n))) {
+		napi_complete(n);
+		return work;
+	}
+
+	if (n->gro_bitmask) {
+		/* flush too old packets
+		 * If HZ < 1000, flush all packets.
+		 */
+		napi_gro_flush(n, HZ >= 1000);
+	}
+
+	/* Some drivers may have called napi_schedule
+	 * prior to exhausting their budget.
+	 */
+	if (unlikely(!list_empty(&n->poll_list))) {
+		pr_warn_once("%s: Budget exhausted after napi rescheduled\n",
+			     n->dev ? n->dev->name : "backlog");
+		return work;
+	}
+
+	*repoll = true;
+
+	return work;
+}
+
+static void napi_workfn(struct work_struct *work)
+{
+	struct napi_struct *n = container_of(work, struct napi_struct, work);
+	void *have;
+
+	for (;;) {
+		bool repoll = false;
+
+		local_bh_disable();
+
+		have = netpoll_poll_lock(n);
+		__napi_poll(n, &repoll);
+		netpoll_poll_unlock(have);
+
+		local_bh_enable();
+
+		if (!repoll)
+			return;
+
+		if (!need_resched())
+			continue;
+
+		/*
+		 * have to pay for the latency of task switch even if
+		 * napi is scheduled
+		 */
+		queue_work(napi_workq, work);
+		return;
+	}
+}
+
 void netif_napi_add(struct net_device *dev, struct napi_struct *napi,
 		    int (*poll)(struct napi_struct *, int), int weight)
 {
+	int i;
+
 	INIT_LIST_HEAD(&napi->poll_list);
 	hrtimer_init(&napi->timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL_PINNED);
 	napi->timer.function = napi_watchdog;
-	napi->gro_count = 0;
-	napi->gro_list = NULL;
+	napi->gro_bitmask = 0;
+	for (i = 0; i < GRO_HASH_BUCKETS; i++) {
+		INIT_LIST_HEAD(&napi->gro_hash[i].list);
+		napi->gro_hash[i].count = 0;
+	}
 	napi->skb = NULL;
 	napi->poll = poll;
 	if (weight > NAPI_POLL_WEIGHT)
 		pr_err_once("netif_napi_add() called with weight %d on device %s\n",
 			    weight, dev->name);
 	napi->weight = weight;
-	list_add(&napi->dev_list, &dev->napi_list);
 	napi->dev = dev;
 #ifdef CONFIG_NETPOLL
 	spin_lock_init(&napi->poll_lock);
 	napi->poll_owner = -1;
 #endif
+	INIT_WORK(&napi->work, napi_workfn);
 	set_bit(NAPI_STATE_SCHED, &napi->state);
+	set_bit(NAPI_STATE_NPSVC, &napi->state);
+	list_add_rcu(&napi->dev_list, &dev->napi_list);
 }
 EXPORT_SYMBOL(netif_napi_add);
 
@@ -4924,74 +5167,44 @@ void napi_disable(struct napi_struct *n)
 }
 EXPORT_SYMBOL(napi_disable);
 
+static void flush_gro_hash(struct napi_struct *napi)
+{
+	int i;
+
+	for (i = 0; i < GRO_HASH_BUCKETS; i++) {
+		struct sk_buff *skb, *n;
+
+		list_for_each_entry_safe(skb, n, &napi->gro_hash[i].list, list)
+			kfree_skb(skb);
+		napi->gro_hash[i].count = 0;
+	}
+}
+
 void netif_napi_del(struct napi_struct *napi)
 {
+	cancel_work_sync(&napi->work);
 	list_del_init(&napi->dev_list);
 	napi_free_frags(napi);
 
-	kfree_skb_list(napi->gro_list);
-	napi->gro_list = NULL;
-	napi->gro_count = 0;
+	flush_gro_hash(napi);
+	napi->gro_bitmask = 0;
 }
 EXPORT_SYMBOL(netif_napi_del);
 
 static int napi_poll(struct napi_struct *n, struct list_head *repoll)
 {
+	bool do_repoll = false;
 	void *have;
-	int work, weight;
+	int work;
 
 	list_del_init(&n->poll_list);
 
 	have = netpoll_poll_lock(n);
 
-	weight = n->weight;
+	work = __napi_poll(n, &do_repoll);
+	if (do_repoll)
+		list_add_tail(&n->poll_list, repoll);
 
-	/* This NAPI_STATE_SCHED test is for avoiding a race
-	 * with netpoll's poll_napi().  Only the entity which
-	 * obtains the lock and sees NAPI_STATE_SCHED set will
-	 * actually make the ->poll() call.  Therefore we avoid
-	 * accidentally calling ->poll() when NAPI is not scheduled.
-	 */
-	work = 0;
-	if (test_bit(NAPI_STATE_SCHED, &n->state)) {
-		work = n->poll(n, weight);
-		trace_napi_poll(n);
-	}
-
-	WARN_ON_ONCE(work > weight);
-
-	if (likely(work < weight))
-		goto out_unlock;
-
-	/* Drivers must not modify the NAPI state if they
-	 * consume the entire weight.  In such cases this code
-	 * still "owns" the NAPI instance and therefore can
-	 * move the instance around on the list at-will.
-	 */
-	if (unlikely(napi_disable_pending(n))) {
-		napi_complete(n);
-		goto out_unlock;
-	}
-
-	if (n->gro_list) {
-		/* flush too old packets
-		 * If HZ < 1000, flush all packets.
-		 */
-		napi_gro_flush(n, HZ >= 1000);
-	}
-
-	/* Some drivers may have called napi_schedule
-	 * prior to exhausting their budget.
-	 */
-	if (unlikely(!list_empty(&n->poll_list))) {
-		pr_warn_once("%s: Budget exhausted after napi rescheduled\n",
-			     n->dev ? n->dev->name : "backlog");
-		goto out_unlock;
-	}
-
-	list_add_tail(&n->poll_list, repoll);
-
-out_unlock:
 	netpoll_poll_unlock(have);
 
 	return work;
@@ -5000,14 +5213,23 @@ out_unlock:
 static void BCMFASTPATH_HOST net_rx_action(struct softirq_action *h)
 {
 	struct softnet_data *sd = this_cpu_ptr(&softnet_data);
-	unsigned long time_limit = jiffies + 2;
+	unsigned long time_limit = jiffies +
+		usecs_to_jiffies(netdev_budget_usecs);
 	int budget = netdev_budget;
+	struct sk_buff_head tofree_q;
+	struct sk_buff *skb;
 	LIST_HEAD(list);
 	LIST_HEAD(repoll);
 
+	__skb_queue_head_init(&tofree_q);
+
 	local_irq_disable();
+	skb_queue_splice_init(&sd->tofree_queue, &tofree_q);
 	list_splice_init(&sd->poll_list, &list);
 	local_irq_enable();
+
+	while ((skb = __skb_dequeue(&tofree_q)))
+		kfree_skb(skb);
 
 	for (;;) {
 		struct napi_struct *n;
@@ -5038,7 +5260,7 @@ static void BCMFASTPATH_HOST net_rx_action(struct softirq_action *h)
 	list_splice_tail(&repoll, &list);
 	list_splice(&list, &sd->poll_list);
 	if (!list_empty(&sd->poll_list))
-		__raise_softirq_irqoff(NET_RX_SOFTIRQ);
+		__raise_softirq_irqoff_ksoft(NET_RX_SOFTIRQ);
 
 	net_rps_action_and_irq_enable(sd);
 }
@@ -6216,7 +6438,8 @@ static int __dev_set_mtu(struct net_device *dev, int new_mtu)
 	if (ops->ndo_change_mtu)
 		return ops->ndo_change_mtu(dev, new_mtu);
 
-	dev->mtu = new_mtu;
+	/* Pairs with all the lockless reads of dev->mtu in the stack */
+	WRITE_ONCE(dev->mtu, new_mtu);
 	return 0;
 }
 
@@ -6234,9 +6457,18 @@ int dev_set_mtu(struct net_device *dev, int new_mtu)
 	if (new_mtu == dev->mtu)
 		return 0;
 
-	/*	MTU must be positive.	 */
-	if (new_mtu < 0)
+	/* MTU must be positive, and in range */
+	if (new_mtu < 0 || new_mtu < dev->min_mtu) {
+		net_err_ratelimited("%s: Invalid MTU %d requested, hw min %d\n",
+				    dev->name, new_mtu, dev->min_mtu);
 		return -EINVAL;
+	}
+
+	if (dev->max_mtu > 0 && new_mtu > dev->max_mtu) {
+		net_err_ratelimited("%s: Invalid MTU %d requested, hw max %d\n",
+				    dev->name, new_mtu, dev->min_mtu);
+		return -EINVAL;
+	}
 
 	if (!netif_device_present(dev))
 		return -ENODEV;
@@ -6538,11 +6770,13 @@ static void netdev_sync_lower_features(struct net_device *upper,
 			netdev_dbg(upper, "Disabling feature %pNF on lower dev %s.\n",
 				   &feature, lower->name);
 			lower->wanted_features &= ~feature;
-			netdev_update_features(lower);
+			__netdev_update_features(lower);
 
 			if (unlikely(lower->features & feature))
 				netdev_WARN(upper, "failed to disable %pNF on %s!\n",
 					    &feature, lower->name);
+			else
+				netdev_features_change(lower);
 		}
 	}
 }
@@ -6931,6 +7165,13 @@ int register_netdevice(struct net_device *dev)
 		rcu_barrier();
 
 		dev->reg_state = NETREG_UNREGISTERED;
+		/* We should put the kobject that hold in
+		 * netdev_unregister_kobject(), otherwise
+		 * the net device cannot be freed when
+		 * driver calls free_netdev(), because the
+		 * kobject is being hold.
+		 */
+		kobject_put(&dev->dev.kobj);
 	}
 	/*
 	 *	Prevent userspace races by waiting until the network
@@ -7041,13 +7282,14 @@ static void netdev_wait_allrefs(struct net_device *dev)
 {
 	unsigned long rebroadcast_time, warning_time;
 	int refcnt;
+	int dead = 2;
 
 	linkwatch_forget_dev(dev);
 
 	rebroadcast_time = warning_time = jiffies;
 	refcnt = netdev_refcnt_read(dev);
 
-	while (refcnt != 0) {
+	while (refcnt != 0 && dead-- > 0) {
 		if (time_after(jiffies, rebroadcast_time + 1 * HZ)) {
 			rtnl_lock();
 
@@ -7426,7 +7668,7 @@ EXPORT_SYMBOL(free_netdev);
 void synchronize_net(void)
 {
 	might_sleep();
-	if (rtnl_is_locked())
+	if (rtnl_is_locked() && !IS_ENABLED(CONFIG_PREEMPT_RT_FULL))
 		synchronize_rcu_expedited();
 	else
 		synchronize_rcu();
@@ -7667,15 +7909,19 @@ static int dev_cpu_callback(struct notifier_block *nfb,
 
 	raise_softirq_irqoff(NET_TX_SOFTIRQ);
 	local_irq_enable();
+	preempt_check_resched_rt();
 
 	/* Process offline CPU's input_pkt_queue */
 	while ((skb = __skb_dequeue(&oldsd->process_queue))) {
 		netif_rx_ni(skb);
 		input_queue_head_incr(oldsd);
 	}
-	while ((skb = skb_dequeue(&oldsd->input_pkt_queue))) {
+	while ((skb = __skb_dequeue(&oldsd->input_pkt_queue))) {
 		netif_rx_ni(skb);
 		input_queue_head_incr(oldsd);
+	}
+	while ((skb = __skb_dequeue(&oldsd->tofree_queue))) {
+		kfree_skb(skb);
 	}
 
 	return NOTIFY_OK;
@@ -7726,6 +7972,9 @@ static struct hlist_head * __net_init netdev_create_hash(void)
 /* Initialize per network namespace state */
 static int __net_init netdev_init(struct net *net)
 {
+	BUILD_BUG_ON(GRO_HASH_BUCKETS >
+		     8 * FIELD_SIZEOF(struct napi_struct, gro_bitmask));
+
 	if (net != &init_net)
 		INIT_LIST_HEAD(&net->dev_base_head);
 
@@ -7856,7 +8105,7 @@ static void __net_exit default_device_exit(struct net *net)
 			continue;
 
 		/* Leave virtual devices for the generic cleanup */
-		if (dev->rtnl_link_ops)
+		if (dev->rtnl_link_ops && !dev->rtnl_link_ops->netns_refund)
 			continue;
 
 		/* Push remaining network devices to init_net */
@@ -7980,8 +8229,9 @@ static int __init net_dev_init(void)
 	for_each_possible_cpu(i) {
 		struct softnet_data *sd = &per_cpu(softnet_data, i);
 
-		skb_queue_head_init(&sd->input_pkt_queue);
-		skb_queue_head_init(&sd->process_queue);
+		skb_queue_head_init_raw(&sd->input_pkt_queue);
+		skb_queue_head_init_raw(&sd->process_queue);
+		skb_queue_head_init_raw(&sd->tofree_queue);
 		INIT_LIST_HEAD(&sd->poll_list);
 		sd->output_queue_tailp = &sd->output_queue;
 #ifdef CONFIG_RPS
@@ -7993,6 +8243,10 @@ static int __init net_dev_init(void)
 		sd->backlog.poll = process_backlog;
 		sd->backlog.weight = weight_p;
 	}
+
+	napi_workq = alloc_workqueue("napi_workq", WQ_UNBOUND | WQ_HIGHPRI,
+				     WQ_UNBOUND_MAX_ACTIVE);
+	BUG_ON(!napi_workq);
 
 	dev_boot_phase = 0;
 

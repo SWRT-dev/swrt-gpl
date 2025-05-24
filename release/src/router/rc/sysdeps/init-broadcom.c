@@ -2121,10 +2121,10 @@ void init_switch()
 			/* FA is capable */
 			fclose(fp);
 			nvram_set_int("ctf_fa_cap", 1);
-			ATE_BRCM_SET("ctf_fa_cap", "1");
+			//ATE_BRCM_SET("ctf_fa_cap", "1");
 		} else {
 			nvram_set_int("ctf_fa_cap", 0);
-			ATE_BRCM_SET("ctf_fa_cap", "0");
+			//ATE_BRCM_SET("ctf_fa_cap", "0");
 		}
 
 		if (nvram_ctf_fa_mode)
@@ -2132,28 +2132,28 @@ void init_switch()
 		else
 			nvram_unset("ctf_fa_mode");
 		nvram_commit();
-		ATE_BRCM_UNSET("Ate_power_on_off_ret");
-		ATE_BRCM_COMMIT();
+		//ATE_BRCM_UNSET("Ate_power_on_off_ret");
+		//ATE_BRCM_COMMIT();
 
 		eval("rmmod", "et");
 
 		dbg("FA (hardware Flow Accelarator) cap recorded, rebooting...\n");
 		reboot(RB_AUTOBOOT);
 		sleep(1);
-	} else if (!cfe_nvram_get("ctf_fa_cap")) {
-		dbg("commit original FA cap info into cfe nvram space\n");
-		ATE_BRCM_SET("ctf_fa_cap", nvram_get("ctf_fa_cap"));
-		ATE_BRCM_UNSET("Ate_power_on_off_ret");
-		ATE_BRCM_COMMIT();
+//	} else if (!cfe_nvram_get("ctf_fa_cap")) {
+//		dbg("commit original FA cap info into cfe nvram space\n");
+		//ATE_BRCM_SET("ctf_fa_cap", nvram_get("ctf_fa_cap"));
+		//ATE_BRCM_UNSET("Ate_power_on_off_ret");
+		//ATE_BRCM_COMMIT();
 	}
 #endif
 
 #ifdef RTAC68U
 	if (hardware_flag() == 0x00000020 && !nvram_get("forcegen1rc")) {
 		nvram_set_int("forcegen1rc", 1);
-		ATE_BRCM_SET("forcegen1rc", "1");
+//		ATE_BRCM_SET("forcegen1rc", "1");
 		nvram_commit();
-		ATE_BRCM_COMMIT();
+//		ATE_BRCM_COMMIT();
 
 		dbg("add flag to force PCI Express Gen1 mode, rebooting...\n");
 		reboot(RB_AUTOBOOT);

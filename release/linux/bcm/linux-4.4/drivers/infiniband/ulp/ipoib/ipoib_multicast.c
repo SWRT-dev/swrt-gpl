@@ -535,21 +535,18 @@ static int ipoib_mcast_join(struct net_device *dev, struct ipoib_mcast *mcast)
 			rec.join_state = 4;
 #endif
 	}
-	spin_unlock_irq(&priv->lock);
 
 	multicast = ib_sa_join_multicast(&ipoib_sa_client, priv->ca, priv->port,
-					 &rec, comp_mask, GFP_KERNEL,
+					 &rec, comp_mask, GFP_ATOMIC,
 					 ipoib_mcast_join_complete, mcast);
-	spin_lock_irq(&priv->lock);
 	if (IS_ERR(multicast)) {
 		ret = PTR_ERR(multicast);
 		ipoib_warn(priv, "ib_sa_join_multicast failed, status %d\n", ret);
 		/* Requeue this join task with a backoff delay */
 		__ipoib_mcast_schedule_join_thread(priv, mcast, 1);
 		clear_bit(IPOIB_MCAST_FLAG_BUSY, &mcast->flags);
-		spin_unlock_irq(&priv->lock);
 		complete(&mcast->done);
-		spin_lock_irq(&priv->lock);
+		return ret;
 	}
 	return 0;
 }
@@ -864,7 +861,7 @@ void ipoib_mcast_restart_task(struct work_struct *work)
 
 	ipoib_dbg_mcast(priv, "restarting multicast task\n");
 
-	local_irq_save(flags);
+	local_irq_save_nort(flags);
 	netif_addr_lock(dev);
 	spin_lock(&priv->lock);
 
@@ -946,7 +943,7 @@ void ipoib_mcast_restart_task(struct work_struct *work)
 
 	spin_unlock(&priv->lock);
 	netif_addr_unlock(dev);
-	local_irq_restore(flags);
+	local_irq_restore_nort(flags);
 
 	/*
 	 * make sure the in-flight joins have finished before we attempt

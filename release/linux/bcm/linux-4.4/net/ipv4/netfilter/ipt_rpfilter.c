@@ -19,6 +19,8 @@
 #include <linux/netfilter/xt_rpfilter.h>
 #include <linux/netfilter/x_tables.h>
 
+#include <net/netfilter/nf_conntrack_rtcache.h>
+
 MODULE_LICENSE("GPL");
 MODULE_AUTHOR("Florian Westphal <fw@strlen.de>");
 MODULE_DESCRIPTION("iptables: ipv4 reverse path filter match");
@@ -79,7 +81,7 @@ static bool rpfilter_mt(const struct sk_buff *skb, struct xt_action_param *par)
 	info = par->matchinfo;
 	invert = info->flags & XT_RPFILTER_INVERT;
 
-	if (rpfilter_is_local(skb))
+	if (rpfilter_is_local(skb) || nf_conn_rtcache_match_dev(skb, par->in))
 		return true ^ invert;
 
 	iph = ip_hdr(skb);
@@ -87,12 +89,12 @@ static bool rpfilter_mt(const struct sk_buff *skb, struct xt_action_param *par)
 		if (ipv4_is_zeronet(iph->saddr))
 			return ipv4_is_local_multicast(iph->daddr) ^ invert;
 	}
+	memset(&flow, 0, sizeof(flow));
 	flow.flowi4_iif = LOOPBACK_IFINDEX;
 	flow.daddr = iph->saddr;
 	flow.saddr = rpfilter_get_saddr(iph->daddr);
-	flow.flowi4_oif = 0;
 	flow.flowi4_mark = info->flags & XT_RPFILTER_VALID_MARK ? skb->mark : 0;
-	flow.flowi4_tos = RT_TOS(iph->tos);
+	flow.flowi4_tos = iph->tos & IPTOS_RT_MASK;
 	flow.flowi4_scope = RT_SCOPE_UNIVERSE;
 
 	return rpfilter_lookup_reverse(par->net, &flow, par->in, info->flags) ^ invert;

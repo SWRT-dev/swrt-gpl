@@ -912,14 +912,28 @@ extern const struct nf_br_ops __rcu *nf_br_ops;
 
 /* br_netfilter.c */
 #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
+extern int brnf_call_ebtables;
 int br_nf_core_init(void);
 void br_nf_core_fini(void);
 void br_netfilter_rtable_init(struct net_bridge *);
+bool br_netfilter_run_hooks(void);
 #else
 static inline int br_nf_core_init(void) { return 0; }
 static inline void br_nf_core_fini(void) {}
 #define br_netfilter_rtable_init(x)
+#define br_netfilter_run_hooks()	false
 #endif
+
+static inline int
+BR_HOOK(uint8_t pf, unsigned int hook, struct net *net, struct sock *sk, struct sk_buff *skb,
+	struct net_device *in, struct net_device *out,
+	int (*okfn)(struct net *, struct sock *, struct sk_buff *))
+{
+	if (!br_netfilter_run_hooks())
+		return okfn(net, sk, skb);
+
+	return NF_HOOK(pf, hook, net, sk, skb, in, out, okfn);
+}
 
 /* br_stp.c */
 void br_log_state(const struct net_bridge_port *p);

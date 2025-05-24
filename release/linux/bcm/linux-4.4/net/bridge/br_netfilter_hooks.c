@@ -35,6 +35,7 @@
 #include <net/ip.h>
 #include <net/ipv6.h>
 #include <net/addrconf.h>
+#include <net/dst_metadata.h>
 #include <net/route.h>
 #include <net/netfilter/br_netfilter.h>
 
@@ -60,6 +61,17 @@ static int brnf_pass_vlan_indev __read_mostly;
 #define brnf_filter_pppoe_tagged 0
 #define brnf_pass_vlan_indev 0
 #endif
+
+int brnf_call_ebtables __read_mostly = 0;
+int brnf_call_emf __read_mostly = 0;
+EXPORT_SYMBOL(brnf_call_ebtables);
+EXPORT_SYMBOL(brnf_call_emf);
+
+
+bool br_netfilter_run_hooks(void)
+{
+	return brnf_call_iptables | brnf_call_ip6tables | brnf_call_arptables | brnf_call_ebtables | brnf_call_emf;
+}
 
 #define IS_IP(skb) \
 	(!skb_vlan_tag_present(skb) && skb->protocol == htons(ETH_P_IP))
@@ -374,6 +386,7 @@ static int br_nf_pre_routing_finish(struct net *net, struct sock *sk, struct sk_
 				/* - Bridged-and-DNAT'ed traffic doesn't
 				 *   require ip_forwarding. */
 				if (rt->dst.dev == dev) {
+					skb_dst_drop(skb);
 					skb_dst_set(skb, &rt->dst);
 					goto bridged_dnat;
 				}
@@ -404,6 +417,7 @@ bridged_dnat:
 			kfree_skb(skb);
 			return 0;
 		}
+		skb_dst_drop(skb);
 		skb_dst_set_noref(skb, &rt->dst);
 	}
 
@@ -638,6 +652,9 @@ static unsigned int br_nf_forward_arp(void *priv,
 		nf_bridge_pull_encap_header(skb);
 	}
 
+	if (unlikely(!pskb_may_pull(skb, sizeof(struct arphdr))))
+		return NF_DROP;
+
 	if (arp_hdr(skb)->ar_pln != 4) {
 		if (IS_VLAN_ARP(skb))
 			nf_bridge_push_encap_header(skb);
@@ -708,13 +725,25 @@ static int br_nf_dev_queue_xmit(struct net *net, struct sock *sk, struct sk_buff
 	mtu_reserved = nf_bridge_mtu_reduction(skb);
 	mtu = skb->dev->mtu;
 
+	if (nf_bridge->pkt_otherhost) {
+		skb->pkt_type = PACKET_OTHERHOST;
+		nf_bridge->pkt_otherhost = false;
+	}
+
 	if (nf_bridge->frag_max_size && nf_bridge->frag_max_size < mtu)
 		mtu = nf_bridge->frag_max_size;
+
+	nf_bridge_update_protocol(skb);
+	nf_bridge_push_encap_header(skb);
 
 	if (skb_is_gso(skb) || skb->len + mtu_reserved <= mtu) {
 		nf_bridge_info_free(skb);
 		return br_dev_queue_push_xmit(net, sk, skb);
 	}
+
+	/* Fragmentation on metadata/template dst is not supported */
+	if (unlikely(!skb_valid_dst(skb)))
+		goto drop;
 
 	/* This is wrong! We should preserve the original fragment
 	 * boundaries by preserving frag_list rather than refragmenting.
@@ -727,8 +756,6 @@ static int br_nf_dev_queue_xmit(struct net *net, struct sock *sk, struct sk_buff
 			goto drop;
 
 		IPCB(skb)->frag_max_size = nf_bridge->frag_max_size;
-
-		nf_bridge_update_protocol(skb);
 
 		data = this_cpu_ptr(&brnf_frag_data_storage);
 
@@ -751,8 +778,6 @@ static int br_nf_dev_queue_xmit(struct net *net, struct sock *sk, struct sk_buff
 			goto drop;
 
 		IP6CB(skb)->frag_max_size = nf_bridge->frag_max_size;
-
-		nf_bridge_update_protocol(skb);
 
 		data = this_cpu_ptr(&brnf_frag_data_storage);
 		data->encap_size = nf_bridge_encap_header_len(skb);
@@ -801,8 +826,6 @@ static unsigned int br_nf_post_routing(void *priv,
 	else
 		return NF_ACCEPT;
 
-	/* We assume any code from br_dev_queue_push_xmit onwards doesn't care
-	 * about the value of skb->pkt_type. */
 	if (skb->pkt_type == PACKET_OTHERHOST) {
 		skb->pkt_type = PACKET_HOST;
 		nf_bridge->pkt_otherhost = true;

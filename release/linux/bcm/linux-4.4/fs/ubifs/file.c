@@ -782,9 +782,8 @@ static int ubifs_do_bulk_read(struct ubifs_info *c, struct bu_info *bu,
 
 		if (page_offset > end_index)
 			break;
-		page = pagecache_get_page(mapping, page_offset,
-				 FGP_LOCK|FGP_ACCESSED|FGP_CREAT|FGP_NOWAIT,
-				 GFP_NOFS | __GFP_COLD);
+		page = find_or_create_page(mapping, page_offset,
+					   GFP_NOFS | __GFP_COLD);
 		if (!page)
 			break;
 		if (!PageUptodate(page))

@@ -169,8 +169,6 @@ static int ip6mr_rule_action(struct fib_rule *rule, struct flowi *flp,
 		return -ENETUNREACH;
 	case FR_ACT_PROHIBIT:
 		return -EACCES;
-	case FR_ACT_POLICY_FAILED:
-		return -EACCES;
 	case FR_ACT_BLACKHOLE:
 	default:
 		return -EINVAL;
@@ -253,7 +251,9 @@ static int __net_init ip6mr_rules_init(struct net *net)
 	return 0;
 
 err2:
+	rtnl_lock();
 	ip6mr_free_table(mrt);
+	rtnl_unlock();
 err1:
 	fib_rules_unregister(ops);
 	return err;
@@ -1163,7 +1163,7 @@ static int ip6mr_cache_report(struct mr6_table *mrt, struct sk_buff *pkt,
 		   And all this only to mangle msg->im6_msgtype and
 		   to set msg->im6_mbz to "mbz" :-)
 		 */
-		skb_push(skb, -skb_network_offset(pkt));
+		__skb_pull(skb, skb_network_offset(pkt));
 
 		skb_push(skb, sizeof(*msg));
 		skb_reset_transport_header(skb);
@@ -1596,14 +1596,15 @@ static int ip6mr_sk_init(struct mr6_table *mrt, struct sock *sk)
 	if (likely(mrt->mroute6_sk == NULL)) {
 		mrt->mroute6_sk = sk;
 		net->ipv6.devconf_all->mc_forwarding++;
+	} else {
+		err = -EADDRINUSE;
+	}
+	write_unlock_bh(&mrt_lock);
+
+	if (!err)
 		inet6_netconf_notify_devconf(net, NETCONFA_MC_FORWARDING,
 					     NETCONFA_IFINDEX_ALL,
 					     net->ipv6.devconf_all);
-	}
-	else
-		err = -EADDRINUSE;
-	write_unlock_bh(&mrt_lock);
-
 	rtnl_unlock();
 
 	return err;
@@ -1621,11 +1622,11 @@ int ip6mr_sk_done(struct sock *sk)
 			write_lock_bh(&mrt_lock);
 			mrt->mroute6_sk = NULL;
 			net->ipv6.devconf_all->mc_forwarding--;
+			write_unlock_bh(&mrt_lock);
 			inet6_netconf_notify_devconf(net,
 						     NETCONFA_MC_FORWARDING,
 						     NETCONFA_IFINDEX_ALL,
 						     net->ipv6.devconf_all);
-			write_unlock_bh(&mrt_lock);
 
 			mroute_clean_tables(mrt, false);
 			err = 0;

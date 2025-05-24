@@ -5195,10 +5195,10 @@ protect_srv-install: protect_srv
 	install -D protect_srv/lib/libptcsrv.so $(INSTALLDIR)/protect_srv/usr/lib/libptcsrv.so
 	install -D protect_srv/protect_srv $(INSTALLDIR)/protect_srv/usr/sbin/protect_srv
 	install -D protect_srv/Send_Event2ptcsrv $(INSTALLDIR)/protect_srv/usr/sbin/Send_Event2ptcsrv
-	install -D protect_srv/req_ptcsrv $(INSTALLDIR)/protect_srv/usr/sbin/req_ptcsrv
+#	install -D protect_srv/req_ptcsrv $(INSTALLDIR)/protect_srv/usr/sbin/req_ptcsrv
 	$(STRIP) $(INSTALLDIR)/protect_srv/usr/lib/libptcsrv.so
 	$(STRIP) $(INSTALLDIR)/protect_srv/usr/sbin/protect_srv
-	$(STRIP) $(INSTALLDIR)/protect_srv/usr/sbin/req_ptcsrv
+#	$(STRIP) $(INSTALLDIR)/protect_srv/usr/sbin/req_ptcsrv
 
 protect_srv-clean:
 	-$(MAKE) -C protect_srv clean

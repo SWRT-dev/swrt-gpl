@@ -168,24 +168,31 @@ __be16 eth_type_trans(struct sk_buff *skb, struct net_device *dev)
 	const struct ethhdr *eth;
 
 	skb->dev = dev;
+
+#ifdef CONFIG_ETHERNET_PACKET_MANGLE
+	if (dev->eth_mangle_rx)
+		dev->eth_mangle_rx(dev, skb);
+#endif
+
 	skb_reset_mac_header(skb);
 
 	eth = (struct ethhdr *)skb->data;
 	skb_pull_inline(skb, ETH_HLEN);
 
-	if (unlikely(is_multicast_ether_addr_64bits(eth->h_dest))) {
-		if (ether_addr_equal_64bits(eth->h_dest, dev->broadcast))
-			skb->pkt_type = PACKET_BROADCAST;
-		else
-			skb->pkt_type = PACKET_MULTICAST;
-	}
-	else if (unlikely(!ether_addr_equal_64bits(eth->h_dest,
-						   dev->dev_addr))) {
-		skb->pkt_type = PACKET_OTHERHOST;
-		if (eth_check_local_mask(eth->h_dest, dev->dev_addr,
-					 dev->local_addr_mask))
-			skb->gro_skip = 1;
-	}
+	if (unlikely(!ether_addr_equal_64bits(eth->h_dest,
+					      dev->dev_addr))) {
+		if (unlikely(is_multicast_ether_addr_64bits(eth->h_dest))) {
+			if (ether_addr_equal_64bits(eth->h_dest, dev->broadcast))
+				skb->pkt_type = PACKET_BROADCAST;
+			else
+				skb->pkt_type = PACKET_MULTICAST;
+		} else {
+			skb->pkt_type = PACKET_OTHERHOST;
+			if (eth_check_local_mask(eth->h_dest, dev->dev_addr,
+						 dev->local_addr_mask))
+				skb->gro_skip = 1;
+		}
+ 	}
 
 	/*
 	 * Some variants of DSA tagging don't have an ethertype field
@@ -251,7 +258,12 @@ int eth_header_cache(const struct neighbour *neigh, struct hh_cache *hh, __be16 
 	eth->h_proto = type;
 	memcpy(eth->h_source, dev->dev_addr, ETH_ALEN);
 	memcpy(eth->h_dest, neigh->ha, ETH_ALEN);
-	hh->hh_len = ETH_HLEN;
+
+	/* Pairs with READ_ONCE() in neigh_resolve_output(),
+	 * neigh_hh_output() and neigh_update_hhs().
+	 */
+	smp_store_release(&hh->hh_len, ETH_HLEN);
+
 	return 0;
 }
 EXPORT_SYMBOL(eth_header_cache);
@@ -410,13 +422,13 @@ ssize_t sysfs_format_mac(char *buf, const unsigned char *addr, int len)
 }
 EXPORT_SYMBOL(sysfs_format_mac);
 
-struct sk_buff **eth_gro_receive(struct sk_buff **head,
-				 struct sk_buff *skb)
+struct sk_buff *eth_gro_receive(struct list_head *head, struct sk_buff *skb)
 {
-	struct sk_buff *p, **pp = NULL;
-	struct ethhdr *eh, *eh2;
-	unsigned int hlen, off_eth;
 	const struct packet_offload *ptype;
+	unsigned int hlen, off_eth;
+	struct sk_buff *pp = NULL;
+	struct ethhdr *eh, *eh2;
+	struct sk_buff *p;
 	__be16 type;
 	int flush = 1;
 
@@ -431,7 +443,7 @@ struct sk_buff **eth_gro_receive(struct sk_buff **head,
 
 	flush = 0;
 
-	for (p = *head; p; p = p->next) {
+	list_for_each_entry(p, head, list) {
 		if (!NAPI_GRO_CB(p)->same_flow)
 			continue;
 

@@ -182,7 +182,7 @@ config NET_IPGRE_DEMUX
 	tristate "IP: GRE demultiplexer"
 	help
 	 This is helper module to demultiplex GRE packets on GRE version field criteria.
-	 Required by ip_gre and pptp modules.
+	 Required by ip_gre, pptp and eoip modules.
 
 config NET_IP_TUNNEL
 	tristate
@@ -212,6 +212,26 @@ config NET_IPGRE_BROADCAST
 	  Network), which looks like a normal Ethernet LAN (Local Area
 	  Network), but can be distributed all over the Internet. If you want
 	  to do that, say Y here and to "IP multicast routing" below.
+
+config NET_ETHERIP
+	tristate "IP: ethernet-in-IP tunneling"
+	depends on INET
+	help
+	  Tunneling means encapsulating data of one protocol type within
+	  another protocol and sending it over a channel that understands the
+	  encapsulating protocol. This particular tunneling driver implements
+	  the etherip Ethernet-in-IP protocol as described in RFC 3378.
+
+config NET_EOIP
+	tristate "IP: EOIP ethernet tunnels over IP"
+	depends on (IPV6 || IPV6=n) && NET_IPGRE_DEMUX
+	help
+	  Tunneling means encapsulating data of one protocol type within
+	  another protocol and sending it over a channel that understands the
+	  encapsulating protocol. This particular tunneling driver implements
+	  MikroTik RouterOS compatible encapsulation of ethernet frames over
+	  existing IPv4 infrastructure. It is useful if the other endpoint
+	  is a MikroTik router.
 
 config IP_MROUTE
 	bool "IP: multicast routing"
@@ -298,6 +318,7 @@ config SYN_COOKIES
 
 config NET_IPVTI
 	tristate "Virtual (secure) IP: tunneling"
+	depends on IPV6 || IPV6=n
 	select INET_TUNNEL
 	select NET_IP_TUNNEL
 	depends on INET_XFRM_MODE_TUNNEL
@@ -370,6 +391,16 @@ config INET_IPCOMP
 
 	  If unsure, say Y.
 
+config INET_TABLE_PERTURB_ORDER
+	int "INET: Source port perturbation table size (as power of 2)" if EXPERT
+	default 16
+	help
+	  Source port perturbation table size (as power of 2) for
+	  RFC 6056 3.3.4.  Algorithm 4: Double-Hash Port Selection Algorithm.
+
+	  The default is almost always what you want.
+	  Only change this if you know what you are doing.
+
 config INET_XFRM_TUNNEL
 	tristate
 	select INET_TUNNEL
@@ -416,6 +447,7 @@ config INET_LRO
 
 config INET_DIAG
 	tristate "INET: socket monitoring interface"
+	select SOCK_DIAG
 	default y
 	---help---
 	  Support for INET (TCP, DCCP, etc) socket monitoring interface used by
@@ -437,19 +469,6 @@ config INET_UDP_DIAG
 	---help---
 	  Support for UDP socket monitoring interface used by the ss tool.
 	  If unsure, say Y.
-
-config INET_DIAG_DESTROY
-	bool "INET: allow privileged process to administratively close sockets"
-	depends on INET_DIAG
-	default n
-	---help---
-	  Provides a SOCK_DESTROY operation that allows privileged processes
-	  (e.g., a connection manager or a network administration tool such as
-	  ss) to close sockets opened by other processes. Closing a socket in
-	  this way interrupts any blocking read/write/connect operations on
-	  the socket and causes future socket calls to behave as if the socket
-	  had been disconnected.
-	  If unsure, say N.
 
 menuconfig TCP_CONG_ADVANCED
 	bool "TCP: advanced congestion control"

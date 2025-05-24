@@ -3012,8 +3012,7 @@ _base_static_config_pages(struct MPT3SAS_ADAPTER *ioc)
 	if (ioc->manu_pg11.EEDPTagMode == 0) {
 		pr_err("%s: overriding NVDATA EEDPTagMode setting\n",
 		    ioc->name);
-		ioc->manu_pg11.EEDPTagMode &= ~0x3;
-		ioc->manu_pg11.EEDPTagMode |= 0x1;
+		ioc->manu_pg11.EEDPTagMode = 0x1;
 		mpt3sas_config_set_manufacturing_pg11(ioc, &mpi_reply,
 		    &ioc->manu_pg11);
 	}
@@ -4241,7 +4240,9 @@ _base_wait_for_iocstate(struct MPT3SAS_ADAPTER *ioc, int timeout,
 		return -EFAULT;
 	}
 
- issue_diag_reset:
+	return 0;
+
+issue_diag_reset:
 	rc = _base_diag_reset(ioc, sleep_flag);
 	return rc;
 }

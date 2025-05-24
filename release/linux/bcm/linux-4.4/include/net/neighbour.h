@@ -170,7 +170,7 @@ struct pneigh_entry {
 	possible_net_t		net;
 	struct net_device	*dev;
 	u8			flags;
-	u8			key[0];
+	u32			key[0];
 };
 
 /*
@@ -263,8 +263,10 @@ static inline bool neigh_key_eq128(const struct neighbour *n, const void *pkey)
 	const u32 *n32 = (const u32 *)n->primary_key;
 	const u32 *p32 = pkey;
 
-	return ((n32[0] ^ p32[0]) | (n32[1] ^ p32[1]) |
-		(n32[2] ^ p32[2]) | (n32[3] ^ p32[3])) == 0;
+	return ((n32[0] ^ net_hdr_word(&p32[0])) |
+		(n32[1] ^ net_hdr_word(&p32[1])) |
+		(n32[2] ^ net_hdr_word(&p32[2])) |
+		(n32[3] ^ net_hdr_word(&p32[3]))) == 0;
 }
 
 static inline struct neighbour *___neigh_lookup_noref(
@@ -425,8 +427,8 @@ static inline int neigh_event_send(struct neighbour *neigh, struct sk_buff *skb)
 {
 	unsigned long now = jiffies;
 	
-	if (neigh->used != now)
-		neigh->used = now;
+	if (READ_ONCE(neigh->used) != now)
+		WRITE_ONCE(neigh->used, now);
 	if (!(neigh->nud_state&(NUD_CONNECTED|NUD_DELAY|NUD_PROBE)))
 		return __neigh_event_send(neigh, skb);
 	return 0;
@@ -446,15 +448,17 @@ static inline int neigh_hh_bridge(struct hh_cache *hh, struct sk_buff *skb)
 }
 #endif
 
-static inline int neigh_hh_output(const struct hh_cache *hh, struct sk_buff *skb)
+static inline int neigh_hh_output(struct hh_cache *hh, struct sk_buff *skb)
 {
 	unsigned int hh_alen = 0;
 	unsigned int seq;
 	int hh_len;
+	int retry;
 
 	do {
-		seq = read_seqbegin(&hh->hh_lock);
-		hh_len = hh->hh_len;
+		if (!hh_output_relaxed)
+			seq = read_seqbegin(&hh->hh_lock);
+		hh_len = READ_ONCE(hh->hh_len);
 		if (likely(hh_len <= HH_DATA_MOD)) {
 			hh_alen = HH_DATA_MOD;
 
@@ -475,7 +479,12 @@ static inline int neigh_hh_output(const struct hh_cache *hh, struct sk_buff *skb
 				       hh_alen);
 			}
 		}
-	} while (read_seqretry(&hh->hh_lock, seq));
+
+		retry = 0;
+		if (!hh_output_relaxed)
+			retry = read_seqretry(&hh->hh_lock, seq);
+
+	} while (retry);
 
 	if (WARN_ON_ONCE(skb_headroom(skb) < hh_alen)) {
 		kfree_skb(skb);
@@ -519,7 +528,7 @@ struct neighbour_cb {
 
 #define NEIGH_CB(skb)	((struct neighbour_cb *)(skb)->cb)
 
-static inline void neigh_ha_snapshot(char *dst, const struct neighbour *n,
+static inline void neigh_ha_snapshot(char *dst, struct neighbour *n,
 				     const struct net_device *dev)
 {
 	unsigned int seq;

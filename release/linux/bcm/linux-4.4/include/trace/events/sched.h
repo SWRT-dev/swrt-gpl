@@ -4,6 +4,7 @@
 #if !defined(_TRACE_SCHED_H) || defined(TRACE_HEADER_MULTI_READ)
 #define _TRACE_SCHED_H
 
+#include <linux/kthread.h>
 #include <linux/sched.h>
 #include <linux/tracepoint.h>
 #include <linux/binfmts.h>
@@ -48,6 +49,89 @@ TRACE_EVENT(sched_kthread_stop_ret,
 	),
 
 	TP_printk("ret=%d", __entry->ret)
+);
+
+/**
+ * sched_kthread_work_queue_work - called when a work gets queued
+ * @worker:	pointer to the kthread_worker
+ * @work:	pointer to struct kthread_work
+ *
+ * This event occurs when a work is queued immediately or once a
+ * delayed work is actually queued (ie: once the delay has been
+ * reached).
+ */
+TRACE_EVENT(sched_kthread_work_queue_work,
+
+	TP_PROTO(struct kthread_worker *worker,
+		 struct kthread_work *work),
+
+	TP_ARGS(worker, work),
+
+	TP_STRUCT__entry(
+		__field( void *,	work	)
+		__field( void *,	function)
+		__field( void *,	worker)
+	),
+
+	TP_fast_assign(
+		__entry->work		= work;
+		__entry->function	= work->func;
+		__entry->worker		= worker;
+	),
+
+	TP_printk("work struct=%p function=%ps worker=%p",
+		  __entry->work, __entry->function, __entry->worker)
+);
+
+/**
+ * sched_kthread_work_execute_start - called immediately before the work callback
+ * @work:	pointer to struct kthread_work
+ *
+ * Allows to track kthread work execution.
+ */
+TRACE_EVENT(sched_kthread_work_execute_start,
+
+	TP_PROTO(struct kthread_work *work),
+
+	TP_ARGS(work),
+
+	TP_STRUCT__entry(
+		__field( void *,	work	)
+		__field( void *,	function)
+	),
+
+	TP_fast_assign(
+		__entry->work		= work;
+		__entry->function	= work->func;
+	),
+
+	TP_printk("work struct %p: function %ps", __entry->work, __entry->function)
+);
+
+/**
+ * sched_kthread_work_execute_end - called immediately after the work callback
+ * @work:	pointer to struct work_struct
+ * @function:   pointer to worker function
+ *
+ * Allows to track workqueue execution.
+ */
+TRACE_EVENT(sched_kthread_work_execute_end,
+
+	TP_PROTO(struct kthread_work *work, kthread_work_func_t function),
+
+	TP_ARGS(work, function),
+
+	TP_STRUCT__entry(
+		__field( void *,	work	)
+		__field( void *,	function)
+	),
+
+	TP_fast_assign(
+		__entry->work		= work;
+		__entry->function	= function;
+	),
+
+	TP_printk("work struct %p: function %ps", __entry->work, __entry->function)
 );
 
 /*
@@ -563,36 +647,6 @@ TRACE_EVENT(sched_wake_idle_without_ipi,
 	TP_printk("cpu=%d", __entry->cpu)
 );
 #endif /* _TRACE_SCHED_H */
-#define trace_sched_boost_cpu(...) {}
-#define trace_core_ctl_eval_need(...) {}
-#define trace_core_ctl_set_busy(...) {}
-#define trace_core_ctl_set_boost(...) {}
-#define trace_core_ctl_update_nr_need(...) {}
-#define trace_sched_tune_tasks_update(...) {}
-#define trace_sched_tune_boostgroup_update(...) {}
-#define trace_sched_boost_task(...) {}
-#define trace_sched_overutilized(...) {}
-#define trace_sched_find_best_target(...) {}
-#define trace_sched_util_est_task(...) {}
-#define trace_sched_util_est_cpu(...) {}
-#define trace_sched_capacity_update(...) {}
-#define trace_sched_cpu_util(...) {}
-#define trace_sched_energy_diff(...) {}
-#define trace_sched_task_util(...) {}
-#define trace_sched_task_util_enabled(...) false
-#define trace_sched_get_nr_running_avg(...) {}
-#define trace_sched_isolate(...) {}
-#define trace_sched_isolate_enabled(...) false
-#define trace_sched_load_balance_skip_tasks(...) {}
-#define trace_sched_load_to_gov {}
-#define trace_sched_update_pred_demand {}
-#define trace_sched_update_history {}
-#define trace_sched_get_task_cpu_cycles {}
-#define trace_sched_update_task_ravg {}
-#define trace_sched_update_task_ravg_mini {}
-#define trace_sched_set_preferred_cluster {}
-#define trace_sched_migration_update_sum {}
-#define trace_sched_set_boost {}
 
 /* This part must be outside protection */
 #include <trace/define_trace.h>

@@ -138,10 +138,6 @@ const struct fib_prop fib_props[RTN_MAX + 1] = {
 		.error	= -EINVAL,
 		.scope	= RT_SCOPE_NOWHERE,
 	},
-	[RTN_POLICY_FAILED] = {
-		.error	= -EACCES,
-		.scope	= RT_SCOPE_UNIVERSE,
-	},
 };
 
 static void rt_fibinfo_free(struct rtable __rcu **rtp)
@@ -780,7 +776,7 @@ static int fib_check_nh(struct fib_config *cfg, struct fib_info *fi,
 			if (fl4.flowi4_scope < RT_SCOPE_LINK)
 				fl4.flowi4_scope = RT_SCOPE_LINK;
 
-			if (cfg->fc_table)
+			if (cfg->fc_table && cfg->fc_table != RT_TABLE_MAIN)
 				tbl = fib_get_table(net, cfg->fc_table);
 
 			if (tbl)
@@ -1073,6 +1069,7 @@ struct fib_info *fib_create_info(struct fib_config *cfg)
 	fi->fib_priority = cfg->fc_priority;
 	fi->fib_prefsrc = cfg->fc_prefsrc;
 	fi->fib_type = cfg->fc_type;
+	fi->fib_tb_id = cfg->fc_table;
 
 	fi->fib_nhs = nhs;
 	change_nexthops(fi) {
@@ -1356,18 +1353,21 @@ nla_put_failure:
  *   referring to it.
  * - device went down -> we must shutdown all nexthops going via it.
  */
-int fib_sync_down_addr(struct net *net, __be32 local)
+int fib_sync_down_addr(struct net_device *dev, __be32 local)
 {
 	int ret = 0;
 	unsigned int hash = fib_laddr_hashfn(local);
 	struct hlist_head *head = &fib_info_laddrhash[hash];
+	int tb_id = l3mdev_fib_table(dev) ? : RT_TABLE_MAIN;
+	struct net *net = dev_net(dev);
 	struct fib_info *fi;
 
 	if (!fib_info_laddrhash || local == 0)
 		return 0;
 
 	hlist_for_each_entry(fi, head, fib_lhash) {
-		if (!net_eq(fi->fib_net, net))
+		if (!net_eq(fi->fib_net, net) ||
+		    fi->fib_tb_id != tb_id)
 			continue;
 		if (fi->fib_prefsrc == local) {
 			fi->fib_flags |= RTNH_F_DEAD;

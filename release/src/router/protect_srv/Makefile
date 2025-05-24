@@ -32,7 +32,7 @@ ifeq ($(RTCONFIG_BCMARM),y)
 CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include -DTYPEDEF_FLOAT_T
 endif
 
-LDFLAGS += -L$(TOP)/nvram$(BCMEX)${EX7} ${EXTRA_NV_LDFLAGS} -lnvram
+LDFLAGS += -L$(TOP)/nvram$(BCMEX) ${EXTRA_NV_LDFLAGS} -lnvram
 LDFLAGS += -L$(TOP)/shared -L$(INSTALLDIR)/shared/usr/lib -lshared
 LDFLAGS += -L$(TOP)/protect_srv/lib/ -lptcsrv
 
@@ -48,24 +48,20 @@ all:
 	-cp -f prebuild/$(BUILD_NAME)/req_ptcsrv req_ptcsrv
 
 else
-all: ptcsrvdir Send_Event2ptcsrv protect_srv req_ptcsrv
+all: Send_Event2ptcsrv protect_srv
 endif
-
-protect_srv: protect_srv.o
-Send_Event2ptcsrv: Send_Event2ptcsrv.o
-req_ptcsrv: req_ptcsrv.o
 
 ptcsrvdir:
 	set -e; for d in ${MDIRS}; do $(MAKE) -C $${d}; done
-protect_srv:
+protect_srv: protect_srv.o
 	@$(CC) ${CFLAGS} $< -o $@ ${LDFLAGS} $(LIBS)
 	@$(STRIP) $@
 
-Send_Event2ptcsrv:
+Send_Event2ptcsrv: Send_Event2ptcsrv.o
 	@$(CC) ${CFLAGS} $< -o $@ ${LDFLAGS} $(LIBS)
 	@$(STRIP) $@
 
-req_ptcsrv:
+req_ptcsrv: req_ptcsrv.o
 	@$(CC) ${CFLAGS} $< -o $@ ${LDFLAGS} $(LIBS)
 	@$(STRIP) $@
 

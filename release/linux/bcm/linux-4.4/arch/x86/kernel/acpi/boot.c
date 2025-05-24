@@ -87,7 +87,9 @@ static u64 acpi_lapic_addr __initdata = APIC_DEFAULT_PHYS_BASE;
  *		->ioapic_mutex
  *			->ioapic_lock
  */
+#ifdef CONFIG_X86_IO_APIC
 static DEFINE_MUTEX(acpi_ioapic_lock);
+#endif
 
 /* --------------------------------------------------------------------------
                               Boot-time Configuration
@@ -151,6 +153,9 @@ static int __init acpi_parse_madt(struct acpi_table_header *table)
 		printk(KERN_DEBUG PREFIX "Local APIC address 0x%08x\n",
 		       madt->address);
 	}
+
+	if (madt->flags & ACPI_MADT_PCAT_COMPAT)
+		legacy_pic_pcat_compat();
 
 	default_acpi_madt_oem_check(madt->header.oem_id,
 				    madt->header.oem_table_id);

@@ -27,36 +27,6 @@
 
 char dsa_driver_version[] = "0.1";
 
-static struct sk_buff *dsa_slave_notag_xmit(struct sk_buff *skb,
-					    struct net_device *dev)
-{
-	/* Just return the original SKB */
-	return skb;
-}
-
-static const struct dsa_device_ops none_ops = {
-	.xmit	= dsa_slave_notag_xmit,
-	.rcv	= NULL,
-};
-
-const struct dsa_device_ops *dsa_device_ops_list[DSA_TAG_LAST] = {
-#ifdef CONFIG_NET_DSA_TAG_DSA
-	[DSA_TAG_PROTO_DSA] = &dsa_netdev_ops,
-#endif
-#ifdef CONFIG_NET_DSA_TAG_EDSA
-	[DSA_TAG_PROTO_EDSA] = &edsa_netdev_ops,
-#endif
-#ifdef CONFIG_NET_DSA_TAG_TRAILER
-	[DSA_TAG_PROTO_TRAILER] = &trailer_netdev_ops,
-#endif
-#ifdef CONFIG_NET_DSA_TAG_BRCM
-	[DSA_TAG_PROTO_BRCM] = &brcm_netdev_ops,
-#endif
-#ifdef CONFIG_NET_DSA_TAG_MTK
-	[DSA_TAG_PROTO_MTK] = &mtk_netdev_ops,
-#endif
-	[DSA_TAG_PROTO_NONE] = &none_ops,
-};
 
 /* switch driver registration ***********************************************/
 static DEFINE_MUTEX(dsa_switch_drivers_mutex);
@@ -79,8 +49,7 @@ void unregister_switch_driver(struct dsa_switch_driver *drv)
 EXPORT_SYMBOL_GPL(unregister_switch_driver);
 
 static struct dsa_switch_driver *
-dsa_switch_probe(struct device *parent, struct device *host_dev, int sw_addr,
-		 char **_name, void **priv)
+dsa_switch_probe(struct device *host_dev, int sw_addr, char **_name)
 {
 	struct dsa_switch_driver *ret;
 	struct list_head *list;
@@ -95,7 +64,7 @@ dsa_switch_probe(struct device *parent, struct device *host_dev, int sw_addr,
 
 		drv = list_entry(list, struct dsa_switch_driver, list);
 
-		name = drv->probe(parent, host_dev, sw_addr, priv);
+		name = drv->probe(host_dev, sw_addr);
 		if (name != NULL) {
 			ret = drv;
 			break;
@@ -243,20 +212,6 @@ static int dsa_cpu_dsa_setup(struct dsa_switch *ds, struct net_device *master)
 	return 0;
 }
 
-const struct dsa_device_ops *dsa_resolve_tag_protocol(int tag_protocol)
-{
-	const struct dsa_device_ops *ops;
-
-	if (tag_protocol >= DSA_TAG_LAST)
-		return ERR_PTR(-EINVAL);
-	ops = dsa_device_ops_list[tag_protocol];
-
-	if (!ops)
-		return ERR_PTR(-ENOPROTOOPT);
-
-	return ops;
-}
-
 static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 {
 	struct dsa_switch_driver *drv = ds->drv;
@@ -309,13 +264,35 @@ static int dsa_switch_setup_one(struct dsa_switch *ds, struct device *parent)
 	 * switch.
 	 */
 	if (dst->cpu_switch == index) {
-		dst->tag_ops = dsa_resolve_tag_protocol(drv->tag_protocol);
-		if (IS_ERR(dst->tag_ops)) {
-			ret = PTR_ERR(dst->tag_ops);
+		switch (ds->tag_protocol) {
+#ifdef CONFIG_NET_DSA_TAG_DSA
+		case DSA_TAG_PROTO_DSA:
+			dst->rcv = dsa_netdev_ops.rcv;
+			break;
+#endif
+#ifdef CONFIG_NET_DSA_TAG_EDSA
+		case DSA_TAG_PROTO_EDSA:
+			dst->rcv = edsa_netdev_ops.rcv;
+			break;
+#endif
+#ifdef CONFIG_NET_DSA_TAG_TRAILER
+		case DSA_TAG_PROTO_TRAILER:
+			dst->rcv = trailer_netdev_ops.rcv;
+			break;
+#endif
+#ifdef CONFIG_NET_DSA_TAG_BRCM
+		case DSA_TAG_PROTO_BRCM:
+			dst->rcv = brcm_netdev_ops.rcv;
+			break;
+#endif
+		case DSA_TAG_PROTO_NONE:
+			break;
+		default:
+			ret = -ENOPROTOOPT;
 			goto out;
 		}
 
-		dst->rcv = dst->tag_ops->rcv;
+		dst->tag_protocol = ds->tag_protocol;
 	}
 
 	/*
@@ -404,12 +381,11 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	struct dsa_switch *ds;
 	int ret;
 	char *name;
-	void *priv;
 
 	/*
 	 * Probe for switch model.
 	 */
-	drv = dsa_switch_probe(parent, host_dev, pd->sw_addr, &name, &priv);
+	drv = dsa_switch_probe(host_dev, pd->sw_addr, &name);
 	if (drv == NULL) {
 		netdev_err(dst->master_netdev, "[%d]: could not detect attached switch\n",
 			   index);
@@ -422,7 +398,7 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	/*
 	 * Allocate and initialise switch state.
 	 */
-	ds = devm_kzalloc(parent, sizeof(*ds), GFP_KERNEL);
+	ds = devm_kzalloc(parent, sizeof(*ds) + drv->priv_size, GFP_KERNEL);
 	if (ds == NULL)
 		return ERR_PTR(-ENOMEM);
 
@@ -430,7 +406,6 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 	ds->index = index;
 	ds->pd = pd;
 	ds->drv = drv;
-	ds->priv = priv;
 	ds->tag_protocol = drv->tag_protocol;
 	ds->master_dev = host_dev;
 
@@ -444,6 +419,7 @@ dsa_switch_setup(struct dsa_switch_tree *dst, int index,
 static void dsa_switch_destroy(struct dsa_switch *ds)
 {
 	struct device_node *port_dn;
+	struct phy_device *phydev;
 	struct dsa_chip_data *cd = ds->pd;
 	int port;
 
@@ -458,8 +434,16 @@ static void dsa_switch_destroy(struct dsa_switch *ds)
 			continue;
 
 		port_dn = cd->port_dn[port];
-		if (of_phy_is_fixed_link(port_dn))
-			of_phy_deregister_fixed_link(port_dn);
+		if (of_phy_is_fixed_link(port_dn)) {
+			phydev = of_phy_find_device(port_dn);
+			if (phydev) {
+				int addr = phydev->addr;
+
+				phy_device_free(phydev);
+				of_node_put(port_dn);
+				fixed_phy_del(addr);
+			}
+		}
 	}
 
 	/* Destroy network devices for physical switch ports. */
@@ -467,11 +451,11 @@ static void dsa_switch_destroy(struct dsa_switch *ds)
 		if (!(ds->phys_port_mask & (1 << port)))
 			continue;
 
-		if (!ds->ports[port].netdev)
+		if (!ds->ports[port])
 			continue;
 
-		unregister_netdev(ds->ports[port].netdev);
-		free_netdev(ds->ports[port].netdev);
+		unregister_netdev(ds->ports[port]);
+		free_netdev(ds->ports[port]);
 	}
 
 	mdiobus_unregister(ds->slave_mii_bus);
@@ -487,7 +471,7 @@ static int dsa_switch_suspend(struct dsa_switch *ds)
 		if (!dsa_is_port_initialized(ds, i))
 			continue;
 
-		ret = dsa_slave_suspend(ds->ports[i].netdev);
+		ret = dsa_slave_suspend(ds->ports[i]);
 		if (ret)
 			return ret;
 	}
@@ -513,7 +497,7 @@ static int dsa_switch_resume(struct dsa_switch *ds)
 		if (!dsa_is_port_initialized(ds, i))
 			continue;
 
-		ret = dsa_slave_resume(ds->ports[i].netdev);
+		ret = dsa_slave_resume(ds->ports[i]);
 		if (ret)
 			return ret;
 	}
@@ -1058,7 +1042,6 @@ static SIMPLE_DEV_PM_OPS(dsa_pm_ops, dsa_suspend, dsa_resume);
 static const struct of_device_id dsa_of_match_table[] = {
 	{ .compatible = "brcm,bcm7445-switch-v4.0" },
 	{ .compatible = "marvell,dsa", },
-	{ .compatible = "mediatek,mt7530", },
 	{}
 };
 MODULE_DEVICE_TABLE(of, dsa_of_match_table);

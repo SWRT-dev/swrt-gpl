@@ -22,12 +22,15 @@
 #define BCMFASTPATH
 #endif
 
-static void tcp_gso_tstamp(struct sk_buff *skb, unsigned int ts_seq,
+static void tcp_gso_tstamp(struct sk_buff *skb, struct sk_buff *gso_skb,
 			   unsigned int seq, unsigned int mss)
 {
+	u32 flags = skb_shinfo(gso_skb)->tx_flags & SKBTX_ANY_TSTAMP;
+	u32 ts_seq = skb_shinfo(gso_skb)->tskey;
+
 	while (skb) {
 		if (before(ts_seq, seq + mss)) {
-			skb_shinfo(skb)->tx_flags |= SKBTX_SW_TSTAMP;
+			skb_shinfo(skb)->tx_flags |= flags;
 			skb_shinfo(skb)->tskey = ts_seq;
 			return;
 		}
@@ -133,8 +136,8 @@ struct sk_buff *tcp_gso_segment(struct sk_buff *skb,
 	th = tcp_hdr(skb);
 	seq = ntohl(th->seq);
 
-	if (unlikely(skb_shinfo(gso_skb)->tx_flags & SKBTX_SW_TSTAMP))
-		tcp_gso_tstamp(segs, skb_shinfo(gso_skb)->tskey, seq, mss);
+	if (unlikely(skb_shinfo(gso_skb)->tx_flags & SKBTX_ANY_TSTAMP))
+		tcp_gso_tstamp(segs, gso_skb, seq, mss);
 
 	newcheck = ~csum_fold((__force __wsum)((__force u32)th->check +
 					       (__force u32)delta));
@@ -183,9 +186,9 @@ out:
 	return segs;
 }
 
-struct sk_buff BCMFASTPATH_HOST **tcp_gro_receive(struct sk_buff **head, struct sk_buff *skb)
+struct sk_buff BCMFASTPATH_HOST *tcp_gro_receive(struct list_head *head, struct sk_buff *skb)
 {
-	struct sk_buff **pp = NULL;
+	struct sk_buff *pp = NULL;
 	struct sk_buff *p;
 	struct tcphdr *th;
 	struct tcphdr *th2;
@@ -223,7 +226,7 @@ struct sk_buff BCMFASTPATH_HOST **tcp_gro_receive(struct sk_buff **head, struct 
 	len = skb_gro_len(skb);
 	flags = tcp_flag_word(th);
 
-	for (; (p = *head); head = &p->next) {
+	list_for_each_entry(p, head, list) {
 		if (!NAPI_GRO_CB(p)->same_flow)
 			continue;
 
@@ -236,7 +239,7 @@ struct sk_buff BCMFASTPATH_HOST **tcp_gro_receive(struct sk_buff **head, struct 
 
 		goto found;
 	}
-
+	p = NULL;
 	goto out_check_final;
 
 found:
@@ -255,13 +258,11 @@ found:
 	flush |= (len - 1) >= mss;
 	flush |= (ntohl(th2->seq) + skb_gro_len(p)) ^ ntohl(th->seq);
 
-	if (flush || skb_gro_receive(head, skb)) {
+	if (flush || skb_gro_receive(p, skb)) {
 		mss = 1;
 		goto out_check_final;
 	}
 
-	p = *head;
-	th2 = tcp_hdr(p);
 	tcp_flag_word(th2) |= flags & (TCP_FLAG_FIN | TCP_FLAG_PSH);
 
 out_check_final:
@@ -271,7 +272,7 @@ out_check_final:
 					TCP_FLAG_FIN));
 
 	if (p && (!NAPI_GRO_CB(skb)->same_flow || flush))
-		pp = head;
+		pp = p;
 
 out:
 	NAPI_GRO_CB(skb)->flush |= (flush != 0);
@@ -296,7 +297,7 @@ int BCMFASTPATH_HOST tcp_gro_complete(struct sk_buff *skb)
 }
 EXPORT_SYMBOL(tcp_gro_complete);
 
-static struct sk_buff BCMFASTPATH_HOST **tcp4_gro_receive(struct sk_buff **head, struct sk_buff *skb)
+static struct sk_buff BCMFASTPATH_HOST *tcp4_gro_receive(struct list_head *head, struct sk_buff *skb)
 {
 	/* Don't bother verifying checksum if we're going to flush anyway. */
 	if (!NAPI_GRO_CB(skb)->flush &&

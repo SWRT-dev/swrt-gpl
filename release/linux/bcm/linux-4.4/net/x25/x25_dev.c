@@ -120,8 +120,10 @@ int x25_lapb_receive_frame(struct sk_buff *skb, struct net_device *dev,
 		goto drop;
 	}
 
-	if (!pskb_may_pull(skb, 1))
-		return 0;
+	if (!pskb_may_pull(skb, 1)) {
+		x25_neigh_put(nb);
+		goto drop;
+	}
 
 	switch (skb->data[0]) {
 

@@ -44,6 +44,7 @@ static const struct proto_ops l2cap_sock_ops;
 static void l2cap_sock_init(struct sock *sk, struct sock *parent);
 static struct sock *l2cap_sock_alloc(struct net *net, struct socket *sock,
 				     int proto, gfp_t prio, int kern);
+static void l2cap_sock_cleanup_listen(struct sock *parent);
 
 bool l2cap_is_socket(struct socket *sock)
 {
@@ -58,7 +59,7 @@ static int l2cap_validate_bredr_psm(u16 psm)
 		return -EINVAL;
 
 	/* Restrict usage of well-known PSMs */
-	if (psm < 0x1001 && !capable(CAP_NET_BIND_SERVICE))
+	if (psm < L2CAP_PSM_DYN_START && !capable(CAP_NET_BIND_SERVICE))
 		return -EACCES;
 
 	return 0;
@@ -67,11 +68,11 @@ static int l2cap_validate_bredr_psm(u16 psm)
 static int l2cap_validate_le_psm(u16 psm)
 {
 	/* Valid LE_PSM ranges are defined only until 0x00ff */
-	if (psm > 0x00ff)
+	if (psm > L2CAP_PSM_LE_DYN_END)
 		return -EINVAL;
 
 	/* Restrict fixed, SIG assigned PSM values to CAP_NET_BIND_SERVICE */
-	if (psm <= 0x007f && !capable(CAP_NET_BIND_SERVICE))
+	if (psm < L2CAP_PSM_LE_DYN_START && !capable(CAP_NET_BIND_SERVICE))
 		return -EACCES;
 
 	return 0;
@@ -395,7 +396,8 @@ static int l2cap_sock_getsockopt_old(struct socket *sock, int optname,
 	struct l2cap_chan *chan = l2cap_pi(sk)->chan;
 	struct l2cap_options opts;
 	struct l2cap_conninfo cinfo;
-	int len, err = 0;
+	int err = 0;
+	size_t len;
 	u32 opt;
 
 	BT_DBG("sk %p", sk);
@@ -426,7 +428,7 @@ static int l2cap_sock_getsockopt_old(struct socket *sock, int optname,
 		opts.max_tx   = chan->max_tx;
 		opts.txwin_size = chan->tx_win;
 
-		len = min_t(unsigned int, len, sizeof(opts));
+		len = min(len, sizeof(opts));
 		if (copy_to_user(optval, (char *) &opts, len))
 			err = -EFAULT;
 
@@ -476,7 +478,7 @@ static int l2cap_sock_getsockopt_old(struct socket *sock, int optname,
 		cinfo.hci_handle = chan->conn->hcon->handle;
 		memcpy(cinfo.dev_class, chan->conn->hcon->dev_class, 3);
 
-		len = min_t(unsigned int, len, sizeof(cinfo));
+		len = min(len, sizeof(cinfo));
 		if (copy_to_user(optval, (char *) &cinfo, len))
 			err = -EFAULT;
 
@@ -1196,6 +1198,7 @@ static int l2cap_sock_release(struct socket *sock)
 	if (!sk)
 		return 0;
 
+	l2cap_sock_cleanup_listen(sk);
 	bt_sock_unlink(&l2cap_sk_list, sk);
 
 	err = l2cap_sock_shutdown(sock, 2);
@@ -1394,6 +1397,14 @@ static struct sk_buff *l2cap_sock_alloc_skb_cb(struct l2cap_chan *chan,
 
 	if (!skb)
 		return ERR_PTR(err);
+
+	/* Channel lock is released before requesting new skb and then
+	 * reacquired thus we need to recheck channel state.
+	 */
+	if (chan->state != BT_CONNECTED) {
+		kfree_skb(skb);
+		return ERR_PTR(-ENOTCONN);
+	}
 
 	skb->priority = sk->sk_priority;
 
@@ -1615,6 +1626,8 @@ static struct sock *l2cap_sock_alloc(struct net *net, struct socket *sock,
 	chan = l2cap_chan_create();
 	if (!chan) {
 		sk_free(sk);
+		if (sock)
+			sock->sk = NULL;
 		return NULL;
 	}
 

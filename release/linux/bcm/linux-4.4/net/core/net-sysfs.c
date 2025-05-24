@@ -198,7 +198,7 @@ static ssize_t speed_show(struct device *dev,
 	if (!rtnl_trylock())
 		return restart_syscall();
 
-	if (netif_running(netdev)) {
+	if (netif_running(netdev) && netif_device_present(netdev)) {	  
 		struct ethtool_cmd cmd;
 		if (!__ethtool_get_settings(netdev, &cmd))
 			ret = sprintf(buf, fmt_dec, ethtool_cmd_speed(&cmd));
@@ -319,7 +319,20 @@ NETDEVICE_SHOW_RW(flags, fmt_hex);
 
 static int change_tx_queue_len(struct net_device *dev, unsigned long new_len)
 {
-	dev->tx_queue_len = new_len;
+	int res, orig_len = dev->tx_queue_len;
+
+	if (new_len != orig_len) {
+		dev->tx_queue_len = new_len;
+		res = call_netdevice_notifiers(NETDEV_CHANGE_TX_QUEUE_LEN, dev);
+		res = notifier_to_errno(res);
+		if (res) {
+			netdev_err(dev,
+				   "refused to change device tx_queue_len\n");
+			dev->tx_queue_len = orig_len;
+			return -EFAULT;
+		}
+	}
+
 	return 0;
 }
 
@@ -416,6 +429,47 @@ static ssize_t proto_down_store(struct device *dev,
 }
 NETDEVICE_SHOW_RW(proto_down, fmt_dec);
 
+static int change_napi_threaded(struct net_device *dev, unsigned long val)
+{
+	struct napi_struct *napi;
+
+	if (list_empty(&dev->napi_list))
+		return -EOPNOTSUPP;
+
+	list_for_each_entry(napi, &dev->napi_list, dev_list) {
+		if (val)
+			set_bit(NAPI_STATE_THREADED, &napi->state);
+		else
+			clear_bit(NAPI_STATE_THREADED, &napi->state);
+	}
+
+	return 0;
+}
+
+static ssize_t napi_threaded_store(struct device *dev,
+				struct device_attribute *attr,
+				const char *buf, size_t len)
+{
+	return netdev_store(dev, attr, buf, len, change_napi_threaded);
+}
+
+static ssize_t napi_threaded_show(struct device *dev,
+				  struct device_attribute *attr,
+				  char *buf)
+{
+	struct net_device *netdev = to_net_dev(dev);
+	struct napi_struct *napi;
+	bool enabled = false;
+
+	list_for_each_entry(napi, &netdev->napi_list, dev_list) {
+		if (test_bit(NAPI_STATE_THREADED, &napi->state))
+			enabled = true;
+	}
+
+	return sprintf(buf, fmt_dec, enabled);
+}
+DEVICE_ATTR_RW(napi_threaded);
+
 static ssize_t phys_port_id_show(struct device *dev,
 				 struct device_attribute *attr, char *buf)
 {
@@ -510,6 +564,7 @@ static struct attribute *net_class_attrs[] = {
 	&dev_attr_flags.attr,
 	&dev_attr_tx_queue_len.attr,
 	&dev_attr_gro_flush_timeout.attr,
+	&dev_attr_napi_threaded.attr,
 	&dev_attr_phys_port_id.attr,
 	&dev_attr_phys_port_name.attr,
 	&dev_attr_phys_switch_id.attr,
@@ -999,7 +1054,7 @@ static ssize_t show_trans_timeout(struct netdev_queue *queue,
 	trans_timeout = queue->trans_timeout;
 	spin_unlock_irq(&queue->_xmit_lock);
 
-	return sprintf(buf, "%lu", trans_timeout);
+	return sprintf(buf, fmt_ulong, trans_timeout);
 }
 
 #ifdef CONFIG_XPS

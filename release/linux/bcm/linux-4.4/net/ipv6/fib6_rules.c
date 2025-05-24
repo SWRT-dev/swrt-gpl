@@ -73,10 +73,6 @@ static int fib6_rule_action(struct fib_rule *rule, struct flowi *flp,
 		err = -EACCES;
 		rt = net->ipv6.ip6_prohibit_entry;
 		goto discard_pkt;
-	case FR_ACT_POLICY_FAILED:
-		err = -EACCES;
-		rt = net->ipv6.ip6_policy_failed_entry;
-		goto discard_pkt;
 	}
 
 	table = fib6_get_table(net, rule->table);
@@ -97,8 +93,12 @@ static int fib6_rule_action(struct fib_rule *rule, struct flowi *flp,
 		    r->src.plen && !(flags & RT6_LOOKUP_F_HAS_SADDR)) {
 			struct in6_addr saddr;
 
-			if (ipv6_dev_get_saddr(net,
-					       ip6_dst_idev(&rt->dst)->dev,
+			struct inet6_dev *idev = ip6_dst_idev(&rt->dst);
+
+			if (!idev)
+				goto again;
+
+			if (ipv6_dev_get_saddr(net, idev->dev,
 					       &flp6->daddr,
 					       rt6_flags2srcprefs(flags),
 					       &saddr))
@@ -177,6 +177,18 @@ static int fib6_rule_match(struct fib_rule *rule, struct flowi *fl, int flags)
 
 	if (r->tclass && r->tclass != ip6_tclass(fl6->flowlabel))
 		return 0;
+
+	if (rule->ip_proto && (rule->ip_proto != fl6->flowi6_proto))
+		return 0;
+
+	if (fib_rule_port_range_set(&rule->sport_range) &&
+	    !fib_rule_port_inrange(&rule->sport_range, fl6->fl6_sport))
+		return 0;
+
+	if (fib_rule_port_range_set(&rule->dport_range) &&
+	    !fib_rule_port_inrange(&rule->dport_range, fl6->fl6_dport))
+		return 0;
+
 
 	return 1;
 }
@@ -269,6 +281,11 @@ static size_t fib6_rule_nlmsg_payload(struct fib_rule *rule)
 	       + nla_total_size(16); /* src */
 }
 
+static void fib6_rule_flush_cache(struct fib_rules_ops *ops)
+{
+	rt_genid_bump_ipv6(ops->fro_net);
+}
+
 static const struct fib_rules_ops __net_initconst fib6_rules_ops_template = {
 	.family			= AF_INET6,
 	.rule_size		= sizeof(struct fib6_rule),
@@ -280,6 +297,7 @@ static const struct fib_rules_ops __net_initconst fib6_rules_ops_template = {
 	.compare		= fib6_rule_compare,
 	.fill			= fib6_rule_fill,
 	.nlmsg_payload		= fib6_rule_nlmsg_payload,
+	.flush_cache		= fib6_rule_flush_cache,
 	.nlgroup		= RTNLGRP_IPV6_RULE,
 	.policy			= fib6_rule_policy,
 	.owner			= THIS_MODULE,

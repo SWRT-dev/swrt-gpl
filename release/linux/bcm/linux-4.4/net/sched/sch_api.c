@@ -391,7 +391,8 @@ struct qdisc_rate_table *qdisc_get_rtab(struct tc_ratespec *r, struct nlattr *ta
 {
 	struct qdisc_rate_table *rtab;
 
-	if (tab == NULL || r->rate == 0 || r->cell_log == 0 ||
+	if (tab == NULL || r->rate == 0 ||
+	    r->cell_log == 0 || r->cell_log >= 32 ||
 	    nla_len(tab) != TC_RTAB_SIZE)
 		return NULL;
 
@@ -607,6 +608,10 @@ void qdisc_watchdog_schedule_ns(struct qdisc_watchdog *wd, u64 expires, bool thr
 	if (throttle)
 		qdisc_throttled(wd->qdisc);
 
+	if (wd->last_expires == expires)
+		return;
+
+	wd->last_expires = expires;
 	hrtimer_start(&wd->timer,
 		      ns_to_ktime(expires),
 		      HRTIMER_MODE_ABS_PINNED);
@@ -744,8 +749,7 @@ static u32 qdisc_alloc_handle(struct net_device *dev)
 	return 0;
 }
 
-void qdisc_tree_reduce_backlog(struct Qdisc *sch, unsigned int n,
-			       unsigned int len)
+void qdisc_tree_reduce_backlog(struct Qdisc *sch, int n, int len)
 {
 	const struct Qdisc_class_ops *cops;
 	unsigned long cl;
@@ -757,7 +761,7 @@ void qdisc_tree_reduce_backlog(struct Qdisc *sch, unsigned int n,
 	drops = max_t(int, n, 0);
 	rcu_read_lock();
 	while ((parentid = sch->parent)) {
-		if (TC_H_MAJ(parentid) == TC_H_MAJ(TC_H_INGRESS))
+		if (parentid == TC_H_ROOT)
 			break;
 
 		if (sch->flags & TCQ_F_NOPARENT)
@@ -845,11 +849,12 @@ static int qdisc_graft(struct net_device *dev, struct Qdisc *parent,
 
 skip:
 		if (!ingress) {
-			notify_and_destroy(net, skb, n, classid,
-					   dev->qdisc, new);
+			old = dev->qdisc;
 			if (new && !new->ops->attach)
 				atomic_inc(&new->refcnt);
 			dev->qdisc = new ? : &noop_qdisc;
+
+			notify_and_destroy(net, skb, n, classid, old, new);
 
 			if (new && new->ops->attach)
 				new->ops->attach(new);
@@ -866,8 +871,12 @@ skip:
 		if (cops && cops->graft) {
 			unsigned long cl = cops->get(parent, classid);
 			if (cl) {
-				err = cops->graft(parent, cl, new, &old);
-				cops->put(parent, cl);
+				if (new && new->ops == &noqueue_qdisc_ops)
+					err = -EINVAL;
+				else {
+					err = cops->graft(parent, cl, new, &old);
+					cops->put(parent, cl);
+				}
 			} else
 				err = -ENOENT;
 		}

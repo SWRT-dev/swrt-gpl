@@ -22,6 +22,7 @@
 #include <linux/proc_fs.h>
 #include <linux/mutex.h>
 #include <linux/slab.h>
+#include <linux/locallock.h>
 #include <net/net_namespace.h>
 #include <net/sock.h>
 
@@ -33,7 +34,14 @@
 #define BCMFASTPATH
 #endif
 
+#include <net/netfilter/nf_conntrack_rtcache.h>
+
 #include "nf_internals.h"
+
+#ifdef CONFIG_PREEMPT_RT_BASE
+DEFINE_LOCAL_IRQ_LOCK(xt_write_lock);
+EXPORT_PER_CPU_SYMBOL(xt_write_lock);
+#endif
 
 static DEFINE_MUTEX(afinfo_mutex);
 
@@ -319,28 +327,18 @@ next_hook:
 		ret = NF_DROP_GETERR(verdict);
 		if (ret == 0)
 			ret = -EPERM;
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 	} else if ((verdict & NF_VERDICT_MASK) == NF_QUEUE ||
-		(verdict & NF_VERDICT_MASK) == NF_IMQ_QUEUE) {
-#else
-	} else if ((verdict & NF_VERDICT_MASK) == NF_QUEUE) {
-#endif
+		   (verdict & NF_VERDICT_MASK) == NF_IMQ_QUEUE) {
 		int err = nf_queue(skb, elem, state,
-#if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
-				   verdict >> NF_VERDICT_QBITS,
-				  verdict & NF_VERDICT_MASK);
-#else
-				   verdict >> NF_VERDICT_QBITS);
-#endif
+			       verdict >> NF_VERDICT_QBITS,
+			       verdict & NF_VERDICT_MASK);
 		if (err < 0) {
 			if (err == -ESRCH &&
 			   (verdict & NF_VERDICT_FLAG_QUEUE_BYPASS))
 				goto next_hook;
 			kfree_skb(skb);
 		}
-	} else
-		ret = 0;
-
+	}
 	rcu_read_unlock();
 	return ret;
 }
@@ -417,6 +415,35 @@ const struct nf_conntrack_zone nf_ct_zone_dflt = {
 	.dir	= NF_CT_DEFAULT_ZONE_DIR,
 };
 EXPORT_SYMBOL_GPL(nf_ct_zone_dflt);
+
+#if IS_ENABLED(CONFIG_NF_CONNTRACK_RTCACHE)
+/* returns true if dev matches the last recorded
+ * input interface of the conntrack attached to skb.
+ *
+ * This is not in conntrack to avoid module dependency.
+ */
+bool nf_conn_rtcache_match_dev(const struct sk_buff *skb,
+			       const struct net_device *dev)
+{
+	struct nf_conn_rtcache *rtc;
+	enum ip_conntrack_info ctinfo;
+	enum ip_conntrack_dir dir;
+	struct nf_conn *ct;
+	int iif;
+
+	ct = nf_ct_get(skb, &ctinfo);
+	rtc = nf_ct_rtcache_find(ct);
+	if (!rtc)
+		return false;
+
+	dir = CTINFO2DIR(ctinfo);
+	iif = nf_conn_rtcache_iif_get(rtc, dir);
+
+	return iif == dev->ifindex;
+}
+EXPORT_SYMBOL_GPL(nf_conn_rtcache_match_dev);
+#endif
+
 #endif /* CONFIG_NF_CONNTRACK */
 
 #ifdef CONFIG_NF_NAT_NEEDED

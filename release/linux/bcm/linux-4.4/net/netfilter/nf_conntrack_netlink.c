@@ -635,22 +635,15 @@ ctnetlink_nlmsg_size(const struct nf_conn *ct)
 }
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 static int ctnetlink_conntrack_event(struct notifier_block *this,
 				     unsigned long events, void *ptr)
-#else
-static int
-ctnetlink_conntrack_event(unsigned int events, struct nf_ct_event *item)
-#endif
 {
 	const struct nf_conntrack_zone *zone;
 	struct net *net;
 	struct nlmsghdr *nlh;
 	struct nfgenmsg *nfmsg;
 	struct nlattr *nest_parms;
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 	struct nf_ct_event *item = ptr;
-#endif
 	struct nf_conn *ct = item->ct;
 	struct sk_buff *skb;
 	unsigned int type;
@@ -1031,6 +1024,8 @@ ctnetlink_parse_tuple(const struct nlattr * const cda[],
 	if (!tb[CTA_TUPLE_IP])
 		return -EINVAL;
 
+	if (l3num != NFPROTO_IPV4 && l3num != NFPROTO_IPV6)
+		return -EOPNOTSUPP;
 	tuple->src.l3num = l3num;
 
 	err = ctnetlink_parse_tuple_ip(tb[CTA_TUPLE_IP], tuple);
@@ -1112,14 +1107,6 @@ static const struct nla_policy ct_nla_policy[CTA_MAX+1] = {
 				    .len = NF_CT_LABELS_MAX_SIZE },
 };
 
-static int ctnetlink_flush_iterate(struct nf_conn *ct, void *data)
-{
-	if (test_bit(IPS_OFFLOAD_BIT, &ct->status))
-		return 0;
-
-	return ctnetlink_filter_match(ct, data);
-}
-
 static int ctnetlink_flush_conntrack(struct net *net,
 				     const struct nlattr * const cda[],
 				     u32 portid, int report)
@@ -1132,7 +1119,7 @@ static int ctnetlink_flush_conntrack(struct net *net,
 			return PTR_ERR(filter);
 	}
 
-	nf_ct_iterate_cleanup(net, ctnetlink_flush_iterate, filter,
+	nf_ct_iterate_cleanup(net, ctnetlink_filter_match, filter,
 			      portid, report);
 	kfree(filter);
 
@@ -1177,11 +1164,6 @@ ctnetlink_del_conntrack(struct sock *ctnl, struct sk_buff *skb,
 		return -ENOENT;
 
 	ct = nf_ct_tuplehash_to_ctrack(h);
-
-	if (test_bit(IPS_OFFLOAD_BIT, &ct->status)) {
-		nf_ct_put(ct);
-		return -EBUSY;
-	}
 
 	if (cda[CTA_ID]) {
 		__be32 id = nla_get_be32(cda[CTA_ID]);
@@ -1886,12 +1868,15 @@ ctnetlink_create_conntrack(struct net *net,
 
 	err = nf_conntrack_hash_check_insert(ct);
 	if (err < 0)
-		goto err2;
+		goto err3;
 
 	rcu_read_unlock();
 
 	return ct;
 
+err3:
+	if (ct->master)
+		nf_ct_put(ct->master);
 err2:
 	rcu_read_unlock();
 err1:
@@ -2504,7 +2489,9 @@ nla_put_failure:
 	return -1;
 }
 
+#if IS_ENABLED(CONFIG_NF_NAT)
 static const union nf_inet_addr any_addr;
+#endif
 
 static __be32 nf_expect_get_id(const struct nf_conntrack_expect *exp)
 {
@@ -2937,7 +2924,8 @@ ctnetlink_del_expect(struct sock *ctnl, struct sk_buff *skb,
 
 		if (cda[CTA_EXPECT_ID]) {
 			__be32 id = nla_get_be32(cda[CTA_EXPECT_ID]);
-			if (ntohl(id) != (u32)(unsigned long)exp) {
+
+			if (id != nf_expect_get_id(exp)) {
 				nf_ct_expect_put(exp);
 				return -ENOENT;
 			}
@@ -3010,10 +2998,12 @@ ctnetlink_change_expect(struct nf_conntrack_expect *x,
 	return 0;
 }
 
+#if IS_ENABLED(CONFIG_NF_NAT)
 static const struct nla_policy exp_nat_nla_policy[CTA_EXPECT_NAT_MAX+1] = {
 	[CTA_EXPECT_NAT_DIR]	= { .type = NLA_U32 },
 	[CTA_EXPECT_NAT_TUPLE]	= { .type = NLA_NESTED },
 };
+#endif
 
 static int
 ctnetlink_parse_expect_nat(const struct nlattr *attr,
@@ -3312,15 +3302,9 @@ ctnetlink_stat_exp_cpu(struct sock *ctnl, struct sk_buff *skb,
 }
 
 #ifdef CONFIG_NF_CONNTRACK_EVENTS
-#if defined(CONFIG_SHORTCUT_FE) || defined(CONFIG_SHORTCUT_FE_MODULE)
 static struct notifier_block ctnl_notifier = {
 	.notifier_call = ctnetlink_conntrack_event,
 };
-#else
-static struct nf_ct_event_notifier ctnl_notifier = {
-	.fcn = ctnetlink_conntrack_event,
-};
-#endif
 
 static struct nf_exp_event_notifier ctnl_notifier_exp = {
 	.fcn = ctnetlink_expect_event,
@@ -3418,6 +3402,9 @@ static void __net_exit ctnetlink_net_exit_batch(struct list_head *net_exit_list)
 
 	list_for_each_entry(net, net_exit_list, exit_list)
 		ctnetlink_net_exit(net);
+
+	/* wait for other cpus until they are done with ctnl_notifiers */
+	synchronize_rcu();
 }
 
 static struct pernet_operations ctnetlink_net_ops = {

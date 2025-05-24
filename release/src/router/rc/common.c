@@ -59,6 +59,7 @@
 
 #include <mtd.h>
 #include <limits.h>
+#include "timestamp.h"
 
 void update_lan_status(int);
 

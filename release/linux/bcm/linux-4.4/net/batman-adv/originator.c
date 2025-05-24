@@ -21,6 +21,7 @@
 #include <linux/errno.h>
 #include <linux/etherdevice.h>
 #include <linux/fs.h>
+#include <linux/if_vlan.h>
 #include <linux/jiffies.h>
 #include <linux/kernel.h>
 #include <linux/list.h>
@@ -88,6 +89,29 @@ batadv_orig_node_vlan_get(struct batadv_orig_node *orig_node,
 }
 
 /**
+ * batadv_vlan_id_valid() - check if vlan id is in valid batman-adv encoding
+ * @vid: the VLAN identifier
+ *
+ * Return: true when either no vlan is set or if VLAN is in correct range,
+ *  false otherwise
+ */
+static bool batadv_vlan_id_valid(unsigned short vid)
+{
+	unsigned short non_vlan = vid & ~(BATADV_VLAN_HAS_TAG | VLAN_VID_MASK);
+
+	if (vid == 0)
+		return true;
+
+	if (!(vid & BATADV_VLAN_HAS_TAG))
+		return false;
+
+	if (non_vlan)
+		return false;
+
+	return true;
+}
+
+/**
  * batadv_orig_node_vlan_new - search and possibly create an orig_node_vlan
  *  object
  * @orig_node: the originator serving the VLAN
@@ -104,6 +128,9 @@ batadv_orig_node_vlan_new(struct batadv_orig_node *orig_node,
 			  unsigned short vid)
 {
 	struct batadv_orig_node_vlan *vlan;
+
+	if (!batadv_vlan_id_valid(vid))
+		return NULL;
 
 	spin_lock_bh(&orig_node->vlan_list_lock);
 
@@ -462,6 +489,8 @@ batadv_neigh_node_new(struct batadv_orig_node *orig_node,
 {
 	struct batadv_neigh_node *neigh_node;
 
+	spin_lock_bh(&orig_node->neigh_list_lock);
+
 	neigh_node = batadv_neigh_node_get(orig_node, hard_iface, neigh_addr);
 	if (neigh_node)
 		goto out;
@@ -483,19 +512,20 @@ batadv_neigh_node_new(struct batadv_orig_node *orig_node,
 	ether_addr_copy(neigh_node->addr, neigh_addr);
 	neigh_node->if_incoming = hard_iface;
 	neigh_node->orig_node = orig_node;
+	neigh_node->last_seen = jiffies;
 
 	/* extra reference for return */
 	atomic_set(&neigh_node->refcount, 2);
 
-	spin_lock_bh(&orig_node->neigh_list_lock);
 	hlist_add_head_rcu(&neigh_node->list, &orig_node->neigh_list);
-	spin_unlock_bh(&orig_node->neigh_list_lock);
 
 	batadv_dbg(BATADV_DBG_BATMAN, orig_node->bat_priv,
 		   "Creating new neighbor %pM for orig_node %pM on interface %s\n",
 		   neigh_addr, orig_node->orig, hard_iface->net_dev->name);
 
 out:
+	spin_unlock_bh(&orig_node->neigh_list_lock);
+
 	return neigh_node;
 }
 
@@ -561,6 +591,8 @@ static void batadv_orig_node_release(struct batadv_orig_node *orig_node)
 	struct hlist_node *node_tmp;
 	struct batadv_neigh_node *neigh_node;
 	struct batadv_orig_ifinfo *orig_ifinfo;
+	struct batadv_orig_node_vlan *vlan;
+	struct batadv_orig_ifinfo *last_candidate;
 
 	spin_lock_bh(&orig_node->neigh_list_lock);
 
@@ -576,7 +608,20 @@ static void batadv_orig_node_release(struct batadv_orig_node *orig_node)
 		hlist_del_rcu(&orig_ifinfo->list);
 		batadv_orig_ifinfo_free_ref(orig_ifinfo);
 	}
+
+	last_candidate = orig_node->last_bonding_candidate;
+	orig_node->last_bonding_candidate = NULL;
 	spin_unlock_bh(&orig_node->neigh_list_lock);
+
+	if (last_candidate)
+		batadv_orig_ifinfo_free_ref(last_candidate);
+
+	spin_lock_bh(&orig_node->vlan_list_lock);
+	hlist_for_each_entry_safe(vlan, node_tmp, &orig_node->vlan_list, list) {
+		hlist_del_rcu(&vlan->list);
+		batadv_orig_node_vlan_free_ref(vlan);
+	}
+	spin_unlock_bh(&orig_node->vlan_list_lock);
 
 	/* Free nc_nodes */
 	batadv_nc_purge_orig(orig_node->bat_priv, orig_node, NULL);
@@ -967,6 +1012,8 @@ static void _batadv_purge_orig(struct batadv_priv *bat_priv)
 	/* for all origins... */
 	for (i = 0; i < hash->size; i++) {
 		head = &hash->table[i];
+		if (hlist_empty(head))
+			continue;
 		list_lock = &hash->list_locks[i];
 
 		spin_lock_bh(list_lock);
@@ -1085,7 +1132,7 @@ out:
 }
 
 int batadv_orig_hash_add_if(struct batadv_hard_iface *hard_iface,
-			    int max_if_num)
+			    unsigned int max_if_num)
 {
 	struct batadv_priv *bat_priv = netdev_priv(hard_iface->soft_iface);
 	struct batadv_algo_ops *bao = bat_priv->bat_algo_ops;
@@ -1121,7 +1168,7 @@ err:
 }
 
 int batadv_orig_hash_del_if(struct batadv_hard_iface *hard_iface,
-			    int max_if_num)
+			    unsigned int max_if_num)
 {
 	struct batadv_priv *bat_priv = netdev_priv(hard_iface->soft_iface);
 	struct batadv_hashtable *hash = bat_priv->orig_hash;

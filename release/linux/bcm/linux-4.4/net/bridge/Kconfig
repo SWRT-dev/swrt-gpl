@@ -60,3 +60,6 @@ config BRIDGE_VLAN_FILTERING
 
 	  If unsure, say Y.
 
+config KERNEL_ARP_SPOOFING_PROTECT
+	bool "kernel arp spoofing protect"
+        default n

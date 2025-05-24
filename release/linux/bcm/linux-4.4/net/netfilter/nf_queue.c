@@ -26,7 +26,6 @@
  * Once the queue is registered it must reinject all packets it
  * receives, no matter what.
  */
-static const struct nf_queue_handler __rcu *queue_handler __read_mostly;
 
 #if defined(CONFIG_IMQ) || defined(CONFIG_IMQ_MODULE)
 static const struct nf_queue_handler __rcu *queue_imq_handler __read_mostly;
@@ -62,6 +61,16 @@ void nf_unregister_queue_handler(struct net *net)
 }
 EXPORT_SYMBOL(nf_unregister_queue_handler);
 
+
+static void nf_queue_sock_put(struct sock *sk)
+{
+#ifdef CONFIG_INET
+	sock_gen_put(sk);
+#else
+	sock_put(sk);
+#endif
+}
+
 void nf_queue_entry_release_refs(struct nf_queue_entry *entry)
 {
 	struct nf_hook_state *state = &entry->state;
@@ -72,7 +81,7 @@ void nf_queue_entry_release_refs(struct nf_queue_entry *entry)
 	if (state->out)
 		dev_put(state->out);
 	if (state->sk)
-		sock_put(state->sk);
+		nf_queue_sock_put(state->sk);
 #if IS_ENABLED(CONFIG_BRIDGE_NETFILTER)
 	if (entry->skb->nf_bridge) {
 		struct net_device *physdev;
@@ -89,9 +98,12 @@ void nf_queue_entry_release_refs(struct nf_queue_entry *entry)
 EXPORT_SYMBOL_GPL(nf_queue_entry_release_refs);
 
 /* Bump dev refs so they don't vanish while packet is out */
-void nf_queue_entry_get_refs(struct nf_queue_entry *entry)
+bool nf_queue_entry_get_refs(struct nf_queue_entry *entry)
 {
 	struct nf_hook_state *state = &entry->state;
+
+	if (state->sk && !atomic_inc_not_zero(&state->sk->sk_refcnt))
+		return false;
 
 	if (state->in)
 		dev_hold(state->in);
@@ -111,6 +123,7 @@ void nf_queue_entry_get_refs(struct nf_queue_entry *entry)
 			dev_hold(physdev);
 	}
 #endif
+	return true;
 }
 EXPORT_SYMBOL_GPL(nf_queue_entry_get_refs);
 
@@ -119,7 +132,7 @@ void nf_queue_nf_hook_drop(struct net *net, struct nf_hook_ops *ops)
 	const struct nf_queue_handler *qh;
 
 	rcu_read_lock();
-	qh = rcu_dereference(queue_handler);
+	qh = rcu_dereference(net->nf.queue_handler);
 	if (qh)
 		qh->nf_hook_drop(net, ops);
 	rcu_read_unlock();
@@ -133,12 +146,13 @@ int nf_queue(struct sk_buff *skb,
 	     struct nf_hook_ops *elem,
 	     struct nf_hook_state *state,
 	     unsigned int queuenum,
-		 unsigned int queuetype)
+	     unsigned int queuetype)
 {
 	int status = -ENOENT;
 	struct nf_queue_entry *entry = NULL;
 	const struct nf_afinfo *afinfo;
 	const struct nf_queue_handler *qh;
+	struct net *net = state->net;
 
 	/* QUEUE == DROP if no one is waiting, to be safe. */
 	if (queuetype == NF_IMQ_QUEUE) {
@@ -149,7 +163,7 @@ int nf_queue(struct sk_buff *skb,
 		goto err_unlock;
 #endif
 	} else {
-		qh = rcu_dereference(queue_handler);
+		qh = rcu_dereference(net->nf.queue_handler);
 	}
 
 	if (!qh) {
@@ -174,7 +188,11 @@ int nf_queue(struct sk_buff *skb,
 		.size	= sizeof(*entry) + afinfo->route_key_size,
 	};
 
-	nf_queue_entry_get_refs(entry);
+	if (!nf_queue_entry_get_refs(entry)) {
+		kfree(entry);
+		return -ENOTCONN;
+	}
+
 	skb_dst_force(skb);
 	afinfo->saveroute(skb, entry);
 	status = qh->outfn(entry, queuenum);
@@ -190,6 +208,7 @@ err:
 	kfree(entry);
 	return status;
 }
+
 
 void nf_reinject(struct nf_queue_entry *entry, unsigned int verdict)
 {
@@ -228,8 +247,7 @@ void nf_reinject(struct nf_queue_entry *entry, unsigned int verdict)
 	case NF_QUEUE:
 	case NF_IMQ_QUEUE:
 		err = nf_queue(skb, elem, &entry->state,
-			       verdict >> NF_VERDICT_QBITS,
-				   verdict & NF_VERDICT_MASK);
+				verdict >> NF_VERDICT_QBITS, verdict & NF_VERDICT_MASK);
 		if (err < 0) {
 			if (err == -ESRCH &&
 			   (verdict & NF_VERDICT_FLAG_QUEUE_BYPASS))

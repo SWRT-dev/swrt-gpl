@@ -507,9 +507,11 @@ static int raw_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 		goto out;
 
 	/* hdrincl should be READ_ONCE(inet->hdrincl)
-	 * but READ_ONCE() doesn't work with bit fields
+	 * but READ_ONCE() doesn't work with bit fields.
+	 * Doing this indirectly yields the same result.
 	 */
 	hdrincl = inet->hdrincl;
+	hdrincl = READ_ONCE(hdrincl);
 	/*
 	 *	Check the flags.
 	 */
@@ -609,7 +611,7 @@ static int raw_sendmsg(struct sock *sk, struct msghdr *msg, size_t len)
 			   hdrincl ? IPPROTO_RAW : sk->sk_protocol,
 			   inet_sk_flowi_flags(sk) |
 			    (hdrincl ? FLOWI_FLAG_KNOWN_NH : 0),
-			   daddr, saddr, 0, 0, sk->sk_uid);
+			   daddr, saddr, 0, 0);
 
 	if (!saddr && ipc.oif) {
 		err = l3mdev_get_saddr(net, ipc.oif, &fl4);
@@ -707,6 +709,7 @@ static int raw_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 	int ret = -EINVAL;
 	int chk_addr_ret;
 
+	lock_sock(sk);
 	if (sk->sk_state != TCP_CLOSE || addr_len < sizeof(struct sockaddr_in))
 		goto out;
 	chk_addr_ret = inet_addr_type(sock_net(sk), addr->sin_addr.s_addr);
@@ -719,7 +722,9 @@ static int raw_bind(struct sock *sk, struct sockaddr *uaddr, int addr_len)
 		inet->inet_saddr = 0;  /* Use device */
 	sk_dst_reset(sk);
 	ret = 0;
-out:	return ret;
+out:
+	release_sock(sk);
+	return ret;
 }
 
 /*

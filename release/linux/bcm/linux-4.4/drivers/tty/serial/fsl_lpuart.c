@@ -898,12 +898,34 @@ static void lpuart32_break_ctl(struct uart_port *port, int break_state)
 {
 	unsigned long temp;
 
-	temp = lpuart32_read(port->membase + UARTCTRL) & ~UARTCTRL_SBK;
+	temp = lpuart32_read(port->membase + UARTCTRL);
 
-	if (break_state != 0)
-		temp |= UARTCTRL_SBK;
-
-	lpuart32_write(temp, port->membase + UARTCTRL);
+	/*
+	 * LPUART IP now has two known bugs, one is CTS has higher priority than the
+	 * break signal, which causes the break signal sending through UARTCTRL_SBK
+	 * may impacted by the CTS input if the HW flow control is enabled. It
+	 * exists on all platforms we support in this driver.
+	 * Another bug is i.MX8QM LPUART may have an additional break character
+	 * being sent after SBK was cleared.
+	 * To avoid above two bugs, we use Transmit Data Inversion function to send
+	 * the break signal instead of UARTCTRL_SBK.
+	 */
+	if (break_state != 0) {
+		/*
+		 * Disable the transmitter to prevent any data from being sent out
+		 * during break, then invert the TX line to send break.
+		 */
+		temp &= ~UARTCTRL_TE;
+		lpuart32_write(temp, port->membase + UARTCTRL);
+		temp |= UARTCTRL_TXINV;
+		lpuart32_write(temp, port->membase + UARTCTRL);
+	} else {
+		/* Disable the TXINV to turn off break and re-enable transmitter. */
+		temp &= ~UARTCTRL_TXINV;
+		lpuart32_write(temp, port->membase + UARTCTRL);
+		temp |= UARTCTRL_TE;
+		lpuart32_write(temp, port->membase + UARTCTRL);
+	}
 }
 
 static void lpuart_setup_watermark(struct lpuart_port *sport)

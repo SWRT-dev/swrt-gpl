@@ -352,6 +352,7 @@ static int drr_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 	struct drr_sched *q = qdisc_priv(sch);
 	struct drr_class *cl;
 	int err = 0;
+	bool first;
 
 	cl = drr_classify(skb, sch, &err);
 	if (cl == NULL) {
@@ -361,6 +362,7 @@ static int drr_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 		return err;
 	}
 
+	first = !cl->qdisc->q.qlen;
 	err = qdisc_enqueue(skb, cl->qdisc);
 	if (unlikely(err != NET_XMIT_SUCCESS)) {
 		if (net_xmit_drop_count(err)) {
@@ -370,11 +372,12 @@ static int drr_enqueue(struct sk_buff *skb, struct Qdisc *sch)
 		return err;
 	}
 
-	if (cl->qdisc->q.qlen == 1) {
+	if (first) {
 		list_add_tail(&cl->alist, &q->active);
 		cl->deficit = cl->quantum;
 	}
 
+	qdisc_qstats_backlog_inc(sch, skb);
 	sch->q.qlen++;
 	return err;
 }
@@ -405,6 +408,7 @@ static struct sk_buff *drr_dequeue(struct Qdisc *sch)
 
 			bstats_update(&cl->bstats, skb);
 			qdisc_bstats_update(sch, skb);
+			qdisc_qstats_backlog_dec(sch, skb);
 			sch->q.qlen--;
 			return skb;
 		}
@@ -426,6 +430,7 @@ static unsigned int drr_drop(struct Qdisc *sch)
 		if (cl->qdisc->ops->drop) {
 			len = cl->qdisc->ops->drop(cl->qdisc);
 			if (len > 0) {
+				sch->qstats.backlog -= len;
 				sch->q.qlen--;
 				if (cl->qdisc->q.qlen == 0)
 					list_del(&cl->alist);
@@ -461,6 +466,7 @@ static void drr_reset_qdisc(struct Qdisc *sch)
 			qdisc_reset(cl->qdisc);
 		}
 	}
+	sch->qstats.backlog = 0;
 	sch->q.qlen = 0;
 }
 

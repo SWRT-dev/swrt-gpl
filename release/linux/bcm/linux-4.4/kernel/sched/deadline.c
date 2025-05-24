@@ -18,8 +18,6 @@
 
 #include <linux/slab.h>
 
-#include "walt.h"
-
 struct dl_bandwidth def_dl_bandwidth;
 
 static inline struct task_struct *dl_task_of(struct sched_dl_entity *dl_se)
@@ -43,24 +41,6 @@ static inline struct dl_rq *dl_rq_of_se(struct sched_dl_entity *dl_se)
 static inline int on_dl_rq(struct sched_dl_entity *dl_se)
 {
 	return !RB_EMPTY_NODE(&dl_se->rb_node);
-}
-
-static void add_average_bw(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
-{
-	u64 se_bw = dl_se->dl_bw;
-
-	dl_rq->avg_bw += se_bw;
-}
-
-static void clear_average_bw(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
-{
-	u64 se_bw = dl_se->dl_bw;
-
-	dl_rq->avg_bw -= se_bw;
-	if (dl_rq->avg_bw < 0) {
-		WARN_ON(1);
-		dl_rq->avg_bw = 0;
-	}
 }
 
 static inline int is_leftmost(struct task_struct *p, struct dl_rq *dl_rq)
@@ -154,7 +134,7 @@ static void inc_dl_migration(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
 {
 	struct task_struct *p = dl_task_of(dl_se);
 
-	if (p->nr_cpus_allowed > 1)
+	if (tsk_nr_cpus_allowed(p) > 1)
 		dl_rq->dl_nr_migratory++;
 
 	update_dl_migration(dl_rq);
@@ -164,7 +144,7 @@ static void dec_dl_migration(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
 {
 	struct task_struct *p = dl_task_of(dl_se);
 
-	if (p->nr_cpus_allowed > 1)
+	if (tsk_nr_cpus_allowed(p) > 1)
 		dl_rq->dl_nr_migratory--;
 
 	update_dl_migration(dl_rq);
@@ -585,9 +565,6 @@ static void update_dl_entity(struct sched_dl_entity *dl_se,
 	struct dl_rq *dl_rq = dl_rq_of_se(dl_se);
 	struct rq *rq = rq_of_dl_rq(dl_rq);
 
-	if (dl_se->dl_new)
-		add_average_bw(dl_se, dl_rq);
-
 	/*
 	 * The arrival of a new instance needs special treatment, i.e.,
 	 * the actual scheduling parameters have to be "renewed".
@@ -804,6 +781,7 @@ void init_dl_task_timer(struct sched_dl_entity *dl_se)
 
 	hrtimer_init(timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
 	timer->function = dl_task_timer;
+	timer->irqsafe = 1;
 }
 
 /*
@@ -872,9 +850,6 @@ static void update_curr_dl(struct rq *rq)
 	if (unlikely((s64)delta_exec <= 0))
 		return;
 
-	/* kick cpufreq (see the comment in kernel/sched/sched.h). */
-	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_DL);
-
 	schedstat_set(curr->se.statistics.exec_max,
 		      max(curr->se.statistics.exec_max, delta_exec));
 
@@ -883,6 +858,8 @@ static void update_curr_dl(struct rq *rq)
 
 	curr->se.exec_start = rq_clock_task(rq);
 	cpuacct_charge(curr, delta_exec);
+
+	sched_rt_avg_update(rq, delta_exec);
 
 	dl_se->runtime -= dl_se->dl_yielded ? 0 : delta_exec;
 	if (dl_runtime_exceeded(dl_se)) {
@@ -1001,7 +978,6 @@ void inc_dl_tasks(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
 	WARN_ON(!dl_prio(prio));
 	dl_rq->dl_nr_running++;
 	add_nr_running(rq_of_dl_rq(dl_rq), 1);
-	walt_inc_cumulative_runnable_avg(rq_of_dl_rq(dl_rq), dl_task_of(dl_se));
 
 	inc_dl_deadline(dl_rq, deadline);
 	inc_dl_migration(dl_se, dl_rq);
@@ -1016,7 +992,6 @@ void dec_dl_tasks(struct sched_dl_entity *dl_se, struct dl_rq *dl_rq)
 	WARN_ON(!dl_rq->dl_nr_running);
 	dl_rq->dl_nr_running--;
 	sub_nr_running(rq_of_dl_rq(dl_rq), 1);
-	walt_dec_cumulative_runnable_avg(rq_of_dl_rq(dl_rq), dl_task_of(dl_se));
 
 	dec_dl_deadline(dl_rq, dl_se->deadline);
 	dec_dl_migration(dl_se, dl_rq);
@@ -1141,7 +1116,7 @@ static void enqueue_task_dl(struct rq *rq, struct task_struct *p, int flags)
 
 	enqueue_dl_entity(&p->dl, pi_se, flags);
 
-	if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
+	if (!task_current(rq, p) && tsk_nr_cpus_allowed(p) > 1)
 		enqueue_pushable_dl_task(rq, p);
 }
 
@@ -1196,8 +1171,7 @@ static void yield_task_dl(struct rq *rq)
 static int find_later_rq(struct task_struct *task);
 
 static int
-select_task_rq_dl(struct task_struct *p, int cpu, int sd_flag, int flags,
-		  int sibling_count_hint)
+select_task_rq_dl(struct task_struct *p, int cpu, int sd_flag, int flags)
 {
 	struct task_struct *curr;
 	struct rq *rq;
@@ -1220,9 +1194,9 @@ select_task_rq_dl(struct task_struct *p, int cpu, int sd_flag, int flags,
 	 * try to make it stay here, it might be important.
 	 */
 	if (unlikely(dl_task(curr)) &&
-	    (curr->nr_cpus_allowed < 2 ||
+	    (tsk_nr_cpus_allowed(curr) < 2 ||
 	     !dl_entity_preempt(&p->dl, &curr->dl)) &&
-	    (p->nr_cpus_allowed > 1)) {
+	    (tsk_nr_cpus_allowed(p) > 1)) {
 		int target = find_later_rq(p);
 
 		if (target != -1 &&
@@ -1243,7 +1217,7 @@ static void check_preempt_equal_dl(struct rq *rq, struct task_struct *p)
 	 * Current can't be migrated, useless to reschedule,
 	 * let's hope p can move out.
 	 */
-	if (rq->curr->nr_cpus_allowed == 1 ||
+	if (tsk_nr_cpus_allowed(rq->curr) == 1 ||
 	    cpudl_find(&rq->rd->cpudl, rq->curr, NULL) == -1)
 		return;
 
@@ -1251,7 +1225,7 @@ static void check_preempt_equal_dl(struct rq *rq, struct task_struct *p)
 	 * p is migratable, so let's not schedule it and
 	 * see if it is pushed or pulled somewhere else.
 	 */
-	if (p->nr_cpus_allowed != 1 &&
+	if (tsk_nr_cpus_allowed(p) != 1 &&
 	    cpudl_find(&rq->rd->cpudl, p, NULL) != -1)
 		return;
 
@@ -1365,7 +1339,7 @@ static void put_prev_task_dl(struct rq *rq, struct task_struct *p)
 {
 	update_curr_dl(rq);
 
-	if (on_dl_rq(&p->dl) && p->nr_cpus_allowed > 1)
+	if (on_dl_rq(&p->dl) && tsk_nr_cpus_allowed(p) > 1)
 		enqueue_pushable_dl_task(rq, p);
 }
 
@@ -1394,8 +1368,6 @@ static void task_fork_dl(struct task_struct *p)
 static void task_dead_dl(struct task_struct *p)
 {
 	struct dl_bw *dl_b = dl_bw_of(task_cpu(p));
-	struct dl_rq *dl_rq = dl_rq_of_se(&p->dl);
-	struct rq *rq = rq_of_dl_rq(dl_rq);
 
 	/*
 	 * Since we are TASK_DEAD we won't slip out of the domain!
@@ -1404,8 +1376,6 @@ static void task_dead_dl(struct task_struct *p)
 	/* XXX we should retain the bw until 0-lag */
 	dl_b->total_bw -= p->dl.dl_bw;
 	raw_spin_unlock_irq(&dl_b->lock);
-
-	clear_average_bw(&p->dl, &rq->dl);
 }
 
 static void set_curr_task_dl(struct rq *rq)
@@ -1492,7 +1462,7 @@ static int find_later_rq(struct task_struct *task)
 	if (unlikely(!later_mask))
 		return -1;
 
-	if (task->nr_cpus_allowed == 1)
+	if (tsk_nr_cpus_allowed(task) == 1)
 		return -1;
 
 	/*
@@ -1598,7 +1568,7 @@ static struct rq *find_lock_later_rq(struct task_struct *task, struct rq *rq)
 		if (double_lock_balance(rq, later_rq)) {
 			if (unlikely(task_rq(task) != rq ||
 				     !cpumask_test_cpu(later_rq->cpu,
-				                       &task->cpus_allowed) ||
+						       tsk_cpus_allowed(task)) ||
 				     task_running(rq, task) ||
 				     !task_on_rq_queued(task))) {
 				double_unlock_balance(rq, later_rq);
@@ -1637,7 +1607,7 @@ static struct task_struct *pick_next_pushable_dl_task(struct rq *rq)
 
 	BUG_ON(rq->cpu != task_cpu(p));
 	BUG_ON(task_current(rq, p));
-	BUG_ON(p->nr_cpus_allowed <= 1);
+	BUG_ON(tsk_nr_cpus_allowed(p) <= 1);
 
 	BUG_ON(!task_on_rq_queued(p));
 	BUG_ON(!dl_task(p));
@@ -1676,7 +1646,7 @@ retry:
 	 */
 	if (dl_task(rq->curr) &&
 	    dl_time_before(next_task->dl.deadline, rq->curr->dl.deadline) &&
-	    rq->curr->nr_cpus_allowed > 1) {
+	    tsk_nr_cpus_allowed(rq->curr) > 1) {
 		resched_curr(rq);
 		return 0;
 	}
@@ -1713,11 +1683,7 @@ retry:
 	}
 
 	deactivate_task(rq, next_task, 0);
-	clear_average_bw(&next_task->dl, &rq->dl);
-	next_task->on_rq = TASK_ON_RQ_MIGRATING;
 	set_task_cpu(next_task, later_rq->cpu);
-	next_task->on_rq = TASK_ON_RQ_QUEUED;
-	add_average_bw(&next_task->dl, &later_rq->dl);
 	activate_task(later_rq, next_task, 0);
 	ret = 1;
 
@@ -1805,11 +1771,7 @@ static void pull_dl_task(struct rq *this_rq)
 			resched = true;
 
 			deactivate_task(src_rq, p, 0);
-			clear_average_bw(&p->dl, &src_rq->dl);
-			p->on_rq = TASK_ON_RQ_MIGRATING;
 			set_task_cpu(p, this_cpu);
-			p->on_rq = TASK_ON_RQ_QUEUED;
-			add_average_bw(&p->dl, &this_rq->dl);
 			activate_task(this_rq, p, 0);
 			dmin = p->dl.deadline;
 
@@ -1831,9 +1793,9 @@ static void task_woken_dl(struct rq *rq, struct task_struct *p)
 {
 	if (!task_running(rq, p) &&
 	    !test_tsk_need_resched(rq->curr) &&
-	    p->nr_cpus_allowed > 1 &&
+	    tsk_nr_cpus_allowed(p) > 1 &&
 	    dl_task(rq->curr) &&
-	    (rq->curr->nr_cpus_allowed < 2 ||
+	    (tsk_nr_cpus_allowed(rq->curr) < 2 ||
 	     !dl_entity_preempt(&p->dl, &rq->curr->dl))) {
 		push_dl_tasks(rq);
 	}
@@ -1915,8 +1877,6 @@ static void switched_from_dl(struct rq *rq, struct task_struct *p)
 	if (!start_dl_timer(p))
 		__dl_clear_params(p);
 
-	clear_average_bw(&p->dl, &rq->dl);
-
 	/*
 	 * Since this might be the only -deadline task on the rq,
 	 * this is the right place to try to pull some other one
@@ -1936,7 +1896,7 @@ static void switched_to_dl(struct rq *rq, struct task_struct *p)
 {
 	if (task_on_rq_queued(p) && rq->curr != p) {
 #ifdef CONFIG_SMP
-		if (p->nr_cpus_allowed > 1 && rq->dl.overloaded)
+		if (tsk_nr_cpus_allowed(p) > 1 && rq->dl.overloaded)
 			queue_push_tasks(rq);
 #endif
 		if (dl_task(rq->curr))

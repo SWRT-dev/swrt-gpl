@@ -159,8 +159,10 @@ int batadv_nc_mesh_init(struct batadv_priv *bat_priv)
 				   &batadv_nc_coding_hash_lock_class_key);
 
 	bat_priv->nc.decoding_hash = batadv_hash_new(128);
-	if (!bat_priv->nc.decoding_hash)
+	if (!bat_priv->nc.decoding_hash) {
+		batadv_hash_destroy(bat_priv->nc.coding_hash);
 		goto err;
+	}
 
 	batadv_hash_set_lock_class(bat_priv->nc.decoding_hash,
 				   &batadv_nc_decoding_hash_lock_class_key);
@@ -828,26 +830,6 @@ static struct batadv_nc_node
 	spinlock_t *lock; /* Used to lock list selected by "int in_coding" */
 	struct list_head *list;
 
-	/* Check if nc_node is already added */
-	nc_node = batadv_nc_find_nc_node(orig_node, orig_neigh_node, in_coding);
-
-	/* Node found */
-	if (nc_node)
-		return nc_node;
-
-	nc_node = kzalloc(sizeof(*nc_node), GFP_ATOMIC);
-	if (!nc_node)
-		return NULL;
-
-	if (!atomic_inc_not_zero(&orig_neigh_node->refcount))
-		goto free;
-
-	/* Initialize nc_node */
-	INIT_LIST_HEAD(&nc_node->list);
-	ether_addr_copy(nc_node->addr, orig_node->orig);
-	nc_node->orig_node = orig_neigh_node;
-	atomic_set(&nc_node->refcount, 2);
-
 	/* Select ingoing or outgoing coding node */
 	if (in_coding) {
 		lock = &orig_neigh_node->in_coding_list_lock;
@@ -857,19 +839,36 @@ static struct batadv_nc_node
 		list = &orig_neigh_node->out_coding_list;
 	}
 
+	spin_lock_bh(lock);
+
+	/* Check if nc_node is already added */
+	nc_node = batadv_nc_find_nc_node(orig_node, orig_neigh_node, in_coding);
+
+	/* Node found */
+	if (nc_node)
+		goto unlock;
+
+	nc_node = kzalloc(sizeof(*nc_node), GFP_ATOMIC);
+	if (!nc_node)
+		goto unlock;
+
+	atomic_inc(&orig_neigh_node->refcount);
+
+	/* Initialize nc_node */
+	INIT_LIST_HEAD(&nc_node->list);
+	ether_addr_copy(nc_node->addr, orig_node->orig);
+	nc_node->orig_node = orig_neigh_node;
+	atomic_set(&nc_node->refcount, 2);
+
 	batadv_dbg(BATADV_DBG_NC, bat_priv, "Adding nc_node %pM -> %pM\n",
 		   nc_node->addr, nc_node->orig_node->orig);
 
 	/* Add nc_node to orig_node */
-	spin_lock_bh(lock);
 	list_add_tail_rcu(&nc_node->list, list);
+unlock:
 	spin_unlock_bh(lock);
 
 	return nc_node;
-
-free:
-	kfree(nc_node);
-	return NULL;
 }
 
 /**
@@ -994,15 +993,8 @@ static struct batadv_nc_path *batadv_nc_get_path(struct batadv_priv *bat_priv,
  */
 static u8 batadv_nc_random_weight_tq(u8 tq)
 {
-	u8 rand_val, rand_tq;
-
-	get_random_bytes(&rand_val, sizeof(rand_val));
-
 	/* randomize the estimated packet loss (max TQ - estimated TQ) */
-	rand_tq = rand_val * (BATADV_TQ_MAX_VALUE - tq);
-
-	/* normalize the randomized packet loss */
-	rand_tq /= BATADV_TQ_MAX_VALUE;
+	u8 rand_tq = prandom_u32_max(BATADV_TQ_MAX_VALUE + 1 - tq);
 
 	/* convert to (randomized) estimated tq again */
 	return BATADV_TQ_MAX_VALUE - rand_tq;

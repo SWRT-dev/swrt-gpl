@@ -57,6 +57,7 @@ static inline int dev_requeue_skb(struct sk_buff *skb, struct Qdisc *q)
 {
 	q->gso_skb = skb;
 	q->qstats.requeues++;
+	qdisc_qstats_backlog_inc(q, skb);
 	q->q.qlen++;	/* it's still part of the queue */
 	__netif_schedule(q);
 
@@ -84,6 +85,34 @@ static void try_bulk_dequeue_skb(struct Qdisc *q,
 	skb->next = NULL;
 }
 
+/* This variant of try_bulk_dequeue_skb() makes sure
+ * all skbs in the chain are for the same txq
+ */
+static void try_bulk_dequeue_skb_slow(struct Qdisc *q,
+				      struct sk_buff *skb,
+				      int *packets)
+{
+	int mapping = skb_get_queue_mapping(skb);
+	struct sk_buff *nskb;
+	int cnt = 0;
+
+	do {
+		nskb = q->dequeue(q);
+		if (!nskb)
+			break;
+		if (unlikely(skb_get_queue_mapping(nskb) != mapping)) {
+			q->skb_bad_txq = nskb;
+			qdisc_qstats_backlog_inc(q, nskb);
+			q->q.qlen++;
+			break;
+		}
+		skb->next = nskb;
+		skb = nskb;
+	} while (++cnt < 8);
+	(*packets) += cnt;
+	skb->next = NULL;
+}
+
 /* Note that dequeue_skb can possibly return a SKB list (via skb->next).
  * A requeued skb (via q->gso_skb) can also be a SKB list.
  */
@@ -94,24 +123,41 @@ static struct sk_buff *dequeue_skb(struct Qdisc *q, bool *validate,
 	const struct netdev_queue *txq = q->dev_queue;
 
 	*packets = 1;
-	*validate = true;
 	if (unlikely(skb)) {
+		/* skb in gso_skb were already validated */
+		*validate = false;
 		/* check the reason of requeuing without tx lock first */
 		txq = skb_get_tx_queue(txq->dev, skb);
 		if (!netif_xmit_frozen_or_stopped(txq)) {
 			q->gso_skb = NULL;
+			qdisc_qstats_backlog_dec(q, skb);
 			q->q.qlen--;
 		} else
 			skb = NULL;
-		/* skb in gso_skb were already validated */
-		*validate = false;
-	} else {
-		if (!(q->flags & TCQ_F_ONETXQUEUE) ||
-		    !netif_xmit_frozen_or_stopped(txq)) {
-			skb = q->dequeue(q);
-			if (skb && qdisc_may_bulk(q))
-				try_bulk_dequeue_skb(q, skb, txq, packets);
+		return skb;
+	}
+	*validate = true;
+	skb = q->skb_bad_txq;
+	if (unlikely(skb)) {
+		/* check the reason of requeuing without tx lock first */
+		txq = skb_get_tx_queue(txq->dev, skb);
+		if (!netif_xmit_frozen_or_stopped(txq)) {
+			q->skb_bad_txq = NULL;
+			qdisc_qstats_backlog_dec(q, skb);
+			q->q.qlen--;
+			goto bulk;
 		}
+		return NULL;
+	}
+	if (!(q->flags & TCQ_F_ONETXQUEUE) ||
+	    !netif_xmit_frozen_or_stopped(txq))
+		skb = q->dequeue(q);
+	if (skb) {
+bulk:
+		if (qdisc_may_bulk(q))
+			try_bulk_dequeue_skb(q, skb, txq, packets);
+		else
+			try_bulk_dequeue_skb_slow(q, skb, packets);
 	}
 	return skb;
 }
@@ -455,6 +501,139 @@ struct Qdisc_ops noqueue_qdisc_ops __read_mostly = {
 	.owner		=	THIS_MODULE,
 };
 
+static const u8 prio2band[TC_PRIO_MAX + 1] = {
+	1, 2, 2, 2, 1, 2, 0, 0 , 1, 1, 1, 1, 1, 1, 1, 1
+};
+
+/* 3-band FIFO queue: old style, but should be a bit faster than
+   generic prio+fifo combination.
+ */
+
+#define PFIFO_FAST_BANDS 3
+
+/*
+ * Private data for a pfifo_fast scheduler containing:
+ * 	- queues for the three band
+ * 	- bitmap indicating which of the bands contain skbs
+ */
+struct pfifo_fast_priv {
+	u32 bitmap;
+	struct sk_buff_head q[PFIFO_FAST_BANDS];
+};
+
+/*
+ * Convert a bitmap to the first band number where an skb is queued, where:
+ * 	bitmap=0 means there are no skbs on any band.
+ * 	bitmap=1 means there is an skb on band 0.
+ *	bitmap=7 means there are skbs on all 3 bands, etc.
+ */
+static const int bitmap2band[] = {-1, 0, 1, 0, 2, 0, 1, 0};
+
+static inline struct sk_buff_head *band2list(struct pfifo_fast_priv *priv,
+					     int band)
+{
+	return priv->q + band;
+}
+
+static int BCMFASTPATH pfifo_fast_enqueue(struct sk_buff *skb, struct Qdisc *qdisc)
+{
+	if (skb_queue_len(&qdisc->q) < qdisc_dev(qdisc)->tx_queue_len) {
+		int band = prio2band[skb->priority & TC_PRIO_MAX];
+		struct pfifo_fast_priv *priv = qdisc_priv(qdisc);
+		struct sk_buff_head *list = band2list(priv, band);
+
+		priv->bitmap |= (1 << band);
+		qdisc->q.qlen++;
+		return __qdisc_enqueue_tail(skb, qdisc, list);
+	}
+
+	return qdisc_drop(skb, qdisc);
+}
+
+static struct sk_buff *pfifo_fast_dequeue(struct Qdisc *qdisc)
+{
+	struct pfifo_fast_priv *priv = qdisc_priv(qdisc);
+	int band = bitmap2band[priv->bitmap];
+
+	if (likely(band >= 0)) {
+		struct sk_buff_head *list = band2list(priv, band);
+		struct sk_buff *skb = __qdisc_dequeue_head(qdisc, list);
+
+		qdisc->q.qlen--;
+		if (skb_queue_empty(list))
+			priv->bitmap &= ~(1 << band);
+
+		return skb;
+	}
+
+	return NULL;
+}
+
+static struct sk_buff *pfifo_fast_peek(struct Qdisc *qdisc)
+{
+	struct pfifo_fast_priv *priv = qdisc_priv(qdisc);
+	int band = bitmap2band[priv->bitmap];
+
+	if (band >= 0) {
+		struct sk_buff_head *list = band2list(priv, band);
+
+		return skb_peek(list);
+	}
+
+	return NULL;
+}
+
+static void pfifo_fast_reset(struct Qdisc *qdisc)
+{
+	int prio;
+	struct pfifo_fast_priv *priv = qdisc_priv(qdisc);
+
+	for (prio = 0; prio < PFIFO_FAST_BANDS; prio++)
+		__qdisc_reset_queue(qdisc, band2list(priv, prio));
+
+	priv->bitmap = 0;
+	qdisc->qstats.backlog = 0;
+	qdisc->q.qlen = 0;
+}
+
+static int pfifo_fast_dump(struct Qdisc *qdisc, struct sk_buff *skb)
+{
+	struct tc_prio_qopt opt = { .bands = PFIFO_FAST_BANDS };
+
+	memcpy(&opt.priomap, prio2band, TC_PRIO_MAX + 1);
+	if (nla_put(skb, TCA_OPTIONS, sizeof(opt), &opt))
+		goto nla_put_failure;
+	return skb->len;
+
+nla_put_failure:
+	return -1;
+}
+
+static int pfifo_fast_init(struct Qdisc *qdisc, struct nlattr *opt)
+{
+	int prio;
+	struct pfifo_fast_priv *priv = qdisc_priv(qdisc);
+
+	for (prio = 0; prio < PFIFO_FAST_BANDS; prio++)
+		__skb_queue_head_init(band2list(priv, prio));
+
+	/* Can by-pass the queue discipline */
+	qdisc->flags |= TCQ_F_CAN_BYPASS;
+	return 0;
+}
+
+struct Qdisc_ops pfifo_fast_ops __read_mostly = {
+	.id		=	"pfifo_fast",
+	.priv_size	=	sizeof(struct pfifo_fast_priv),
+	.enqueue	=	pfifo_fast_enqueue,
+	.dequeue	=	pfifo_fast_dequeue,
+	.peek		=	pfifo_fast_peek,
+	.init		=	pfifo_fast_init,
+	.reset		=	pfifo_fast_reset,
+	.dump		=	pfifo_fast_dump,
+	.owner		=	THIS_MODULE,
+};
+
 static struct lock_class_key qdisc_tx_busylock;
 
 struct Qdisc *qdisc_alloc(struct netdev_queue *dev_queue,
@@ -508,18 +687,19 @@ struct Qdisc *qdisc_create_dflt(struct netdev_queue *dev_queue,
 	struct Qdisc *sch;
 
 	if (!try_module_get(ops->owner))
-		goto errout;
+		return NULL;
 
 	sch = qdisc_alloc(dev_queue, ops);
-	if (IS_ERR(sch))
-		goto errout;
+	if (IS_ERR(sch)) {
+		module_put(ops->owner);
+		return NULL;
+	}
 	sch->parent = parentid;
 
 	if (!ops->init || ops->init(sch, NULL) == 0)
 		return sch;
 
 	qdisc_destroy(sch);
-errout:
 	return NULL;
 }
 EXPORT_SYMBOL(qdisc_create_dflt);
@@ -533,11 +713,14 @@ void qdisc_reset(struct Qdisc *qdisc)
 	if (ops->reset)
 		ops->reset(qdisc);
 
+	kfree_skb(qdisc->skb_bad_txq);
+	qdisc->skb_bad_txq = NULL;
+
 	if (qdisc->gso_skb) {
 		kfree_skb_list(qdisc->gso_skb);
 		qdisc->gso_skb = NULL;
-		qdisc->q.qlen = 0;
 	}
+	qdisc->q.qlen = 0;
 }
 EXPORT_SYMBOL(qdisc_reset);
 
@@ -580,6 +763,7 @@ void qdisc_destroy(struct Qdisc *qdisc)
 	dev_put(qdisc_dev(qdisc));
 
 	kfree_skb_list(qdisc->gso_skb);
+	kfree_skb(qdisc->skb_bad_txq);
 	/*
 	 * gen_estimator est_timer() might access qdisc->q.lock,
 	 * wait a RCU grace period before freeing qdisc.
@@ -781,7 +965,7 @@ void dev_deactivate_many(struct list_head *head)
 	/* Wait for outstanding qdisc_run calls. */
 	list_for_each_entry(dev, head, close_list)
 		while (some_qdisc_is_busy(dev))
-			yield();
+			msleep(1);
 }
 
 void dev_deactivate(struct net_device *dev)
@@ -846,6 +1030,7 @@ void psched_ratecfg_precompute(struct psched_ratecfg *r,
 {
 	memset(r, 0, sizeof(*r));
 	r->overhead = conf->overhead;
+	r->mpu = conf->mpu;
 	r->rate_bytes_ps = max_t(u64, conf->rate, rate64);
 	r->linklayer = (conf->linklayer & TC_LINKLAYER_MASK);
 	r->mult = 1;

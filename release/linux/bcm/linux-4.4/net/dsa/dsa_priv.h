@@ -15,6 +15,12 @@
 #include <linux/netdevice.h>
 #include <linux/netpoll.h>
 
+struct dsa_device_ops {
+	struct sk_buff *(*xmit)(struct sk_buff *skb, struct net_device *dev);
+	int (*rcv)(struct sk_buff *skb, struct net_device *dev,
+		   struct packet_type *pt, struct net_device *orig_dev);
+};
+
 struct dsa_slave_priv {
 	/*
 	 * The linux network interface corresponding to this
@@ -49,7 +55,6 @@ struct dsa_slave_priv {
 
 /* dsa.c */
 extern char dsa_driver_version[];
-const struct dsa_device_ops *dsa_resolve_tag_protocol(int tag_protocol);
 
 /* slave.c */
 extern const struct dsa_device_ops notag_netdev_ops;
@@ -72,9 +77,6 @@ extern const struct dsa_device_ops trailer_netdev_ops;
 
 /* tag_brcm.c */
 extern const struct dsa_device_ops brcm_netdev_ops;
-
-/* tag_mtk.c */
-extern const struct dsa_device_ops mtk_netdev_ops;
 
 
 #endif

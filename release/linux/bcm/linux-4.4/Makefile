@@ -346,11 +346,7 @@ LD		= $(CROSS_COMPILE)ld
 LDFINAL	= $(LD)
 CC		= $(CROSS_COMPILE)gcc
 CPP		= $(CC) -E
-#ifneq ($(CONFIG_LTO),)
-AR		= $(CROSS_COMPILE)gcc-ar
-#else
-#AR		= $(CROSS_COMPILE)ar
-#endif
+AR		= $(CROSS_COMPILE)ar
 NM		= $(CROSS_COMPILE)nm
 STRIP		= $(CROSS_COMPILE)strip
 OBJCOPY		= $(CROSS_COMPILE)objcopy
@@ -440,17 +436,6 @@ export KBUILD_AFLAGS AFLAGS_KERNEL AFLAGS_MODULE
 export KBUILD_AFLAGS_MODULE KBUILD_CFLAGS_MODULE KBUILD_LDFLAGS_MODULE
 export KBUILD_AFLAGS_KERNEL KBUILD_CFLAGS_KERNEL
 export KBUILD_ARFLAGS
-
-ifdef CONFIG_LTO
-# LTO gcc creates a lot of files in TMPDIR, and with /tmp as tmpfs
-# it's easy to drive the machine OOM. Use the object directory
-# instead.
-ifndef TMPDIR
-TMPDIR ?= $(objtree)
-export TMPDIR
-$(info setting TMPDIR=$(objtree) for LTO build)
-endif
-endif
 
 # When compiling out-of-tree modules, put MODVERDIR in the module
 # tree rather than in the kernel tree. The kernel tree might

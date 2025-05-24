@@ -7,12 +7,9 @@
 
 #include <linux/slab.h>
 #include <linux/irq_work.h>
-#include <linux/hrtimer.h>
-
-#include "walt.h"
-#include "tune.h"
 
 int sched_rr_timeslice = RR_TIMESLICE;
+int sysctl_sched_rr_timeslice = (MSEC_PER_SEC * RR_TIMESLICE) / HZ;
 
 static int do_sched_rt_period_timer(struct rt_bandwidth *rt_b, int overrun);
 
@@ -51,6 +48,7 @@ void init_rt_bandwidth(struct rt_bandwidth *rt_b, u64 period, u64 runtime)
 
 	hrtimer_init(&rt_b->rt_period_timer,
 			CLOCK_MONOTONIC, HRTIMER_MODE_REL);
+	rt_b->rt_period_timer.irqsafe = 1;
 	rt_b->rt_period_timer.function = sched_rt_period_timer;
 }
 
@@ -319,7 +317,7 @@ static void inc_rt_migration(struct sched_rt_entity *rt_se, struct rt_rq *rt_rq)
 	rt_rq = &rq_of_rt_rq(rt_rq)->rt;
 
 	rt_rq->rt_nr_total++;
-	if (p->nr_cpus_allowed > 1)
+	if (tsk_nr_cpus_allowed(p) > 1)
 		rt_rq->rt_nr_migratory++;
 
 	update_rt_migration(rt_rq);
@@ -336,7 +334,7 @@ static void dec_rt_migration(struct sched_rt_entity *rt_se, struct rt_rq *rt_rq)
 	rt_rq = &rq_of_rt_rq(rt_rq)->rt;
 
 	rt_rq->rt_nr_total--;
-	if (p->nr_cpus_allowed > 1)
+	if (tsk_nr_cpus_allowed(p) > 1)
 		rt_rq->rt_nr_migratory--;
 
 	update_rt_migration(rt_rq);
@@ -884,51 +882,6 @@ static inline int rt_se_prio(struct sched_rt_entity *rt_se)
 	return rt_task_of(rt_se)->prio;
 }
 
-static void dump_throttled_rt_tasks(struct rt_rq *rt_rq)
-{
-	struct rt_prio_array *array = &rt_rq->active;
-	struct sched_rt_entity *rt_se;
-	char buf[500];
-	char *pos = buf;
-	char *end = buf + sizeof(buf);
-	int idx;
-
-	pos += snprintf(pos, sizeof(buf),
-		"sched: RT throttling activated for rt_rq %p (cpu %d)\n",
-		rt_rq, cpu_of(rq_of_rt_rq(rt_rq)));
-
-	if (bitmap_empty(array->bitmap, MAX_RT_PRIO))
-		goto out;
-
-	pos += snprintf(pos, end - pos, "potential CPU hogs:\n");
-	idx = sched_find_first_bit(array->bitmap);
-	while (idx < MAX_RT_PRIO) {
-		list_for_each_entry(rt_se, array->queue + idx, run_list) {
-			struct task_struct *p;
-
-			if (!rt_entity_is_task(rt_se))
-				continue;
-
-			p = rt_task_of(rt_se);
-			if (pos < end)
-				pos += snprintf(pos, end - pos, "\t%s (%d)\n",
-					p->comm, p->pid);
-		}
-		idx = find_next_bit(array->bitmap, MAX_RT_PRIO, idx + 1);
-	}
-out:
-#ifdef CONFIG_PANIC_ON_RT_THROTTLING
-	/*
-	 * Use pr_err() in the BUG() case since printk_sched() will
-	 * not get flushed and deadlock is not a concern.
-	 */
-	pr_err("%s", buf);
-	BUG();
-#else
-	printk_deferred("%s", buf);
-#endif
-}
-
 static int sched_rt_runtime_exceeded(struct rt_rq *rt_rq)
 {
 	u64 runtime = sched_rt_runtime(rt_rq);
@@ -952,14 +905,8 @@ static int sched_rt_runtime_exceeded(struct rt_rq *rt_rq)
 		 * but accrue some time due to boosting.
 		 */
 		if (likely(rt_b->rt_runtime)) {
-			static bool once = false;
-
 			rt_rq->rt_throttled = 1;
-
-			if (!once) {
-				once = true;
-				dump_throttled_rt_tasks(rt_rq);
-			}
+			printk_deferred_once("sched: RT throttling activated\n");
 		} else {
 			/*
 			 * In case we did anyway, make it go away,
@@ -978,70 +925,6 @@ static int sched_rt_runtime_exceeded(struct rt_rq *rt_rq)
 	return 0;
 }
 
-#define RT_SCHEDTUNE_INTERVAL 50000000ULL
-
-static enum hrtimer_restart rt_schedtune_timer(struct hrtimer *timer)
-{
-	struct sched_rt_entity *rt_se = container_of(timer,
-			struct sched_rt_entity,
-			schedtune_timer);
-	struct task_struct *p = rt_task_of(rt_se);
-	struct rq *rq = task_rq(p);
-
-	raw_spin_lock(&rq->lock);
-
-	/*
-	 * Nothing to do if:
-	 * - task has switched runqueues
-	 * - task isn't RT anymore
-	 */
-	if (rq != task_rq(p) || (p->sched_class != &rt_sched_class))
-		goto out;
-
-	/*
-	 * If task got enqueued back during callback time, it means we raced
-	 * with the enqueue on another cpu, that's Ok, just do nothing as
-	 * enqueue path would have tried to cancel us and we shouldn't run
-	 * Also check the schedtune_enqueued flag as class-switch on a
-	 * sleeping task may have already canceled the timer and done dq
-	 */
-	if (p->on_rq || !rt_se->schedtune_enqueued)
-		goto out;
-
-	/*
-	 * RT task is no longer active, cancel boost
-	 */
-	rt_se->schedtune_enqueued = false;
-	schedtune_dequeue_task(p, cpu_of(rq));
-	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
-out:
-	raw_spin_unlock(&rq->lock);
-
-	/*
-	 * This can free the task_struct if no more references.
-	 */
-	put_task_struct(p);
-
-	return HRTIMER_NORESTART;
-}
-
-void init_rt_schedtune_timer(struct sched_rt_entity *rt_se)
-{
-	struct hrtimer *timer = &rt_se->schedtune_timer;
-
-	hrtimer_init(timer, CLOCK_MONOTONIC, HRTIMER_MODE_REL);
-	timer->function = rt_schedtune_timer;
-	rt_se->schedtune_enqueued = false;
-}
-
-static void start_schedtune_timer(struct sched_rt_entity *rt_se)
-{
-	struct hrtimer *timer = &rt_se->schedtune_timer;
-
-	hrtimer_start(timer, ns_to_ktime(RT_SCHEDTUNE_INTERVAL),
-			HRTIMER_MODE_REL_PINNED);
-}
-
 /*
  * Update the current task's runtime statistics. Skip current tasks that
  * are not in our scheduling class.
@@ -1058,9 +941,6 @@ static void update_curr_rt(struct rq *rq)
 	delta_exec = rq_clock_task(rq) - curr->se.exec_start;
 	if (unlikely((s64)delta_exec <= 0))
 		return;
-
-	/* Kick cpufreq (see the comment in kernel/sched/sched.h). */
-	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
 
 	schedstat_set(curr->se.statistics.exec_max,
 		      max(curr->se.statistics.exec_max, delta_exec));
@@ -1374,37 +1254,9 @@ enqueue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 		rt_se->timeout = 0;
 
 	enqueue_rt_entity(rt_se, flags & ENQUEUE_HEAD);
-	walt_inc_cumulative_runnable_avg(rq, p);
 
-	if (!task_current(rq, p) && p->nr_cpus_allowed > 1)
+	if (!task_current(rq, p) && tsk_nr_cpus_allowed(p) > 1)
 		enqueue_pushable_task(rq, p);
-
-	if (!schedtune_task_boost(p))
-		return;
-
-	/*
-	 * If schedtune timer is active, that means a boost was already
-	 * done, just cancel the timer so that deboost doesn't happen.
-	 * Otherwise, increase the boost. If an enqueued timer was
-	 * cancelled, put the task reference.
-	 */
-	if (hrtimer_try_to_cancel(&rt_se->schedtune_timer) == 1)
-		put_task_struct(p);
-
-	/*
-	 * schedtune_enqueued can be true in the following situation:
-	 * enqueue_task_rt grabs rq lock before timer fires
-	 *    or before its callback acquires rq lock
-	 * schedtune_enqueued can be false if timer callback is running
-	 * and timer just released rq lock, or if the timer finished
-	 * running and canceling the boost
-	 */
-	if (rt_se->schedtune_enqueued)
-		return;
-
-	rt_se->schedtune_enqueued = true;
-	schedtune_enqueue_task(p, cpu_of(rq));
-	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
 }
 
 static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
@@ -1413,22 +1265,8 @@ static void dequeue_task_rt(struct rq *rq, struct task_struct *p, int flags)
 
 	update_curr_rt(rq);
 	dequeue_rt_entity(rt_se);
-	walt_dec_cumulative_runnable_avg(rq, p);
 
 	dequeue_pushable_task(rq, p);
-
-	if (!rt_se->schedtune_enqueued)
-		return;
-
-	if (flags == DEQUEUE_SLEEP) {
-		get_task_struct(p);
-		start_schedtune_timer(rt_se);
-		return;
-	}
-
-	rt_se->schedtune_enqueued = false;
-	schedtune_dequeue_task(p, cpu_of(rq));
-	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
 }
 
 /*
@@ -1468,35 +1306,8 @@ static void yield_task_rt(struct rq *rq)
 #ifdef CONFIG_SMP
 static int find_lowest_rq(struct task_struct *task);
 
-/*
- * Perform a schedtune dequeue and cancelation of boost timers if needed.
- * Should be called only with the rq->lock held.
- */
-static void schedtune_dequeue_rt(struct rq *rq, struct task_struct *p)
-{
-	struct sched_rt_entity *rt_se = &p->rt;
-
-	BUG_ON(!raw_spin_is_locked(&rq->lock));
-
-	if (!rt_se->schedtune_enqueued)
-		return;
-
-	/*
-	 * Incase of class change cancel any active timers. If an enqueued
-	 * timer was cancelled, put the task ref.
-	 */
-	if (hrtimer_try_to_cancel(&rt_se->schedtune_timer) == 1)
-		put_task_struct(p);
-
-	/* schedtune_enqueued is true, deboost it */
-	rt_se->schedtune_enqueued = false;
-	schedtune_dequeue_task(p, task_cpu(p));
-	cpufreq_update_this_cpu(rq, SCHED_CPUFREQ_RT);
-}
-
 static int
-select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
-		  int sibling_count_hint)
+select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags)
 {
 	struct task_struct *curr;
 	struct rq *rq;
@@ -1533,7 +1344,7 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 	 * will have to sort it out.
 	 */
 	if (curr && unlikely(rt_task(curr)) &&
-	    (curr->nr_cpus_allowed < 2 ||
+	    (tsk_nr_cpus_allowed(curr) < 2 ||
 	     curr->prio <= p->prio)) {
 		int target = find_lowest_rq(p);
 
@@ -1548,19 +1359,6 @@ select_task_rq_rt(struct task_struct *p, int cpu, int sd_flag, int flags,
 	rcu_read_unlock();
 
 out:
-	/*
-	 * If previous CPU was different, make sure to cancel any active
-	 * schedtune timers and deboost.
-	 */
-	if (task_cpu(p) != cpu) {
-		unsigned long fl;
-		struct rq *prq = task_rq(p);
-
-		raw_spin_lock_irqsave(&prq->lock, fl);
-		schedtune_dequeue_rt(prq, p);
-		raw_spin_unlock_irqrestore(&prq->lock, fl);
-	}
-
 	return cpu;
 }
 
@@ -1570,7 +1368,7 @@ static void check_preempt_equal_prio(struct rq *rq, struct task_struct *p)
 	 * Current can't be migrated, useless to reschedule,
 	 * let's hope p can move out.
 	 */
-	if (rq->curr->nr_cpus_allowed == 1 ||
+	if (tsk_nr_cpus_allowed(rq->curr) == 1 ||
 	    !cpupri_find(&rq->rd->cpupri, rq->curr, NULL))
 		return;
 
@@ -1578,7 +1376,7 @@ static void check_preempt_equal_prio(struct rq *rq, struct task_struct *p)
 	 * p is migratable, so let's not schedule it and
 	 * see if it is pushed or pulled somewhere else.
 	 */
-	if (p->nr_cpus_allowed != 1
+	if (tsk_nr_cpus_allowed(p) != 1
 	    && cpupri_find(&rq->rd->cpupri, p, NULL))
 		return;
 
@@ -1712,7 +1510,7 @@ static void put_prev_task_rt(struct rq *rq, struct task_struct *p)
 	 * The previous task needs to be made eligible for pushing
 	 * if it is still active
 	 */
-	if (on_rt_rq(&p->rt) && p->nr_cpus_allowed > 1)
+	if (on_rt_rq(&p->rt) && tsk_nr_cpus_allowed(p) > 1)
 		enqueue_pushable_task(rq, p);
 }
 
@@ -1762,7 +1560,7 @@ static int find_lowest_rq(struct task_struct *task)
 	if (unlikely(!lowest_mask))
 		return -1;
 
-	if (task->nr_cpus_allowed == 1)
+	if (tsk_nr_cpus_allowed(task) == 1)
 		return -1; /* No other targets possible */
 
 	if (!cpupri_find(&task_rq(task)->rd->cpupri, task, lowest_mask))
@@ -1894,7 +1692,7 @@ static struct task_struct *pick_next_pushable_task(struct rq *rq)
 
 	BUG_ON(rq->cpu != task_cpu(p));
 	BUG_ON(task_current(rq, p));
-	BUG_ON(p->nr_cpus_allowed <= 1);
+	BUG_ON(tsk_nr_cpus_allowed(p) <= 1);
 
 	BUG_ON(!task_on_rq_queued(p));
 	BUG_ON(!rt_task(p));
@@ -1975,9 +1773,7 @@ retry:
 	}
 
 	deactivate_task(rq, next_task, 0);
-	next_task->on_rq = TASK_ON_RQ_MIGRATING;
 	set_task_cpu(next_task, lowest_rq->cpu);
-	next_task->on_rq = TASK_ON_RQ_QUEUED;
 	activate_task(lowest_rq, next_task, 0);
 	ret = 1;
 
@@ -2249,9 +2045,7 @@ static void pull_rt_task(struct rq *this_rq)
 			resched = true;
 
 			deactivate_task(src_rq, p, 0);
-			p->on_rq = TASK_ON_RQ_MIGRATING;
 			set_task_cpu(p, this_cpu);
-			p->on_rq = TASK_ON_RQ_QUEUED;
 			activate_task(this_rq, p, 0);
 			/*
 			 * We continue with the search, just in
@@ -2276,9 +2070,9 @@ static void task_woken_rt(struct rq *rq, struct task_struct *p)
 {
 	if (!task_running(rq, p) &&
 	    !test_tsk_need_resched(rq->curr) &&
-	    p->nr_cpus_allowed > 1 &&
+	    tsk_nr_cpus_allowed(p) > 1 &&
 	    (dl_task(rq->curr) || rt_task(rq->curr)) &&
-	    (rq->curr->nr_cpus_allowed < 2 ||
+	    (tsk_nr_cpus_allowed(rq->curr) < 2 ||
 	     rq->curr->prio <= p->prio))
 		push_rt_tasks(rq);
 }
@@ -2311,13 +2105,6 @@ static void rq_offline_rt(struct rq *rq)
  */
 static void switched_from_rt(struct rq *rq, struct task_struct *p)
 {
-	/*
-	 * On class switch from rt, always cancel active schedtune timers,
-	 * this handles the cases where we switch class for a task that is
-	 * already rt-dequeued but has a running timer.
-	 */
-	schedtune_dequeue_rt(rq, p);
-
 	/*
 	 * If there are other RT tasks then we will reschedule
 	 * and the scheduling of the other RT tasks will handle
@@ -2358,7 +2145,7 @@ static void switched_to_rt(struct rq *rq, struct task_struct *p)
 	 */
 	if (task_on_rq_queued(p) && rq->curr != p) {
 #ifdef CONFIG_SMP
-		if (p->nr_cpus_allowed > 1 && rq->rt.overloaded)
+		if (tsk_nr_cpus_allowed(p) > 1 && rq->rt.overloaded)
 			queue_push_tasks(rq);
 #endif /* CONFIG_SMP */
 		if (p->prio < rq->curr->prio && cpu_online(cpu_of(rq)))

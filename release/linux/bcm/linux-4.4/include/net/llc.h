@@ -66,12 +66,15 @@ struct llc_sap {
 	int sk_count;
 	struct hlist_nulls_head sk_laddr_hash[LLC_SK_LADDR_HASH_ENTRIES];
 	struct hlist_head sk_dev_hash[LLC_SK_DEV_HASH_ENTRIES];
+	struct rcu_head rcu;
 };
 
 static inline
 struct hlist_head *llc_sk_dev_hash(struct llc_sap *sap, int ifindex)
 {
-	return &sap->sk_dev_hash[ifindex % LLC_SK_DEV_HASH_ENTRIES];
+	u32 bucket = hash_32(ifindex, LLC_SK_DEV_HASH_BITS);
+
+	return &sap->sk_dev_hash[bucket];
 }
 
 static inline

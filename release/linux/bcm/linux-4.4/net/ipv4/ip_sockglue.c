@@ -279,9 +279,12 @@ int ip_cmsg_send(struct net *net, struct msghdr *msg, struct ipcm_cookie *ipc,
 			ipc->ttl = val;
 			break;
 		case IP_TOS:
-			if (cmsg->cmsg_len != CMSG_LEN(sizeof(int)))
+			if (cmsg->cmsg_len == CMSG_LEN(sizeof(int)))
+				val = *(int *)CMSG_DATA(cmsg);
+			else if (cmsg->cmsg_len == CMSG_LEN(sizeof(u8)))
+				val = *(u8 *)CMSG_DATA(cmsg);
+			else
 				return -EINVAL;
-			val = *(int *)CMSG_DATA(cmsg);
 			if (val < 0 || val > 255)
 				return -EINVAL;
 			ipc->tos = val;
@@ -636,7 +639,7 @@ static int do_ip_setsockopt(struct sock *sk, int level,
 		if (err)
 			break;
 		old = rcu_dereference_protected(inet->inet_opt,
-						sock_owned_by_user(sk));
+						lockdep_sock_is_held(sk));
 		if (inet->is_icsk) {
 			struct inet_connection_sock *icsk = inet_csk(sk);
 #if IS_ENABLED(CONFIG_IPV6)
@@ -1302,7 +1305,7 @@ static int do_ip_getsockopt(struct sock *sk, int level, int optname,
 		struct ip_options_rcu *inet_opt;
 
 		inet_opt = rcu_dereference_protected(inet->inet_opt,
-						     sock_owned_by_user(sk));
+						     lockdep_sock_is_held(sk));
 		opt->optlen = 0;
 		if (inet_opt)
 			memcpy(optbuf, &inet_opt->opt,

@@ -4356,7 +4356,7 @@ static int i40e_pf_wait_txq_disabled(struct i40e_pf *pf)
 {
 	int v, ret = 0;
 
-	for (v = 0; v < pf->hw.func_caps.num_vsis; v++) {
+	for (v = 0; v < pf->num_alloc_vsi; v++) {
 		/* No need to wait for FCoE VSI queues */
 		if (pf->vsi[v] && pf->vsi[v]->type != I40E_VSI_FCOE) {
 			ret = i40e_vsi_wait_txq_disabled(pf->vsi[v]);
@@ -10832,11 +10832,15 @@ static void i40e_remove(struct pci_dev *pdev)
 			i40e_switch_branch_release(pf->veb[i]);
 	}
 
-	/* Now we can shutdown the PF's VSI, just before we kill
+	/* Now we can shutdown the PF's VSIs, just before we kill
 	 * adminq and hmc.
 	 */
-	if (pf->vsi[pf->lan_vsi])
-		i40e_vsi_release(pf->vsi[pf->lan_vsi]);
+	for (i = pf->num_alloc_vsi; i--;)
+		if (pf->vsi[i]) {
+			i40e_vsi_close(pf->vsi[i]);
+			i40e_vsi_release(pf->vsi[i]);
+			pf->vsi[i] = NULL;
+		}
 
 	/* shutdown and destroy the HMC */
 	if (pf->hw.hmc.hmc_obj) {
