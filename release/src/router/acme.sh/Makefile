@@ -7,6 +7,7 @@ install:
 
 	install -m 0700 acme.sh $(INSTALLDIR)/usr/sbin
 	install -D -m 0700 dnsapi/dns_asusapi.sh $(INSTALLDIR)/usr/sbin/dnsapi/dns_asusapi.sh
+	install -D -m 0700 dnsapi/dns_cf.sh $(INSTALLDIR)/usr/sbin/dnsapi/dns_cf.sh
 
 clean:
 

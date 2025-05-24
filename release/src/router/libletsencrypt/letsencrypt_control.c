@@ -18,8 +18,8 @@
 
 /*
  * Copyright 2021-2022, ASUS
- * Copyright 2023, SWRTdev
- * Copyright 2023, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2025, SWRTdev
+ * Copyright 2023-2025, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -294,8 +294,11 @@ static void _le_acme_do(int action, le_conf_t *conf)
 		if(conf->authtype == LE_ACME_AUTH_DNS){
 			le_argv[idx] = "--dns";
 			idx++;
-			if(nvram_match("ddns_server_x", "WWW.ASUS.COM") || nvram_match("ddns_server_x", "WWW.ASUS.COM.CN")){
+			if(nvram_match("ddns_server_x", "WWW.ASUS.COM")){
 				le_argv[idx] = "dns_asusapi";
+				idx++;
+			}else if(nvram_match("ddns_server_x", "WWW.CLOUDFLARE.COM")){
+				le_argv[idx] = "dns_cf";
 				idx++;
 			}
 		}else if(conf->authtype == LE_ACME_AUTH_TLS){
