@@ -801,9 +801,9 @@ endif
 
 dhd_sysdep:
 ifeq ($(BCM7),y)
-	-cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_43602.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o
+	-cp -rf $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/43602/*.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/
 else
-	-cp -f $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie_4366.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/dhd_pcie.o
+	-cp -rf $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/4366/*.o $(LINUXDIR)/brcm/arm/dhd/src/dhd/sys/
 endif
 ifeq ($(R7000P),y)
 ifeq ($(wildcard $(LINUXDIR)/brcm/arm/wl/clm/src/*.c),)

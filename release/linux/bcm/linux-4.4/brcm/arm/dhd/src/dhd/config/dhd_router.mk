@@ -53,16 +53,20 @@ DHDFLAGS        += -DDHD_DEBUG
 DHDFLAGS        += -DBCMEMBEDIMAGE=\"rtecdc_router.h\"
 DHDFLAGS        += -DDHD_UNICAST_DHCP
 DHDFLAGS        += -DDHD_L2_FILTER
-DHDFLAGS        += -DQOS_MAP_SET
 DHDFLAGS        += -DDHD_PSTA
+ifeq ($(BCM_7114),y)
+DHDFLAGS        += -DQOS_MAP_SET
 DHDFLAGS        += -DDHD_WET
 DHDFLAGS        += -DDHD_MCAST_REGEN
+endif
 
 #M2M host memory allocation
 DHDFLAGS		+= -DBCM_HOST_MEM_SCB -DDMA_HOST_BUFFER_LEN=0x80000
 
 #ifneq ($(CONFIG_LBR_AGGR),)
+ifeq ($(BCM_7114),y)
 DHDFLAGS        += -DDHD_LBR_AGGR_BCM_ROUTER
+endif
 #endif
 ifeq ($(BCM_BUZZZ),1)
 DHDFLAGS        += -DBCM_BUZZZ
@@ -115,8 +119,10 @@ DHDFILES_SRC    += src/dhd/sys/dhd_linux_platdev.c
 DHDFILES_SRC    += src/dhd/sys/dhd_linux_sched.c
 DHDFILES_SRC    += src/dhd/sys/dhd_linux_wq.c
 #ifneq ($(CONFIG_LBR_AGGR),)
+ifeq ($(BCM_7114),y)
 DHDFILES_SRC    += src/dhd/sys/dhd_aggr.c
 DHDFILES_SRC    += src/dhd/sys/dhd_lbr_aggr_linux.c
+endif
 #endif
 DHDFILES_SRC    += src/dhd/sys/dhd_msgbuf.c
 DHDFILES_SRC    += src/dhd/sys/dhd_flowring.c
@@ -127,7 +133,12 @@ DHDFILES_SRC    += src/dhd/sys/dhd_pcie_linux.c
 #endif
 DHDFILES_SRC    += src/dhd/sys/dhd_l2_filter.c
 DHDFILES_SRC    += src/dhd/sys/dhd_psta.c
+ifeq ($(BCM_7114),y)
 DHDFILES_SRC    += src/dhd/sys/dhd_wet.c
+endif
+ifeq ($(BCMDBG),1)
+DHDFILES_SRC    += src/dhd/sys/dhd_macdbg.c
+endif
 
 DHD_OBJS := $(sort $(patsubst %.c,%.o,$(addprefix $(SRCBASE_OFFSET)/,$(patsubst src/%,%,$(DHDFILES_SRC)))))
 

@@ -3400,6 +3400,7 @@ wlconf(char *name)
 	/* Set up TxBF */
 	wlconf_set_txbf(name, prefix);
 
+#if defined(RTCONFIG_BCM_7114)
 	/* 4365b1: Set ctdma completion busy dma war */
 	if (rev.corerev == 64) {
 		val = 0;
@@ -3419,6 +3420,7 @@ wlconf(char *name)
 			WL_IOVAR_SETINT(name, "max_muclients", val);
 		}
 	}
+#endif
 
 	/* set airtime fairness */
 	val = 0;
@@ -4267,4 +4269,3 @@ main(int argc, char *argv[])
 	}
 }
 #endif /*  defined(linux) */
-
