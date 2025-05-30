@@ -113,21 +113,18 @@ all.config
 
 # Kdevelop4
 *.kdev4
-/drivers/char/rtl8365mb/*.c
 !/brcm/arm/bcmcrypto/*
 !/brcm/arm/ctf/linux/*
 !/brcm/arm/dhd/src/dhd/*
 !/brcm/arm/dhd/src/dhd/linux/*
 !/brcm/arm/dhd/src/dhd/sys/*
+!/brcm/arm/dhd/src/dhd/sys/43602/*
+!/brcm/arm/dhd/src/dhd/sys/4366/*
 !/brcm/arm/dhd/src/shared/*
 !/brcm/arm/shared/*
 !/brcm/arm/wl/*
 !/brcm/arm/wl/*/*
 !/brcm/arm/wl/*/*/*
 !/brcm/arm/wl/*/*/*/*
-!/brcm/arm/r7000p/*
-!/brcm/arm/r7000p/*/*
-!/brcm/arm/r7000p/*/*/*
-!/brcm/arm/r7000p/*/*/*/*
-!/drivers/char/rtl8365mb/*.o
+!/drivers/char/rtl8365mb/*
 !/net/swrt_fastpath/*.o
