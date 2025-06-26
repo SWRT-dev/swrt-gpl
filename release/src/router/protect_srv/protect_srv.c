@@ -37,21 +37,10 @@
 
 #define MyDBG(fmt,args...) \
 	if(isFileExist(PROTECT_SRV_DEBUG) > 0) { \
-		syslog(LOG_DEBUG, "[ProtectionSrv][%s:(%d)]"fmt, __FUNCTION__, __LINE__, ##args); \
+		syslog(LOG_ERR, "[ProtectionSrv][%s:(%d)]"fmt, __FUNCTION__, __LINE__, ##args); \
 	}
 #define ErrorMsg(fmt,args...) \
 	syslog(LOG_ERR, "[ProtectionSrv][%s:(%d)]"fmt, __FUNCTION__, __LINE__, ##args);
-
-
-#define WAN_SSH        1
-#define LAN_SSH        2
-#define LAN_TELNET     3
-
-#define F_SET(value,x) ( (value) |=  (0x1 << x))
-#define F_CLR(value,x) ( (value) &= ~(0x1 << x))
-
-#define RETRY 5
-#define PROTECTION_VALIDITY_TIME 5 /* minutes */
 
 enum {
 	F_OFF=0,
@@ -143,10 +132,11 @@ static int add_lock_rule(char *wanType, int serType, char *ipaddr)
 		snprintf(command, sizeof(command), "iptables -A %s -p tcp --dport %d -s %s -j DROP", chain, 23, ipaddr);
 		system(command);
 		MyDBG("Add %s rules of %s into %s chain.\n", "TELNET", ipaddr, chain);
+	}else{
+		snprintf(command, sizeof(command), "iptables -A %s -p tcp --dport %d -s %s -j DROP", chain, GetSSHport(), ipaddr);
+		system(command);
+		MyDBG("Add %s rules of %s into %s chain.\n", "SSH", ipaddr, chain);
 	}
-	snprintf(command, sizeof(command), "iptables -A %s -p tcp --dport %d -s %s -j DROP", chain, GetSSHport(), ipaddr);
-	system(command);
-	MyDBG("Add %s rules of %s into %s chain.\n", "SSH", ipaddr, chain);
 	return 0;
 }
 
@@ -159,10 +149,11 @@ static int add_lockall_rule(char *wanType, int serType)
 		snprintf(command, sizeof(command), "iptables -I %s -p tcp --dport %d -j DROP", chain, 23);
 		system(command);
 		MyDBG("Insert locking %s rules into %s chain.\n", "TELNET", chain);
+	}else{
+		snprintf(command, sizeof(command), "iptables -I %s -p tcp --dport %d -j DROP", chain, GetSSHport());
+		system(command);
+		MyDBG("Insert locking %s rules into %s chain.\n", "SSH", chain);
 	}
-	snprintf(command, sizeof(command), "iptables -I %s -p tcp --dport %d -j DROP", chain, GetSSHport());
-	system(command);
-	MyDBG("Insert locking %s rules into %s chain.\n", "SSH", chain);
 	return 0;
 }
 
@@ -234,10 +225,11 @@ static int del_lock_rule(char *wanType, int serType, char *ipaddr)
 		snprintf(command, sizeof(command), "iptables -D %s -p tcp --dport %d -s %s -j DROP", chain, 23, ipaddr);
 		system(command);
 		MyDBG("Remove locking %s rules of %s from %s chain.\n", "TELNET", ipaddr, chain);
+	}else{
+		snprintf(command, sizeof(command), "iptables -D %s -p tcp --dport %d -s %s -j DROP", chain, GetSSHport(), ipaddr);
+		system(command);
+		MyDBG("Remove locking %s rules of %s from %s chain.\n", "SSH", ipaddr, chain);
 	}
-	snprintf(command, sizeof(command), "iptables -D %s -p tcp --dport %d -s %s -j DROP", chain, GetSSHport(), ipaddr);
-	system(command);
-	MyDBG("Remove locking %s rules of %s from %s chain.\n", "SSH", ipaddr, chain);
 	return 0;
 }
 
@@ -250,10 +242,11 @@ static int del_lockall_rule(char *wanType, int serType)
 		snprintf(command, sizeof(command), "iptables -D %s -p tcp --dport %d -j DROP", chain, 23);
 		system(command);
 		MyDBG("Remove locking %s rules from %s chain.\n", "TELNET", chain);
+	}else{
+		snprintf(command, sizeof(command), "iptables -D %s -p tcp --dport %d -j DROP", chain, GetSSHport());
+		system(command);
+		MyDBG("Remove locking %s rules from %s chain.\n", "SSH", chain);
 	}
-	snprintf(command, sizeof(command), "iptables -D %s -p tcp --dport %d -j DROP", chain, GetSSHport());
-	system(command);
-	MyDBG("Remove locking %s rules from %s chain.\n", "SSH", chain);
 	return 0;
 }
 

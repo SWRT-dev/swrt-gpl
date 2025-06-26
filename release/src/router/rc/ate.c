@@ -198,7 +198,7 @@ static int setAllSpecificColorLedOn(enum ate_led_color color)
 		}
 		break;
 #endif
-#if defined(TUFBE6500)
+#if defined(TUFBE6500) && !defined(JDCBE6500)
 	case MODEL_TUFBE6500:
 		{
 			static enum led_id white_led[] = {

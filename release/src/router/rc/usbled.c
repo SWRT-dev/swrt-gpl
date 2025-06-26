@@ -42,6 +42,7 @@
 #include <qca.h>
 #endif
 
+
 #define USBLED_NORMAL_PERIOD		1		/* second */
 #define USBLED_URGENT_PERIOD		100 * 1000	/* microsecond */	
 

@@ -207,7 +207,7 @@ static char *defenv[] = {
  * debug=0x4e48503 = log_stats, log-non-free, log-bad-space, log-elapsed-time, check-fence, check-shutdown, free-blank, error-abort, alloc-blank, catch-null
  * debug=0x3 = log-stats, log-non-free
  */
-	"DMALLOC_OPTIONS=debug=0x2,inter=100,log=/jffs/dmalloc_%d.log",
+	"DMALLOC_OPTIONS=debug=0x2,inter=100,log=/jffs/dmalloc.log",
 #endif
 #if defined(HND_ROUTER) && !defined(RTCONFIG_BCM_MFG)
 	"ENV=/etc/profile",
@@ -25009,7 +25009,9 @@ int init_main(int argc, char *argv[])
 				eval("ln", "-s", filename, syslog[i]);
 		}
 #endif
-
+#ifdef RTCONFIG_DMALLOC
+		doSystem("dmalloc -b -l /jffs/dmalloc.log -i 100 low &");
+#endif
 #if defined(RTCONFIG_BCM_HND_CRASHLOG)
 #if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 	mtd_export_crashlog();
@@ -25354,6 +25356,7 @@ logmessage("ATE", "boot/continue fail= %d/%d\n", nvram_get_int("Ate_boot_fail"),
 					system("sb_flash_update; nvram set sb_flash_update=1; nvram commit");
 			}
 #endif
+
 			start_services();
 #ifdef CONFIG_BCMWL5
 			slabdbg();

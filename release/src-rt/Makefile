@@ -2591,6 +2591,8 @@ define RouterOptions
 	if [ "$(STRACE)" = "y" ] ; then \
 		sed -i "/RTCONFIG_STRACE/d" $(1); \
 		echo "RTCONFIG_STRACE=y" >>$(1); \
+		sed -i "/RTCONFIG_DEBUG/d" $(1); \
+		echo "RTCONFIG_DEBUG=y" >>$(1); \
 	fi;
 	if [ "$(ISP_METER)" = "y" ]; then \
 		sed -i "/RTCONFIG_ISP_METER/d" $(1); \
@@ -2671,6 +2673,8 @@ define RouterOptions
 	if [ "$(DMALLOC)" = "y" ]; then \
 		sed -i "/RTCONFIG_DMALLOC/d" $(1); \
 		echo "RTCONFIG_DMALLOC=y" >>$(1); \
+		sed -i "/RTCONFIG_DEBUG/d" $(1); \
+		echo "RTCONFIG_DEBUG=y" >>$(1); \
 	else \
 		sed -i "/RTCONFIG_DMALLOC/d" $(1); \
 		echo "# RTCONFIG_DMALLOC is not set" >>$(1); \
