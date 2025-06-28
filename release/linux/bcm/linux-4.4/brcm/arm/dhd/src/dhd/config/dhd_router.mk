@@ -54,8 +54,8 @@ DHDFLAGS        += -DBCMEMBEDIMAGE=\"rtecdc_router.h\"
 DHDFLAGS        += -DDHD_UNICAST_DHCP
 DHDFLAGS        += -DDHD_L2_FILTER
 DHDFLAGS        += -DDHD_PSTA
-DHDFLAGS        += -DDHD_WET
 ifeq ($(BCM_7114),y)
+DHDFLAGS        += -DDHD_WET
 DHDFLAGS        += -DQOS_MAP_SET
 DHDFLAGS        += -DDHD_MCAST_REGEN
 endif
@@ -133,7 +133,9 @@ DHDFILES_SRC    += src/dhd/sys/dhd_pcie_linux.c
 #endif
 DHDFILES_SRC    += src/dhd/sys/dhd_l2_filter.c
 DHDFILES_SRC    += src/dhd/sys/dhd_psta.c
+ifeq ($(BCM_7114),y)
 DHDFILES_SRC    += src/dhd/sys/dhd_wet.c
+endif
 ifeq ($(BCMDBG),1)
 DHDFILES_SRC    += src/dhd/sys/dhd_macdbg.c
 endif
