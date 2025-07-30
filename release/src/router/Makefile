@@ -7361,7 +7361,7 @@ curl/Makefile: curl/configure
 		--disable-debug --disable-curldebug \
 		--enable-http --enable-ftp --enable-file \
 		--disable-ldap --disable-ldaps --disable-rtsp \
-		--disable-proxy --disable-dict --disable-telnet \
+		--enable-proxy --disable-dict --disable-telnet \
 		--disable-tftp --disable-pop3 --disable-imap \
 		--disable-smb --disable-smtp --disable-gopher \
 		--disable-manual --disable-libcurl-option $(if $(RTCONFIG_IPV6),--enable-ipv6,--disable-ipv6) \
