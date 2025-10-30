@@ -15,7 +15,7 @@ ifneq ($(wildcard $(PKG_BUILD_DIR)/*.c),)
 	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(strip $(MAKEOPTS)) $(TARGET_CONFIGURE_OPTS)
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	$(CP) prebuilt/$(BUILD_NAME)/wrapd $(PKG_BUILD_DIR)/wrapd
+	$(CP) prebuild/$(BUILD_NAME)/wrapd $(PKG_BUILD_DIR)/wrapd
 endif
 	touch stamp-h1
 

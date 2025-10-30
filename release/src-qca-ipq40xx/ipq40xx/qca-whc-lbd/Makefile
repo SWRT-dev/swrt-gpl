@@ -46,8 +46,8 @@ else
 	mkdir -p $(PKG_BUILD_DIR)/install
 	mkdir -p $(PKG_BUILD_DIR)/install/lib/
 	mkdir -p $(PKG_BUILD_DIR)/install/sbin
-	cp prebuilt/$(BUILD_NAME)/liblbcmnlibs.so $(PKG_BUILD_DIR)/install/lib/liblbcmnlibs.so
-	cp prebuilt/$(BUILD_NAME)/lbd $(PKG_BUILD_DIR)/install/sbin/lbd
+	cp prebuild/$(BUILD_NAME)/liblbcmnlibs.so $(PKG_BUILD_DIR)/install/lib/liblbcmnlibs.so
+	cp prebuild/$(BUILD_NAME)/lbd $(PKG_BUILD_DIR)/install/sbin/lbd
 endif
 	touch stamp-h1
 

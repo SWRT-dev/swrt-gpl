@@ -31,10 +31,10 @@ endif
 
 QCAWLAN_MAKEOPTS_EXTRAS:=SWRT_PATCH=y
 
-PBBINS=$(wildcard prebuilt/$(BUILD_NAME)/*)
+PBBINS=$(wildcard prebuild/$(BUILD_NAME)/*)
 QCAWIFI_KMOD=$(filter %.ko,$(PBBINS))
 QCAWIFI_LIBS=$(filter %.so,$(PBBINS))
-QCAWIFI_XML=$(wildcard prebuilt/*.xml)
+QCAWIFI_XML=$(wildcard prebuild/*.xml)
 QCAWIFI_USR_SBIN=$(filter-out $(QCAWIFI_KMOD) $(QCAWIFI_LIBS) $(QCAWIFI_XML),$(PBBINS))
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
@@ -94,13 +94,13 @@ ifneq ($(wildcard $(PKG_BUILD_DIR)/wow/*.c),)
 #	install -D qca-wifi-10.4/testmodule/tm.ko $(INSTALLDIR)/qca-wifi-10.4/lib/modules/$(LINUX_KERNEL)/tm.ko
 #	install -D qca-wifi-10.4/os/linux/tools/wnm-app $(INSTALLDIR)/qca-wifi-10.4/usr/sbin/wnm-app
 else
-	@install $(foreach f,$(QCAWIFI_KMOD),$(f)) $(INSTALLKMODDIR)
-	@install $(foreach f,$(QCAWIFI_USR_SBIN),$(f)) $(INSTALLDIR)/usr/sbin
-	@install $(foreach f,$(QCAWIFI_LIBS),$(f)) $(INSTALLDIR)/usr/lib
+	install -m 755 -D $(foreach f,$(QCAWIFI_KMOD),$(f)) $(INSTALLKMODDIR)
+	install -m 755 -D $(foreach f,$(QCAWIFI_USR_SBIN),$(f)) $(INSTALLDIR)/usr/sbin
+	install -m 755 -D $(foreach f,$(QCAWIFI_LIBS),$(f)) $(INSTALLDIR)/usr/lib
 endif
-	@$(STRIPX) $(INSTALLKMODDIR)/*
-	@$(STRIP) $(INSTALLDIR)/usr/lib/*
-	@$(STRIP) $(INSTALLDIR)/usr/sbin/*
+	$(STRIPX) $(INSTALLKMODDIR)/*
+	$(STRIP) $(INSTALLDIR)/usr/lib/*
+	$(STRIP) $(INSTALLDIR)/usr/sbin/*
 
 clean:
 

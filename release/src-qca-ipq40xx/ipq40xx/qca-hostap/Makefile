@@ -26,8 +26,8 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/hostapd
 	mkdir -p $(PKG_BUILD_DIR)/wpa_supplicant
-	$(CP) prebuilt/$(BUILD_NAME)/hostap* $(PKG_BUILD_DIR)/hostapd
-	$(CP) prebuilt/$(BUILD_NAME)/wpa_* $(PKG_BUILD_DIR)/wpa_supplicant
+	$(CP) prebuild/$(BUILD_NAME)/hostap* $(PKG_BUILD_DIR)/hostapd
+	$(CP) prebuild/$(BUILD_NAME)/wpa_* $(PKG_BUILD_DIR)/wpa_supplicant
 endif
 	touch stamp-h1
 
