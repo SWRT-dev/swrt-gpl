@@ -1,6 +1,6 @@
-include ../qsdk.config
-
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
 
 # Define variables for qca-nss-fw-eip-hk

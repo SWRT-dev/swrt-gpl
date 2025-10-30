@@ -7769,7 +7769,9 @@ static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 	if (f_read_string("/sys/class/thermal/thermal_zone0/temp", temperature, sizeof(temperature)) <= 0)
 		*temperature = '\0';
 #if defined(RTCONFIG_SOC_IPQ53XX)
-	return websWrite(wp, "%3.3f", (double) temperature / 1000);
+	return websWrite(wp, "%3.3f", (double) safe_atoi(temperature) / 1000);
+#elif (SPF_VER >= SPF_VER_ID(12,2))
+	return websWrite(wp, "%3.3f", (double) safe_atoi(temperature) / 1000);
 #else
 	return websWrite(wp, "%d", safe_atoi(temperature));
 #endif

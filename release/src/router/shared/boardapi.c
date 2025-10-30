@@ -903,6 +903,22 @@ int set_pwr_usb(int boolOn) {
 		else
 			set_gpio(gpio_pin, 0);
 	}
+#elif defined(RTCONFIG_SOC_IPQ8074)
+	int use_gpio, gpio_pin;
+
+	if ((gpio_pin = (use_gpio = nvram_get_int("pwr_usb_gpio"))&0xff) != 0xff) {
+		if (boolOn)
+			set_gpio(gpio_pin, 1);
+		else
+			set_gpio(gpio_pin, 0);
+	}
+	if ((gpio_pin = (use_gpio = nvram_get_int("pwr_usb_gpio2"))&0xff) != 0xff) {
+		if (boolOn)
+			set_gpio(gpio_pin, 1);
+		else
+			set_gpio(gpio_pin, 0);
+	}
+
 #endif
 	return 0;
 }

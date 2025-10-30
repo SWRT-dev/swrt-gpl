@@ -25,6 +25,9 @@
 #endif
 #include "qcom_common.h"
 #include "qcom_q6v5.h"
+#if defined(CONFIG_PINCTRL_IPQ8074)
+#include <soc/qcom/socinfo.h>
+#endif
 
 #define WCSS_CRASH_REASON		421
 #define WCSS_SMEM_HOST			1
@@ -2061,14 +2064,23 @@ static int q6v5_wcss_probe(struct platform_device *pdev)
 	struct q6v5_wcss *wcss;
 	struct rproc *rproc;
 	int ret;
-
+#if defined(CONFIG_PINCTRL_IPQ8074)
+	int soc_version_major;
+	soc_version_major = read_ipq_soc_version_major();
+	BUG_ON(soc_version_major <= 0);
+#endif
 	desc = of_device_get_match_data(&pdev->dev);
 	if (!desc)
 		return -EINVAL;
 
 	if (desc->need_mem_protection && !qcom_scm_is_available())
 		return -EPROBE_DEFER;
-
+#if defined(CONFIG_PINCTRL_IPQ8074)
+	if(soc_version_major == 2)
+		rproc = rproc_alloc(&pdev->dev, pdev->name, desc->ops,
+			    "IPQ8074A/q6_fw.mdt", sizeof(*wcss));
+	else
+#endif
 	rproc = rproc_alloc(&pdev->dev, pdev->name, desc->ops,
 			    desc->q6_firmware_name, sizeof(*wcss));
 	if (!rproc) {
@@ -2083,6 +2095,11 @@ static int q6v5_wcss_probe(struct platform_device *pdev)
 	wcss->version = desc->version;
 	wcss->requires_force_stop = desc->requires_force_stop;
 	wcss->need_mem_protection = desc->need_mem_protection;
+#if defined(CONFIG_PINCTRL_IPQ8074)
+	if(soc_version_major == 2)
+		wcss->m3_firmware_name = "IPQ8074A/m3_fw.mdt";
+	else
+#endif
 	wcss->m3_firmware_name = desc->m3_firmware_name;
 	wcss->reset_cmd_id = desc->reset_cmd_id;
 	wcss->q6_version = desc->q6_version;

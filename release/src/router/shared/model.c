@@ -207,6 +207,7 @@ static const struct model_s model_list[] = {
 	{ "JCG-Q20", 		MODEL_JCGQ20 		},
 	{ "SWRT360T7", 		MODEL_SWRT360T7 	},
 	{ "CMCC-A9", 		MODEL_CMCCA9		 },
+	{ "XM-AX3600", 		MODEL_XMAX3600		 },
 	{ NULL, 0 },
 };
 
@@ -359,7 +360,7 @@ static const struct model_s modelname_list[] = {
 	{ "PGBM1", 		SWRT_MODEL_PGBM1 },
 	{ "JCGQ10PRO", 	SWRT_MODEL_JCGQ10PRO },
 	{ "H3CTX1801", 	SWRT_MODEL_H3CTX1801 },
-	{ "RM-AX6000", 	SWRT_MODEL_RMAX6000 },
+	{ "RMAX6000", 	SWRT_MODEL_RMAX6000 },
 	{ "UNR030N", 	SWRT_MODEL_UNR030N },
 	{ "RAX200", 	SWRT_MODEL_RAX200 },
 	{ "TYAX5400", 	SWRT_MODEL_TYAX5400 },
@@ -374,6 +375,7 @@ static const struct model_s modelname_list[] = {
 	{ "360T7", 		SWRT_MODEL_SWRT360T7 },
 	{ "JDCBE6500", 	SWRT_MODEL_JDCBE6500 },
 	{ "CMCCA9", 	SWRT_MODEL_CMCCA9 },
+	{ "XMAX3600", 	SWRT_MODEL_XMAX3600 },
 	{ NULL, 0 },
 };
 

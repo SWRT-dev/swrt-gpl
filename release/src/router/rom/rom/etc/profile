@@ -10,6 +10,7 @@ ldd() {
 
 cat /etc/banner
 [ -n "${TMOUT+x}" ] || export TMOUT="$(nvram get shell_timeout 2>/dev/null)"
+[ -n "${TZ}" ] || [ -z "$(nvram get time_zone_x)" ] || export TZ=$(nvram get time_zone_x)
 
 [ -f /jffs/etc/profile ] && . /jffs/etc/profile
 [ -f /opt/etc/profile ] && . /opt/etc/profile

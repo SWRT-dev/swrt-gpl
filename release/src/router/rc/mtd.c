@@ -1454,6 +1454,21 @@ bca_sys_upgrade(const char *path)
 #endif
 
 #if defined(RTCONFIG_EMMC)
+static int block_open(const char *name)
+{
+	int dev, part;
+	unsigned long long int size;
+	char dev_mtd[] = "/dev/mmcblk0pXXX";
+	int f;
+	if(block_getinfo(name, &dev, &part, &size)){
+		snprintf(dev_mtd, sizeof(dev_mtd), "/dev/mmcblk0p%d", part);
+		if((f = open(dev_mtd, O_RDWR|O_SYNC)) >= 0){
+			return f;
+		}
+	}
+	return -1;
+}
+
 int block_write_main(int argc, char *argv[])
 {
 	int mf = -1;
@@ -1502,7 +1517,7 @@ int block_write_main(int argc, char *argv[])
 		error = "Error opening input file";
 		goto ERROR;
 	}
-	if ((mf = open(dev, O_RDWR|O_SYNC)) < 0){
+	if ((mf = block_open(dev)) < 0){
 		snprintf(msg_buf, sizeof(msg_buf), "Error opening block device. (errno %d (%s))", errno, strerror(errno));
 		error = msg_buf;
 		goto ERROR;
@@ -1580,3 +1595,146 @@ ERROR:
 }
 #endif
 
+#if defined(RTCONFIG_UBIFS)
+
+#define UBI_VOL_IOC_MAGIC 'O'
+/* Start UBI volume update */
+#define UBI_IOCVOLUP _IOW(UBI_VOL_IOC_MAGIC, 0, int64_t)
+int ubi_write_main(int argc, char *argv[])
+{
+	int mf = -1;
+	int dev, part, size;
+	FILE *f;
+	unsigned char *buf = NULL, *p;
+	const char *error;
+	long filelen = 0, n, wlen, unit_len;
+	struct sysinfo si;
+	uint32 ofs;
+	int c;
+	char *iname = NULL;
+	char *ubiname = NULL;
+	char msg_buf[2048], dev_mtd[] = "/dev/ubi0_000";;
+	int alloc = 0, fd;
+	int skip_bytes = 0, count_bytes = 0;
+
+	while ((c = getopt(argc, argv, "i:d:s:c:")) != -1) {
+		switch (c) {
+		case 'i':
+			iname = optarg;
+			break;
+		case 'd':
+			ubiname = optarg;
+			break;
+		case 's':
+			skip_bytes = atoi(optarg);
+			break;
+		case 'c':
+			count_bytes = atoi(optarg);
+			break;
+		}
+	}
+	//_dprintf("===========[%s->%d]: iname[%s], ubiname[%s]\n", __FUNCTION__, __LINE__, iname, ubiname);
+	if ((iname == NULL) || (ubiname == NULL)) {
+		usage_exit(argv[0], "-i file -d part");
+	}
+
+	if (!wait_action_idle(10)) {
+		printf("System is busy\n");
+		return 1;
+	}
+
+	set_action(ACT_WEB_UPGRADE);
+
+	if ((f = fopen(iname, "r")) == NULL) {
+		error = "Error opening input file";
+		goto ERROR;
+	}
+	if(ubi_getinfo(ubiname, &dev, &part, &size) != 0){
+		error = "not found ubiname";
+		goto ERROR;
+	}
+	snprintf(dev_mtd, sizeof(dev_mtd), "/dev/ubi%d_%d", dev, part);
+	if ((mf = open(dev_mtd, O_RDWR|O_SYNC)) < 0){
+		snprintf(msg_buf, sizeof(msg_buf), "Error opening block device. (errno %d (%s))", errno, strerror(errno));
+		error = msg_buf;
+		goto ERROR;
+	}
+
+	fd = fileno(f);
+	fseek( f, 0, SEEK_END);
+	if (count_bytes)
+		filelen = count_bytes;
+	else
+		filelen = ftell(f) - skip_bytes;
+	if(ioctl(mf, UBI_IOCVOLUP, &filelen)){
+		error = "UBI_IOCVOLUP fail";
+		goto ERROR;
+	}
+	fseek( f, skip_bytes, SEEK_SET);
+	_dprintf("file len=0x%x\n", filelen);
+
+	unit_len = filelen;
+
+	if (skip_bytes) {// do not use mmap
+		alloc = 1;
+	} else if ((buf = mmap(0, filelen, PROT_READ, MAP_SHARED, fd, 0)) == (unsigned char*)MAP_FAILED) {
+		_dprintf("mmap %x bytes fail!. errno %d (%s).\n", filelen, errno, strerror(errno));
+		alloc = 1;
+	}
+
+	sysinfo(&si);
+	if (alloc) {
+		if (skip_bytes || ((si.freeram * si.mem_unit) <= (unit_len + (4096 * 1024))))
+			unit_len = 124 * 1024;
+	}
+
+	_dprintf("freeram=%lx unit_len=%lx filelen=%lx, skip_bytes=%x\n",
+		si.freeram, unit_len, filelen, skip_bytes);
+
+	if (alloc && !(buf = malloc(unit_len))) {
+		error = "Not enough memory";
+		goto ERROR;
+	}
+
+	for (ofs = 0, n = 0, error = NULL, p = buf; ofs < filelen; ofs += n){
+		wlen = n = MIN(unit_len, filelen - ofs);
+
+		if (alloc && safe_fread(p, 1, n, f) != n) {
+			error = "Error reading file";
+			break;
+		}
+
+		_dprintf("ofs=%x n=%lx/%lx\n", ofs, n, wlen);
+		while(wlen){
+			c = write(mf, p + (n - wlen), wlen);
+			if (c <= 0) {
+				snprintf(msg_buf, sizeof(msg_buf), "Error writing to block device. (errno %d (%s))", errno, strerror(errno));
+				error = msg_buf;
+				goto ERROR;
+			}
+			wlen -= c;
+		}
+
+		if (!alloc)
+			p += n;
+	}
+
+ERROR:
+	if (!alloc)
+		munmap((void*) buf, filelen);
+	else
+		free(buf);
+
+	if (mf >= 0) {
+		// dummy read to ensure chip(s) are out of lock/suspend state
+		read(mf, &n, sizeof(n));
+		close(mf);
+	}
+	if (f) fclose(f);
+
+	set_action(ACT_IDLE);
+
+	_dprintf("%s\n",  error ? error : "Image successfully flashed");
+	return (error ? 1 : 0);
+}
+#endif

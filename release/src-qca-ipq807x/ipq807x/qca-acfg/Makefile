@@ -1,13 +1,13 @@
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
 
 MAKEOPTS+= \
 	$(TARGET_CONFIGURE_OPTS) \
 	WLAN_TOP=$(STAGING_DIR)/usr \
 	COPTS="$(CFLAGS) -I. -I$(PKG_BUILD_DIR)/include" \
 	QSDK_ACFG=1 MEM_PROFILE="$(CONFIG_KERNEL_IPQ_MEM_PROFILE)" \
-	CC=$(CROSS_COMPILE)gcc \
 	TOOLPREFIX=$(CROSS_COMPILE)
 
 PBBINS=$(wildcard prebuilt/*)
@@ -17,17 +17,17 @@ QCA_GPL_CONF=$(filter %.conf,$(PBBINS))
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-acfg/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-acfg source
-	$(MAKE) -C $(PKG_BUILD_DIR)/src $(MAKEOPTS)
-	$(MAKE) -C $(PKG_BUILD_DIR)/acfg_test_app $(MAKEOPTS) LIB_OUT=acfg
-	$(MAKE) -C $(PKG_BUILD_DIR)/acfg_profile_app $(MAKEOPTS) PROFILE_LIB_OUT=acfg_profile
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR)/src $(MAKEOPTS) $(TARGET_CONFIGURE_OPTS)
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR)/acfg_test_app $(MAKEOPTS) $(TARGET_CONFIGURE_OPTS) LIB_OUT=acfg
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR)/acfg_profile_app $(MAKEOPTS) $(TARGET_CONFIGURE_OPTS) PROFILE_LIB_OUT=acfg_profile
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/src
 	mkdir -p $(PKG_BUILD_DIR)/acfg_test_app
 	mkdir -p $(PKG_BUILD_DIR)/acfg_profile_app
-	cp prebuilt/libacfg.so $(PKG_BUILD_DIR)/src/libacfg.so
-	cp prebuilt/acfg_tool $(PKG_BUILD_DIR)/acfg_test_app/acfg_tool
-	cp prebuilt/acfg_set_profile $(PKG_BUILD_DIR)/acfg_profile_app/acfg_set_profile
+	cp prebuilt/$(BUILD_NAME)/libacfg.so $(PKG_BUILD_DIR)/src/libacfg.so
+	cp prebuilt/$(BUILD_NAME)/acfg_tool $(PKG_BUILD_DIR)/acfg_test_app/acfg_tool
+	cp prebuilt/$(BUILD_NAME)/acfg_set_profile $(PKG_BUILD_DIR)/acfg_profile_app/acfg_set_profile
 endif
 	touch stamp-h1
 

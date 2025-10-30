@@ -19,6 +19,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <inttypes.h>
 
 #include <shutils.h>
 #include <shared.h>
@@ -33,7 +34,7 @@ extern int diff_current_bssid(int unit, char bssid_str[]);
  */
 unsigned char get_soc_version_major(void)
 {
-#if defined(RTAX89U) || defined(GTAXY16000)
+#if defined(RTAX89U) || defined(GTAXY16000) || defined(XMAX3600)
 	const unsigned char sver = 2;
 #else
 	const unsigned char sver = 0;
@@ -216,7 +217,7 @@ int get_board_or_default_parameter_from_ini_file(const char *board_name, const c
 
 	return 0;
 }
-#endif	/* RTCONFIG_SPF11_QSDK || RTCONFIG_SPF11_1_QSDK || RTCONFIG_SPF11_3_QSDK || defined(RTCONFIG_SPF11_4_QSDK) */
+#endif	/* SPF11.0+ */
 
 /* Get one parameter from .ini file and return it's value in integer format.
  * If @param_name is replicated multi-times, first one is returned.
@@ -404,11 +405,13 @@ int get_channf(int band, const char *ifname)
 	if (!iface_exist(vap) || get_bw_nctrlsb(vap, &bw, &nctrlsb) < 0)
 		return channf;
 
-	/* SF case#03945423, bandwidth offset:
+	/* SF case#03945423, nf_offset:
 	 * 20MHz: -3
 	 * 40MHz:  0
 	 * 80MHz:  3
 	 * 160MHz: 6
+	 * SF case#07314548, nf_offset
+	 * 240MHz: 7.8
 	 */
 	if (bw == 20)
 		nf_offset = -3;
@@ -416,6 +419,8 @@ int get_channf(int band, const char *ifname)
 		nf_offset = 3;
 	else if (bw == 160)
 		nf_offset = 6;
+	else if (bw == 240 || bw == 320)
+		nf_offset = 7;
 
 	return channf + nf_offset;
 }
@@ -500,6 +505,9 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 #else
 	const int l2_offset = 79;
 #endif
+#if defined(RTCONFIG_WIFI7)
+	int band = -1;
+#endif
 	FILE *fp;
 	int channf, ret = 0, ax2he = 0;
 	unsigned char tmac[6], *tm = &tmac[0];
@@ -542,7 +550,7 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 	if (!(fp = popen(cmd, "r")))
 		return -2;
 
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX) \
  || defined(RTCONFIG_QCA_AXCHIP)
 	if (!find_word(nvram_safe_get("rc_support"), "11AX"))
 		ax2he = 1;
@@ -571,6 +579,9 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 	}
 	init_sta_info_item(line_buf, part1_tbl);
 
+#if defined(RTCONFIG_WIFI7)
+	get_wlif_unit(ifname, &band, NULL);
+#endif
 	/* Parsing client list */
 	while (fgets(line_buf, sizeof(line_buf), fp) != NULL) {
 		if (sscanf(line_buf, "%hhx:%hhx:%hhx:%hhx:%hhx:%hhx %*[^\n]", tm, tm + 1, tm + 2, tm + 3, tm + 4, tm + 5) != 6)
@@ -613,6 +624,11 @@ static int __get_QCA_sta_info_by_ifname(const char *ifname, char subunit_id, int
 				r->rssi = -1;
 		}
 
+#if defined(RTCONFIG_WIFI7)
+		if (is_5g(band) && (q = strstr(r->mode, "EHT320")) != NULL) {
+			strlcpy(q, "EHT240", sizeof(r->mode) - (q - r->mode));
+		}
+#endif
 		handler(r, arg);
 	}
 leave:
@@ -1343,8 +1359,14 @@ void Pty_stop_wlc_connect(int band)
 #ifdef RTCONFIG_BHCOST_OPT
 #if defined(RTAX89U)
 #define PORT_UNITS 11
+#elif defined(XMAX3600)
+#define PORT_UNITS 4
+#elif defined(RTCONFIG_SOC_IPQ8074)
+#define PORT_UNITS 5
 #elif defined(RTAC59_CD6R) || defined(RTAC59_CD6N)
 #define PORT_UNITS 6
+#elif defined(BD4D5) || defined(BD4_OD)
+#define PORT_UNITS 2
 #else
 #define PORT_UNITS 6
 #endif
@@ -1355,12 +1377,19 @@ static const char *query_ifname[PORT_UNITS] = { //Aimesh RE
 #if defined(RTAX89U) || (GTAXY16000)
 //	L1	L2	L3	L4	L5	L6	L7	L8	WAN1	WAN2	SFP+
 	"eth2", "eth1", "eth0", "eth0", "eth0", "eth0", "eth0", "eth0", "eth3", "eth5", "eth4"
+#elif defined(XMAX3600)
+	"eth1",	"eth2", "eth3", "eth4"
+#elif defined(RTCONFIG_SOC_IPQ8074)
+	"eth2",	"eth3",	"eth1", "eth4", "eth5"
 #elif defined(RTAC59_CD6R) || defined(RTAC59_CD6N)
 //	P0	P1	P2	P3	P4	P5
 	NULL,   "vlan1",NULL,   NULL,   "vlan4",NULL
 #elif defined(PLAX56_XP4)
 //	P0	P1	P2	P3	P4	P5
 	"eth2",	"eth3",	"eth1",	NULL,	"eth4",	NULL
+#elif defined(BD4D5) || defined(BD4_OD)
+//	P0	P1	P2	P3	P4	P5
+	"eth1",	"eth0"
 #else
 //	P0	P1	P2	P3	P4	P5
 	NULL,   NULL,   NULL,   NULL,   NULL,   NULL
@@ -1646,7 +1675,7 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 {
 #if defined(QCA_SOFTDOWN_SUPPORT)
 // softdown support platform //
-	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX", athfix[]="athXXXXXX";
+	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX", athfix[]="athXXXXXX", *cur_softdown, next_softdown[2] = "";
 	int sub, led, onoff;
 	struct calc_nr_softdown_vap_s s = { 0 };
 #else
@@ -1663,14 +1692,13 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 	if (nvram_get_int(wl_radio) == 0)
 		return;
 
-	if(bssidx < 0 || bssidx >= MAX_NR_WL_IF || vifidx < 0 || vifidx >= MAX_NO_MSSID)
+	if(bssidx < 0 || bssidx >= MAX_NR_WL_IF || vifidx >= MAX_NO_MSSID)
 		return;
 
 	if(sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
 		if(vifidx <= 0) {  //for sta
 			strcpy(athfix, get_staifname(swap_5g_band(bssidx)));
 			doSystem("ifconfig %s %s", athfix, enabled?"up":"down");
-			return;
 		}
 		if(vifidx==1)
 			vifidx--;
@@ -1684,7 +1712,11 @@ void set_wlan_service_status(int bssidx, int vifidx, int enabled)
 	else
 		snprintf(prefix, sizeof(prefix), "wl%d_", swap_5g_band(bssidx));
 	strcpy(athfix, nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
-	eval(IWPRIV, athfix, "softdown", enabled? "0":"1");
+	cur_softdown = iwpriv_get(athfix, "g_softdown");
+	snprintf(next_softdown, sizeof(next_softdown), "%d", enabled? 0 : 1);
+	if (!cur_softdown || strcmp(cur_softdown, next_softdown)) {
+		eval(IWPRIV, athfix, "softdown", next_softdown);
+	}
 	if (enabled) {
 #if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ53XX)
 		eval("hostapd_cli", "-i", athfix, "disable");
@@ -1777,8 +1809,14 @@ int resolv_bw_nctrlsb(const char *mode, int *bw, int *nctrlsb)
 		*bw = 80;
 	else if (!memcmp(p, "160", 3))		/* 11ACVHT160, 11AXA_HE160, 11BEA_EHT160 */
 		*bw = 160;
+	else if (!memcmp(p, "240", 3))		/* 11BEA_EHT320 */
+		*bw = 240;
 	else if (!memcmp(p, "320", 3))		/* 11BEA_EHT320 */
+#if defined(RTCONFIG_HAS_6G) || defined(RTCONFIG_HAS_6G_2)
 		*bw = 320;
+#else
+		*bw = 240;
+#endif
 	else					/* 11A, 11B, 11G */
 		*bw = 20;
 
@@ -2041,6 +2079,8 @@ int get_cfg_bw_mask_by_bw(int bw)
 		ret = CFG_BW_80M;
 	else if (bw == 160)
 		ret = CFG_BW_160M;
+	else if (bw == 240)
+		ret = CFG_BW_240M;
 	else {
 		dbg("%s: Unknown bandwidth %d\n", __func__, bw);
 	}
@@ -2074,6 +2114,10 @@ int __wl_get_bw_cap(int unit, int *bwcap)
 #ifdef RTCONFIG_BW160M
 	if (unit == WL_5G_BAND || unit == WL_5G_2_BAND)
 		*bwcap |= CFG_BW_160M;
+#endif
+#if defined(RTCONFIG_BW240M)
+	if (is_5g(unit) && w75g_240m_capable(unit))
+		*bwcap |= CFG_BW_240M;
 #endif
 
 	return 0;
@@ -2167,23 +2211,30 @@ const char *phymode_str(int phymode)
 
 /* Get bandwidth of @mode
  * @mode:	parameter of private mode command, e.g., 11GHE20
- * @return:	one of 20/40/80/160
+ * @return:	one of 20/40/80/160/240/320
  */
-int get_bw_by_mode_str(char *mode)
+int get_bw_by_mode_str(const char *mode)
 {
 	int r = 20;
 	if (!mode)
 		return r;
 
-	if (strstr(mode, "HT320"))
+	if (strstr(mode, "320")) {
+#if defined(RTCONFIG_HAS_6G) || defined(RTCONFIG_HAS_6G_2)
 		r = 320;
-	else if (strstr(mode, "HE160") || strstr(mode, "HT160"))
+#else
+		r = 240;
+#endif
+	}
+	else if (strstr(mode, "240"))
+		r = 240;
+	else if (strstr(mode, "160"))
 		r = 160;
-	else if (strstr(mode, "HE80") || strstr(mode, "HT80"))
+	else if (strstr(mode, "80"))
 		r = 80;
-	else if (strstr(mode, "HE40") || strstr(mode, "HT40"))
+	else if (strstr(mode, "40"))
 		r = 40;
-	else if (strstr(mode, "HE20") || strstr(mode, "HT20"))
+	else if (strstr(mode, "20"))
 		r = 20;
 	else {
 		r = 20;
@@ -2206,8 +2257,13 @@ int get_bw_by_phymode(int unit, int phymode)
 		if (unit == WL_2G_BAND) {
 			return 40;
 		}
-		else if (unit == WL_5G_BAND || unit == WL_5G_2_BAND) {
-#if defined(RTCONFIG_BW160M)
+		else if (is_5g(unit)) {
+#if defined(RTCONFIG_BW240M)
+			if (w75g_240m_capable(unit))
+				return 240;
+			else
+				return 160;
+#elif defined(RTCONFIG_BW160M)
 			return 160;
 #else
 			return 80;
@@ -2218,6 +2274,8 @@ int get_bw_by_phymode(int unit, int phymode)
 	switch (phymode) {
 	case IEEE80211_MODE_11BEA_EHT320:	/* fall-through */
 		ret = 320;
+		if (is_5g(unit))
+			ret = 240;
 		break;
 	case IEEE80211_MODE_11AC_VHT160:	/* fall-through */
 	case IEEE80211_MODE_11AXA_HE160:	/* fall-through */
@@ -2305,12 +2363,20 @@ static const uint64_t g_bw160ch_m[] = {
 	CH149_M | CH153_M,
 	CH157_M | CH161_M,
 	0
+#if defined(RTCONFIG_BW240M)
+}, g_bw240ch_m[] = {
+	CH100_M | CH104_M | CH108_M | CH112_M, CH116_M | CH120_M | CH124_M | CH128_M, CH132_M | CH136_M | CH140_M | CH144_M,
+	0
+#endif
 };
 
 static const struct bw_chlist_s {
 	int bw;
 	const uint64_t *mask;
 } g_bw_5gchlist_tbl[] = {
+#if defined(RTCONFIG_BW240M)
+	{ 240, g_bw240ch_m },
+#endif
 	{ 160, g_bw160ch_m },
 	{  80, g_bw80ch_m },
 	{  40, g_bw40ch_m },
@@ -2319,7 +2385,7 @@ static const struct bw_chlist_s {
 
 /* Return maximum bandwidth of channel list @avbl_ch_mask.
  * Currently only 5G is supported.
- * return:	20, 40, 80, 160
+ * return:	20, 40, 80, 160, 240
  */
 int get_max_bw_by_chlist(int band, uint64_t avbl_ch_mask)
 {
@@ -2362,7 +2428,7 @@ int get_max_bw_by_chlist(int band, uint64_t avbl_ch_mask)
 int acs_and_change_bw_if_need(int band, const char *vap, uint64_t avbl_ch_mask)
 {
 	int orig_bw, new_bw;
-	char *p, orig_mode[30] = "", new_mode[30] = "", main_prefix[sizeof("wlXXX_")];
+	char *p, orig_mode[32] = "", new_mode[32] = "", main_prefix[sizeof("wlXXX_")];
 
 	/*dbg("%s: band %d vap %s avbl_ch_mask 0x%" PRIx64 "\n", __func__,
 		band, vap? : "NULL", avbl_ch_mask);*/
@@ -2380,14 +2446,26 @@ int acs_and_change_bw_if_need(int band, const char *vap, uint64_t avbl_ch_mask)
 	if ((orig_bw = get_bw_by_mode_str(orig_mode)) <= 20)
 		goto acs_and_reduce_bw_if_need_do_acs;
 
+	if (orig_bw == 320 && is_5g(band))
+		orig_bw = 240;
 	new_bw = get_max_bw_by_chlist(band, avbl_ch_mask);
 	snprintf(main_prefix, sizeof(main_prefix), "wl%d_", band);
-	if ((band == WL_5G_BAND || band == WL_5G_2_BAND) && new_bw > 80
-#if defined(RTCONFIG_BW160M)
-	 && (nvram_pf_match(main_prefix, "bw_160", "1"))
+	if (is_5g(band) && new_bw > 80) {
+		if (new_bw >= 240 && (
+#if defined(RTCONFIG_BW240M)
+		     !nvram_pf_match(main_prefix, "bw_240", "1") ||
 #endif
-	   )
-		new_bw = 80;
+		     !w75g_240m_capable(band)))
+			new_bw = 160;
+
+		if (new_bw >= 160
+#if defined(RTCONFIG_BW160M)
+		 && !nvram_pf_match(main_prefix, "bw_160", "1")
+#endif
+		)
+			new_bw = 80;
+	}
+
 	if (new_bw > 0 && orig_bw > new_bw && !strncmp(orig_mode, "11", 2)) {
 		strlcpy(new_mode, orig_mode, sizeof(new_mode));
 		for (p = new_mode + strlen("11"); *p != '\0'; ++p) {
@@ -2415,10 +2493,12 @@ acs_and_reduce_bw_if_need_do_acs:
  * wl_get_bw_cap(unit, *bwcap)
  *
  * bwcap
- * 	0x01 = 20 MHz
- * 	0x02 = 40 MHz
- * 	0x04 = 80 MHz
- * 	0x08 = 160 MHz
+ * 	0x01 (CFG_BW_20M) = 20 MHz
+ * 	0x02 (CFG_BW_40M) = 40 MHz
+ * 	0x04 (CFG_BW_80M) = 80 MHz
+ * 	0x08 (CFG_BW_160M) = 160 MHz
+ * 	0x10 (CFG_BW_320M) = 320 MHz @ 6GHz
+ * 	0x20 (CFG_BW_240M) = 240 MHz @ 5GHz
  *
  * 	ex: 5G support 20,40,80
  * 	*bwcap = 0x01 | 0x02 | 0x04
@@ -2461,7 +2541,11 @@ int wl_get_bw_cap(int unit, int *bwcap)
 		 || exec_and_parse(cmd, "iv_cur_mode", "%*[^:]:%d", 1, &iv_cur_mode) || !iv_cur_mode) {
 			dbg("%s: Failed to parse iv_des_hw_mode %d or iv_cur_mode %d from %s\n",
 				__func__, iv_des_hw_mode, iv_cur_mode, cmd + 4);
-			return 0;
+			/* Return safe value when radio not ready. */
+			*bwcap = CFG_BW_20M;	/* 20MHz only */
+			if (is_5g(unit))
+				*bwcap = CFG_BW_20M | CFG_BW_40M | CFG_BW_80M;/* 20/40/80MHz */
+			return r;
 		}
 		if (iv_cur_mode == iv_des_hw_mode)
 			return 0;
@@ -2476,6 +2560,22 @@ int wl_get_bw_cap(int unit, int *bwcap)
 
 int chk_wifi_sched(int band)
 {
+#if defined(QCA_SOFTDOWN_SUPPORT)
+	int ret = 0;
+	char vap[IFNAMSIZ] = "";
+
+	if (nvram_get_int("wlready") == 0)
+		return 0;
+
+	strlcpy(vap, get_wififname(band)? : "", sizeof(vap));
+	if (!iface_exist(vap))
+		return 0;
+
+	if (iwpriv_get_int(vap, "g_softdown", &ret) < 0)
+		return 0;
+
+	return !ret;
+#else
 	char tmp[20],tmp2[20];
         snprintf(tmp, sizeof(tmp), "wl%d_qca_sched", band);
         snprintf(tmp2, sizeof(tmp2), "wl%d_timesched", band);
@@ -2488,16 +2588,17 @@ int chk_wifi_sched(int band)
 		}
         }
 	return 1;
+#endif	/* QCA_SOFTDOWN_SUPPORT */
 }
 
 int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 {
 	int apply_mode = 0, apply_ch = 0, bwcap;
 	int unit, subunit, old_channel = 0, orig_bw, new_bw;
-	char *p, orig_mode[30] = "", new_mode[30] = "";
+	char *p, orig_mode[32] = "", new_mode[32] = "";
 	char prefix[] = "wlXXXXXXXXXXXX_", ch_str[8] = "auto";
+#if SPF_VER < SPF_VER_ID(11,4)
 	char cmd[sizeof("hostapd_cli -i XXX status") + IFNAMSIZ], state[16] = { 0 }; /* ref. state string in hostapd_state_text() */
-#if !defined(RTCONFIG_SPF11_4_QSDK)
 	int led, is_up;
 #if defined(RTCONFIG_CFG80211)
 	char *radio_on[] = { "hostapd_cli", "-p", "/var/run/hostapd", "-i", (char*) ifname, "enable", NULL };
@@ -2511,7 +2612,7 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 	if (ifname == NULL)
 		return -1;
 
-#if !defined(RTCONFIG_SPF11_4_QSDK)
+#if SPF_VER < SPF_VER_ID(11,4)
 #if defined(RTCONFIG_CFG80211)
 	snprintf(cmd, sizeof(cmd), "hostapd_cli -i %s status", ifname);
 	if (!exec_and_parse(cmd, "state=", "%*[^=]=%[^ \n]s", 1, state)) {
@@ -2540,12 +2641,15 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 	/* set mode via bwcap and band */
 	strlcpy(orig_mode, iwpriv_get(ifname, "get_mode")? : "", sizeof(orig_mode));
 	orig_bw = get_bw_by_mode_str(orig_mode);
+	if (orig_bw == 320 && is_5g(unit))
+		orig_bw = 240;
 	new_bw = 0;
 	if ((orig_bw != bw)
-	 && ((bw == 160 && (bwcap & 0x8))
-	  || (bw ==  80 && (bwcap & 0x4))
-	  || (bw ==  40 && (bwcap & 0x2))
-	  || (bw ==  20 && (bwcap & 0x1)))
+	 && ((bw == 240 && (bwcap & CFG_BW_240M) && w75g_240m_capable(unit))
+	  || (bw == 160 && (bwcap & CFG_BW_160M))
+	  || (bw ==  80 && (bwcap & CFG_BW_80M))
+	  || (bw ==  40 && (bwcap & CFG_BW_40M))
+	  || (bw ==  20 && (bwcap & CFG_BW_20M)))
 	) {
 		new_bw = bw;
 	}
@@ -2582,12 +2686,10 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 		apply_mode++;
 
 	if (channel > 0) {
-		snprintf(cmd, sizeof(cmd), "hostapd_cli -i %s status", ifname);
-		exec_and_parse(cmd, "channel=", "%*[^=]=%d", 1, &old_channel);
-		if (old_channel != channel) {
-			snprintf(ch_str, sizeof(ch_str), "%d", channel);
+		snprintf(ch_str, sizeof(ch_str), "%d", channel);
+		old_channel = shared_get_channel(ifname);
+		if (old_channel <= 0 || old_channel != channel)
 			apply_ch++;
-		}
 	}
 
 	if (apply_mode || apply_ch) {
@@ -2602,7 +2704,7 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 			eval("ifconfig", sta, "down");
 #endif
 
-#if !defined(RTCONFIG_SPF11_4_QSDK)
+#if SPF_VER < SPF_VER_ID(11,4)
 		led = get_wl_led_id(unit);
 		is_up = is_intf_up(ifname);
 		if (is_up) {
@@ -2619,6 +2721,8 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 				sleep(2);
 		}
 		if (apply_ch) {
+			_dprintf("%s: vap %s channel %d -> %d\n", __func__, ifname, old_channel, channel);
+			logmessage("WIFI", "%s: vap %s channel %d -> %d\n", __func__, ifname, old_channel, channel);
 #if defined(RTCONFIG_WIFI6E)
 			if (nvram_pf_match(prefix, "nband", "4"))
 				doSystem(IWPRIV " %s channel %s 3", ifname, ch_str);
@@ -2627,7 +2731,7 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 				doSystem("iwconfig %s channel %s", ifname, ch_str);
 		}
 
-#if !defined(RTCONFIG_SPF11_4_QSDK)
+#if SPF_VER < SPF_VER_ID(11,4)
 		//RadioOn
 #if defined(RTCONFIG_CFG80211)
 		/* To apply setting, always enable radio first. */
@@ -2661,7 +2765,7 @@ int wl_set_ch_bw(const char *ifname, int channel, int bw, int nctrlsb)
 			}
 		}
 #endif
-#endif	/* !RTCONFIG_SPF11_4_QSDK */
+#endif	/* SPF_VER < SPF11.4 */
 #if defined(RTCONFIG_SPF11_1_QSDK)
 		if (is_sta_up)
 			eval("ifconfig", sta, "up");
@@ -2688,7 +2792,7 @@ void sync_control_channel(int unit, int channel, int bw, int nctrlsb)
  * get_control_channel(unit, *channel, *bw, *nctrlsb)
  *
  * *bw:
- * 	return the bandwitdh value, could be 20/40/80/160.
+ * 	return the bandwitdh value, could be 20/40/80/160/240.
  *
  * nctrlsb:
  * 	return the side band when in HT40 mode
@@ -3114,4 +3218,3 @@ char* get_all_lan_ifnames(void)
 	return strdup(result);
 }
 #endif
-

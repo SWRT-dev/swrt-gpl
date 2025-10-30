@@ -415,7 +415,7 @@ static void _le_acme_need_issue(char *path, size_t len, le_conf_t *conf)
 
 static void _le_acme_result_handler(char *path, size_t len, le_conf_t *conf)
 {
-	_dprintf("[%s(%d)] #### ACME ERROR ####\n", "_le_acme_result_handler", 675LL);
+	_dprintf("[%s(%d)] #### ACME ERROR ####\n", __func__, __LINE__);
 	update_le_auxsts(LE_AUX_ACME);
 	if(f_read_string("/tmp/acme_err", path, len) && strstr(path, "firewall"))
 		update_le_sbsts(LE_SB_CHA_FW);

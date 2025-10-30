@@ -14,9 +14,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2024, SWRT.
- * Copyright 2018-2024, paldier <paldier@hotmail.com>.
- * Copyright 2018-2024, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2018-2025, SWRT.
+ * Copyright 2018-2025, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2025, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  *
  */
@@ -49,8 +49,8 @@ void fix_jffs_size(void);
 #if defined(RTCONFIG_SOFTCENTER)
 static void firmware_ver(void)
 {
-    char tmp[6] = {0};
-    strncpy(tmp, RT_FWVER, 5);//5.x.x[beta]
+	char tmp[6] = {0};
+	strncpy(tmp, RT_FWVER, 5);//5.x.x[beta]
 	doSystem("dbus set softcenter_firmware_version='%s'",tmp);
 }
 #endif
@@ -111,216 +111,12 @@ void swrt_init_pre()
 	nvram_set("swrt_tuf", "1");
 #endif
 	if(!nvram_get("modelname"))
-//non asus
-#if defined(SBRAC1900P)
-		nvram_set("modelname", "SBRAC1900P");
-#elif defined(EA6700)
-		nvram_set("modelname", "EA6700");
-#elif defined(DIR868L)
-		nvram_set("modelname", "DIR868L");
-#elif defined(R6300V2)
-		nvram_set("modelname", "R6300V2");
-#elif defined(F9K1118)
-		nvram_set("modelname", "F9K1118");
-#elif defined(SBRAC3200P)
-		nvram_set("modelname", "SBRAC3200P");
-#elif defined(K3)
-		nvram_set("modelname", "K3");
-#elif defined(XWR3100)
-		nvram_set("modelname", "XWR3100");
-#elif defined(R7000P)
-		nvram_set("modelname", "R7000P");
-#elif defined(R8500)
-		nvram_set("modelname", "R8500");
-#elif defined(RAC2V1S)
-		nvram_set("modelname", "RAC2V1S");
-#elif defined(R8000P)
-		nvram_set("modelname", "R8000P");
-#elif defined(RAX20)
-		nvram_set("modelname", "RAX20");
-#elif defined(RAX70)
-		nvram_set("modelname", "RAX70");
-#elif defined(RAX80)
-		nvram_set("modelname", "RAX80");
-#elif defined(RAX120)
-		nvram_set("modelname", "RAX120");
-#elif defined(RAX200)
-		nvram_set("modelname", "RAX200");
-#elif defined(TY6201_BCM)
-		nvram_set("modelname", "TY6201_BCM");
-#elif defined(TY6201_RTK)
-		nvram_set("modelname", "TY6201_RTK");
-#elif defined(TY6202)
-		nvram_set("modelname", "TY6202");
-#elif defined(RGMA2820A)
-		nvram_set("modelname", "RGMA2820A");
-#elif defined(RGMA2820B)
-		nvram_set("modelname", "RGMA2820B");
-#elif defined(TYAX5400)
-		nvram_set("modelname", "TYAX5400");
-#elif defined(K3C)
-		nvram_set("modelname", "K3C");
-#elif defined(MR60)
-		nvram_set("modelname", "MR60");
-#elif defined(MS60)
-		nvram_set("modelname", "MS60");
-#elif defined(SWRT360V6)
+#if defined(SWRT360V6)
 		nvram_set("modelname", "360V6");
-#elif defined(GLAX1800)
-		nvram_set("modelname", "GLAX1800");
-#elif defined(JDCAX1800)
-		nvram_set("modelname", "JDCAX1800");
-#elif defined(RMAX6000)
-		nvram_set("modelname", "RMAX6000");
-#elif defined(RMAC2100)
-		nvram_set("modelname", "RMAC2100");
-#elif defined(R6800)
-		nvram_set("modelname", "R6800");
-#elif defined(PGBM1)
-		nvram_set("modelname", "PGBM1");
-#elif defined(JCGQ10PRO)
-		nvram_set("modelname", "JCGQ10PRO");
-#elif defined(H3CTX1801)
-		nvram_set("modelname", "H3CTX1801");
-#elif defined(XMCR660X)
-		nvram_set("modelname", "XMCR660X");
-#elif defined(TY6201PRO)
-		nvram_set("modelname", "TY6201PRO");
-#elif defined(RGMA3062)
-		nvram_set("modelname", "RGMA3062");
-#elif defined(JCGQ20)
-		nvram_set("modelname", "JCGQ20");
 #elif defined(SWRT360T7)
 		nvram_set("modelname", "360T7");
-#elif defined(JDCBE6500)
-		nvram_set("modelname", "JDCBE6500");
-#elif defined(CMCCA9)
-		nvram_set("modelname", "CMCCA9");
-//asus
-#elif defined(RTAC68U)
-		nvram_set("modelname", "RTAC68U");
-#elif defined(RTAC3200)
-		nvram_set("modelname", "RTAC3200");
-#elif defined(RTAC3100)
-		nvram_set("modelname", "RTAC3100");
-#elif defined(RTAC88U)
-		nvram_set("modelname", "RTAC88U");
-#elif defined(RTAC5300)
-		nvram_set("modelname", "RTAC5300");
-#elif defined(RTAC86U)
-		nvram_set("modelname", "RTAC86U");
-#elif defined(GTAC2900)
-		nvram_set("modelname", "GTAC2900");
-#elif defined(GTAC5300)
-		nvram_set("modelname", "GTAC5300");
-#elif defined(RTAX53U)
-		nvram_set("modelname", "RTAX53U");
-#elif defined(RTAX54)
-		nvram_set("modelname", "RTAX54");
-#elif defined(RTAX55) || defined(RTAX1800)
-		nvram_set("modelname", "RTAX55");
-#elif defined(RTAX56U)
-		nvram_set("modelname", "RTAX56U");
-#elif defined(RTAX57)
-		nvram_set("modelname", "RTAX57");
-#elif defined(RTAX58U) || defined(RTAX3000)
-		nvram_set("modelname", "RTAX58U");
-#elif defined(RTAX58U_V2)
-		nvram_set("modelname", "RTAX58UV2");
-#elif defined(TUFAX3000)
-		nvram_set("modelname", "TUFAX3000");
-#elif defined(TUFAX3000_V2)
-		nvram_set("modelname", "TUFAX3000V2");
-#elif defined(TUFAX5400)
-		nvram_set("modelname", "TUFAX5400");
-#elif defined(TUFAX5400_V2)
-		nvram_set("modelname", "TUFAX5400V2");
-#elif defined(GSAX3000)
-		nvram_set("modelname", "GSAX3000");
-#elif defined(GSAX5400)
-		nvram_set("modelname", "GSAX5400");
-#elif defined(RTAX68U)
-		nvram_set("modelname", "RTAX68U");
-#elif defined(RTAX82U)
-		nvram_set("modelname", "RTAX82U");
-#elif defined(RTAX82U_V2)
-		nvram_set("modelname", "RTAX82UV2");
-#elif defined(RTAX86U)
-		nvram_set("modelname", "RTAX86U");
-#elif defined(RTAX86U_PRO)
-		nvram_set("modelname", "RTAX86UPRO");
-#elif defined(RTAX88U)
-		nvram_set("modelname", "RTAX88U");
-#elif defined(RTAX88U_PRO)
-		nvram_set("modelname", "RTAX88UPRO");
-#elif defined(RTAX92U)
-		nvram_set("modelname", "RTAX92U");
-#elif defined(GTAX6000)
-		nvram_set("modelname", "GTAX6000");
-#elif defined(GTAX11000)
-		nvram_set("modelname", "GTAX11000");
-#elif defined(GTAX11000_PRO)
-		nvram_set("modelname", "GTAX11000PRO");
-#elif defined(GTAXE11000)
-		nvram_set("modelname", "GTAXE11000");
-#elif defined(GTAXE16000)
-		nvram_set("modelname", "GTAXE16000");
-#elif defined(BLUECAVE)
-		nvram_set("modelname", "BLUECAVE");
-#elif defined(RTAC82U)
-		nvram_set("modelname", "RTACRH17");
-#elif defined(RTAX89U)
-		nvram_set("modelname", "RTAX89X");
-#elif defined(RTAC85P)
-		nvram_set("modelname", "RTAC85P");
-#elif defined(TUFAC1750)
-		nvram_set("modelname", "TUFAC1750");
-#elif defined(RTAC95U)
-		nvram_set("modelname", "ZENWIFICT8");
-#elif defined(RTAX56XD4)
-		nvram_set("modelname", "ZENWIFIXD4");
-#elif defined(RTAX82_XD6)
-		nvram_set("modelname", "ZENWIFIXD6");
-#elif defined(RTAX82_XD6S)
-		nvram_set("modelname", "ZENWIFIXD6S");
-#elif defined(XD6_V2)
-		nvram_set("modelname", "ZENWIFIXD6V2");
-#elif defined(RTAX95Q)
-		nvram_set("modelname", "ZENWIFIXT8");
-#elif defined(RTAXE95Q)
-		nvram_set("modelname", "ZENWIFIET8");
-#elif defined(XT12)
-		nvram_set("modelname", "ZENWIFIXT12");
-#elif defined(ET12)
-		nvram_set("modelname", "ZENWIFIET12");
-#elif defined(XD4PRO)
-		nvram_set("modelname", "ZENWIFIXD4PRO");
-#elif defined(XT8PRO)
-		nvram_set("modelname", "ZENWIFIXT9");
-#elif defined(XT8_V2)
-		nvram_set("modelname", "ZENWIFIXT8V2");
-#elif defined(ET8PRO)
-		nvram_set("modelname", "ZENWIFIET9");
-#elif defined(ET8_V2)
-		nvram_set("modelname", "ZENWIFIET8V2");
-#elif defined(PLAX56_XP4)
-		nvram_set("modelname", "ZENWIFIXP4");
-#elif defined(ETJ)
-		nvram_set("modelname", "ZENWIFIETJ");
-#elif defined(GT10)
-		nvram_set("modelname", "GT6");
-#elif defined(RTAXE7800)
-		nvram_set("modelname", "RTAXE7800");
-#elif defined(RTBE86U)
-		nvram_set("modelname", "RTBE86U");
-#elif defined(RTBE88U)
-		nvram_set("modelname", "RTBE88U");
-#elif defined(RTBE96U)
-		nvram_set("modelname", "RTBE96U");
-#elif defined(GTBE96)
-		nvram_set("modelname", "GTBE96");
-#elif defined(GTBE98_PRO)
-		nvram_set("modelname", "GTBE98PRO");
+#else
+		nvram_set("modelname", RT_FWSWRTNAME);
 #endif
 	if(!nvram_get("swrt_beta"))
 		nvram_set("swrt_beta", "0");

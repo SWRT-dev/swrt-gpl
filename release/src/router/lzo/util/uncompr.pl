@@ -1,6 +1,5 @@
 #! /usr/bin/perl
-##
-## vi:ts=4
+## vim:set ts=4 sw=4 et: -*- coding: utf-8 -*-
 ##
 ##---------------------------------------------------------------------------##
 ##
@@ -8,9 +7,9 @@
 ##      Markus F.X.J. Oberhumer         <markus@oberhumer.com>
 ##
 ##  Description:
-##      Create uncompressible files for compression test
+##      Create incompressible files for compression test
 ##
-##  Copyright (C) 1996-2008 Markus Franz Xaver Johannes Oberhumer
+##  Copyright (C) 1996-2017 Markus Franz Xaver Johannes Oberhumer
 ##
 ##---------------------------------------------------------------------------##
 

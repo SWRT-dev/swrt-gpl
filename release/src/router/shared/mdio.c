@@ -176,7 +176,8 @@ int mdio_phy_speed(char *ifname)
 
 #if defined(RTCONFIG_QCA) \
  && (defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) \
-  || defined(RTCONFIG_SWITCH_QCA8386))
+  || defined(RTCONFIG_SWITCH_QCA8386) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111) \
+  || defined(RTCONFIG_SWITCH_QCA8075))
 /**
  * Parse ssdk_sh result.
  * NOTE:	Caller have to specify switch id in command-line.
@@ -241,9 +242,10 @@ int read_phy_reg(unsigned int phy, unsigned int reg)
 	int r = 0;
 	unsigned int val;
 	char cmd[sizeof("ssdk_sh swX debug phy get 0xPP 0xFFFFFFFFXXXXXX")], line[256];
-
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_QCA8075_QCA8337_PHY_AQR111)
 	snprintf(cmd, sizeof(cmd), "ssdk_sh %s debug phy get 0x%x 0x%x", SWID_IPQ807X, phy, reg);
+#elif defined(RTCONFIG_SOC_IPQ8074)
+	snprintf(cmd, sizeof(cmd), "ssdk_sh debug phy get 0x%x 0x%x", phy, reg);
 #elif defined(RTCONFIG_SOC_IPQ53XX)
 	snprintf(cmd, sizeof(cmd), "ssdk_sh %s debug phy get 0x%x 0x%x", SWID_IPQ53XX, phy, reg);
 #else
@@ -291,8 +293,10 @@ int write_phy_reg(unsigned int phy, unsigned int reg, unsigned int value)
 	int r = 0;
 	char cmd[sizeof("ssdk_sh swX debug phy set 0xPP 0xFFFFFFFFXXXXXX")], line[256];
 
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) || defined(RTCONFIG_QCA8075_QCA8337_PHY_AQR111)
 	snprintf(cmd, sizeof(cmd), "ssdk_sh %s debug phy set 0x%x 0x%x 0x%x", SWID_IPQ807X, phy, reg, value);
+#elif defined(RTCONFIG_SOC_IPQ8074)
+	snprintf(cmd, sizeof(cmd), "ssdk_sh debug phy set 0x%x 0x%x 0x%x", phy, reg, value);
 #elif defined(RTCONFIG_SOC_IPQ53XX)
 	snprintf(cmd, sizeof(cmd), "ssdk_sh %s debug phy set 0x%x 0x%x 0x%x", SWID_IPQ53XX, phy, reg, value);
 #else
@@ -381,7 +385,7 @@ int mdio_phy_speed(unsigned int phy)
 	return 0;
 }
 
-#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#if defined(RTCONFIG_SOC_IPQ8074)
 /**
  * Helper function of qca8337_port_speed() and ipq8074_port_speed()
  * @port:	port of QCA8337
@@ -400,8 +404,11 @@ static int __ssdk_sh_port_speed(const char *swid, unsigned int port)
 
 	if (!swid)
 		return 0;
-
+#if defined(RTCONFIG_SWITCH_QCA8075)
+	snprintf(linkstatus_cmd, sizeof(linkstatus_cmd), "ssdk_sh port linkstatus get %d", port);
+#else
 	snprintf(linkstatus_cmd, sizeof(linkstatus_cmd), "ssdk_sh %s port linkstatus get %d", swid, port);
+#endif
 	/* Example:
 	 * / # ssdk_sh sw1 port linkstatus get 5
 	 *
@@ -417,8 +424,11 @@ static int __ssdk_sh_port_speed(const char *swid, unsigned int port)
 		return 0;
 	if (strcmp(linkstatus, "ENABLE"))
 		return 0;
-
+#if defined(RTCONFIG_SWITCH_QCA8075)
+	snprintf(speed_cmd, sizeof(speed_cmd), "ssdk_sh port speed get %d", port);
+#else
 	snprintf(speed_cmd, sizeof(speed_cmd), "ssdk_sh %s port speed get %d", swid, port);
+#endif
 	/* Example:
 	 * / # ssdk_sh sw1 port speed get 6
 	 *
@@ -558,5 +568,5 @@ int aqr_phy_speed(unsigned int phy)
 
 	return ret;
 }
-#endif	/* RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033 */
-#endif	/* RTCONFIG_QCA && (RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033 || RTCONFIG_SWITCH_QCA8386) */
+#endif
+#endif

@@ -1,52 +1,67 @@
-include ./config
+# Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
+PKG_BUILD_DIR=$(shell pwd)/source
 
-ifndef PRJ_PATH
-  PRJ_PATH=$(shell pwd)
-endif
-export PRJ_PATH
+EXTRA_CFLAGS+= -DSWRT_PATCH
+KERNEL_MAKEOPTS+= EXTRA_CFLAGS="$(EXTRA_CFLAGS)"
 
-include ./make/config.mk
-include ./make/tools.mk
-include ./make/$(OS)_opt.mk
+INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 
-SUB_DIR=$(patsubst %/, %, $(dir $(wildcard src/*/Makefile)))
-SUB_LIB=$(subst src/, , $(SUB_DIR))
+QCASSDK_CONFIG_OPTS:= \
+	PTP_FEATURE=disable \
+	HNAT_FEATURE=enable \
+	TOOL_PATH=$(TOOLCHAIN_DIR)/bin \
+	SYS_PATH=$(LINUXDIR) \
+	TOOLPREFIX=$(TARGET_CROSS) \
+	KVER=$(LINUX_VERSION) \
+	ARCH=$(ARCH) \
+	TARGET_SUFFIX=$(CONFIG_TARGET_SUFFIX) \
+	GCC_VERSION=$(TOOLCHAIN_TARGET_GCCVER) \
+	MINI_SSDK=disable \
+	OS_VER=4_4 \
+	HK_CHIP=enable #RFS_FEATURE=enable
+QCASSDK_CONFIG_OPTS+=SWRT_PATCH=y
+QCASSDK_CONFIG_OPTS+=CFLAGS=-I$(STAGING_DIR)/usr/include
 
-all: $(BIN_DIR) kslib
-	mkdir -p ./temp/;cd ./temp;cp ../build/bin/ssdk_ks_km.a ./;ar -x ssdk_ks_km.a; cp ../ko_Makefile ./Makefile;
-	make -C $(SYS_PATH) M=$(PRJ_PATH)/temp/ CROSS_COMPILE=$(TOOL_PATH)/$(TOOLPREFIX) modules
-	cp $(PRJ_PATH)/temp/Module.symvers $(PRJ_PATH)/Module.symvers;
-	cp temp/*.ko build/bin;
-	rm -Rf ./temp/*.o ./temp/*.ko ./temp/*.a
-	@echo "---Build [SSDK-$(VERSION)] at $(BUILD_DATE) finished."
+all:
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR) $(strip $(QCASSDK_CONFIG_OPTS)) $(TARGET_CONFIGURE_OPTS)
+	touch stamp-h1
 
-kslib:kslib_o
-	$(AR) -r $(BIN_DIR)/$(KS_MOD)_$(RUNMODE).a $(wildcard $(BLD_DIR)/KSLIB/*.o)
-
-kslib_o:
-	$(foreach i, $(SUB_LIB), $(MAKE) MODULE_TYPE=KSLIB -C src/$i all || exit 1;)
-
-uslib:uslib_o
-	$(AR) -r $(BIN_DIR)/$(US_MOD)_$(RUNMODE).a $(wildcard $(BLD_DIR)/USLIB/*.o)
-
-uslib_o:
-	$(foreach i, $(SUB_LIB), $(MAKE) MODULE_TYPE=USLIB -C src/$i all || exit 1;)
-
-shell:uslib shell_o
-	$(CP) $(BLD_DIR)/SHELL/$(SHELLOBJ) $(BIN_DIR)/$(SHELLOBJ)
-	$(STRIP) $(BIN_DIR)/$(SHELLOBJ)
-
-shell_o:
-	$(foreach i, $(SUB_LIB), $(MAKE) MODULE_TYPE=SHELL -C src/$i all || exit 1;)
-
-$(BIN_DIR):
-	$(MKDIR) -p $@
-
-release:
-	@cd make; ./release.sh $(VER)
+install:
+	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)
+	install -D $(PKG_BUILD_DIR)/build/bin/qca-ssdk.ko $(INSTALLKMODDIR)
+	@$(STRIPX) $(INSTALLKMODDIR)/qca-ssdk.ko
 
 clean:
-	$(RM) -f $(BLD_DIR)/KSLIB/*
-	$(RM) -f $(BLD_DIR)/USLIB/*
-	$(RM) -f $(BLD_DIR)/SHELL/*
-	$(RM) -f $(BIN_DIR)/*
+
+stage:
+ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-ssdk/src/api/*.c),)
+	mkdir -p $(STAGING_DIR)/usr/include/qca-ssdk
+	mkdir -p $(STAGING_DIR)/usr/include/qca-ssdk/api
+	mkdir -p $(STAGING_DIR)/usr/include/qca-ssdk/ref
+	mkdir -p $(STAGING_DIR)/usr/include/qca-ssdk/fal
+	mkdir -p $(STAGING_DIR)/usr/include/qca-ssdk/sal
+	mkdir -p $(STAGING_DIR)/usr/include/qca-ssdk/init
+	$(CP) $(PKG_BUILD_DIR)/include/api/sw_ioctl.h $(STAGING_DIR)/usr/include/qca-ssdk/api
+	if [ -f $(PKG_BUILD_DIR)/include/ref/ref_vsi.h ]; then \
+	$(CP) $(PKG_BUILD_DIR)/include/ref/ref_vsi.h $(STAGING_DIR)/usr/include/qca-ssdk/ref/; \
+	fi
+	if [ -f $(PKG_BUILD_DIR)/include/ref/ref_fdb.h ]; then \
+	$(CP) $(PKG_BUILD_DIR)/include/ref/ref_fdb.h $(STAGING_DIR)/usr/include/qca-ssdk/ref/; \
+	fi
+	if [ -f $(PKG_BUILD_DIR)/include/ref/ref_port_ctrl.h ]; then \
+	$(CP) $(PKG_BUILD_DIR)/include/ref/ref_port_ctrl.h $(STAGING_DIR)/usr/include/qca-ssdk/ref/; \
+	fi
+	if [ -f $(PKG_BUILD_DIR)/include/init/ssdk_init.h ]; then \
+	$(CP) $(PKG_BUILD_DIR)/include/init/ssdk_init.h $(STAGING_DIR)/usr/include/qca-ssdk/init/; \
+	fi
+	if [ -f $(PKG_BUILD_DIR)/include/init/ssdk_netlink.h ]; then \
+	$(CP) $(PKG_BUILD_DIR)/include/init/ssdk_netlink.h $(STAGING_DIR)/usr/include/qca-ssdk/init/; \
+	fi
+	$(CP) $(PKG_BUILD_DIR)/include/fal $(STAGING_DIR)/usr/include/qca-ssdk
+	$(CP) $(PKG_BUILD_DIR)/include/common/*.h $(STAGING_DIR)/usr/include/qca-ssdk
+	$(CP) $(PKG_BUILD_DIR)/include/sal/os/linux/*.h $(STAGING_DIR)/usr/include/qca-ssdk
+	$(CP) $(PKG_BUILD_DIR)/include/sal/os/*.h $(STAGING_DIR)/usr/include/qca-ssdk
+endif
+

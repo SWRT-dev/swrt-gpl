@@ -1,6 +1,7 @@
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
 
 INSTALL_HEADERS=bufrd.h \
 	bufwr.h \
@@ -24,10 +25,10 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/libhyficommon/*.c),)
 	mkdir -p $(PKG_BUILD_DIR)/install
 	mkdir -p $(PKG_BUILD_DIR)/install/include
 	mkdir -p $(PKG_BUILD_DIR)/install/lib
-	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(HYFICOMMON_MAKEOPTS))
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(strip $(HYFICOMMON_MAKEOPTS)) $(TARGET_CONFIGURE_OPTS)
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp prebuilt/libhyficommon.so $(PKG_BUILD_DIR)/libhyficommon.so
+	cp prebuilt/$(BUILD_NAME)/libhyficommon.so $(PKG_BUILD_DIR)/libhyficommon.so
 endif
 	touch stamp-h1
 

@@ -1,19 +1,15 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
+
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 QCA_MC_SNOOPING_MAKE_OPTS:= \
-        CROSS_COMPILE=$(CROSS_COMPILE) \
-        ARCH=$(ARCH) \
         KERNELPATH=$(LINUXDIR) \
         KBUILDPATH=$(LINUXDIR) \
         KERNELRELEASE=1 \
 		CONFIG_SUPPORT_MLD=y \
-        MDIR=$(PKG_BUILD_DIR) \
 		STAGING_DIR=$(STAGING_DIR)
 
 ifeq ($(CONFIG_PACKAGE_kmod-qca-ovsmgr),y)
@@ -26,10 +22,10 @@ INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-mcs/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-mcs source
-	$(MAKE) -C $(LINUXDIR) M=$(PKG_BUILD_DIR) $(strip $(QCA_MC_SNOOPING_MAKE_OPTS))
+	$(KERNEL_MAKE) M=$(PKG_BUILD_DIR) $(strip $(QCA_MC_SNOOPING_MAKE_OPTS))
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp prebuilt/qca-mcs.ko $(PKG_BUILD_DIR)
+	cp prebuilt/$(BUILD_NAME)/qca-mcs.ko $(PKG_BUILD_DIR)
 endif
 	touch stamp-h1
 

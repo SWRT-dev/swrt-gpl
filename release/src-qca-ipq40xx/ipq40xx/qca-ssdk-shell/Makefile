@@ -1,47 +1,26 @@
-include ./config
+# Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
+PKG_BUILD_DIR=$(shell pwd)/source
+subtarget:=$(CONFIG_TARGET_BOARD)
 
-ifndef PRJ_PATH
-  PRJ_PATH=$(shell pwd)
-endif
-export PRJ_PATH
+QCASSDKSHELL_CONFIG_OPTS:= \
+	TOOL_PATH=$(STAGING_DIR)/bin \
+	SYS_PATH=$(LINUXDIR) \
+	TOOLPREFIX=$(TARGET_CROSS) \
+	KVER=$(LINUX_KERNEL) \
+	ARCH=$(ARCH)
 
-include ./make/config.mk
-include ./make/tools.mk
-include ./make/$(OS)_opt.mk
+all:
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCASSDKSHELL_CONFIG_OPTS)) $(TARGET_CONFIGURE_OPTS)
+	touch stamp-h1
 
-SUB_DIR=$(patsubst %/, %, $(dir $(wildcard src/*/Makefile)))
-SUB_LIB=$(subst src/, , $(SUB_DIR))
-
-all: $(BIN_DIR) uslib shell
-	@echo "---Build [SSDK_SH-$(VERSION)] at $(BUILD_DATE) finished."
-
-kslib:kslib_o
-	$(AR) -r $(BIN_DIR)/$(KS_MOD)_$(RUNMODE).a $(wildcard $(BLD_DIR)/KSLIB/*.o)
-
-kslib_o:
-	$(foreach i, $(SUB_LIB), $(MAKE) MODULE_TYPE=KSLIB -C src/$i all || exit 1;)
-
-uslib:uslib_o
-	$(AR) -r $(BIN_DIR)/$(US_MOD)_$(RUNMODE).a $(wildcard $(BLD_DIR)/USLIB/*.o)
-
-uslib_o:
-	$(foreach i, $(SUB_LIB), $(MAKE) MODULE_TYPE=USLIB -C src/$i all || exit 1;)
-
-shell:uslib shell_o
-	$(CP) $(BLD_DIR)/SHELL/$(SHELLOBJ) $(BIN_DIR)/$(SHELLOBJ)
-	$(STRIP) $(BIN_DIR)/$(SHELLOBJ)
-
-shell_o:
-	$(foreach i, $(SUB_LIB), $(MAKE) MODULE_TYPE=SHELL -C src/$i all || exit 1;)
-
-$(BIN_DIR):
-	$(MKDIR) -p $@
-
-release:
-	@cd make; ./release.sh $(VER)
+install:
+	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
+	install -m 755 -D $(PKG_BUILD_DIR)/build/bin/ssdk_sh $(INSTALLDIR)/usr/sbin/ssdk_sh
+	$(STRIP) $(INSTALLDIR)/usr/sbin/ssdk_sh
 
 clean:
-	$(RM) -f $(BLD_DIR)/KSLIB/*
-	$(RM) -f $(BLD_DIR)/USLIB/*
-	$(RM) -f $(BLD_DIR)/SHELL/*
-	$(RM) -f $(BIN_DIR)/*
+
+stage:
+

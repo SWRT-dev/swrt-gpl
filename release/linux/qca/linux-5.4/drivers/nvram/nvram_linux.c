@@ -13,8 +13,7 @@
  */
 #define ASUS_NVRAM
 #define WL_NVRAM	/* wear-levelling nvram */
-#if defined(CONFIG_PINCTRL_IPQ8074) || defined(CONFIG_PINCTRL_IPQ6018) || defined(CONFIG_PINCTRL_IPQ5018) || defined(CONFIG_PINCTRL_IPQ4019)
-#else
+#if defined(CONFIG_PINCTRL_IPQ5332) 
 #define COMPRESS_NVRAM
 #endif
 
@@ -32,6 +31,7 @@
 #include <nvram/bcmnvram.h>
 #endif
 
+static int nv_locked = 0;
 /* If UBOOT_CFG_ENV_SIZE is defined as non-zero value,
  * we have to skip first UBOOT_CFG_ENV_SIZE bytes of MTD partition.
  */
@@ -959,7 +959,7 @@ _nvram_read(char *buf)
 			cptr = cbuf + skip;
 			dlen = NVRAM_SPACE - skip;
 			if (kzlib_decompress(cptr, ptr, clen, &dlen)) {
-				printk("%s: decompress nvram failed\n", __func__);
+				pr_crit("%s: decompress nvram failed\n", __func__);
 				goto exit__nvram_read;
 			}
 			//printk("%s: decompress nvram %d into %d bytes\n", __func__, clen, dlen);
@@ -1152,6 +1152,10 @@ nvram_commit(void)
 	unsigned int i;
 #endif	/* WL_NVRAM */
 
+	if (nv_locked) {
+		// pr_crit("[%s:%d] under reboot, skip!\n", __func__, __LINE__);
+		return 0;
+	}
 	printk(KERN_DEBUG "%s(): pid %d comm [%s]\n", __func__, current->pid, current->comm);
 	if (!nvram_mtd) {
 		printk("nvram_commit: NVRAM not found\n");
@@ -1528,6 +1532,14 @@ dev_nvram_do_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 		unsigned int nvram_space = NVRAM_SPACE;
 		copy_to_user((unsigned int *)arg, &nvram_space, sizeof(nvram_space));
 		return 0;
+	} else if (cmd == 0x0003) {
+		nvram_free();
+		/* reload nvram */
+		_nvram_init(sbh);
+		return 0;
+	} else if (cmd == 0x0004) {
+		nv_locked = 1;
+		return 0;
 	}
 	if (cmd != NVRAM_MAGIC)
 		return -EINVAL;
@@ -1553,7 +1565,7 @@ dev_nvram_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 }
 
 #if defined (ASUS_NVRAM) && !defined (CONFIG_MMU)
-static unsigned long
+static unsigned long 
 dev_nvram_get_unmapped_area (struct file *file, unsigned long addr, unsigned long len, unsigned long pgoff, unsigned long flags)
 {
 	/* If driver need shared mmap, it have to provide an get_unmapped_area method on MMU-less system.
@@ -2062,4 +2074,5 @@ MODULE_LICENSE("GPL");
 #endif	// ASUS_NVRAM
 
 MODULE_VERSION("V0.01");
+
 

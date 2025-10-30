@@ -1,10 +1,7 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-TARGET_CC=$(CROSS_COMPILE)gcc
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
 
 subtarget:=$(CONFIG_TARGET_BOARD)
 
@@ -25,20 +22,21 @@ EXTRA_CFLAGS+= \
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers
+export KBUILD_EXTRA_SYMBOLS
 
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-crypto/Makefile),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-crypto source
-	$(MAKE) -C "$(LINUXDIR)" CC="$(TARGET_CC)" CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" NSS_CRYPTO_DIR=$(NSS_CRYPTO_DIR) SoC="$(subtarget)" KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
+	$(KERNEL_MAKE) $(PARALLEL_BUILD) EXTRA_CFLAGS="$(EXTRA_CFLAGS)" M="$(PKG_BUILD_DIR)" \
+		NSS_CRYPTO_DIR=$(NSS_CRYPTO_DIR) SoC="$(subtarget)" modules
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/src
 	mkdir -p $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/tool
-	cp prebuilt/qca-nss-crypto.ko $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/src
-	cp prebuilt/qca-nss-crypto-tool.ko $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/tool
+	cp prebuilt/$(BUILD_NAME)/qca-nss-crypto.ko $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/src
+	cp prebuilt/$(BUILD_NAME)/qca-nss-crypto-tool.ko $(PKG_BUILD_DIR)/$(NSS_CRYPTO_DIR)/tool
 endif
 	touch stamp-h1
 

@@ -172,7 +172,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 						tmp = tmp->next;
 						if(tmp == NULL){
 							if(g_show_sta_info && f_exists("/tmp/conn_debug"))
-								printf("### %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
+								_dprintf("### %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
 							p_client_tab->device_flag[i] &= 0xf7;
 							break;
 						}

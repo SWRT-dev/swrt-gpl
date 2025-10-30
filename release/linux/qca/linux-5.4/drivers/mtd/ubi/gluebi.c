@@ -960,7 +960,10 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 	part->size = mtd->size;
 	part->mask_flags |= MTD_WRITEABLE;
 #if defined(SWRT360V6) || defined(JDCAX1800)
-	for(rootfs_offset = 0x3c0000; rootfs_offset < 0x400000; rootfs_offset += 0x40) {
+#if defined(SWRT360V6) || defined(JDCAX1800)
+	for(rootfs_offset = 0x3c0000; rootfs_offset < 0x400000; rootfs_offset += 0x40)
+#endif
+	{
 		ret = mtd_read(mtd, rootfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
 		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
 			ret = 0;
@@ -1012,8 +1015,8 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 	}
 #endif
 
-	printk(KERN_DEBUG "volume %s rfs_offset %x mtd->size %lx\n",
-		vi->name, rfs_offset, (unsigned long)mtd->size);
+	printk(KERN_DEBUG "volume %s rfs_offset %lx mtd->size %lx\n",
+		vi->name, (unsigned long)rfs_offset, (unsigned long)mtd->size);
 	mtd_device_register(mtd, part, 1);
 
 	return 0;

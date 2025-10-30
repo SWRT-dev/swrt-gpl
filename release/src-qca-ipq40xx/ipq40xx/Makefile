@@ -13,21 +13,10 @@
 
 include ../router/common.mak
 include ../router/.config
-include qsdk.config
-
-PLATFORM_ROUTER_SRCBASE:=$(shell pwd)
-export PLATFORM_ROUTER_SRCBASE
-export INSTALL_BIN:=install -m0755
-export INSTALL_DIR:=install -d -m0755
-export INSTALL_DATA:=install -m0644
-export INSTALL_CONF:=install -m0600
 
 export CFLAGS+=$(EXTRACFLAGS)
 export LDFLAGS+=$(EXTRALDFLAGS)
 
-# Package dependence
-PKGDEP_QCA_HOSTAP	:= qca-wifi-10.4 libnl openssl
-PKGDEP_QCA_WIFI		:= iproute2-4.4.0 libxml2 libnl qca-wifi-fw-10.4
 PKGDEP_QCA_EZMESH	:= libhyficommon libwifisoncfg libubus libubox libuci libwpa2 jansson bridge qti-autorole qca-libhyfi-bridge kmod-qca-hyfi-bridge qca-ssdk
 PKGDEP_QCA_EZMESH	+= qca-wifi-10.4
 
@@ -41,19 +30,21 @@ pobj-y += qca-edma qca-swconfig.ipq40xx
 pobj-y += qca-ssdk
 pobj-y += qca-ssdk-shell
 pobj-y += shortcut-fe
-pobj-y += qca-wifi-10.4 $(PKGDEP_QCA_WIFI)
+pobj-y += qca-wifi
 pobj-y += qca-wifi-fw.ipq40xx
 ifeq ($(RTCONFIG_PCIE_QCA9984),y)
 pobj-y += qca-wifi-fw.qca9984
 endif
-pobj-y += qca-hostap-10.4 $(PKGDEP_QCA_HOSTAP)
-pobj-y += qca-wrapd-10.4
+pobj-y += qca-hostap
+pobj-y += qca-wrapd
 ifeq ($(RTCONFIG_EASYMESH),y)
 pobj-y += qca-ezmesh $(PKGDEP_QCA_EZMESH)
 endif
 ifeq ($(RTCONFIG_BT_CONN),y)
 pobj-y += btconfig
 endif
+
+pobj-$(RTCONFIG_QCA_LBD) += qca-whc-lbd libqcacommon libieee1905 libwifisoncfg #qca-wifison-ext-lib
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)

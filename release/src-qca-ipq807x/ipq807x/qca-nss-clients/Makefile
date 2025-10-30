@@ -1,9 +1,8 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
+
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 ifneq (, $(findstring $(subtarget), "ipq807x" "ipq807x_64" "ipq60xx" "ipq60xx_64" "ipq50xx" "ipq50xx_64"))
@@ -182,14 +181,17 @@ KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-wifi/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-mcs-lkm/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(LINUXDIR)/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SRCBASE)/$(PLATFORM_ROUTER)/nat46/source/nat46/modules/Module.symvers
+export KBUILD_EXTRA_SYMBOLS
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-clients/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-clients source
-	$(MAKE) -C "$(LINUXDIR)" $(strip $(MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" DTLSMGR_DIR="$(DTLSMGR_DIR)" IPSECMGR_DIR="$(IPSECMGR_DIR)" \
-		KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
+	$(KERNEL_MAKE) $(PARALLEL_BUILD) $(strip $(MAKE_OPTS)) EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
+		M="$(PKG_BUILD_DIR)" \
+		SoC="$(subtarget)" DTLSMGR_DIR="$(DTLSMGR_DIR)" IPSECMGR_DIR="$(IPSECMGR_DIR)" modules
 else
+	mkdir -p $(PKG_BUILD_DIR)
+	cp prebuilt/$(BUILD_NAME)/*.ko $(PKG_BUILD_DIR)
 endif
 	touch stamp-h1
 
@@ -245,7 +247,7 @@ endif
 	@install -D $(PKG_BUILD_DIR)/l2tp/l2tpv2/qca-nss-l2tpv2.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/qca-nss-tun6rd.ko $(INSTALLKMODDIR)
 else
-	@for i in $(NSS_CLIENTS_KMOD); do install -D $$i $(INSTALLKMODDIR) ; done
+	@for i in $(wildcard PKG_BUILD_DIR/*); do install -D $$i $(INSTALLKMODDIR) ; done
 endif
 	@$(STRIPX) $(INSTALLKMODDIR)/*.ko
 

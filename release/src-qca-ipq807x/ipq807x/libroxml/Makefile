@@ -1,12 +1,13 @@
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
 
 all:
 	cd $(PKG_BUILD_DIR) && $(CONFIGURE) --enable-shared --enable-static --disable-roxml
-	$(MAKE) -C $(PKG_BUILD_DIR)
-	cp -rf $(PKG_BUILD_DIR)/src/roxml.h $(STAGEDIR)/usr/include
-	cp -rf $(PKG_BUILD_DIR)/.libs/libroxml.so* $(STAGEDIR)/usr/lib
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS)
+	$(CP) $(PKG_BUILD_DIR)/src/roxml.h $(STAGEDIR)/usr/include
+	$(CP) $(PKG_BUILD_DIR)/.libs/libroxml.so* $(STAGEDIR)/usr/lib
 	touch stamp-h1
 
 install:
@@ -18,6 +19,6 @@ install:
 clean:
 
 stage:
-	cp -rf $(PKG_BUILD_DIR)/src/roxml.h $(STAGEDIR)/usr/include
-	cp -rf $(PKG_BUILD_DIR)/.libs/libroxml.so* $(STAGEDIR)/usr/lib
+	$(CP) $(PKG_BUILD_DIR)/src/roxml.h $(STAGEDIR)/usr/include
+	$(CP) $(PKG_BUILD_DIR)/.libs/libroxml.so* $(STAGEDIR)/usr/lib
 

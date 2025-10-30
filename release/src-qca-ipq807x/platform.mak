@@ -1,17 +1,14 @@
-# Select QSDK
-IPQ807X_MODEL_LIST := $(addprefix _,$(addsuffix _,GT-AXY16000 RT-AX89U RAX120))
-
-BUILD_NAME ?= $(shell echo $(MAKECMDGOALS) | tr a-z A-Z)
-export _BUILD_NAME_ := $(addprefix _,$(addsuffix _,$(BUILD_NAME)))
 
 SWITCH_CHIP_ID_POOL =					\
+	"QCA8075"				\
 	"QCA8075_PHY_AQR107"				\
 	"QCA8075_PHY_AQR111"				\
 	"QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033"
 
 # related path to platform specific software package
 export PLATFORM_ROUTER := ipq807x
-export LOADADDR := 42208000
+#export LOADADDR := 42208000
+export LOADADDR := 41080000
 export ENTRYADDR := $(LOADADDR)
 export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 export SDKDIR := $(SDK_DIR_PLATFORM)
@@ -23,14 +20,14 @@ export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-musl-
 export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-musl-readelf
 #export RTVER := $(patsubst librt-%.so,%,$(shell basename $(wildcard $(TOOLS)/lib/librt-*.so)))
 export CROSS_COMPILER := $(CROSS_COMPILE)
-export CONFIGURE := ./configure --host=aarch64-linux-gnu --build=$(BUILD)
+export CONFIGURE := ./configure --host=aarch64-openwrt-linux --build=$(BUILD)
 export HOSTCONFIG := linux-aarch64
 export ARCH := arm64
 export HOST := aarch64-linux
 export KERNELCC := $(TOOLS)/bin/aarch64-openwrt-linux-musl-gcc
 export KERNELLD := $(TOOLS)/bin/aarch64-openwrt-linux-musl-ld
 export KARCH := $(firstword $(subst -, ,$(shell $(KERNELCC) -dumpmachine)))
-export DTB := "qcom/$(DTB)"
+#export DTB := "qcom/$(DTB)"
 
 EXTRACFLAGS += -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mcpu=cortex-a53+crypto
 export EXTRACFLAGS
@@ -38,7 +35,7 @@ export EXTRACFLAGS
 # OpenWRT's toolchain needs STAGING_DIR environment variable that points to top directory of toolchain.
 export STAGING_DIR=$(TOOLS)
 
-EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -mfpu=neon-vfpv4 -mfloat-abi=softfp
+EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST #-mfpu=neon-vfpv4 -mfloat-abi=softfp
 EXTRA_CFLAGS += -D_GNU_SOURCE -D_BSD_SOURCE
 
 export CONFIG_LINUX26=y
@@ -74,12 +71,12 @@ define platformRouterOptions
 	echo "RTCONFIG_QCA_ARM=y" >>$(1); \
 	sed -i "/RTCONFIG_32BYTES_ODMPID/d" $(1); \
 	echo "RTCONFIG_32BYTES_ODMPID=y" >>$(1); \
-	if [ "$(BUILD_NAME)" = "RAX120" ] ; then \
-		sed -i "/RTCONFIG_FITFDT/d" $(1); \
-		echo "RTCONFIG_FITFDT=y" >>$(1); \
-	else \
+	if [ "$(RTAX89U)" = y ] ; then \
 		sed -i "/RTCONFIG_FITFDT/d" $(1); \
 		echo "# RTCONFIG_FITFDT is not set" >>$(1); \
+	else \
+		sed -i "/RTCONFIG_FITFDT/d" $(1); \
+		echo "RTCONFIG_FITFDT=y" >>$(1); \
 	fi; \
 	if [ "$(WIFI_CHIP)" = "QCN50X4" ] ; then \
 		sed -i "/RTCONFIG_WIFI_QCN5024_QCN5054/d" $(1); \
@@ -216,178 +213,168 @@ define platformKernelConfig
 		sed -i "/CONFIG_THERMAL_HWMON\>/d" $(1); \
 		echo "CONFIG_THERMAL_HWMON=y" >>$(1); \
 	fi; \
-	if [ -n "$(findstring $(_BUILD_NAME_),$(IPQ807X_MODEL_LIST))" ] ; then \
-		sed -i "/CONFIG_ARCH_WANT_KMAP_ATOMIC_FLUSH\>/d" $(1); \
-		echo "CONFIG_ARCH_WANT_KMAP_ATOMIC_FLUSH=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_DCC\>/d" $(1); \
-		echo "CONFIG_QCOM_DCC=y" >>$(1); \
-		sed -i "/CONFIG_KRAITCC\>/d" $(1); \
-		echo "# CONFIG_KRAITCC is not set" >>$(1); \
-		sed -i "/CONFIG_KRAIT_CLOCKS\>/d" $(1); \
-		echo "# CONFIG_KRAIT_CLOCKS is not set" >>$(1); \
-		sed -i "/CONFIG_KRAIT_L2_ACCESSORS\>/d" $(1); \
-		echo "# CONFIG_KRAIT_L2_ACCESSORS is not set" >>$(1); \
-		sed -i "/CONFIG_PCIEPORTBUS\>/d" $(1); \
-		echo "# CONFIG_PCIEPORTBUS is not set" >>$(1); \
-		sed -i "/CONFIG_PCIE_PME\>/d" $(1); \
-		echo "# CONFIG_PCIE_PME is not set" >>$(1); \
-		sed -i "/CONFIG_GENERIC_CPUFREQ_KRAIT\>/d" $(1); \
-		echo "# CONFIG_GENERIC_CPUFREQ_KRAIT is not set" >>$(1); \
-		sed -i "/CONFIG_REGMAP_ALLOW_WRITE_DEBUGFS\>/d" $(1); \
-		echo "CONFIG_REGMAP_ALLOW_WRITE_DEBUGFS=y" >>$(1); \
-		sed -i "/CONFIG_REGMAP_SPI\>/d" $(1); \
-		echo "CONFIG_REGMAP_SPI=y" >>$(1); \
-		sed -i "/CONFIG_SPS\>/d" $(1); \
-		echo "CONFIG_SPS=y" >>$(1); \
-		sed -i "/CONFIG_SPS_SUPPORT_NDP_BAM\>/d" $(1); \
-		echo "CONFIG_SPS_SUPPORT_NDP_BAM=y" >>$(1); \
-		sed -i "/CONFIG_BLK_DEV_NVME\>/d" $(1); \
-		echo "CONFIG_BLK_DEV_NVME=y" >>$(1); \
-		sed -i "/CONFIG_RELAY\>/d" $(1); \
-		echo "CONFIG_RELAY=y" >>$(1); \
-		sed -i "/CONFIG_MD\>/d" $(1); \
-		echo "CONFIG_MD=y" >>$(1); \
-		sed -i "/CONFIG_BLK_DEV_DM\>/d" $(1); \
-		echo "CONFIG_BLK_DEV_DM=y" >>$(1); \
-		sed -i "/CONFIG_DM_CRYPT\>/d" $(1); \
-		echo "CONFIG_DM_CRYPT=m" >>$(1); \
-		sed -i "/CONFIG_DM_REQ_CRYPT\>/d" $(1); \
-		echo "CONFIG_DM_REQ_CRYPT=m" >>$(1); \
-		sed -i "/CONFIG_DM_MIRROR\>/d" $(1); \
-		echo "CONFIG_DM_MIRROR=m" >>$(1); \
-		sed -i "/CONFIG_PTP_1588_CLOCK\>/d" $(1); \
-		echo "CONFIG_PTP_1588_CLOCK=y" >>$(1); \
-		sed -i "/CONFIG_REGULATOR_RPM_GLINK\>/d" $(1); \
-		echo "CONFIG_REGULATOR_RPM_GLINK=y" >>$(1); \
-		sed -i "/CONFIG_MMC_SDHCI_MSM_ICE\>/d" $(1); \
-		echo "CONFIG_MMC_SDHCI_MSM_ICE=y" >>$(1); \
-		sed -i "/CONFIG_CRYPTO_DEV_QCOM_ICE\>/d" $(1); \
-		echo "CONFIG_CRYPTO_DEV_QCOM_ICE=y" >>$(1); \
-		sed -i "/CONFIG_WANT_DEV_COREDUMP\>/d" $(1); \
-		echo "CONFIG_WANT_DEV_COREDUMP=y" >>$(1); \
-		sed -i "/CONFIG_USB_F_QDSS\>/d" $(1); \
-		echo "CONFIG_USB_F_QDSS=m" >>$(1); \
-		sed -i "/CONFIG_USB_CONFIGFS_F_QDSS\>/d" $(1); \
-		echo "CONFIG_USB_CONFIGFS_F_QDSS=y" >>$(1); \
-		sed -i "/CONFIG_USB_BAM\>/d" $(1); \
-		echo "CONFIG_USB_BAM=y" >>$(1); \
-		sed -i "/CONFIG_CNSS2_GENL\>/d" $(1); \
-		echo "CONFIG_CNSS2_GENL=y" >>$(1); \
-		sed -i "/CONFIG_QCA_MINIDUMP\>/d" $(1); \
-		echo "CONFIG_QCA_MINIDUMP=y" >>$(1); \
-		sed -i "/CONFIG_MAILBOX\>/d" $(1); \
-		echo "CONFIG_MAILBOX=y" >>$(1); \
-		sed -i "/CONFIG_ARM_KERNMEM_PERMS\>/d" $(1); \
-		echo "# CONFIG_ARM_KERNMEM_PERMS is not set" >>$(1); \
-		sed -i "/CONFIG_DEBUG_RODATA\>/d" $(1); \
-		echo "# CONFIG_DEBUG_RODATA is not set" >>$(1); \
-		sed -i "/CONFIG_RMNET_DATA\>/d" $(1); \
-		echo "CONFIG_RMNET_DATA=y" >>$(1); \
-		sed -i "/CONFIG_RMNET_DATA_DEBUG_PKT\>/d" $(1); \
-		echo "CONFIG_RMNET_DATA_DEBUG_PKT=y" >>$(1); \
-		sed -i "/CONFIG_MHI_BUS\>/d" $(1); \
-		echo "CONFIG_MHI_BUS=y" >>$(1); \
-		sed -i "/CONFIG_MHI_DEBUG\>/d" $(1); \
-		echo "CONFIG_MHI_DEBUG=y" >>$(1); \
-		sed -i "/CONFIG_MHI_QTI\>/d" $(1); \
-		echo "CONFIG_MHI_QTI=y" >>$(1); \
-		sed -i "/CONFIG_MHI_NETDEV\>/d" $(1); \
-		echo "CONFIG_MHI_NETDEV=y" >>$(1); \
-		sed -i "/CONFIG_MHI_UCI\>/d" $(1); \
-		echo "CONFIG_MHI_UCI=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_QMI_HELPERS\>/d" $(1); \
-		echo "CONFIG_QCOM_QMI_HELPERS=y" >>$(1); \
-		sed -i "/CONFIG_DEBUG_SET_MODULE_RONX\>/d" $(1); \
-		echo "# CONFIG_DEBUG_SET_MODULE_RONX is not set" >>$(1); \
-		sed -i "/CONFIG_PHY_QCOM_DWC3\>/d" $(1); \
-		echo "# CONFIG_PHY_QCOM_DWC3 is not set" >>$(1); \
-		sed -i "/CONFIG_CRYPTO_MICHAEL_MIC\>/d" $(1); \
-		echo "CONFIG_CRYPTO_MICHAEL_MIC=y" >>$(1); \
-		sed -i "/CONFIG_NET_VENDOR_QUALCOMM\>/d" $(1); \
-		echo "CONFIG_NET_VENDOR_QUALCOMM=y" >>$(1); \
-		sed -i "/CONFIG_RMNET\>/d" $(1); \
-		echo "CONFIG_RMNET=y" >>$(1); \
-		sed -i "/CONFIG_NET_L3_MASTER_DEV\>/d" $(1); \
-		echo "CONFIG_NET_L3_MASTER_DEV=y" >>$(1); \
-		sed -i "/CONFIG_CNSS2_UCODE_DUMP\>/d" $(1); \
-		echo "CONFIG_CNSS2_UCODE_DUMP=y" >>$(1); \
-	fi; \
-	if [ -n "$(findstring $(_BUILD_NAME_),$(IPQ807X_MODEL_LIST))" ] ; then \
-		sed -i "/CONFIG_HAVE_GCC_PLUGINS\>/d" $(1); \
-		echo "CONFIG_HAVE_GCC_PLUGINS=y" >>$(1); \
-		sed -i "/CONFIG_IPC_ROUTER\>/d" $(1); \
-		echo "# CONFIG_IPC_ROUTER is not set" >>$(1); \
-		sed -i "/CONFIG_IPQ807X_REMOTEPROC\>/d" $(1); \
-		echo "# CONFIG_IPQ807X_REMOTEPROC is not set" >>$(1); \
-		sed -i "/CONFIG_IPQ_REMOTEPROC_ADSP\>/d" $(1); \
-		echo "# CONFIG_IPQ_REMOTEPROC_ADSP is not set" >>$(1); \
-		sed -i "/CONFIG_MSM_GLINK\>/d" $(1); \
-		echo "# CONFIG_MSM_GLINK is not set" >>$(1); \
-		sed -i "/CONFIG_MSM_GLINK_SMEM_NATIVE_XPRT\>/d" $(1); \
-		echo "# CONFIG_MSM_GLINK_SMEM_NATIVE_XPRT is not set" >>$(1); \
-		sed -i "/CONFIG_MSM_GLINK_PKT\>/d" $(1); \
-		echo "# CONFIG_MSM_GLINK_PKT is not set" >>$(1); \
-		sed -i "/CONFIG_MSM_IPC_ROUTER_GLINK_XPRT\>/d" $(1); \
-		echo "# CONFIG_MSM_IPC_ROUTER_GLINK_XPRT is not set" >>$(1); \
-		sed -i "/CONFIG_MSM_QMI_INTERFACE\>/d" $(1); \
-		echo "# CONFIG_MSM_QMI_INTERFACE is not set" >>$(1); \
-		sed -i "/CONFIG_MSM_TEST_QMI_CLIENT\>/d" $(1); \
-		echo "# CONFIG_MSM_TEST_QMI_CLIENT is not set" >>$(1); \
-		sed -i "/CONFIG_MSM_RPM_GLINK\>/d" $(1); \
-		echo "# CONFIG_MSM_RPM_GLINK is not set" >>$(1); \
-		sed -i "/CONFIG_IPQ_SUBSYSTEM_DUMP\>/d" $(1); \
-		echo "# CONFIG_IPQ_SUBSYSTEM_DUMP is not set" >>$(1); \
-		sed -i "/CONFIG_DIAG_OVER_QRTR\>/d" $(1); \
-		echo "CONFIG_DIAG_OVER_QRTR=y" >>$(1); \
-		sed -i "/CONFIG_DIAGFWD_BRIDGE_CODE\>/d" $(1); \
-		echo "CONFIG_DIAGFWD_BRIDGE_CODE=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_APCS_IPC\>/d" $(1); \
-		echo "CONFIG_QCOM_APCS_IPC=y" >>$(1); \
-		sed -i "/CONFIG_RPMSG\>/d" $(1); \
-		echo "CONFIG_RPMSG=y" >>$(1); \
-		sed -i "/CONFIG_RPMSG_CHAR\>/d" $(1); \
-		echo "CONFIG_RPMSG_CHAR=y" >>$(1); \
-		sed -i "/CONFIG_RPMSG_QCOM_GLINK_NATIVE\>/d" $(1); \
-		echo "CONFIG_RPMSG_QCOM_GLINK_NATIVE=y" >>$(1); \
-		sed -i "/CONFIG_RPMSG_QCOM_GLINK_RPM\>/d" $(1); \
-		echo "CONFIG_RPMSG_QCOM_GLINK_RPM=y" >>$(1); \
-		sed -i "/CONFIG_RPMSG_QCOM_GLINK_SMEM\>/d" $(1); \
-		echo "CONFIG_RPMSG_QCOM_GLINK_SMEM=y" >>$(1); \
-		sed -i "/CONFIG_RPMSG_QCOM_SMD\>/d" $(1); \
-		echo "CONFIG_RPMSG_QCOM_SMD=y" >>$(1); \
-		sed -i "/CONFIG_MSM_RPM_RPMSG\>/d" $(1); \
-		echo "CONFIG_MSM_RPM_RPMSG=y" >>$(1); \
-		sed -i "/CONFIG_QRTR\>/d" $(1); \
-		echo "CONFIG_QRTR=y" >>$(1); \
-		sed -i "/CONFIG_QRTR_SMD\>/d" $(1); \
-		echo "CONFIG_QRTR_SMD=y" >>$(1); \
-		sed -i "/CONFIG_QRTR_MHI\>/d" $(1); \
-		echo "CONFIG_QRTR_MHI=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_RPROC_COMMON\>/d" $(1); \
-		echo "CONFIG_QCOM_RPROC_COMMON=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_Q6V5_COMMON\>/d" $(1); \
-		echo "CONFIG_QCOM_Q6V5_COMMON=y" >>$(1); \
-		sed -i "/CONFIG_QTI_Q6V5_ADSP\>/d" $(1); \
-		echo "CONFIG_QTI_Q6V5_ADSP=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_Q6V5_WCSS\>/d" $(1); \
-		echo "CONFIG_QCOM_Q6V5_WCSS=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_SYSMON\>/d" $(1); \
-		echo "CONFIG_QCOM_SYSMON=y" >>$(1); \
-		sed -i "/CONFIG_IPQ_SS_DUMP\>/d" $(1); \
-		echo "CONFIG_IPQ_SS_DUMP=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_GLINK_SSR\>/d" $(1); \
-		echo "CONFIG_QCOM_GLINK_SSR=y" >>$(1); \
-		sed -i "/CONFIG_QCOM_MDT_LOADER\>/d" $(1); \
-		echo "CONFIG_QCOM_MDT_LOADER=y" >>$(1); \
-		sed -i "/CONFIG_SAMPLES\>/d" $(1); \
-		echo "CONFIG_SAMPLES=y" >>$(1); \
-		sed -i "/CONFIG_SAMPLE_QMI_CLIENT\>/d" $(1); \
-		echo "CONFIG_SAMPLE_QMI_CLIENT=m" >>$(1); \
-		sed -i "/CONFIG_CORESIGHT_STREAM\>/d" $(1); \
-		echo "CONFIG_CORESIGHT_STREAM=m" >>$(1); \
-		sed -i "/CONFIG_CNSS_QCN9000/d" $(1); \
-		echo "CONFIG_CNSS_QCN9000=y" >>$(1); \
-	fi; \
+	sed -i "/CONFIG_ARCH_WANT_KMAP_ATOMIC_FLUSH\>/d" $(1); \
+	echo "CONFIG_ARCH_WANT_KMAP_ATOMIC_FLUSH=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_DCC\>/d" $(1); \
+	echo "CONFIG_QCOM_DCC=y" >>$(1); \
+	sed -i "/CONFIG_KRAITCC\>/d" $(1); \
+	echo "# CONFIG_KRAITCC is not set" >>$(1); \
+	sed -i "/CONFIG_KRAIT_CLOCKS\>/d" $(1); \
+	echo "# CONFIG_KRAIT_CLOCKS is not set" >>$(1); \
+	sed -i "/CONFIG_KRAIT_L2_ACCESSORS\>/d" $(1); \
+	echo "# CONFIG_KRAIT_L2_ACCESSORS is not set" >>$(1); \
+	sed -i "/CONFIG_PCIEPORTBUS\>/d" $(1); \
+	echo "# CONFIG_PCIEPORTBUS is not set" >>$(1); \
+	sed -i "/CONFIG_PCIE_PME\>/d" $(1); \
+	echo "# CONFIG_PCIE_PME is not set" >>$(1); \
+	sed -i "/CONFIG_GENERIC_CPUFREQ_KRAIT\>/d" $(1); \
+	echo "# CONFIG_GENERIC_CPUFREQ_KRAIT is not set" >>$(1); \
+	sed -i "/CONFIG_REGMAP_ALLOW_WRITE_DEBUGFS\>/d" $(1); \
+	echo "CONFIG_REGMAP_ALLOW_WRITE_DEBUGFS=y" >>$(1); \
+	sed -i "/CONFIG_REGMAP_SPI\>/d" $(1); \
+	echo "CONFIG_REGMAP_SPI=y" >>$(1); \
+	sed -i "/CONFIG_SPS\>/d" $(1); \
+	echo "CONFIG_SPS=y" >>$(1); \
+	sed -i "/CONFIG_SPS_SUPPORT_NDP_BAM\>/d" $(1); \
+	echo "CONFIG_SPS_SUPPORT_NDP_BAM=y" >>$(1); \
+	sed -i "/CONFIG_BLK_DEV_NVME\>/d" $(1); \
+	echo "CONFIG_BLK_DEV_NVME=y" >>$(1); \
+	sed -i "/CONFIG_RELAY\>/d" $(1); \
+	echo "CONFIG_RELAY=y" >>$(1); \
+	sed -i "/CONFIG_MD\>/d" $(1); \
+	echo "CONFIG_MD=y" >>$(1); \
+	sed -i "/CONFIG_BLK_DEV_DM\>/d" $(1); \
+	echo "CONFIG_BLK_DEV_DM=y" >>$(1); \
+	sed -i "/CONFIG_DM_CRYPT\>/d" $(1); \
+	echo "CONFIG_DM_CRYPT=m" >>$(1); \
+	sed -i "/CONFIG_DM_REQ_CRYPT\>/d" $(1); \
+	echo "CONFIG_DM_REQ_CRYPT=m" >>$(1); \
+	sed -i "/CONFIG_DM_MIRROR\>/d" $(1); \
+	echo "CONFIG_DM_MIRROR=m" >>$(1); \
+	sed -i "/CONFIG_PTP_1588_CLOCK\>/d" $(1); \
+	echo "CONFIG_PTP_1588_CLOCK=y" >>$(1); \
+	sed -i "/CONFIG_REGULATOR_RPM_GLINK\>/d" $(1); \
+	echo "CONFIG_REGULATOR_RPM_GLINK=y" >>$(1); \
+	sed -i "/CONFIG_MMC_SDHCI_MSM_ICE\>/d" $(1); \
+	echo "CONFIG_MMC_SDHCI_MSM_ICE=y" >>$(1); \
+	sed -i "/CONFIG_CRYPTO_DEV_QCOM_ICE\>/d" $(1); \
+	echo "CONFIG_CRYPTO_DEV_QCOM_ICE=y" >>$(1); \
+	sed -i "/CONFIG_WANT_DEV_COREDUMP\>/d" $(1); \
+	echo "CONFIG_WANT_DEV_COREDUMP=y" >>$(1); \
+	sed -i "/CONFIG_USB_F_QDSS\>/d" $(1); \
+	echo "CONFIG_USB_F_QDSS=m" >>$(1); \
+	sed -i "/CONFIG_USB_CONFIGFS_F_QDSS\>/d" $(1); \
+	echo "CONFIG_USB_CONFIGFS_F_QDSS=y" >>$(1); \
+	sed -i "/CONFIG_USB_BAM\>/d" $(1); \
+	echo "CONFIG_USB_BAM=y" >>$(1); \
+	sed -i "/CONFIG_CNSS2_GENL\>/d" $(1); \
+	echo "CONFIG_CNSS2_GENL=y" >>$(1); \
+	sed -i "/CONFIG_QCA_MINIDUMP\>/d" $(1); \
+	echo "CONFIG_QCA_MINIDUMP=y" >>$(1); \
+	sed -i "/CONFIG_MAILBOX\>/d" $(1); \
+	echo "CONFIG_MAILBOX=y" >>$(1); \
+	sed -i "/CONFIG_ARM_KERNMEM_PERMS\>/d" $(1); \
+	echo "# CONFIG_ARM_KERNMEM_PERMS is not set" >>$(1); \
+	sed -i "/CONFIG_DEBUG_RODATA\>/d" $(1); \
+	echo "# CONFIG_DEBUG_RODATA is not set" >>$(1); \
+	sed -i "/CONFIG_RMNET_DATA\>/d" $(1); \
+	echo "CONFIG_RMNET_DATA=y" >>$(1); \
+	sed -i "/CONFIG_RMNET_DATA_DEBUG_PKT\>/d" $(1); \
+	echo "CONFIG_RMNET_DATA_DEBUG_PKT=y" >>$(1); \
+	sed -i "/CONFIG_MHI_BUS\>/d" $(1); \
+	echo "CONFIG_MHI_BUS=y" >>$(1); \
+	sed -i "/CONFIG_MHI_DEBUG\>/d" $(1); \
+	echo "CONFIG_MHI_DEBUG=y" >>$(1); \
+	sed -i "/CONFIG_MHI_QTI\>/d" $(1); \
+	echo "CONFIG_MHI_QTI=y" >>$(1); \
+	sed -i "/CONFIG_MHI_NETDEV\>/d" $(1); \
+	echo "CONFIG_MHI_NETDEV=y" >>$(1); \
+	sed -i "/CONFIG_MHI_UCI\>/d" $(1); \
+	echo "CONFIG_MHI_UCI=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_QMI_HELPERS\>/d" $(1); \
+	echo "CONFIG_QCOM_QMI_HELPERS=y" >>$(1); \
+	sed -i "/CONFIG_DEBUG_SET_MODULE_RONX\>/d" $(1); \
+	echo "# CONFIG_DEBUG_SET_MODULE_RONX is not set" >>$(1); \
+	sed -i "/CONFIG_PHY_QCOM_DWC3\>/d" $(1); \
+	echo "# CONFIG_PHY_QCOM_DWC3 is not set" >>$(1); \
+	sed -i "/CONFIG_CRYPTO_MICHAEL_MIC\>/d" $(1); \
+	echo "CONFIG_CRYPTO_MICHAEL_MIC=y" >>$(1); \
+	sed -i "/CONFIG_NET_VENDOR_QUALCOMM\>/d" $(1); \
+	echo "CONFIG_NET_VENDOR_QUALCOMM=y" >>$(1); \
+	sed -i "/CONFIG_RMNET\>/d" $(1); \
+	echo "CONFIG_RMNET=y" >>$(1); \
+	sed -i "/CONFIG_NET_L3_MASTER_DEV\>/d" $(1); \
+	echo "CONFIG_NET_L3_MASTER_DEV=y" >>$(1); \
+	sed -i "/CONFIG_HAVE_GCC_PLUGINS\>/d" $(1); \
+	echo "CONFIG_HAVE_GCC_PLUGINS=y" >>$(1); \
+	sed -i "/CONFIG_IPC_ROUTER\>/d" $(1); \
+	echo "# CONFIG_IPC_ROUTER is not set" >>$(1); \
+	sed -i "/CONFIG_IPQ807X_REMOTEPROC\>/d" $(1); \
+	echo "# CONFIG_IPQ807X_REMOTEPROC is not set" >>$(1); \
+	sed -i "/CONFIG_IPQ_REMOTEPROC_ADSP\>/d" $(1); \
+	echo "# CONFIG_IPQ_REMOTEPROC_ADSP is not set" >>$(1); \
+	sed -i "/CONFIG_MSM_GLINK\>/d" $(1); \
+	echo "# CONFIG_MSM_GLINK is not set" >>$(1); \
+	sed -i "/CONFIG_MSM_GLINK_SMEM_NATIVE_XPRT\>/d" $(1); \
+	echo "# CONFIG_MSM_GLINK_SMEM_NATIVE_XPRT is not set" >>$(1); \
+	sed -i "/CONFIG_MSM_GLINK_PKT\>/d" $(1); \
+	echo "# CONFIG_MSM_GLINK_PKT is not set" >>$(1); \
+	sed -i "/CONFIG_MSM_IPC_ROUTER_GLINK_XPRT\>/d" $(1); \
+	echo "# CONFIG_MSM_IPC_ROUTER_GLINK_XPRT is not set" >>$(1); \
+	sed -i "/CONFIG_MSM_QMI_INTERFACE\>/d" $(1); \
+	echo "# CONFIG_MSM_QMI_INTERFACE is not set" >>$(1); \
+	sed -i "/CONFIG_MSM_TEST_QMI_CLIENT\>/d" $(1); \
+	echo "# CONFIG_MSM_TEST_QMI_CLIENT is not set" >>$(1); \
+	sed -i "/CONFIG_MSM_RPM_GLINK\>/d" $(1); \
+	echo "# CONFIG_MSM_RPM_GLINK is not set" >>$(1); \
+	sed -i "/CONFIG_IPQ_SUBSYSTEM_RAMDUMP\>/d" $(1); \
+	echo "# CONFIG_IPQ_SUBSYSTEM_RAMDUMP is not set" >>$(1); \
+	sed -i "/CONFIG_DIAG_OVER_QRTR\>/d" $(1); \
+	echo "CONFIG_DIAG_OVER_QRTR=y" >>$(1); \
+	sed -i "/CONFIG_DIAGFWD_BRIDGE_CODE\>/d" $(1); \
+	echo "CONFIG_DIAGFWD_BRIDGE_CODE=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_APCS_IPC\>/d" $(1); \
+	echo "CONFIG_QCOM_APCS_IPC=y" >>$(1); \
+	sed -i "/CONFIG_RPMSG\>/d" $(1); \
+	echo "CONFIG_RPMSG=y" >>$(1); \
+	sed -i "/CONFIG_RPMSG_CHAR\>/d" $(1); \
+	echo "CONFIG_RPMSG_CHAR=y" >>$(1); \
+	sed -i "/CONFIG_RPMSG_QCOM_GLINK_NATIVE\>/d" $(1); \
+	echo "CONFIG_RPMSG_QCOM_GLINK_NATIVE=y" >>$(1); \
+	sed -i "/CONFIG_RPMSG_QCOM_GLINK_RPM\>/d" $(1); \
+	echo "CONFIG_RPMSG_QCOM_GLINK_RPM=y" >>$(1); \
+	sed -i "/CONFIG_RPMSG_QCOM_GLINK_SMEM\>/d" $(1); \
+	echo "CONFIG_RPMSG_QCOM_GLINK_SMEM=y" >>$(1); \
+	sed -i "/CONFIG_RPMSG_QCOM_SMD\>/d" $(1); \
+	echo "CONFIG_RPMSG_QCOM_SMD=y" >>$(1); \
+	sed -i "/CONFIG_MSM_RPM_RPMSG\>/d" $(1); \
+	echo "CONFIG_MSM_RPM_RPMSG=y" >>$(1); \
+	sed -i "/CONFIG_QRTR\>/d" $(1); \
+	echo "CONFIG_QRTR=y" >>$(1); \
+	sed -i "/CONFIG_QRTR_SMD\>/d" $(1); \
+	echo "CONFIG_QRTR_SMD=y" >>$(1); \
+	sed -i "/CONFIG_QRTR_MHI\>/d" $(1); \
+	echo "CONFIG_QRTR_MHI=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_RPROC_COMMON\>/d" $(1); \
+	echo "CONFIG_QCOM_RPROC_COMMON=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_Q6V5_COMMON\>/d" $(1); \
+	echo "CONFIG_QCOM_Q6V5_COMMON=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_Q6V5_ADSP\>/d" $(1); \
+	echo "CONFIG_QCOM_Q6V5_ADSP=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_Q6V5_WCSS\>/d" $(1); \
+	echo "CONFIG_QCOM_Q6V5_WCSS=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_SYSMON\>/d" $(1); \
+	echo "CONFIG_QCOM_SYSMON=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_GLINK_SSR\>/d" $(1); \
+	echo "CONFIG_QCOM_GLINK_SSR=y" >>$(1); \
+	sed -i "/CONFIG_QCOM_MDT_LOADER\>/d" $(1); \
+	echo "CONFIG_QCOM_MDT_LOADER=y" >>$(1); \
+	sed -i "/CONFIG_SAMPLES\>/d" $(1); \
+	echo "CONFIG_SAMPLES=y" >>$(1); \
+	sed -i "/CONFIG_SAMPLE_QMI_CLIENT\>/d" $(1); \
+	echo "CONFIG_SAMPLE_QMI_CLIENT=m" >>$(1); \
+	sed -i "/CONFIG_CORESIGHT_STREAM\>/d" $(1); \
+	echo "CONFIG_CORESIGHT_STREAM=m" >>$(1); \
 	sed -i "/CONFIG_NF_CONNTRACK_CHAIN_EVENTS/d" $(1); \
 	echo "CONFIG_NF_CONNTRACK_CHAIN_EVENTS=y" >>$(1); \
 	sed -i "/CONFIG_NETFILTER_XT_MATCH_PHYSDEV/d" $(1); \
@@ -414,12 +401,20 @@ define platformKernelConfig
 	if [ "$(RTAX89U)" = "y" ] ; then \
 		sed -i "/CONFIG_MODEL_RTAX89U/d" $(1); \
 		echo "CONFIG_MODEL_RTAX89U=y" >>$(1); \
+		sed -i "/CONFIG_IPQ_MEM_PROFILE/d" $(1); \
+		echo "CONFIG_IPQ_MEM_PROFILE=1024" >>$(1); \
 	elif [ "$(RAX120)" = "y" ] ; then \
 		sed -i "/CONFIG_MODEL_RAX120/d" $(1); \
 		echo "CONFIG_MODEL_RAX120=y" >>$(1); \
+		sed -i "/CONFIG_IPQ_MEM_PROFILE/d" $(1); \
+		echo "CONFIG_IPQ_MEM_PROFILE=1024" >>$(1); \
+	elif [ "$(XMAX3600)" = "y" ] ; then \
+		sed -i "/CONFIG_MODEL_XMAX3600/d" $(1); \
+		echo "CONFIG_MODEL_XMAX3600=y" >>$(1); \
 	fi; \
 	if [ "$(SWITCH_CHIP)" = "QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033" ] || \
 	   [ "$(SWITCH_CHIP)" = "QCA8075_PHY_AQR107" ] || \
+	   [ "$(SWITCH_CHIP)" = "QCA8075" ] || \
 	   [ "$(SWITCH_CHIP)" = "QCA8075_PHY_AQR111" ] ; then \
 		sed -i "/CONFIG_AQUANTIA_PHY/d" $(1); \
 		echo "CONFIG_AQUANTIA_PHY=y" >>$(1); \
@@ -617,11 +612,9 @@ define platformKernelConfig
 		sed -i "/CONFIG_SWRT_FULLCONE/d" $(1); \
 		echo "# CONFIG_SWRT_FULLCONE is not set" >>$(1); \
 	fi; \
-	if [ "$(BUILD_NAME)" == "RAX120" ] ; then \
+	if [ "$(RAX120)" = y ] ; then \
 		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
 		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
-		sed -i "/CONFIG_MTD_SPLIT\>/d" $(1); \
-		echo "CONFIG_MTD_SPLIT=y" >>$(1); \
 		sed -i "/CONFIG_BLK_DEV_RAM_SIZE/d" $(1); \
 		echo "CONFIG_BLK_DEV_RAM_SIZE=65536" >>$(1); \
 		sed -i "/CONFIG_OCF_CRYPTODEV/d" $(1); \
@@ -630,6 +623,15 @@ define platformKernelConfig
 		echo "CONFIG_SPI_QUP=y" >>$(1); \
 		sed -i "/CONFIG_SENSORS_G761/d" $(1); \
 		echo "CONFIG_SENSORS_G761=y" >>$(1); \
+	elif [ "$(XMAX3600)" = "y" ] ; then \
+		sed -i "/CONFIG_CMDLINE_OVERRIDE/d" $(1); \
+		echo "CONFIG_CMDLINE_OVERRIDE=y" >>$(1); \
+		sed -i "/CONFIG_BLK_DEV_RAM_SIZE/d" $(1); \
+		echo "CONFIG_BLK_DEV_RAM_SIZE=65536" >>$(1); \
+		sed -i "/CONFIG_OCF_CRYPTODEV/d" $(1); \
+		echo "# CONFIG_OCF_CRYPTODEV is not set" >>$(1); \
+		sed -i "/CONFIG_SPI_QUP/d" $(1); \
+		echo "CONFIG_SPI_QUP=y" >>$(1); \
 	fi; \
 	)
 endef

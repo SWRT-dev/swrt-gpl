@@ -139,6 +139,7 @@ ieee80211_mhz2ieee(u_int freq)
 
 #if defined(RTCONFIG_WIFI_QCA9557_QCA9882) \
  || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) \
+ || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX) \
  || defined(RTCONFIG_QCA953X) || defined(RTCONFIG_QCA956X) || defined(RTCONFIG_QCN550X) \
  || defined(RTCONFIG_SOC_IPQ40XX)
 const char WIF_5G[] = "ath1";
@@ -158,7 +159,7 @@ const char APMODE_BRGUEST_IP[]="192.168.55.1";
 #elif defined(RTCONFIG_WIFI_QCA9990_QCA9990) || \
       defined(RTCONFIG_WIFI_QCA9994_QCA9994) || \
       defined(RTCONFIG_WIFI_QCN5024_QCN5054)
-#if defined(GTAXY16000) || defined(GTAX6000N) || defined(RTAX89U) || defined(RTAC88N)
+#if defined(GTAXY16000) || defined(GTAX6000N) || defined(RTAX89U) || defined(RTAC88N) || defined(XMAX3600)
 const char WIF_5G[] = "ath0";
 const char WIF_2G[] = "ath1";
 const char STA_5G[] = "sta0";
@@ -267,7 +268,7 @@ const char *max_2g_n_mode = "11NG";	/* B,G,N */
 const char *max_5g_ac_mode = "11ACV";	/* A,N,AC */
 
 /* [0]: 11AC
- * [1]: 11AX
+ * [1]: 11AX, 11BE
  */
 const char *bw20[2] = { "HT20", "20" };
 const char *bw40[2] = { "HT40", "40" };
@@ -1342,7 +1343,11 @@ static void set_cpu_power_save_mode(void)
 		/* CPU: On Demand - auto */
 		set_cpufreq_attr("scaling_governor", "ondemand");
 #if defined(RTCONFIG_SOC_IPQ8074)
-		set_cpufreq_attr("scaling_min_freq", "1382400");
+#if defined(XMAX3600)
+		set_cpufreq_attr("scaling_min_freq", "1017600");//8071
+#else
+		set_cpufreq_attr("scaling_min_freq", "1382400");//8074
+#endif
 #endif
 		break;
 	default:
@@ -1384,7 +1389,11 @@ static void set_nss_power_save_mode(void)
 	}
 #elif defined(RTCONFIG_SOC_IPQ8074)
 	nss_min_freq = 748800000;
-	nss_max_freq = 1689600000;
+#if defined(XMAX3600)
+	nss_max_freq = 1497600000;//8071
+#else
+	nss_max_freq = 1689600000;//8074
+#endif
 #else
 #error Unknown NSS frequency.
 #endif
@@ -2482,20 +2491,35 @@ int has_dfs_channel(void)
 }
 
 /* dfs channel data from radartool */
+
+#if (SPF_VER >= SPF_VER_ID(12,2))
+#ifndef DFS_CHAN_MAX
+#define DFS_CHAN_MAX 25
+#endif
+#else
 #ifndef IEEE80211_CHAN_MAX
 #define IEEE80211_CHAN_MAX      1023
+#endif
 #endif
 
 struct dfsreq_nolelem {
     u_int16_t        nol_freq;          /* NOL channel frequency */
     u_int16_t        nol_chwidth;
+#if (SPF_VER >= SPF_VER_ID(12,2))
+    u_int64_t    nol_start_ticks;   /* OS ticks when the NOL timer started */
+#else
     unsigned long    nol_start_ticks;   /* OS ticks when the NOL timer started */
+#endif
     u_int32_t        nol_timeout_ms;    /* Nol timeout value in msec */
 };
 
 struct dfsreq_nolinfo {
     u_int32_t   ic_nchans;
+#if (SPF_VER >= SPF_VER_ID(12,2))
+    struct      dfsreq_nolelem dfs_nol[DFS_CHAN_MAX];
+#else    
     struct      dfsreq_nolelem dfs_nol[IEEE80211_CHAN_MAX];
+#endif    
 };
 
 int get_radar_channel_list(const char *vphy, int radar_list[], int size)
@@ -2525,6 +2549,20 @@ int get_radar_channel_list(const char *vphy, int radar_list[], int size)
 	memset(nol, 0, sizeof(struct dfsreq_nolinfo));
 	fread(nol, sizeof(struct dfsreq_nolinfo), 1, fp);
 	fclose(fp);
+
+#if (SPF_VER >= SPF_VER_ID(12,2))
+	if (nol->ic_nchans >= DFS_CHAN_MAX) {
+		dbg("%s: Invalid ic_nchans %u/%u of nol file, ignore it!\n",
+			__func__, nol->ic_nchans, DFS_CHAN_MAX);
+		return -4;
+	}
+#else
+	if (nol->ic_nchans >= IEEE80211_CHAN_MAX) {
+		dbg("%s: Invalid ic_nchans %u/%u of nol file, ignore it!\n",
+			__func__, nol->ic_nchans, IEEE80211_CHAN_MAX);
+		return -4;
+	}
+#endif	
 
 	for(cnt = 0; cnt < nol->ic_nchans; cnt++) {
 		radar_list[cnt] = (int)ieee80211_mhz2ieee((u_int)nol->dfs_nol[cnt].nol_freq);
@@ -2609,8 +2647,14 @@ int get_bw_nctrlsb(const char *ifname, int *bw, int *nctrlsb)
 		*bw = 80;
 	else if (!memcmp(p, "160", 3))		/* 11ACVHT160, 11AXA_HE160, 11BEA_EHT160 */
 		*bw = 160;
+	else if (!memcmp(p, "240", 3))		/* 11BEA_EHT320 */
+		*bw = 240;
 	else if (!memcmp(p, "320", 3))		/* 11BEA_EHT320 */
+#if defined(RTCONFIG_HAS_6G) || defined(RTCONFIG_HAS_6G_2)
 		*bw = 320;
+#else
+		*bw = 240;
+#endif
 	else					/* 11A, 11B, 11G */
 		*bw = 20;
 
@@ -2964,7 +3008,8 @@ int nat_acceleration_status(void)
 		hwnat = 0;
 	}
 
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) \
+	|| defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ53XX)
 	/* Hardware NAT can be stopped via set non-zero value to below files.
 	 * Don't claim hardware NAT is enabled if one of them is non-zero value.
 	 */
@@ -2972,7 +3017,7 @@ int nat_acceleration_status(void)
 #if defined(RTCONFIG_SOC_IPQ8064)
 		const char *v4_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv4/stop", *v6_stop_fn = "/sys/kernel/debug/ecm/ecm_nss_ipv6/stop";
 #elif defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ50XX) \
-   || defined(RTCONFIG_SOC_IPQ53XX)
+	|| defined(RTCONFIG_SOC_IPQ53XX)
 		const char *v4_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv4_stop", *v6_stop_fn = "/sys/kernel/debug/ecm/front_end_ipv6_stop";
 #endif
 		int s1, s2;
@@ -3545,8 +3590,104 @@ int rep_ssid_match(void)
 	return 1;
 }	
 
+int get_qca_iw(char *name, char *command,char *res, int res_len)
+{
+        char buf[4096];
+        FILE *fp;
+        int len;
+        char *pt1;
+
+        sprintf(buf, IW " dev %s %s", name, command);
+        fp = popen(buf, "r");
+        if (fp) {
+                memset(buf, 0, sizeof(buf));
+                len = fread(buf, 1, sizeof(buf), fp);
+                pclose(fp);
+                if (len > 1) {
+                        buf[len-1] = '\0';
+                        pt1 = strstr(buf, "Interface");
+                        if (pt1) {
+                                strncpy(res,buf,res_len);
+                                return 1; 
+                        }
+                }
+        }
+        return 0;
+}
 #endif
 
+#if defined(RTCONFIG_BW240M)
+/* WiFi7 5G 240MHz bandwidth capable or not.
+ * @return:
+ *	0:	doesn't support 240MHz
+ *	1:	support 240MHz
+ */
+int __w75g_240m_capable(int band, uint64_t chlist_m)
+{
+	if (band != WL_5G_BAND && band != WL_5G_2_BAND)
+		return 0;
+
+	if ((chlist_m & BW240_CH_M) != BW240_CH_M)
+		return 0;
+
+	return 1;
+}
+
+/* WiFi7 5G 240MHz bandwidth capable or not.
+ * @return:
+ *	0:	doesn't support 240MHz
+ *	1:	support 240MHz
+ */
+int w75g_240m_capable(int band)
+{
+	uint64_t chlist_m = 0;
+	char ch_list[17 * 3 + 20 * 4] = "";
+
+	if (band != WL_5G_BAND && band != WL_5G_2_BAND)
+		return 0;
+
+	if (get_channel_list_via_driver(band, ch_list, sizeof(ch_list)) <= 0) {
+		dbg("%s: Failed to get channel list on band %d\n", __func__, band);
+		return 0;
+	}
+	chlist_m = chlist2bitmask(band, ch_list, ",");
+
+	return __w75g_240m_capable(band, chlist_m);
+}
+#endif
+
+#if defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX)
+char *sta_default_mode(int band, int allow_dfs_ch)
+{
+	int ch;
+	char *ret = "AUTO";
+#if defined(RTCONFIG_BW240M)
+	char sta[IFNAMSIZ] = "";
+#endif
+
+	if (is_5g(band)) {
+		ret = "11AEHT80";
+#if defined(RTCONFIG_BW160M)
+		if (allow_dfs_ch)
+			ret = "11AEHT160";
+#endif
+#if defined(RTCONFIG_BW240M)
+		strlcpy(sta, get_staifname(band), sizeof(sta));
+		ch = get_channel(sta);
+		if (ch >= 100 && ch <= 144 && w75g_240m_capable(band))
+			ret = "11AEHT320";
+#endif
+		dbg("SSS %s: band [%d] ch [%d] return mode [%s]\n", __func__, band, ch, ret);
+	} else {
+#if defined(RTCONFIG_MLO)
+		if(band == WL_2G_BAND && nvram_get_int("qca_mlo_sta"))
+			return "11GEHT40";
+#endif
+	}
+
+	return ret;
+}
+#endif
 
 static void update_leds_gpio(char *ledname, char *trigger, int port_mask, char *device_name, char *mode)
 {
@@ -3578,8 +3719,12 @@ uint32_t set_leds_gpio(int which, int mode)
 #if defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX)
 #define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT))
 #elif defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTAX89U)
 #define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT) | \
 	(1U << LAN5_PORT) | (1U << LAN6_PORT) | (1U << LAN7_PORT) | (1U << LAN8_PORT))
+#else
+#define LANPORTS_MASK	((1U << LAN1_PORT) | (1U << LAN2_PORT) | (1U << LAN3_PORT) | (1U << LAN4_PORT))
+#endif
 #endif
 	switch(which){
 		case LED_WAN:

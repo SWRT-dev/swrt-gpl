@@ -659,6 +659,9 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "prelink", json_object_new_int(1));
 	json_object_object_add(ui_support_obj, "prelink_mssid", json_object_new_int(1));
 	json_object_object_add(ui_support_obj, "prelink_unit", json_object_new_int(num_of_wl_if() - 1));
+#elif defined(RTCONFIG_QCA_LBD)
+	//filter 5GL+5GH mode of smart_connect_x
+	json_object_object_add(ui_support_obj, "prelink", json_object_new_int(1));
 #endif
 #if defined(RTCONFIG_BWDPI)
 	json_object_object_add(ui_support_obj, "AWV_dpi_cc", json_object_new_int(is_AWV_dpi_cc()));
@@ -691,13 +694,13 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "wtfast_v2", json_object_new_int(is_CN_sku() == 0));
 #endif
 	json_object_object_add(ui_support_obj, "WL_SCHED_V2", json_object_new_int(1));
+#if defined(RTCONFIG_WL_SCHED_V3)
+	json_object_object_add(ui_support_obj, "WL_SCHED_V3", json_object_new_int(2));
+#endif
 #if defined(RTCONFIG_PC_SCHED_V3)
-	json_object_object_add(ui_support_obj, "PC_SCHED_V3", json_object_new_int(2));
+	json_object_object_add(ui_support_obj, "PC_SCHED_V3", json_object_new_int(3));
 #else
 	json_object_object_add(ui_support_obj, "PC_SCHED_V2", json_object_new_int(1));
-#endif
-#if defined(RTCONFIG_WL_SCHED_V3)
-	json_object_object_add(ui_support_obj, "WL_SCHED_V3", json_object_new_int(3));
 #endif
 	json_object_object_add(ui_support_obj, "wpa3rp", json_object_new_int(is_wpa3rp()));
 #if defined(RTCONFIG_AMAS)
@@ -713,8 +716,10 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 #if defined(RTCONFIG_INSTANT_GUARD)
 	json_object_object_add(ui_support_obj, "Instant_Guard", json_object_new_int(4));
 #endif
-#if defined(RTCONFIG_SCHED_V3)
+#if defined(RTCONFIG_PC_SCHED_V3)
+#if defined(RTCONFIG_BWDPI)
 	json_object_object_add(ui_support_obj, "MaxRule_bwdpi_wrs", json_object_new_int(64));
+#endif
 	json_object_object_add(ui_support_obj, "MaxRule_parentctrl", json_object_new_int(64));
 	json_object_object_add(ui_support_obj, "MaxRule_PC_DAYTIME", json_object_new_int((get_nvram_dlen("MULTIFILTER_MACFILTER_DAYTIME_V2") / 13) < 256 ? : 256));
 #ifdef RTCONFIG_PC_REWARD
@@ -788,7 +793,7 @@ noamas:
 #endif
 	json_object_object_add(ui_support_obj, "ddns", json_object_new_int(2));
 #if defined(RTCONFIG_NOTIFICATION_CENTER)
-	json_object_object_add(ui_support_obj, "nt_center", json_object_new_int(5));
+	json_object_object_add(ui_support_obj, "nt_center", json_object_new_int(6));
 	json_object_object_add(ui_support_obj, "nt_center_ui", json_object_new_int(0));
 #endif
 #if defined(RTCONFIG_AMAS)
@@ -1599,8 +1604,7 @@ int do_feedback_mail(struct json_object *feedback_obj)
 #ifdef RTCONFIG_CFGSYNC
 int is_cfg_server_ready()
 {
-	if (nvram_match("x_Setting", "1") &&
-		pids("cfg_server") && check_if_file_exist(CFG_SERVER_PID))
+	if (nvram_match("x_Setting", "1") && pids("cfg_server") && check_if_file_exist(CFG_SERVER_PID))
 		return 1;
 
 	return 0;

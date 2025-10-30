@@ -1,9 +1,8 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
+
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 ifeq ($(CONFIG_QCA_NSS_ECM_EXAMPLES_PCC),y)
@@ -145,9 +144,6 @@ ECM_MAKE_OPTS+=ECM_FRONT_END_NSS_ENABLE=y
 endif
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
-PBBINS=$(wildcard prebuilt/*)
-NSS_ECM_KMOD=$(filter %.ko,$(PBBINS))
-
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-mcs/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/emesh-sp/Module.symvers
@@ -157,10 +153,13 @@ export KBUILD_EXTRA_SYMBOLS
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-ecm/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-ecm source
-	$(MAKE) -C "$(LINUXDIR)" $(strip $(ECM_MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(subtarget)" EXAMPLES_BUILD_PCC="$(CONFIG_QCA_NSS_ECM_EXAMPLES_PCC)" \
+	$(KERNEL_MAKE) $(PARALLEL_BUILD) $(strip $(ECM_MAKE_OPTS)) EXTRA_CFLAGS="$(EXTRA_CFLAGS)" \
+		M="$(PKG_BUILD_DIR)" SoC="$(subtarget)" EXAMPLES_BUILD_PCC="$(CONFIG_QCA_NSS_ECM_EXAMPLES_PCC)" \
 		EXAMPLES_BUILD_MARK="$(CONFIG_QCA_NSS_ECM_EXAMPLES_MARK)" EXAMPLES_BUILD_OVS="$(CONFIG_QCA_NSS_ECM_OVS)" \
 		BUILD_ECM_WIFI_PLUGIN="$(CONFIG_QCA_NSS_ECM_WIFI_PLUGIN)" modules
+else
+	mkdir -p $(PKG_BUILD_DIR)
+	cp prebuilt/$(BUILD_NAME)/*.ko $(PKG_BUILD_DIR)
 endif
 	touch stamp-h1
 
@@ -179,7 +178,7 @@ endif
 	@install -D $(PKG_BUILD_DIR)/examples/ecm_ae_select.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/ecm.ko $(INSTALLKMODDIR)
 else
-	@for i in $(NSS_ECM_KMOD); do install -D $$i $(INSTALLKMODDIR) ; done
+	@for i in $(wildcard PKG_BUILD_DIR/*); do install -D $$i $(INSTALLKMODDIR) ; done
 endif
 	@$(STRIPX) $(INSTALLKMODDIR)/*.ko
 

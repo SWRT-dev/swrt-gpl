@@ -1905,6 +1905,7 @@ int main(int argc, char *argv[])
 			scan_start_time = time(NULL);
 			networkmap_fullscan = 0;
 			nvram_set("networkmap_status", "1");
+			nvram_set("nmp_wl_offline_check", "1");
 			continue;
 		}
 		handle_client_list_from_arp(G_CLIENT_TAB, INTERFACE, my_ipaddr);//scan arp cache again

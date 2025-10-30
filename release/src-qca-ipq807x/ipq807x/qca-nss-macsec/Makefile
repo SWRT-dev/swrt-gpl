@@ -1,18 +1,14 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
-LINUX_VERSION=$(LINUX_KERNEL)
+
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 QCA_NSS_MACSEC_CONFIG_OPTS+= TOOL_PATH=/ \
                 SYS_PATH=$(LINUXDIR) \
                 TOOLPREFIX=$(TARGET_CROSS) \
                 KVER=$(LINUX_VERSION) \
-		CFLAGS="$(CFLAGS)" \
-		LDFLAGS="$(LDFLAGS)" \
                 ARCH=$(ARCH)
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
@@ -21,11 +17,12 @@ INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-macsec/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-macsec source
-	$(MAKE) -C "$(LINUXDIR)" CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" SoC="$(subtarget)" modules
-	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCA_NSS_MACSEC_CONFIG_OPTS)) -f Makefile.shell
+	$(KERNEL_MAKE) $(PARALLEL_BUILD) M="$(PKG_BUILD_DIR)" SoC="$(subtarget)" modules
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS) \
+		$(strip $(QCA_NSS_MACSEC_CONFIG_OPTS)) -f Makefile.shell
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp -rf prebuilt/* $(PKG_BUILD_DIR)
+	cp -rf prebuilt/$(BUILD_NAME)/* $(PKG_BUILD_DIR)
 endif
 	touch stamp-h1
 

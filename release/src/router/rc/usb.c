@@ -258,7 +258,7 @@ void add_usb_host_modules(void)
 	char *u3_param = "u3intf=0";
 #endif
 #endif
-#if defined(RTAX89U) || defined(GTAXY16000)
+#if defined(RTCONFIG_SOC_IPQ8074)
 	int pwr_off = 0;
 #endif
 #ifndef RTCONFIG_HND_ROUTER
@@ -277,12 +277,15 @@ void add_usb_host_modules(void)
 		return;
 #endif
 
-#if defined(RTAX89U) || defined(GTAXY16000)
+#if defined(RAX120)
+	if (module_loaded(USB30_MOD))
+		modprobe_r(USB30_MOD);
+#endif
+#if defined(RTCONFIG_SOC_IPQ8074)
 	if (!module_loaded(USB30_MOD)) {
 		logmessage("USB", "Turn off USB power.");
 		pwr_off = 1;
-		led_control(PWR_USB, LED_OFF);
-		led_control(PWR_USB2, LED_OFF);
+		set_pwr_usb(0);
 	}
 #endif
 
@@ -390,10 +393,9 @@ void add_usb_host_modules(void)
 	}
 #endif
 
-#if defined(RTAX89U) || defined(GTAXY16000)
+#if defined(RTCONFIG_SOC_IPQ8074)
 	if (pwr_off) {
-		led_control(PWR_USB, LED_ON);
-		led_control(PWR_USB2, LED_ON);
+		set_pwr_usb(1);
 		logmessage("USB", "Turn on USB power.");
 	}
 #endif

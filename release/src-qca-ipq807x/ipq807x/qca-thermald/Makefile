@@ -1,10 +1,8 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
-LINUX_VERSION=$(LINUX_KERNEL)
+
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 QCA_THERMALD_MAKE_OPTS:= \
@@ -15,10 +13,10 @@ QCA_THERMALD_MAKE_OPTS:= \
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-thermald/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-thermald source
-	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCA_THERMALD_MAKE_OPTS)) LDFLAGS="$(TARGET_LDFLAGS)"
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCA_THERMALD_MAKE_OPTS)) $(TARGET_CONFIGURE_OPTS)
 else
 	mkdir -p $(PKG_BUILD_DIR)/install/usr/sbin
-	cp prebuilt/thermald $(PKG_BUILD_DIR)/install/usr/sbin
+	cp prebuilt/$(BUILD_NAME)/thermald $(PKG_BUILD_DIR)/install/usr/sbin
 endif
 	touch stamp-h1
 

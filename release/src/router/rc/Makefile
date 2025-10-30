@@ -1263,6 +1263,9 @@ endif
 ifeq ($(RTCONFIG_EMMC),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc block-write
 endif
+ifeq ($(RTCONFIG_UBIFS),y)
+	@cd $(INSTALLDIR)/sbin && ln -sf rc ubi-write
+endif
 ifeq ($(RTCONFIG_DUAL_TRX2),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc fixdmgfw
 endif

@@ -449,6 +449,9 @@ static const char * const fw_path[] = {
 	"/lib/firmware/updates",
 	"/lib/firmware/" UTS_RELEASE,
 	"/lib/firmware"
+#if defined(CONFIG_CNSS2)
+	,"/etc/Wireless/ini"
+#endif
 };
 
 /*

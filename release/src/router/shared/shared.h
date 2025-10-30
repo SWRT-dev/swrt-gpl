@@ -3546,6 +3546,12 @@ extern int write_phy_reg(unsigned int phy, unsigned int reg, unsigned int value)
 extern int mdio_phy_speed(unsigned int phy);
 extern int ipq8074_port_speed(unsigned int port);
 extern int aqr_phy_speed(unsigned int phy);
+#elif defined(RTCONFIG_SWITCH_QCA8075)
+static inline int is_aqr_phy_exist(void) { return 0; }
+extern int parse_ssdk_sh(const char *cmd, const char *fmt, int cnt, ...);
+extern int read_phy_reg(unsigned int phy, unsigned int reg);
+extern int write_phy_reg(unsigned int phy, unsigned int reg, unsigned int value);
+extern int ipq8074_port_speed(unsigned int port);
 #else
 static inline int is_aqr_phy_exist(void)
 {
@@ -4647,7 +4653,7 @@ static inline int config_usbbus_bled(const char *led_gpio, char *bus_list)
 }
 
 /* model-specific helper function for bled */
-#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) \
+#if defined(RTCONFIG_SOC_IPQ8074) \
  || (defined(RTCONFIG_SOC_IPQ53XX) && defined(RTCONFIG_SWITCH_QCA8386)) \
  || defined(RTCONFIG_SWITCH_IPQ50XX_QCA8337)
 /* Implement below functions for bled in model-specific code if and only if

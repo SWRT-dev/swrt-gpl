@@ -1,16 +1,17 @@
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
 
-TARGET_CPPFLAGS := -D_GNU_SOURCE -I$(LINUXDIR)/arch/arm64/include -I$(LINUXDIR)/arch/arm64/include/generated -Isrc
+TARGET_CPPFLAGS+= -D_GNU_SOURCE -I$(LINUXDIR)/arch/arm64/include -I$(LINUXDIR)/arch/arm64/include/generated -Isrc
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/aq-fw-download/src/*.c),)
 	[ -d $(PKG_BUILD_DIR) ] || ln -sf $(SDK_DIR_PLATFORM)/aq-fw-download source
-	$(MAKE) -C $(PKG_BUILD_DIR) CFLAGS="$(TARGET_CPPFLAGS) $(CFLAGS)" LDFLAGS="$(LDFLAGS)"
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS)
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp prebuilt/aq-fw-download $(PKG_BUILD_DIR)/aq-fw-download
+	cp prebuilt/$(BUILD_NAME)/aq-fw-download $(PKG_BUILD_DIR)/aq-fw-download
 endif
 	touch stamp-h1
 

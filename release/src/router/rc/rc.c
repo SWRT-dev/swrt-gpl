@@ -2639,6 +2639,9 @@ static const applets_t applets[] = {
 #if defined(RTCONFIG_EMMC)
 	{ "block-write",			block_write_main		},
 #endif
+#if defined(RTCONFIG_UBIFS)
+	{ "ubi-write",			ubi_write_main		},
+#endif
 #if defined(RTCONFIG_DUAL_TRX2)
 	{ "fixdmgfw",			fixdmgfw_main			},
 #endif

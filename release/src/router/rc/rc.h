@@ -801,7 +801,7 @@ extern void start_wsc_enrollee_band(int band);
 extern void start_wsc_enrollee(void);
 extern void stop_wsc_enrollee_band(int band);
 extern void stop_wsc_enrollee(void);
-extern int wps_ascii_to_char_with_utf8(const char *output, const char *input, int outsize);
+extern int wps_ascii_to_char_with_utf8(char *output, const char *input, int outsize);
 extern int getting_wps_enroll_conf(int unit, char *ssid, char *psk);
 extern int getting_wps_result(int unit, char *bssid, char *ssid, char *key_mgmt);
 extern void amas_save_wifi_para(void);
@@ -1992,6 +1992,9 @@ extern int mtd_unlock_erase_main(int argc, char *argv[]);
 #if defined(RTCONFIG_EMMC)
 extern int block_write_main(int argc, char *argv[]);
 #endif
+#if defined(RTCONFIG_UBIFS)
+extern int ubi_write_main(int argc, char *argv[]);
+#endif
 #ifdef RTCONFIG_URLFW
 extern FILE *url_fopen(const char *path, const char *mode);
 #endif /* RTCONFIG_URLFW */
@@ -3172,6 +3175,9 @@ extern int futest_main(int argc, char *argv[]);
 extern int setDisableWifiDrv(const char *);
 extern int getDisableWifiDrv(void);
 #endif
+#elif defined(RTCONFIG_NEW_PHYMAP)
+extern void stop_conn_diag(void);
+extern void start_conn_diag(void);
 #endif
 #ifdef RTCONFIG_NOTIFICATION_CENTER
 typedef struct __nt_conf__t_

@@ -421,7 +421,7 @@
                 let { wlBandSeq, smartConnect, channelBandwidthObject } = systemManipulable;
                 let { smartConnectReferenceIndex } = smartConnect;
                 let prefixNvram = prefix === "smart_connect" ? smartConnectReferenceIndex : prefix;
-                let { bw80MHzSupport, bw160MHzSupport, bw320MHzSupport, bw240MHzSupport, band80_80MhzSupport, bandwidthValue, bw240Value } =
+                let { bw80MHzSupport, bw160MHzSupport, bw320MHzSupport, bw240MHzSupport, bw80_80MHzSupport, bandwidthValue, bw240Value } =
                     wlBandSeq[prefixNvram];
                 let bandwidthStringObject = objectDeepCopy(channelBandwidthObject);
                 let autoBandwidthString = bandwidthStringObject.auto.string;
@@ -440,7 +440,7 @@
                     delete bandwidthStringObject["160mhz"];
                 }
 
-                if (!band80_80MhzSupport) {
+                if (!bw80_80MHzSupport) {
                     delete bandwidthStringObject["80_80mhz"];
                 }
 
@@ -478,7 +478,7 @@
                 let { wlBandSeq, smartConnect, channelBandwidthObject } = systemManipulable;
                 let { smartConnectReferenceIndex } = smartConnect;
                 let prefixNvram = prefix === "smart_connect" ? smartConnectReferenceIndex : prefix;
-                let { bw80MHzSupport, bw160MHzSupport, bw320MHzSupport, bw240MHzSupport, band80_80MhzSupport, bandwidthValue, bw160Value } =
+                let { bw80MHzSupport, bw160MHzSupport, bw320MHzSupport, bw240MHzSupport, bw80_80MHzSupport, bandwidthValue, bw160Value } =
                     wlBandSeq[prefixNvram];
                 let bandwidthStringObject = objectDeepCopy(channelBandwidthObject);
                 let autoBandwidthString = bandwidthStringObject.auto.string;
@@ -506,7 +506,7 @@
                     delete bandwidthStringObject["160mhz"];
                 }
 
-                if (!band80_80MhzSupport) {
+                if (!bw80_80MHzSupport) {
                     delete bandwidthStringObject["80_80mhz"];
                 }
 

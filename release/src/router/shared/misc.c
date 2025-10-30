@@ -1727,7 +1727,7 @@ int test_and_get_free_char_network(int t_class, char *ip_cidr_str, uint32_t excl
 
 #endif /* RTCONFIG_COOVACHILLI || RTCONFIG_PORT_BASED_VLAN || RTCONFIG_TAGGED_BASED_VLAN */
 
-#if defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033)
+#if defined(RTCONFIG_SOC_IPQ8074)
 /* Return minimal network, maximum CIDR value, for @ipaddr
  * Start from 30 to 1 until we got non-zero host ID.
  * @ipaddr:	IP address
@@ -3434,7 +3434,8 @@ unsigned int netdev_calc(char *ifname, char *ifname_desc, unsigned long long *rx
 
 #if defined(RTCONFIG_LACP) \
  && (defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) \
-  || defined(RTCONFIG_SWITCH_MT7986_MT7531))
+  || defined(RTCONFIG_SWITCH_MT7986_MT7531) || defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR111) \
+  || defined(RTCONFIG_SWITCH_QCA8075))
 	/* Handle LAN aggregation interfaces.
 	 * tmcal.js converts LACPx as LANx.
 	 */
@@ -4571,6 +4572,7 @@ int ctrl_lan_gro(int onoff)
 
 		if (!strncmp(word, "bond", 4)) {
 			/* Enable/disable GRO of all slaves interface of the bonding interface. */
+			snprintf(path, sizeof(path), "/sys/class/net/%s", word);
 			if ((dir = opendir(path)) == NULL)
 				continue;
 

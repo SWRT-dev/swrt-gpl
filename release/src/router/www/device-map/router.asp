@@ -93,8 +93,9 @@
             });
 
             function generateSmartConnect() {
-                let { smartConnect, wlBandSeq } = systemManipulable;
+                let { smartConnect, wlBandSeq, aMesh } = systemManipulable;
                 let { support, version, v1Type, smartConnectEnable } = smartConnect;
+                let { aMeshPrelinkSupport } = aMesh;
                 if (!support) {
                     document.querySelector("#smart_connect_field").style.display = "none";
                     return true;
@@ -135,7 +136,7 @@
                     // due to SMART CONNECT v1 does not have 2556 model
                     if (band6gSupport) {
                         radioBandSnippet += `<option value="3" ${v1Type === "3" ? "selected" : ""}>2.4 GHz/5 GHz Smart Connect</option>`;
-                    } else if (band5g2Support) {
+                    } else if (band5g2Support && !aMeshPrelinkSupport) {
                         radioBandSnippet += `<option value="2" ${v1Type === "2" ? "selected" : ""}>5 GHz Smart Connect</option>`;
                     }
 

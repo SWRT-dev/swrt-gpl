@@ -1,8 +1,8 @@
-include ../qsdk.config
-
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
+
 FPIC=-fpic
 
 IWINFO_BACKENDS := \
@@ -20,15 +20,16 @@ TARGET_CFLAGS += \
 
 MAKE_FLAGS += \
 	FPIC="$(FPIC)" \
-	CFLAGS="$(TARGET_CFLAGS)" \
-	LDFLAGS="$(TARGET_LDFLAGS)" \
 	BACKENDS="$(IWINFO_BACKENDS)"
+
+CFLAGS+="$(TARGET_CFLAGS)"
+LDFLAGS+="$(TARGET_LDFLAGS)"
 
 IWINFO_HDRS1 := $(wildcard $(PKG_BUILD_DIR)/include/iwinfo.h)
 IWINFO_HDRS2 := $(wildcard $(PKG_BUILD_DIR)/include/iwinfo/*)
 
 all:
-	$(MAKE) -C $(PKG_BUILD_DIR) $(MAKE_FLAGS)
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS) $(MAKE_FLAGS)
 	touch stamp-h1
 
 install:

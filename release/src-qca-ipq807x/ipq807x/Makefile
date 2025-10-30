@@ -22,24 +22,25 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 #
 pobj-y:=
 
-pobj-y += libroxml
+pobj-y += libroxml 464xlat nat46 libtcmd athtestcmd-lith libathtestcmd libtlv2 libtlvutil
+#pobj-$(RTCONFIG_SOC_IPQ8074) += breakpad breakpad-wrapper
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-ssdk qca-ssdk-shell
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-wifi qca-cfg80211 libqcacommon
 pobj-$(RTCONFIG_SOC_IPQ8074) += iw iwinfo qca-hostap
-pobj-$(RTCONFIG_SOC_IPQ8074) += libdaemon qca-mcs-lkm nat46 #shortcut-fe->qca-nss-sfe
+pobj-$(RTCONFIG_SOC_IPQ8074) += libdaemon qca-mcs-lkm #shortcut-fe->qca-nss-sfe
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-drv qca-nss-dp qca-nss-ecm qca-hyfi-bridge emesh-sp
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-crypto qca-nss-cfi qca-nss-clients
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-nss-fw-eip-hk qca-nss-fw-hk qca-nss-macsec
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-mcs-apps 
-pobj-$(RTCONFIG_SOC_IPQ8074) += qca-whc-lbd libieee1905
+pobj-$(RTCONFIG_SOC_IPQ8074) += libieee1905
 pobj-$(RTCONFIG_SOC_IPQ8074) += qca-thermald
-pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += athtestcmd-lith
-pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-hk
-pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-acfg
-pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-cnssdiag qca-diag
-pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += ftm libtcmd qca-iot
+pobj-$(RTCONFIG_SOC_IPQ8074) += myftm
+pobj-$(RTCONFIG_SOC_IPQ8074) += qca-hk
+pobj-$(RTCONFIG_SOC_IPQ8074) += qca-acfg
+pobj-$(RTCONFIG_SOC_IPQ8074) += qca-cnssdiag qca-diag
+pobj-$(RTCONFIG_SOC_IPQ8074) += libprovision ftm qca-iot
 #pobj-$(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) += mcproxy
-pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-cnss qca-cnss-daemon qca-qmi-framework
+pobj-$(RTCONFIG_SOC_IPQ8074) += qca-cnss qca-cnss-daemon qca-qmi-framework
 
 # Wi-Fi SON related
 #pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-hyfi-qdisc qca-hyfi-bridge qca-libhyfi-bridge libwifisoncfg qca-wifison-ext-lib
@@ -55,17 +56,18 @@ pobj-$(RTCONFIG_WIFI_QCN5024_QCN5054) += qca-cnss qca-cnss-daemon qca-qmi-framew
 pobj-y += btdiag
 
 # Wigig
-pobj-$(RTCONFIG_WIGIG) += qca-wigig-driver #mac80211-scripts
-pobj-$(RTCONFIG_WIGIG) += wigig-firmware
+#pobj-$(RTCONFIG_WIGIG) += qca-wigig-driver #mac80211-scripts
+#pobj-$(RTCONFIG_WIGIG) += wigig-firmware
 #pobj-$(RTCONFIG_WIGIG) += qca-wigig-debug-tools $(PKGDEP_QCA_WIGIG_DEBUG_TOOLS)
-pobj-$(RTCONFIG_WIGIG) += iw iwinfo
+#pobj-$(RTCONFIG_WIGIG) += iw iwinfo
 
 pobj-$(RTCONFIG_SWITCH_QCA8075_PHY_AQR107) += aq-fw-download
 pobj-$(RTCONFIG_SWITCH_QCA8075_PHY_AQR111) += aq-fw-download
 pobj-$(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) += aq-fw-download
+pobj-$(RTCONFIG_QCA_LBD) += qca-whc-lbd libwifisoncfg qca-wifison-ext-lib
 
 # U-Boot binaries
-pobj-$(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) += uboot_bins
+#pobj-$(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) += uboot_bins
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)
 pobj-install := $(foreach pobj,$(pobj-y),$(pobj)-install)

@@ -645,7 +645,7 @@ int build_temp_rootfs(const char *newroot)
 #if defined(RTCONFIG_QCA)
 	__cp("", "/sbin", "wlanconfig", newroot);
 	__cp("", "/usr/lib", "libnl-tiny.so", newroot);
-#if !defined(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) && \
+#if !defined(RTCONFIG_SOC_IPQ8074) && \
     !defined(RTCONFIG_SWITCH_QCA8075_PHY_AQR107) && \
     !defined(RTCONFIG_SOC_IPQ60XX) && \
     !defined(RTCONFIG_SWITCH_RTL8370M_PHY_QCA8033_X2) && \
@@ -5614,6 +5614,10 @@ start_syslogd(void)
 		"-S",					/* small log */
 //		"-D",					/* suppress dups */
 		"-O", syslog_path,			/* /tmp/syslog.log or /jffs/syslog.log */
+#if defined(RTCONFIG_MUSL_LIBC)
+		"-Z", /* add -Z option to adjust message timezones, syslog of musl always uses UTC time, 
+					patching toolchain is not a good idea */
+#endif
 		NULL, NULL,				/* -s log_size */
 		NULL, NULL,				/* -l log_level */
 		NULL, NULL,				/* -R log_ipaddr[:port] */
@@ -15922,10 +15926,23 @@ again:
 						snprintf(header_size, sizeof(header_size)-1, "%d", get_imageheader_size());
 #if defined(RAX120)
 						system("dd if=/tmp/linux.trx of=/dev/mtdblock4 skip=1 bs=64 > /dev/null 2>&1");
+#elif defined(RTCONFIG_SOC_IPQ8074)
+						eval("mtd-write", "-i", upgrade_file, "-d", "kernel", "-s", header_size, "-c", "6291392");//6MB - 64(header)
+						eval("mtd-write", "-i", upgrade_file, "-d", "rootfs", "-s", "6291456");
+						//eval("ubi-write", "-i", upgrade_file, "-d", "kernel", "-s", header_size, "-c", "6291392");//6MB - 64(header)
+						//eval("ubi-write", "-i", upgrade_file, "-d", "rootfs", "-s", "6291456");
 #elif defined(SWRT360V6)
 						eval("mtd-write", "-i", upgrade_file, "-d", "firmware", "-s", header_size);
 #elif defined(RMAX6000) || defined(SWRT360T7)
 						eval("mtd-write", "-i", upgrade_file, "-d", "kernel", "-s", header_size);
+#elif defined(RTCONFIG_EMMC)
+//rootfs offset: JDCAX1800:0x600000 JDCBE6500:0x700000
+						eval("block-write", "-i", upgrade_file, "-d", "0:HLOS", "-s", header_size, "-c", "6291392");//6MB - 64(header)
+#if defined(JDCAX1800)
+						eval("block-write", "-i", upgrade_file, "-d", "rootfs", "-s", "6291456");
+#elif defined(JDCBE6500)
+						eval("block-write", "-i", upgrade_file, "-d", "rootfs", "-s", "7340096");
+#endif
 #else
 						_dprintf("mtd-write and skip header_size(%s)\n", header_size);
 						eval("mtd-write", "-i", upgrade_file, "-d", "linux", "-s", header_size);
@@ -25070,6 +25087,9 @@ void start_qca_lbd(void)
 	int radio_on[WL_NR_BANDS] = { 0 };
 	char lvlstr[sizeof("all=debugXXXXX")];
 	char prefix[sizeof("wlXXXXXX_")], ssid[32 + 1] = { 0 };
+#if defined(RTCONFIG_HAS_5G_2)
+	char ssid5[32 + 1] = { 0 };
+#endif
 	char *lbd_argv[]= { "lbd", "-C", LBD_PATH, 
 #if defined(RTCONFIG_CFG80211)
 		"-cfg80211",
@@ -25101,7 +25121,7 @@ void start_qca_lbd(void)
 			no_lbd = 1;
 	}
 
-	/* 2G SSID must equal to 5G SSID */
+	/* 2G SSID must equal to 5G SSID or 5GL SSID must equal to 5GH SSID*/
 	if (!no_lbd) {
 		for (band = WL_2G_BAND; band < max_nr_wl_if; ++band) {
 			if (absent_band(band))
@@ -25123,6 +25143,26 @@ void start_qca_lbd(void)
 
 			if (!strlen(nvram_pf_safe_get(prefix, "ssid")))
 				continue;
+#if defined(RTCONFIG_HAS_5G_2)
+			if (band == WL_2G_BAND){
+				if(*ssid == '\0' && nvram_get_int("smart_connect_x") == 1){//2G+5GL+5GH
+					strlcpy(ssid, nvram_pf_safe_get(prefix, "ssid"), sizeof(ssid));
+					nr_ssid++;
+				}
+				continue;
+			}else if(*ssid5 == '\0'){//2G+5GL+5GH or 5GL+5GH
+				strlcpy(ssid5, nvram_pf_safe_get(prefix, "ssid"), sizeof(ssid5));
+				nr_ssid++;
+				continue;
+			}
+			if(nvram_get_int("smart_connect_x") == 1){//2G+5GL+5GH
+				if(strcmp(ssid, ssid5) || strcmp(ssid5, nvram_pf_safe_get(prefix, "ssid")))
+					continue;
+			}else{//5GL+5GH
+				if(strcmp(ssid5, nvram_pf_safe_get(prefix, "ssid")))
+					continue;
+			}
+#else
 			if (*ssid == '\0') {
 				strlcpy(ssid, nvram_pf_safe_get(prefix, "ssid"), sizeof(ssid));
 				nr_ssid++;
@@ -25130,6 +25170,7 @@ void start_qca_lbd(void)
 			}
 			if (strcmp(ssid, nvram_pf_safe_get(prefix, "ssid")))
 				continue;
+#endif
 			nr_ssid++;
 		}
 		if (nr_ssid < 2)
@@ -25159,7 +25200,9 @@ void start_qca_lbd(void)
 		_eval(lbd_argv, NULL, 0, &pid);
 		logmessage("QCA LBD", "daemon is started");
 		sleep(1);
+#ifdef RTCONFIG_CFGSYNC
 		dis_steer();
+#endif
 	}
 }
 

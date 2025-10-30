@@ -1,8 +1,7 @@
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-TARGET_CROSS=$(CROSS_COMPILE)
-TARGET_CC=$(CROSS_COMPILE)gcc
 
 TARGET_CFLAGS += \
 	-I$(LINUXDIR)/include/uapi/ \
@@ -11,13 +10,13 @@ TARGET_CFLAGS += \
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-qmi-framework/qmi-framework.mk),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-qmi-framework source
-	$(MAKE) -C $(PKG_BUILD_DIR) TARGET_CFLAGS=$(TARGET_CFLAGS)
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS)
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/qrtr
 	mkdir -p $(PKG_BUILD_DIR)/lib
-	cp -rf prebuilt/{qrtr-cfg,qrtr-ns,qrtr-lookup} $(PKG_BUILD_DIR)/qrtr
-	cp -rf prebuilt/{*.so} $(PKG_BUILD_DIR)/qrtr $(PKG_BUILD_DIR)/lib
+	cp -rf prebuilt/$(BUILD_NAME)/{qrtr-cfg,qrtr-ns,qrtr-lookup} $(PKG_BUILD_DIR)/qrtr
+	cp -rf prebuilt/$(BUILD_NAME)/{*.so} $(PKG_BUILD_DIR)/lib
 endif
 	touch stamp-h1
 

@@ -1,11 +1,8 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
-TARGET_CC=$(CROSS_COMPILE)gcc
-LINUX_VERSION=$(LINUX_KERNEL)
+
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 ifneq (, $(findstring $(subtarget), "ipq807x" "ipq807x_64" "ipq60xx" "ipq60xx_64" "ipq50xx" "ipq50xx_64""ipq95xx" "ipq95xx_32"))
@@ -40,23 +37,24 @@ endif
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-drv/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-nss-crypto/Module.symvers
+export KBUILD_EXTRA_SYMBOLS
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-cfi/Makefile),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-cfi source
-	$(MAKE) -C "$(LINUXDIR)" $(strip $(MAKE_OPTS)) CROSS_COMPILE="$(TARGET_CROSS)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" CC="$(TARGET_CC)" CFI_CRYPTOAPI_DIR=$(CFI_CRYPTOAPI_DIR) CFI_OCF_DIR=$(CFI_OCF_DIR) \
-		CFI_IPSEC_DIR=$(CFI_IPSEC_DIR) SoC=$(subtarget) KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
+	$(KERNEL_MAKE) $(strip $(MAKE_OPTS)) EXTRA_CFLAGS="$(EXTRA_CFLAGS)" M="$(PKG_BUILD_DIR)" \
+		CFI_CRYPTOAPI_DIR=$(CFI_CRYPTOAPI_DIR) CFI_OCF_DIR=$(CFI_OCF_DIR) \
+		CFI_IPSEC_DIR=$(CFI_IPSEC_DIR) SoC=$(subtarget) $(TARGET_CONFIGURE_OPTS) modules
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/$(CFI_CRYPTOAPI_DIR)
 #	mkdir -p $(PKG_BUILD_DIR)/$(CFI_OCF_DIR)
 ifdef CFI_IPSEC_DIR
 	mkdir -p $(PKG_BUILD_DIR)/$(CFI_IPSEC_DIR)
-	cp -rf prebuilt/qca-nss-ipsec.ko $(PKG_BUILD_DIR)/$(CFI_IPSEC_DIR)
+	cp -rf prebuilt/$(BUILD_NAME)/qca-nss-ipsec.ko $(PKG_BUILD_DIR)/$(CFI_IPSEC_DIR)
 endif
-	cp -rf prebuilt/qca-nss-cfi-cryptoapi.ko $(PKG_BUILD_DIR)/$(CFI_CRYPTOAPI_DIR)
-#	cp -rf prebuilt/qca-nss-cfi-ocf.ko $(PKG_BUILD_DIR)/$(CFI_OCF_DIR)
+	cp -rf prebuilt/$(BUILD_NAME)/qca-nss-cfi-cryptoapi.ko $(PKG_BUILD_DIR)/$(CFI_CRYPTOAPI_DIR)
+#	cp -rf prebuilt/$(BUILD_NAME)/qca-nss-cfi-ocf.ko $(PKG_BUILD_DIR)/$(CFI_OCF_DIR)
 endif
 	touch stamp-h1
 

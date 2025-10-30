@@ -1,14 +1,11 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
+
 subtarget:=$(CONFIG_TARGET_BOARD)
 
 QCAHYFI_BRIDGE_MAKE_OPTS:= \
-        CROSS_COMPILE=$(CROSS_COMPILE) \
-        ARCH=$(ARCH) \
         HYBRID_MC_MLD=1 \
         KERNELPATH=$(LINUXDIR) \
         KBUILDPATH=$(LINUXDIR) \
@@ -40,10 +37,10 @@ export KBUILD_EXTRA_SYMBOLS
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-hyfi-bridge/hyfi-netfilter/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-hyfi-bridge source
-	$(MAKE) -C $(LINUXDIR) M=$(PKG_BUILD_DIR) $(strip $(QCAHYFI_BRIDGE_MAKE_OPTS))
+	$(KERNEL_MAKE) $(PARALLEL_BUILD) M=$(PKG_BUILD_DIR) $(strip $(QCAHYFI_BRIDGE_MAKE_OPTS))
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp prebuilt/hyfi-bridging.ko $(PKG_BUILD_DIR)
+	cp prebuilt/$(BUILD_NAME)/hyfi-bridging.ko $(PKG_BUILD_DIR)
 endif
 	touch stamp-h1
 

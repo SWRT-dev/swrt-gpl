@@ -16,7 +16,7 @@
 #include <linux/slab.h>
 #include <linux/mtd/partitions.h>
 
-#if defined(RAX120) || defined(SWRT360V6)
+#if defined(RAX120) || defined(SWRT360V6) || defined(XMAX3600)
 struct hack_nand_partition_entry {
 	u32 offset; /* bytes */
 	u32 size;   /* bytes */
@@ -55,6 +55,18 @@ struct hack_nand_partition_entry hack_nand_partition[] = {
 	{ 0x01180000, 0x05940000, "UBI_DEV" },
 	{ 0x06AC0000, 0x00880000, "jffsconcat1" },
 	{ 0x07340000, 0x00CC0000, "BACKUP" }
+#elif defined(XMAX3600)
+	{ 0x00000000, 0x00100000, "SBL1" },
+	{ 0x00100000, 0x00100000, "MIBIB" },
+	{ 0x00200000, 0x00300000, "QSEE" },
+	{ 0x00500000, 0x00080000, "DEVCFG" },
+	{ 0x00580000, 0x00080000, "RPM" },
+	{ 0x00600000, 0x00080000, "CDT" },
+	{ 0x00680000, 0x00080000, "APPSBLENV" },
+	{ 0x00700000, 0x00100000, "APPSBL" },
+	{ 0x00800000, 0x00080000, "ART" },
+	{ 0x00880000, 0x00080000, "bdata" },
+	{ 0x00a00000, 0x0f000000, "UBI_DEV" }
 #endif
 };
 #endif
@@ -77,7 +89,7 @@ static int parse_fixed_partitions(struct mtd_info *master,
 	struct device_node *pp;
 	int nr_parts, i, ret = 0;
 	bool dedicated = true;
-#if defined(RAX120) || defined(SWRT360V6)
+#if defined(RAX120) || defined(SWRT360V6) || defined(XMAX3600)
 	int count;
 #endif
 
@@ -118,6 +130,8 @@ static int parse_fixed_partitions(struct mtd_info *master,
 	parts = kzalloc(35 * sizeof(*parts), GFP_KERNEL);
 #elif defined(SWRT360V6)
 	parts = kzalloc(24 * sizeof(*parts), GFP_KERNEL);
+#elif defined(XMAX3600)
+	parts = kzalloc(14 * sizeof(*parts), GFP_KERNEL);
 #else
 	parts = kcalloc(nr_parts, sizeof(*parts), GFP_KERNEL);
 #endif
@@ -176,15 +190,20 @@ static int parse_fixed_partitions(struct mtd_info *master,
 	if (!nr_parts)
 		goto ofpart_none;
 
-#if defined(RAX120) || defined(SWRT360V6)
+#if defined(RAX120) || defined(SWRT360V6) || defined(XMAX3600)
 	count = sizeof(hack_nand_partition)/sizeof(struct hack_nand_partition_entry);
 	for (i = 0, nr_parts = 0; i < count; i++, nr_parts++) {
 		parts[nr_parts].offset = hack_nand_partition[i].offset;
 		parts[nr_parts].size = hack_nand_partition[i].size;
 		parts[nr_parts].name = hack_nand_partition[i].name;
+#if defined(RAX120) || defined(XMAX3600)
 #if defined(RAX120)
 		if(i == 2 || i == 3)
+#else
+		if(i == 8 || i == 9)
+#endif
 			parts[nr_parts].mask_flags |= MTD_WRITEABLE;
+
 #endif
 	}
 #if defined(SWRT360V6)

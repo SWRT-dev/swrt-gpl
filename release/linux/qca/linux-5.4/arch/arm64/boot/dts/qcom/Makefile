@@ -8,7 +8,7 @@ dtb-y += \
 else ifeq ($(CONFIG_MODEL_RAX120),y)
 dtb-y += ipq807x-rax1200.dtb
 else ifeq ($(CONFIG_MODEL_XMAX3600),y)
-dtb-y += ipq807x-xm-ax3600.dtb
+dtb-y += ipq807x-xmax3600.dtb
 else ifeq ($(CONFIG_MODEL_360V6),y)
 dtb-y += ipq6018-360v6.dtb
 else ifeq ($(CONFIG_MODEL_RMAX5),y)

@@ -1,11 +1,7 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-TARGET_CC=$(CROSS_COMPILE)gcc
-#TARGET_CROSS=$(shell basename $(CROSS_COMPILE))
-TARGET_CROSS=$(CROSS_COMPILE)
-LINUX_VERSION=$(LINUX_KERNEL)
 
 subtarget:=$(CONFIG_TARGET_BOARD)
 ifneq (, $(findstring _64, $(subtarget)))
@@ -54,12 +50,9 @@ QCASSDK_CONFIG_OPTS+= TOOL_PATH=/ \
 		TARGET_SUFFIX=$(CONFIG_TARGET_SUFFIX) \
 		GCC_VERSION=$(CONFIG_GCC_VERSION) \
 		SoC=$(hal_arch) \
-		CFLAGS=-I$(STAGING_DIR)/usr/include
-
-LNX_CONFIG_OPTS :=
 
 ifneq (, $(findstring $(hal_arch), "ipq53xx"))
-LNX_CONFIG_OPTS += LNX_MAKEOPTS='$(KERNEL_MAKEOPTS)' MODULE_TYPE=KSLIB modules
+QCASSDK_CONFIG_OPTS += LNX_MAKEOPTS='$(KERNEL_MAKEOPTS)' MODULE_TYPE=KSLIB modules
 endif
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
@@ -67,11 +60,11 @@ INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-ssdk/src/api/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-ssdk source
-	$(MAKE) -C $(PKG_BUILD_DIR) $(strip $(QCASSDK_CONFIG_OPTS)) $(LNX_CONFIG_OPTS)
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR) $(strip $(QCASSDK_CONFIG_OPTS)) $(TARGET_CONFIGURE_OPTS)
 else
 	mkdir -p $(PKG_BUILD_DIR)/build
 	mkdir -p $(PKG_BUILD_DIR)/build/bin
-	cp prebuilt/qca-ssdk.ko $(PKG_BUILD_DIR)/build/bin
+	cp prebuilt/$(BUILD_NAME)/qca-ssdk.ko $(PKG_BUILD_DIR)/build/bin
 endif
 	touch stamp-h1
 

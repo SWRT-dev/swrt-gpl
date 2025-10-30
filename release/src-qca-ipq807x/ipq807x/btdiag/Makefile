@@ -14,7 +14,7 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/btdiag/*.c),)
 	$(MAKE) -C $(PKG_BUILD_DIR) $(MAKE_FLAGS)
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp prebuilt/Btdiag $(PKG_BUILD_DIR)/Btdiag
+	cp prebuilt/$(BUILD_NAME)/Btdiag $(PKG_BUILD_DIR)/Btdiag
 endif
 
 install:

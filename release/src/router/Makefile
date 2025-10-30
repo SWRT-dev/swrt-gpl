@@ -991,7 +991,7 @@ ifeq ($(RTCONFIG_QCA)$(RTCONFIG_LANTIQ)$(HND_ROUTER_AX),y)
 obj-$(RTCONFIG_BT_CONN) += qca-ar3k-fw
 endif
 
-obj-$(RTCONFIG_SWITCH_QCA8075_QCA8337_PHY_AQR107_AR8035_QCA8033) += i2c-tools-3.1.2
+obj-$(RTCONFIG_SOC_IPQ8074) += i2c-tools-3.1.2
 obj-$(RTCONFIG_I2CTOOLS) += i2c-tools-3.1.2
 obj-$(RTCONFIG_RGBLED) += aura_sw
 ifeq ($(GTAC2900), y)
@@ -1413,8 +1413,8 @@ obj-$(RTCONFIG_WTFAST) += wtfast
 #obj-$(RTCONFIG_ZEBRA) += zebra
 obj-$(RTCONFIG_QUAGGA) += quagga
 #obj-$(RTCONFIG_IPP2P) += ipp2p
-LZO_VER := -2.10
-obj-$(RTCONFIG_LZO) += lzo$(LZO_VER)
+
+obj-$(RTCONFIG_LZO) += lzo
 obj-$(RTCONFIG_OPENVPN) += lz4
 obj-$(RTCONFIG_OPENVPN) += openpam
 obj-$(RTCONFIG_OPENVPN) += easy-rsa
@@ -1510,7 +1510,7 @@ obj-$(RTCONFIG_NORTON) += norton${BCMEX}
 
 obj-$(UBI) += mtd-utils
 obj-$(UBIFS) += mtd-utils
-obj-$(UBIFS) += e2fsprogs lzo$(LZO_VER) zlib
+obj-$(UBIFS) += e2fsprogs lzo zlib
 ifeq ($(RTCONFIG_RALINK),y)
 obj-y += ra_SingleSKU
 endif
@@ -2384,31 +2384,34 @@ endif
 ifeq ($(RTCONFIG_SSH),y)
 	install $(LIBDIR)/libutil.so.1 $(TARGETDIR)/lib/
 endif
-else ifeq ($(MUSL_LIBC),y)
+else ifeq ($(or $(MUSL_LIBC),$(RTCONFIG_MUSL_LIBC)),y)
 	echo "TOOLCHAIN : " $(TOOLCHAIN)
-	#install $(LIBDIR)/libcrypt.so $(TARGETDIR)/lib/
-	#install $(LIBDIR)/libpthread.so $(TARGETDIR)/lib/
 	install -m 0755 $(LIBDIR)/libgcc_s.so.1 $(TARGETDIR)/lib/
-	#$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1
 	install -m 0755 $(LIBDIR)/libc.so $(TARGETDIR)/lib/
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libc.so.0
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libcrypt.so.0
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so libpthread.so.0
-ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X)),y)
+	@cd $(TARGETDIR)/lib/ && ln -sf libgcc_s.so.1 libgcc_s.so
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGETDIR)/lib/libc.so)
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1)
+ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X),$(RTCONFIG_QCA)),y)
 	install -D $(shell dirname $(shell which $(CXX)))/../lib/libstdc++.so.6 $(TARGETDIR)/lib/libstdc++.so.6
 	$(STRIP) $(TARGETDIR)/lib/libstdc++.so.6
-	$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1
-	$(STRIP) $(TARGETDIR)/lib/libc.so
-	cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-aarch64.so.1
-	cd $(TARGETDIR)/lib/ && ln -sf libgcc_s.so.1 libgcc_s.so
+endif
+ifeq ($(MUSL64),y)
+	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-aarch64.so.1
+else ifeq ($(IPQ53XX),y)
+	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-armhf.so.1
 else ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561)),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-mipsel-sf.so.1
 else
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-arm.so.1
 endif
+
 	#install $(LIBDIR)/libdl.so $(TARGETDIR)/lib/	
 	#install $(LIBDIR)/libm.so $(TARGETDIR)/lib/
 	#install $(LIBDIR)/libnsl.so $(TARGETDIR)/lib/
+ifeq ($(RTCONFIG_RALINK),y)
 	@mkdir -p $(TARGETDIR)/rom/etc/wireless/mediatek
 ifeq ($(or $(RTAX53U),$(RTAX54),$(RT4GAX56),$(RTCONFIG_WLMODULE_MT7915D_AP)),y)
 #	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7621/MT7915/* $(TARGETDIR)/rom/etc/wireless/mediatek/
@@ -2416,6 +2419,7 @@ else ifeq  ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X)),y)
 	# TBD.
 else ifeq ($(RTCONFIG_RALINK_MT7629),y)
 	@cp $(SRCBASE)/linux/vendors/Mediatek/MT7629/* $(TARGETDIR)/rom/etc/wireless/mediatek/
+endif
 endif
 else ifeq ($(RT4GAC86U),y)
 	install -D $(LINUXDIR)/drivers/net/wireless/mediatek/mt_wifi_5050/mt_wifi/embedded/plug_in/whnat/mt_whnat.ko $(TARGETDIR)/lib/modules/*/kernel/drivers/
@@ -2451,8 +2455,6 @@ endif
 	@cd $(TARGETDIR)/lib/ && ln -sf libnss_dns-2.24.so libnss_dns.so
 	@cd $(TARGETDIR)/lib/ && ln -sf libnss_dns-2.24.so libnss_dns.so.2
 
-
-
 	#install $(LIBDIR)/libdl.so $(TARGETDIR)/lib/	
 	#install $(LIBDIR)/libm.so $(TARGETDIR)/lib/
 	#install $(LIBDIR)/libnsl.so $(TARGETDIR)/lib/
@@ -2461,22 +2463,6 @@ endif
 else
 	install $(LIBDIR)/libgcc_s.so.1 $(TARGETDIR)/lib/
 	$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1
-ifeq ($(RTCONFIG_MUSL_LIBC),y)
-ifeq ($(MUSL64),y)
-	cd $(TARGETDIR)/lib && \
-		ln -sf libc.so ld-musl-aarch64.so.1
-else
-ifeq ($(IPQ53XX),y)
-	cd $(TARGETDIR)/lib && \
-		ln -sf libc.so ld-musl-armhf.so.1
-else
-	cd $(TARGETDIR)/lib && \
-		ln -sf libc.so ld-musl-arm.so.1
-endif
-endif
-	install $(LIBDIR)/libc.so $(TARGETDIR)/lib/
-	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGETDIR)/lib/libc.so)
-else
 	install $(LIBDIR)/ld-uClibc.so.[01] $(TARGETDIR)/lib/
 	install $(LIBDIR)/libcrypt.so.[01] $(TARGETDIR)/lib/
 	install $(LIBDIR)/libpthread.so.[01] $(TARGETDIR)/lib/
@@ -2487,7 +2473,6 @@ else
 ifeq ($(RTCONFIG_SSH),y)
 	install $(LIBDIR)/libutil.so.[01] $(TARGETDIR)/lib/
 endif
-endif	# !RTCONFIG_MUSL_LIBC
 endif
 
 ifneq ($(RTCONFIG_OPTIMIZE_SHARED_LIBS),y)
@@ -3047,7 +3032,7 @@ define makeBusybox
 	@$(MAKE) $(PARALLEL_BUILD) -C $(BUSYBOX_DIR) $(1) \
 		EXTRA_CFLAGS="-fPIC $(EXTRACFLAGS) -I$(STAGEDIR)/usr/include -idirafter $(KDIR)/include \
 			$(if $(RTCONFIG_PROTECTION_SERVER),-DSECURITY_NOTIFY,) \
-			$(if $(RTCONFIG_BWDPI),-DBWDPI_LOGWAR,)" \
+			$(if $(RTCONFIG_BWDPI),-DBWDPI_LOGWAR,) -DSWRT_PATCH" \
 		EXTRA_LDFLAGS="-L$(STAGEDIR)/usr/lib" \
 		EXTRA_LDLIBS="$(if $(RTCONFIG_PROTECTION_SERVER),ptcsrv,)"
 endef
@@ -4553,7 +4538,7 @@ libdaemon-clean:
 	-@$(MAKE) -C libdaemon distclean
 	@rm -f libdaemon/stamp-h1
 
-mtd-utils: e2fsprogs lzo$(LZO_VER) zlib
+mtd-utils: e2fsprogs lzo zlib
 ifeq ($(ALPINE)$(LANTIQ)$(RTACRH18)$(RT4GAC86U),y)
 	$(MAKE) CPPFLAGS="-I$(STAGEDIR)/usr/include -DWITHOUT_XATTR" \
 		CFLAGS="-I$(TOP)/mtd-utils/include -I$(TOP)/mtd-utils/ubi-utils/include" \
@@ -6698,27 +6683,27 @@ endif
 ebtables-clean:
 	-@make -C ebtables clean
 
-lzo$(LZO_VER)/stamp-h1:
-	cd lzo$(LZO_VER) && \
+lzo/stamp-h1:
+	cd lzo && \
 	CFLAGS="-Os -Wall $(EXTRACFLAGS)" $(CONFIGURE) --enable-shared --enable-static \
 		--prefix=/usr \
 		--bindir=/usr/sbin \
 		--libdir=/usr/lib
 	touch $@
 
-lzo$(LZO_VER): lzo$(LZO_VER)/stamp-h1
-	$(MAKE) -C lzo$(LZO_VER) && $(MAKE) $@-stage
+lzo: lzo/stamp-h1
+	$(MAKE) -C lzo && $(MAKE) $@-stage
 
-lzo$(LZO_VER)-clean:
-	-@$(MAKE) -C lzo$(LZO_VER) clean
-	@rm -f lzo$(LZO_VER)/stamp-h1
+lzo-clean:
+	-@$(MAKE) -C lzo clean
+	@rm -f lzo/stamp-h1
 
-lzo$(LZO_VER)-install: lzo$(LZO_VER)
-	install -D lzo$(LZO_VER)/src/.libs/liblzo2.so $(INSTALLDIR)/lzo$(LZO_VER)/usr/lib/liblzo2.so.2
-	$(STRIP) $(INSTALLDIR)/lzo$(LZO_VER)/usr/lib/liblzo2.so.2
-	cd $(INSTALLDIR)/lzo$(LZO_VER)/usr/lib && ln -sf liblzo2.so.2 liblzo2.so
+lzo-install: lzo
+	install -D lzo/src/.libs/liblzo2.so $(INSTALLDIR)/lzo/usr/lib/liblzo2.so.2
+	$(STRIP) $(INSTALLDIR)/lzo/usr/lib/liblzo2.so.2
+	cd $(INSTALLDIR)/lzo/usr/lib && ln -sf liblzo2.so.2 liblzo2.so
 
-.PHONY: lzo$(LZO_VER)
+.PHONY: lzo
 
 lz4:
 	$(MAKE) $(PARALLEL_BUILD) -C $@ && $(MAKE) $@-stage
@@ -6798,7 +6783,7 @@ easy-rsa-install:
 openvpn/dh2048.pem:
 	openssl dhparam -dsaparam -out $@ 2048
 
-openvpn: shared openssl lzo$(LZO_VER) libcap-ng openpam zlib openvpn/Makefile openvpn/dh2048.pem
+openvpn: shared openssl lzo libcap-ng openpam zlib openvpn/Makefile openvpn/dh2048.pem
 	$(MAKE) $(PARALLEL_BUILD) -C $@
 
 openvpn/Makefile:
@@ -6807,8 +6792,8 @@ openvpn/Makefile:
 		OPENSSL_LIBS="-L$(TOP)/openssl/ -lssl -lcrypto" \
 		LIBPAM_CFLAGS="-I$(TOP)/openpam/include" \
 		LIBPAM_LIBS="-L$(TOP)/openpam/lib/libpam/.libs -lpam" \
-		LZO_CFLAGS="-I$(TOP)/lzo$(LZO_VER)/include" \
-		LZO_LIBS="-L$(TOP)/lzo$(LZO_VER)/src/.libs -llzo2" \
+		LZO_CFLAGS="-I$(TOP)/lzo/include" \
+		LZO_LIBS="-L$(TOP)/lzo/src/.libs -llzo2" \
 		LZ4_CFLAGS="-I$(TOP)/lz4/lib" \
 		LZ4_LIBS="-L$(TOP)/lz4/lib -llz4" \
 		LIBCAPNG_CFLAGS="-I$(TOP)/libcap-ng/src" \
@@ -8533,7 +8518,7 @@ readline-6.2/Makefile: readline-6.2/configure
 		--prefix=/usr --exec_prefix=/usr --bindir=/usr/bin --sbindir=/usr/sbin --libexecdir=/usr/lib\
 		--sysconfdir=/etc --disable-static --enable-shared\
 		CFLAGS="-I$(STAGEDIR)/usr/local/include"\
-		LDFLAGS="-L$(STAGEDIR)/usr/local/lib -L$(STAGEDIR)/usr/lib -L$(TOP)/ncurese-2.0/lib -ldl -lpthread" \
+		LDFLAGS="-L$(STAGEDIR)/usr/local/lib -L$(STAGEDIR)/usr/lib -L$(TOP)/ncurese-2.0/lib -ldl -lpthread"
 
 readline-6.2: readline-6.2/Makefile
 	$(MAKE) SHLIB_LIBS="-lncurses" -C $@ && $(MAKE) $@-stage

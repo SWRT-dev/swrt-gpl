@@ -1,9 +1,7 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
-TARGET_CC=$(CROSS_COMPILE)gcc
-LINUX_VERSION=$(LINUX_KERNEL)
 
 DRIVER_PATH:=$(SDK_DIR_PLATFORM)/qca-wifi
 # legacy and hawkeye header files.
@@ -80,23 +78,31 @@ ifeq ($(or $(CONFIG_GCC_USE_VERSION_7),$(CONFIG_GCC_USE_VERSION_8)),y)
 export QCA_GCC_7_SUPPORT=1
 endif
 
-PBBINS=$(filter-out prebuilt/ini%, $(wildcard prebuilt/*))
+QCAWLAN_MAKEOPTS_EXTRAS:=SWRT_PATCH=y
+
+PBBINS=$(wildcard prebuilt/$(BUILD_NAME)/*)
 QCAWIFI_KMOD=$(filter %.ko,$(PBBINS))
 QCAWIFI_LIBS=$(filter %.so,$(PBBINS))
-QCAWIFI_XML=$(filter %.xml,$(PBBINS))
+QCAWIFI_XML=$(wildcard prebuilt/*.xml)
 QCAWIFI_USR_SBIN=$(filter-out $(QCAWIFI_KMOD) $(QCAWIFI_LIBS) $(QCAWIFI_XML),$(PBBINS))
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-cnss/Module.symvers
+export KBUILD_EXTRA_SYMBOLS
+
+N_DCTHREADS=$(shell grep -c '^processor' /proc/cpuinfo)
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-wifi source
-	cp -rf $(LINUXDIR)/include/uapi/linux/nl80211.h $(STAGING_DIR)/usr/include/nl80211_copy.h
-	cp -rf $(DRIVER_PATH)/component_dev/tools/linux/cfg80211_ven_cmd.h $(STAGING_DIR)/usr/include
-	cp -rf $(SDK_DIR_PLATFORM)/qca-cnss/include/cnss2.h $(STAGING_DIR)/usr/include
-	cp -rf $(SDK_DIR_PLATFORM)/qca-cnss/Module.symvers $(PKG_BUILD_DIR)
+	$(CP) $(LINUXDIR)/include/uapi/linux/nl80211.h $(STAGING_DIR)/usr/include/nl80211_copy.h
+	$(CP) $(DRIVER_PATH)/component_dev/tools/linux/cfg80211_ven_cmd.h $(STAGING_DIR)/usr/include
+	$(CP) $(SDK_DIR_PLATFORM)/qca-cnss/include/cnss2.h $(STAGING_DIR)/usr/include
+	$(CP) $(SDK_DIR_PLATFORM)/qca-cnss/Module.symvers $(PKG_BUILD_DIR)
+#	sed -i 's/OL_ATH_SUPPORT_LED=1/OL_ATH_SUPPORT_LED=0/' source/os/linux/configs/config.wlan.ax.unified.profile
+#	sed -i 's/OL_ATH_SUPPORT_LED_POLL=1/OL_ATH_SUPPORT_LED_POLL=0/' source/os/linux/configs/config.wlan.ax.unified.profile
+#	sed -i 's/ATH_SUPPORT_LED_CONTROLLER=1/ATH_SUPPORT_LED_CONTROLLER=0/' source/os/linux/configs/config.wlan.ax.unified.profile
 	export CONFIG_CNSS2_MODULE="$(CONFIG_CNSS2_MODULE)"; \
 	export CONFIG_WIFI_TARGET_WIFI_2_0="$(CONFIG_WIFI_TARGET_WIFI_2_0)"; \
 	export CONFIG_WIFI_TARGET_WIFI_3_0="$(CONFIG_WIFI_TARGET_WIFI_3_0)"; \
@@ -114,8 +120,8 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	export TARGET_CROSS="$(CROSS_COMPILE)"; \
 	export QCA_PLATFORM="$(QCA_PLATFORM)"; \
 	export BIG_ENDIAN_HOST="$(BIG_ENDIAN_HOST)"; \
-	export TARGET_CFLAGS="$(CFLAGS)"; \
-	export TARGET_LDFLAGS="$(LDFLAGS) -lpthread -ldl"; \
+	export TARGET_CFLAGS="$(TARGET_CFLAGS) -DSWRT_PATCH"; \
+	export TARGET_LDFLAGS="$(TARGET_LDFLAGS) -lpthread -ldl"; \
 	export CONFIG_WIFI_MEM_DEBUG="$(CONFIG_WIFI_MEM_DEBUG)"; \
 	export CONFIG_WLAN_REF_ID_TRACE="$(CONFIG_WLAN_REF_ID_TRACE)"; \
 	export CONFIG_WIFI_CE_TASKLET_DEBUG="$(CONFIG_WIFI_CE_TASKLET_DEBUG)"; \
@@ -132,7 +138,7 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	export CONFIG_TARGET_ipq95xx="$(CONFIG_TARGET_ipq95xx)"; \
 	export CONFIG_TARGET_ipq53xx="$(CONFIG_TARGET_ipq53xx)"; \
 	export CONFIG_TARGET_ipq60xx="$(CONFIG_TARGET_ipq60xx)"; \
-	export CONFIG_64BIT="$(CONFIG_64BIT)"; \
+	export CONFIG_64BIT=y; \
 	export CONFIG_KERNEL_KASAN="$(CONFIG_KERNEL_KASAN)"; \
 	export CONFIG_KERNEL_SKB_DEBUG="$(CONFIG_KERNEL_SKB_DEBUG)"; \
 	export CONFIG_KERNEL_SLUB_DEBUG="$(CONFIG_KERNEL_SLUB_DEBUG)"; \
@@ -141,20 +147,21 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	export CONFIG_DEBUG="$(CONFIG_DEBUG)"; \
 	export CONFIG_WIFI_MONITOR_SUPPORT="$(CONFIG_WIFI_MONITOR_SUPPORT)"; \
 	export CONFIG_WIFI_11BE_D3_0_SUPPORT="$(CONFIG_WIFI_11BE_D3_0_SUPPORT)"; \
-	$(MAKE) -C $(PKG_BUILD_DIR) src_prepare all_build
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libqca_tools.so $(STAGING_DIR)/usr/lib/
-	[ ! -f $(PKG_BUILD_DIR)/os/linux/tools/libstats_lib.so ] || cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libstats_lib.so $(STAGING_DIR)/usr/lib/
+	export QCAWLAN_MAKEOPTS_EXTRAS="$(QCAWLAN_MAKEOPTS_EXTRAS)"; \
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) src_prepare all_build N_DCTHREADS=$(N_DCTHREADS) $(TARGET_CONFIGURE_OPTS)
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libqca_tools.so $(STAGING_DIR)/usr/lib/
+	[ ! -f $(PKG_BUILD_DIR)/os/linux/tools/libstats_lib.so ] || $(CP) $(PKG_BUILD_DIR)/os/linux/tools/libstats_lib.so $(STAGING_DIR)/usr/lib/
 ifneq ($(CONFIG_LOWMEM_FLASH),y)
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_htt.so $(STAGING_DIR)/usr/lib/
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libapstats.so $(STAGING_DIR)/usr/lib/
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libwifistats.so $(STAGING_DIR)/usr/lib/
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_wmi.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_htt.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libapstats.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwifistats.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_wmi.so $(STAGING_DIR)/usr/lib/
 else
 ifeq ($(CONFIG_DEBUG),y)
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_htt.so $(STAGING_DIR)/usr/lib/
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libapstats.so $(STAGING_DIR)/usr/lib/
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libwifistats.so $(STAGING_DIR)/usr/lib/
-	cp -rf $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_wmi.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_htt.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libapstats.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwifistats.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/os/linux/tools/libwlanfw_wmi.so $(STAGING_DIR)/usr/lib/
 endif
 endif
 endif
@@ -170,11 +177,16 @@ install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	@install -m 755 -D $(PKG_BUILD_DIR)/cfg80211_configs/cfg80211tool $(INSTALLDIR)/sbin
+ifneq ($(findstring SWRT_PATCH,$(QCAWLAN_MAKEOPTS_EXTRAS)),)
+	@install -m 755 -D qcacommands_ol_radio.xml $(INSTALLDIR)/lib/wifi
+	@install -m 755 -D qcacommands_vap.xml $(INSTALLDIR)/lib/wifi
+else
 	@install -m 755 -D $(PKG_BUILD_DIR)/cfg80211_configs/qcacommands_ol_radio.xml $(INSTALLDIR)/lib/wifi
 	@install -m 755 -D $(PKG_BUILD_DIR)/cfg80211_configs/qcacommands_vap.xml $(INSTALLDIR)/lib/wifi
+endif
 	@install -m 755 -D $(PKG_BUILD_DIR)/umac/son/cfg80211_configs/qcacommands_mesh.xml $(INSTALLDIR)/lib/wifi
 	ln -sf /sbin/cfg80211tool $(INSTALLDIR)/sbin/cfg80211tool_mesh
-	$(MAKE) -C $(PKG_BUILD_DIR) QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_BIN_DEST="$(INSTALLDIR)/usr/sbin" CONFIG_WIFI_TARGET_WIFI_2_0=y \
+	$(MAKE) -C $(PKG_BUILD_DIR) QCAWLAN_TOOL_LIST="$(QCAWLAN_TOOL_LIST)" INSTALL_BIN_DEST="$(INSTALLDIR)/usr/sbin" CONFIG_WIFI_TARGET_WIFI_2_0="$(CONFIG_WIFI_TARGET_WIFI_2_0)" CONFIG_WIFI_TARGET_WIFI_3_0="$(CONFIG_WIFI_TARGET_WIFI_3_0)" \
 		INSTALL_LIB_DEST="$(INSTALLDIR)/usr/lib" INSTALL_BIN="install -m0755" INSTALL_DATA="install -m0644" tools_installonly
 	$(MAKE) -C $(PKG_BUILD_DIR) QCAWLAN_MODULE_LIST="$(QCAWLAN_MODULE_LIST)" INSTALL_ROOT_DRV="$(INSTALLKMODDIR)" driver_installonly
 else
@@ -195,10 +207,10 @@ stage:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-wifi/wow/*.c),)
 	[ -d $(STAGEDIR)/usr/include/qca-wifi ] || install -d $(STAGEDIR)/usr/include/qca-wifi
 	$(MAKE) -C $(PKG_BUILD_DIR) INSTALL_DEST="$(STAGING_DIR)/usr/include/" install_headers
-	cp -rf $(LINUXDIR)/include/uapi/linux/nl80211.h $(STAGING_DIR)/usr/include/nl80211_copy.h
-	cp -rf $(DRIVER_PATH)/component_dev/qca_mscs/inc/qca_mscs_if.h $(STAGING_DIR)/usr/include/qca-wifi
-	cp -rf $(DRIVER_PATH)/component_dev/qca_mesh_latency/inc/qca_mesh_latency_if.h $(STAGING_DIR)/usr/include/qca-wifi
-	cp -rf $(DRIVER_PATH)/component_dev/qca_sawf/qca_sawf_if.h $(STAGING_DIR)/usr/include/qca-wifi/qca_sawf_if.h
-	cp -rf $(DRIVER_PATH)/component_dev/qca_scs/inc/qca_scs_if.h $(STAGING_DIR)/usr/include/qca-wifi
-	cp -rf $(DRIVER_PATH)/component_dev/qca_fse/qca_fse_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	$(CP) $(LINUXDIR)/include/uapi/linux/nl80211.h $(STAGING_DIR)/usr/include/nl80211_copy.h
+	$(CP) $(DRIVER_PATH)/component_dev/qca_mscs/inc/qca_mscs_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	$(CP) $(DRIVER_PATH)/component_dev/qca_mesh_latency/inc/qca_mesh_latency_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	$(CP) $(DRIVER_PATH)/component_dev/qca_sawf/qca_sawf_if.h $(STAGING_DIR)/usr/include/qca-wifi/qca_sawf_if.h
+	$(CP) $(DRIVER_PATH)/component_dev/qca_scs/inc/qca_scs_if.h $(STAGING_DIR)/usr/include/qca-wifi
+	$(CP) $(DRIVER_PATH)/component_dev/qca_fse/qca_fse_if.h $(STAGING_DIR)/usr/include/qca-wifi
 endif

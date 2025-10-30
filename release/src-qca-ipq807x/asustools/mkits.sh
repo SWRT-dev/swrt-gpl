@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/bin/sh
 #
 # Licensed under the terms of the GNU GPL License version 2 or later.
 #
@@ -14,73 +14,48 @@
 # additional information on FIT images.
 #
 
-# Initializing global variables
-DTB="";
-FDT="";
-CONFIGS="";
-CONFIG_ID="hk01";
-
 usage() {
-	echo "Usage: `basename $0` -A arch -C comp -a addr -e entry" \
-		"-v version -k kernel [-D name -d dtb] -o its_file"
-	echo -e "\t-A ==> set architecture to 'arch'"
-	echo -e "\t-C ==> set compression type 'comp'"
-	echo -e "\t-c ==> set config name 'config'"
-	echo -e "\t-l ==> set dtb load address to 'addr'"
-	echo -e "\t-a ==> set load address to 'addr' (hex)"
-	echo -e "\t-e ==> set entry point to 'entry' (hex)"
-	echo -e "\t-v ==> set kernel version to 'version'"
-	echo -e "\t-k ==> include kernel image 'kernel'"
-	echo -e "\t-D ==> human friendly Device Tree Blob 'name'"
-	echo -e "\t-d ==> include Device Tree Blob 'dtb'"
-	echo -e "\t-o ==> create output file 'its_file'"
+	printf "Usage: %s -A arch -C comp -a addr -e entry" "$(basename "$0")"
+	printf " -v version -k kernel [-D name -n address -d dtb] -o its_file"
+	printf " [-s script] [-S key_name_hint] [-r ar_ver]"
+
+	printf "\n\t-A ==> set architecture to 'arch'"
+	printf "\n\t-C ==> set compression type 'comp'"
+	printf "\n\t-c ==> set config name 'config'"
+	printf "\n\t-a ==> set load address to 'addr' (hex)"
+	printf "\n\t-e ==> set entry point to 'entry' (hex)"
+	printf "\n\t-v ==> set kernel version to 'version'"
+	printf "\n\t-k ==> include kernel image 'kernel'"
+	printf "\n\t-D ==> human friendly Device Tree Blob 'name'"
+	printf "\n\t-n ==> fdt unit-address 'address'"
+	printf "\n\t-d ==> include Device Tree Blob 'dtb'"
+	printf "\n\t-o ==> create output file 'its_file'"
+	printf "\n\t-s ==> include u-boot script 'script'"
+	printf "\n\t-S ==> add signature at configurations and assign its key_name_hint by 'key_name_hint'"
+	printf "\n\t-r ==> set anti-rollback version to 'fw_ar_ver' (dec)"
 	exit 1
 }
 
-# Generating FDT Configuration for all the dtb files
-Generate_FDT () {
-	FDT="$FDT
-		fdt@hk01 {
-			description = \"${ARCH_UPPER} SWRT ${DEVICE} device tree blob\";
-			data = /incbin/(\"${1}\");
-			type = \"flat_dt\";
-			arch = \"${ARCH}\";
-			compression = \"none\";
-			hash@1 {
-				algo = \"crc32\";
-			};
-			hash@2 {
-				algo = \"sha1\";
-			};
-		};
-"
-}
+FDTNUM=1
 
-Generate_Config () {
-	CONFIGS="$CONFIGS
-		${CONFIG} {
-			description = \"SWRT  ${DEVICE}\";
-			kernel = \"kernel@1\";
-			fdt = \"fdt@hk01\";
-		};
-"
-}
-
-while getopts ":A:a:C:c:D:d:e:k:l:o:v:" OPTION
+while getopts ":A:a:c:C:D:d:e:k:n:o:v:s:S:r:R:" OPTION
 do
 	case $OPTION in
 		A ) ARCH=$OPTARG;;
 		a ) LOAD_ADDR=$OPTARG;;
-		C ) COMPRESS=$OPTARG;;
 		c ) CONFIG=$OPTARG;;
+		C ) COMPRESS=$OPTARG;;
 		D ) DEVICE=$OPTARG;;
-		d ) DTB="$DTB $OPTARG";;
+		d ) DTB=$OPTARG;;
 		e ) ENTRY_ADDR=$OPTARG;;
 		k ) KERNEL=$OPTARG;;
-		l ) DTB_LOAD_ADDR=$OPTARG;;
+		n ) FDTNUM=$OPTARG;;
 		o ) OUTPUT=$OPTARG;;
 		v ) VERSION=$OPTARG;;
-		* ) echo "Invalid option passed to '$0' (options:$@)"
+		s ) UBOOT_SCRIPT=$OPTARG;;
+		S ) KEY_NAME_HINT=$OPTARG;;
+		r ) AR_VER=$OPTARG;;
+		* ) echo "Invalid option passed to '$0' (options:$*)"
 		usage;;
 	esac
 done
@@ -92,25 +67,75 @@ if [ -z "${ARCH}" ] || [ -z "${COMPRESS}" ] || [ -z "${LOAD_ADDR}" ] || \
 	usage
 fi
 
-ARCH_UPPER=`echo $ARCH | tr '[:lower:]' '[:upper:]'`
+ARCH_UPPER=$(echo "$ARCH" | tr '[:lower:]' '[:upper:]')
 
 # Conditionally create fdt information
 if [ -n "${DTB}" ]; then
-	CONFIG_ID=($DTB)
-	for dtb in $DTB
-	do
-		CONFIG_ID=$([ ${#CONFIG_ID[@]} == 1 ] && echo ${#CONFIG_ID[@]} || basename ${dtb%%.gz} .dtb | sed -e 's/\([^-]*-\)\{2\}//g');
-		Generate_FDT $dtb
-		Generate_Config
-
-	done
-else
-	CONFIGS="
-		${CONFIG} {
-			description = \"SWRT\";
-			kernel = \"kernel@1\";
-			fdt = \"fdt@hk01\";
+	FDT_NODE="
+		fdt-$FDTNUM {
+			description = \"${ARCH_UPPER} OpenWrt ${DEVICE} device tree blob\";
+			data = /incbin/(\"${DTB}\");
+			type = \"flat_dt\";
+			arch = \"${ARCH}\";
+			compression = \"none\";
+			hash-1 {
+				algo = \"crc32\";
+			};
+			hash-2 {
+				algo = \"sha1\";
+			};
 		};
+"
+	FDT_PROP="fdt = \"fdt-$FDTNUM\";"
+fi
+
+# Conditionally create script information
+if [ -n "${UBOOT_SCRIPT}" ]; then
+	SCRIPT="\
+		script-1 {
+			description = \"U-Boot Script\";
+			data = /incbin/(\"${UBOOT_SCRIPT}\");
+			type = \"script\";
+			arch = \"${ARCH}\";
+			os = \"linux\";
+			load = <0>;
+			entry = <0>;
+			compression = \"none\";
+			hash-1 {
+				algo = \"crc32\";
+			};
+			hash-2 {
+				algo = \"sha1\";
+			};
+		};\
+"
+	LOADABLES="\
+			loadables = \"script-1\";\
+"
+	SIGN_IMAGES="\
+				sign-images = \"fdt\", \"kernel\", \"loadables\";\
+"
+else
+	SIGN_IMAGES="\
+				sign-images = \"fdt\", \"kernel\";\
+"
+fi
+
+# Conditionally create signature information
+if [ -n "${KEY_NAME_HINT}" ]; then
+	SIGNATURE="\
+			signature {
+				algo = \"sha1,rsa2048\";
+				key-name-hint = \"${KEY_NAME_HINT}\";
+${SIGN_IMAGES}
+			};\
+"
+fi
+
+# Conditionally create anti-rollback version information
+if [ -n "${AR_VER}" ]; then
+	FW_AR_VER="\
+			fw_ar_ver = <${AR_VER}>;\
 "
 fi
 
@@ -118,12 +143,12 @@ fi
 DATA="/dts-v1/;
 
 / {
-	description = \"${ARCH_UPPER} SWRT FIT (Flattened Image Tree)\";
+	description = \"${ARCH_UPPER} OpenWrt FIT (Flattened Image Tree)\";
 	#address-cells = <1>;
 
 	images {
-		kernel@1 {
-			description = \"${ARCH_UPPER} SWRT Linux-${VERSION}\";
+		kernel-1 {
+			description = \"${ARCH_UPPER} OpenWrt Linux-${VERSION}\";
 			data = /incbin/(\"${KERNEL}\");
 			type = \"kernel\";
 			arch = \"${ARCH}\";
@@ -131,23 +156,30 @@ DATA="/dts-v1/;
 			compression = \"${COMPRESS}\";
 			load = <${LOAD_ADDR}>;
 			entry = <${ENTRY_ADDR}>;
-			hash@1 {
+			hash-1 {
 				algo = \"crc32\";
 			};
-			hash@2 {
+			hash-2 {
 				algo = \"sha1\";
 			};
 		};
-
-${FDT}
-
+${FDT_NODE}
+${SCRIPT}
 	};
 
 	configurations {
 		default = \"${CONFIG}\";
-${CONFIGS}
+		${CONFIG} {
+			description = \"OpenWrt\";
+${FW_AR_VER}
+${LOADABLES}
+			kernel = \"kernel-1\";
+			${FDT_PROP}
+${SIGNATURE}
+		};
 	};
 };"
 
 # Write .its file to disk
-echo "$DATA" > ${OUTPUT}
+echo "$DATA" > "${OUTPUT}"
+

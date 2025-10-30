@@ -1,11 +1,14 @@
 qca-install-header:
 	mkdir -p header
-	cp -rf $(SDK_DIR_PLATFORM)/header/* header/
-	cp -rf header/wlan/$(PLATFORM_ROUTER) header/wlan/fwcommon
+	[ ! -d $(SDK_DIR_PLATFORM)/header ] || cp -rf $(SDK_DIR_PLATFORM)/header/* header/
+	[ ! -d $(SDK_DIR_PLATFORM)/header ] || cp -rf header/wlan/$(PLATFORM_ROUTER) header/wlan/fwcommon
 
 libroxml:
-	$(MAKE) -C $@
-	$(MAKE) -C $@ stage
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
 
 iwinfo:
 	$(MAKE) -C $@
@@ -13,35 +16,35 @@ iwinfo:
 
 qca-cfg80211:iw libroxml
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
 
 libqcacommon:
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
 
 qca-qmi-framework:
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
 
 qca-cnss:
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
 
 qca-cnss-daemon:qca-qmi-framework
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
@@ -74,21 +77,21 @@ qca-ovsmgr:
 
 emesh-sp:
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
 
 qca-hyfi-bridge:emesh-sp
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
 
 qca-mcs-lkm:
 	@$(SEP)
-	if [ ! -f $@/stamp-h1 ] ; then \
+	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
 	$(MAKE) -C $@ stage ; \
 	fi
@@ -111,7 +114,7 @@ qca-nss-macsec:
 	@$(SEP)
 	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \
-	$(MAKE) -C $@ stage; \
+	$(MAKE) -C $@ stage ; \
 	fi
 
 qca-nss-drv: qca-nss-dp
@@ -185,6 +188,111 @@ qca-mcs-apps:qca-wifi qca-ssdk qca-mcs-lkm libhyficommon
 	fi
 
 libieee1905:libhyficommon
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+breakpad-wrapper: breakpad
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+breakpad:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+libathtestcmd:libtcmd libtlv2 libtlvutil
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+libtcmd:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+myftm:libathtestcmd libtcmd
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+athtestcmd-lith:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+ftm:libtcmd qca-diag libprovision
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+libtlv2:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+libtlvutil:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+libprovision:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+464xlat:nat46
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-diag:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-whc-lbd:qca-wifi libqcacommon libwifisoncfg qca-wifison-ext-lib libieee1905
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+libwifisoncfg:qca-cfg80211 libhyficommon
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
+qca-wifison-ext-lib:
 	@$(SEP)
 	if [ ! -f $@/stamp-h1 ];then \
 	$(MAKE) -C $@ ; \

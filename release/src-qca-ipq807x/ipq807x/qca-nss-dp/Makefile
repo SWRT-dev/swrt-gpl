@@ -1,7 +1,7 @@
-include ../qsdk.config
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
 
 EXTRA_CFLAGS+= \
 	-I$(STAGING_DIR)/usr/include/qca-ssdk \
@@ -33,16 +33,17 @@ hal_arch:=$(subtarget)
 endif
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 KBUILD_EXTRA_SYMBOLS += $(SDK_DIR_PLATFORM)/qca-ssdk/Module.symvers
+export KBUILD_EXTRA_SYMBOLS
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-dp/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-dp source
 	ln -sf $(NSS_DP_HAL_DIR)/soc_ops/$(hal_arch)/nss_$(hal_arch).h $(PKG_BUILD_DIR)/exports/nss_dp_arch.h
-	$(MAKE) -C "$(LINUXDIR)" $(strip $(MAKE_OPTS))	CROSS_COMPILE="$(CROSS_COMPILE)" ARCH="$(ARCH)" M="$(PKG_BUILD_DIR)" \
-		EXTRA_CFLAGS="$(EXTRA_CFLAGS)" SoC="$(hal_arch)" KBUILD_EXTRA_SYMBOLS=$(KBUILD_EXTRA_SYMBOLS) modules
+	$(KERNEL_MAKE) $(strip $(MAKE_OPTS)) EXTRA_CFLAGS="$(EXTRA_CFLAGS)" M="$(PKG_BUILD_DIR)" \
+		SoC="$(hal_arch)" modules
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp prebuilt/qca-nss-dp.ko $(PKG_BUILD_DIR)
+	cp prebuilt/$(BUILD_NAME)/qca-nss-dp.ko $(PKG_BUILD_DIR)
 endif
 	touch stamp-h1
 

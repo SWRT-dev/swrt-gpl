@@ -1,3 +1,0 @@
-# -*- Makefile -*-
-
-SUBDIRS = netlink

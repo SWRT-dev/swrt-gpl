@@ -236,6 +236,8 @@ else ifeq ($(RTCONFIG_QCA8033),y)
 OBJS += qca8033.o
 else ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
 OBJS += ipq40xx.o
+else ifeq ($(RTCONFIG_SWITCH_QCA8075),y)
+OBJS += ipq807x.o mdio.o ethtool.o
 else ifeq ($(RTCONFIG_SWITCH_QCA8075_PHY_AQR107),y)
 OBJS += qca8075_phy_aqr107.o
 else ifeq ($(RTCONFIG_SWITCH_QCA8075_PHY_AQR111),y)

@@ -1,6 +1,7 @@
 # Convert swrt build environment variable to qsdk
+include ../qsdk.config
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-STAGING_DIR=$(STAGEDIR)
 
 TARGET_CFLAGS += -fpie
 TARGET_LDFLAGS += -pie
@@ -12,15 +13,16 @@ TARGET_CPPFLAGS:= \
 	-D_GNU_SOURCE
 
 MAKE_FLAGS += \
-	CFLAGS="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) -ffunction-sections -fdata-sections" \
-	LDFLAGS="$(TARGET_LDFLAGS) -Wl,--gc-sections" \
 	NL1FOUND="" NL2FOUND=Y \
 	NLLIBNAME="libnl-tiny" \
 	LIBS="-lm -lnl-tiny" \
 	V=1
 
+CFLAGS+="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) -ffunction-sections -fdata-sections"
+LDFLAGS+="$(TARGET_LDFLAGS) -Wl,--gc-sections"
+
 all:
-	$(MAKE) -C $(PKG_BUILD_DIR) $(MAKE_FLAGS)
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS) $(MAKE_FLAGS)
 	touch stamp-h1
 
 install:

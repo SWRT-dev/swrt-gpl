@@ -2,19 +2,7 @@
 
    This file is part of the LZO real-time data compression library.
 
-   Copyright (C) 2008 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2007 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2006 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2005 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2004 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2003 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2002 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2001 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 2000 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 1999 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 1998 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 1997 Markus Franz Xaver Johannes Oberhumer
-   Copyright (C) 1996 Markus Franz Xaver Johannes Oberhumer
+   Copyright (C) 1996-2017 Markus Franz Xaver Johannes Oberhumer
    All Rights Reserved.
 
    The LZO library is free software; you can redistribute it and/or
@@ -44,7 +32,7 @@
 
 typedef struct
 {
-    int init;
+    unsigned init;
 
     lzo_uint look;          /* bytes in lookahead buffer */
 
@@ -67,16 +55,16 @@ typedef struct
     lzo_uint printcount;    /* counter for reporting progress every 1K bytes */
 
     /* some stats */
-    unsigned long lit_bytes;
-    unsigned long match_bytes;
-    unsigned long rep_bytes;
-    unsigned long lazy;
+    lzo_uint lit_bytes;
+    lzo_uint match_bytes;
+    lzo_uint rep_bytes;
+    lzo_uint lazy;
 
 #if defined(LZO1B)
     lzo_uint r1_m_len;
 
     /* some stats */
-    unsigned long r1_r, m3_r, m2_m, m3_m;
+    lzo_uint r1_r, m3_r, m2_m, m3_m;
 #endif
 
 #if defined(LZO1C)
@@ -84,7 +72,7 @@ typedef struct
     lzo_bytep m3;
 
     /* some stats */
-    unsigned long r1_r, m3_r, m2_m, m3_m;
+    lzo_uint r1_r, m3_r, m2_m, m3_m;
 #endif
 
 #if defined(LZO1F)
@@ -92,7 +80,7 @@ typedef struct
     lzo_uint r1_m_len;
 
     /* some stats */
-    unsigned long r1_r, m2_m, m3_m;
+    lzo_uint r1_r, m2_m, m3_m;
 #endif
 
 #if defined(LZO1X) || defined(LZO1Y) || defined(LZO1Z)
@@ -100,27 +88,19 @@ typedef struct
     lzo_uint r1_m_len;
 
     /* some stats */
-    unsigned long m1a_m, m1b_m, m2_m, m3_m, m4_m;
-    unsigned long lit1_r, lit2_r, lit3_r;
+    lzo_uint m1a_m, m1b_m, m2_m, m3_m, m4_m;
+    lzo_uint lit1_r, lit2_r, lit3_r;
 #endif
 
 #if defined(LZO2A)
     /* some stats */
-    unsigned long m1, m2, m3, m4;
+    lzo_uint m1, m2, m3, m4;
 #endif
 }
 LZO_COMPRESS_T;
 
 
-#if (LZO_CC_BORLANDC && LZO_ARCH_I086) && (__BORLANDC__ < 0x0450)
-   /* work around a Borland C 3.1 bug */
-#  define getbyte(c)  ((c).ip < (c).in_end ? (c).ip +=1, (c).ip[-1] : (-1))
-#elif defined(__TURBOC__) && defined(__TOS__)
-   /* work around a bug in Turbo C / Pure C (Atari ST) */
-#  define getbyte(c)  ((c).ip < (c).in_end ? (int)(unsigned) *((c).ip)++ : (-1))
-#else
-#  define getbyte(c)  ((c).ip < (c).in_end ? *((c).ip)++ : (-1))
-#endif
+#define getbyte(c)  ((c).ip < (c).in_end ? *((c).ip)++ : (-1))
 
 #include "lzo_swd.ch"
 
@@ -132,7 +112,7 @@ LZO_COMPRESS_T;
 static int
 init_match ( LZO_COMPRESS_T *c, lzo_swd_p s,
              const lzo_bytep dict, lzo_uint dict_len,
-             lzo_uint32 flags )
+             lzo_uint32_t flags )
 {
     int r;
 
@@ -148,11 +128,14 @@ init_match ( LZO_COMPRESS_T *c, lzo_swd_p s,
     c->lazy = 0;
 
     r = swd_init(s,dict,dict_len);
-    if (r != 0)
+    if (r != LZO_E_OK)
+    {
+        swd_exit(s);
         return r;
+    }
 
     s->use_best_off = (flags & 1) ? 1 : 0;
-    return r;
+    return LZO_E_OK;
 }
 
 
@@ -178,8 +161,8 @@ find_match ( LZO_COMPRESS_T *c, lzo_swd_p s,
         c->textsize += this_len - skip;
     }
 
-    s->m_len = 1;
-    s->m_len = THRESHOLD;
+    s->m_len = SWD_THRESHOLD;
+    s->m_off = 0;
 #ifdef SWD_BEST_OFF
     if (s->use_best_off)
         lzo_memset(s->best_pos,0,sizeof(s->best_pos));
@@ -204,14 +187,14 @@ find_match ( LZO_COMPRESS_T *c, lzo_swd_p s,
 
 #if 0
     /* brute force match search */
-    if (c->m_len > THRESHOLD && c->m_len + 1 <= c->look)
+    if (c->m_len > SWD_THRESHOLD && c->m_len + 1 <= c->look)
     {
         const lzo_bytep ip = c->bp;
         const lzo_bytep m  = c->bp - c->m_off;
         const lzo_bytep in = c->in;
 
-        if (ip - in > N)
-            in = ip - N;
+        if (ip - in > s->swd_n)
+            in = ip - s->swd_n;
         for (;;)
         {
             while (*in != *ip)
@@ -236,7 +219,4 @@ find_match ( LZO_COMPRESS_T *c, lzo_swd_p s,
 }
 
 
-/*
-vi:ts=4:et
-*/
-
+/* vim:set ts=4 sw=4 et: */
