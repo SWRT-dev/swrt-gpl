@@ -13,7 +13,7 @@ HALPHY_TOOLS_PATH:=$(SRCBASE)/$(PLATFORM_ROUTER)/header/wlan/halphy_tools
 
 export BUILD_VARIANT="unified-perf"
 export DRIVER_PATH
-include $(DRIVER_PATH)/config.mk
+-include $(DRIVER_PATH)/config.mk
 ifeq ($(CONFIG_LINUX_5_4),y)
 export QCA_WIFI_KERNEL_VERSION_5_4=1
 endif
