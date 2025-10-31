@@ -27,7 +27,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/install
 	mkdir -p $(PKG_BUILD_DIR)/install/lib/
-	cp prebuilt/$(BUILD_NAME)/libieee1905.so $(PKG_BUILD_DIR)/install/lib/libieee1905.so
+	cp prebuild/$(BUILD_NAME)/libieee1905.so $(PKG_BUILD_DIR)/install/lib/libieee1905.so
 endif
 	touch stamp-h1
 

@@ -34,10 +34,10 @@ else
 	mkdir -p $(PKG_BUILD_DIR)/install/lib/
 	mkdir -p $(PKG_BUILD_DIR)/install/include/
 	mkdir -p $(PKG_BUILD_DIR)/install/sbin
-	$(CP) prebuilt/$(BUILD_NAME)/libqca_wifison_ext.so $(PKG_BUILD_DIR)/install/lib/libqca_wifison_ext.so
-	$(CP) prebuilt/$(BUILD_NAME)/qca_event_sample $(PKG_BUILD_DIR)/install/sbin/qca_event_sample
-	$(CP) prebuilt/$(BUILD_NAME)/qca_listen_port $(PKG_BUILD_DIR)/install/sbin/qca_listen_port
-	$(CP) prebuilt/$(BUILD_NAME)/qca_genlevent_sample $(PKG_BUILD_DIR)/install/sbin/qca_genlevent_sample
+	$(CP) prebuild/$(BUILD_NAME)/libqca_wifison_ext.so $(PKG_BUILD_DIR)/install/lib/libqca_wifison_ext.so
+	$(CP) prebuild/$(BUILD_NAME)/qca_event_sample $(PKG_BUILD_DIR)/install/sbin/qca_event_sample
+	$(CP) prebuild/$(BUILD_NAME)/qca_listen_port $(PKG_BUILD_DIR)/install/sbin/qca_listen_port
+	$(CP) prebuild/$(BUILD_NAME)/qca_genlevent_sample $(PKG_BUILD_DIR)/install/sbin/qca_genlevent_sample
 endif
 	touch stamp-h1
 

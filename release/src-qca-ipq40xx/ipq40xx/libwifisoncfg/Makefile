@@ -41,7 +41,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/install
 	mkdir -p $(PKG_BUILD_DIR)/install/lib/
-	cp prebuilt/$(BUILD_NAME)/libwifisoncfg.so $(PKG_BUILD_DIR)/install/lib/libwifisoncfg.so
+	cp prebuild/$(BUILD_NAME)/libwifisoncfg.so $(PKG_BUILD_DIR)/install/lib/libwifisoncfg.so
 endif
 	touch stamp-h1
 

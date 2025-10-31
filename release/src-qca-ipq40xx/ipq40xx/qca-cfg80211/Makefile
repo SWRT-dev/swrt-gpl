@@ -27,8 +27,8 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/qca_nl80211_lib
 	mkdir -p $(PKG_BUILD_DIR)/vendorcmdtool
-	cp prebuilt/$(BUILD_NAME)/libqca_nl80211_wrapper.so $(PKG_BUILD_DIR)/qca_nl80211_lib/libqca_nl80211_wrapper.so
-#	cp prebuilt/$(BUILD_NAME)/cfg80211tool.1 $(PKG_BUILD_DIR)/vendorcmdtool/cfg80211tool.1
+	cp prebuild/$(BUILD_NAME)/libqca_nl80211_wrapper.so $(PKG_BUILD_DIR)/qca_nl80211_lib/libqca_nl80211_wrapper.so
+#	cp prebuild/$(BUILD_NAME)/cfg80211tool.1 $(PKG_BUILD_DIR)/vendorcmdtool/cfg80211tool.1
 endif
 	touch stamp-h1
 

@@ -27,7 +27,7 @@ ifneq ($(wildcard $(PKG_BUILD_DIR)/*.c),)
 	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(strip $(HYFICOMMON_MAKEOPTS)) $(TARGET_CONFIGURE_OPTS)
 else
 	mkdir -p $(PKG_BUILD_DIR)
-	cp prebuilt/$(BUILD_NAME)/libhyficommon.so $(PKG_BUILD_DIR)/libhyficommon.so
+	cp prebuild/$(BUILD_NAME)/libhyficommon.so $(PKG_BUILD_DIR)/libhyficommon.so
 endif
 	touch stamp-h1
 
