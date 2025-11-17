@@ -1,20 +1,14 @@
 # OpenWRT SDK_4210
 ifeq ($(NEWKERNEL),y)
 export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
-else ifeq ($(MT7986),y)
-export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 else
 export LINUXDIR := $(SRCBASE)/linux/linux-4.4.198
 endif
 
 ifeq ($(EXTRACFLAGS),)
-ifeq ($(MT7986),y)
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -mcpu=cortex-a53
-else
 export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -mips32 -mtune=mips32
 #export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -msoft-float -mfloat-abi=soft -mtune=cortex-a7
 #export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -marm -march=armv7-a -mfpu=vfpv3-d16 -mfloat-abi=softfp
-endif
 endif
 
 export RTVER := 0.9.30.1
@@ -41,36 +35,6 @@ export HOST := mipsel-linux
 export KERNELCC := $(CROSS_COMPILE)gcc
 export KERNELLD := $(CROSS_COMPILE)ld
 export STAGING_DIR := $(TOOLS)
-else ifeq ($(RT4GAC86U),y)
-export EXTRACFLAGS += -DRT4GAC86U
-export PLATFORM := arm-glibc
-export PLATFORM_ARCH := arm-glibc
-export TOOLS := /opt/toolchain-aarch64_cortex-a53+neon-vfpv4_gcc-5.4.0_glibc-2.24
-export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-
-export CROSS_COMPILER := $(CROSS_COMPILE)
-export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-readelf
-export KERNELCC := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-gcc
-export KERNELLD := $(TOOLS)/bin/aarch64-openwrt-linux-gnu-ld
-export STAGING_DIR := $(TOOLS)
-export ARCH := arm64
-export HOST := arm-linux
-export CONFIGURE := ./configure --host=arm-linux --build=$(BUILD)
-export HOSTCONFIG := linux-aarch64
-else ifeq ($(MT7986),y)
-export MUSL64=y
-export PLATFORM := arm-musl
-export PLATFORM_ARCH := arm-musl
-export TOOLS := /opt/toolchain-aarch64_cortex-a53_gcc-8.4.0_musl
-export CROSS_COMPILE := $(TOOLS)/bin/aarch64-openwrt-linux-
-export CROSS_COMPILER := $(CROSS_COMPILE)
-export READELF := $(TOOLS)/bin/aarch64-openwrt-linux-readelf
-export KERNELCC := $(TOOLS)/bin/aarch64-openwrt-linux-gcc
-export KERNELLD := $(TOOLS)/bin/aarch64-openwrt-linux-ld
-export STAGING_DIR := $(TOOLS)
-export ARCH := arm64
-export HOST := aarch64-linux
-export CONFIGURE := ./configure --host=aarch64-linux --build=$(BUILD)
-export HOSTCONFIG := linux-aarch64
 else
 export MUSL32=y
 export PLATFORM := arm-musl
@@ -96,15 +60,6 @@ EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST
 #else
 #EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -mfpu=vfpv3-d16 -mfloat-abi=softfp
 #endif
-ifeq ($(RTACRH18),y)
-EXTRA_CFLAGS += -march=armv7-a -D_GNU_SOURCE -DMUSL_LIBC -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
-endif
-ifeq ($(RT4GAC86U),y)
-EXTRA_CFLAGS += -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__
-endif
-ifeq ($(MT7986),y)
-EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=vfpv3-d16 -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC
-endif
 
 export CONFIG_LINUX26=y
 export CONFIG_RALINK=y
@@ -195,22 +150,8 @@ BOOT_FLASH_TYPE_POOL =	\
 	"SPI"		\
 	"NAND"
 
-DRAM_POOL = 		\
-	"8M"		\
-	"16M"		\
-	"32M"		\
-	"64M"		\
-	"128M"		\
-	"256M"		\
-	"512M"		
-
 FIRST_IF_POOL =		\
 	"NONE"	\
-	"RT2860"	\
-	"RT3092"	\
-	"RT5392"	\
-	"RT5592"	\
-	"RT3593"	\
 	"MT7610E"	\
 	"MT7612E"	\
 	"MT7603E"	\
@@ -219,12 +160,6 @@ FIRST_IF_POOL =		\
 
 SECOND_IF_POOL = 	\
 	"NONE"		\
-	"RT3092"	\
-	"RT5392"	\
-	"RT5592"	\
-	"RT3593"	\
-	"RT3572"	\
-	"RT5572"	\
 	"MT7620"	\
 	"MT7621"	\
 	"MT7610U"	\
@@ -240,41 +175,6 @@ SECOND_IF_POOL = 	\
 define platformKernelConfig
 	@( \
 	if [ "$(RALINK)" = "y" ]; then \
-		if [ "$(RT3052)" = "y" ]; then \
-			sed -i "/CONFIG_RALINK_RT3052_MP2/d" $(1); \
-			echo "CONFIG_RALINK_RT3052_MP2=y" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3052/d" $(1); \
-			echo "CONFIG_RALINK_RT3052=y" >>$(1); \
-			sed -i "/CONFIG_MTD_PHYSMAP_START/d" $(1); \
-			echo "CONFIG_MTD_PHYSMAP_START=0xBF000000" >>$(1); \
-			sed -i "/CONFIG_RT3052_ASIC/d" $(1); \
-			echo "CONFIG_RT3052_ASIC=y" >>$(1); \
-			sed -i "/CONFIG_RT2880_DRAM_128M/d" $(1); \
-			sed -i "/CONFIG_RT2880_DRAM_32M/d" $(1); \
-			echo "CONFIG_RT2880_DRAM_32M=y" >>$(1); \
-			sed -i "/CONFIG_RALINK_RAM_SIZE/d" $(1); \
-			echo "CONFIG_RALINK_RAM_SIZE=32" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3883_MP/d" $(1); \
-			echo "# CONFIG_RALINK_RT3883_MP is not set" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3883/d" $(1); \
-			echo "# CONFIG_RALINK_RT3883 is not set" >>$(1); \
-			sed -i "/CONFIG_RT3883_ASIC/d" $(1); \
-			echo "# CONFIG_RT3883_ASIC is not set" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3883_MP/d" $(1); \
-			echo "# CONFIG_RALINK_RT3883_MP is not set" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3883_MP/d" $(1); \
-			echo "# CONFIG_RALINK_RT3883_MP is not set" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3662_2T2R/d" $(1); \
-			echo "# CONFIG_RALINK_RT3662_2T2R is not set" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3052_2T2R/d" $(1); \
-			echo "CONFIG_RALINK_RT3052_2T2R=y" >>$(1); \
-			sed -i "/CONFIG_RALINK_RT3352/d" $(1); \
-			echo "# CONFIG_RALINK_RT3352 is not set" >>$(1); \
-			sed -i "/CONFIG_LAN_WAN_SUPPORT/d" $(1); \
-			echo "CONFIG_LAN_WAN_SUPPORT=y" >>$(1); \
-			sed -i "/CONFIG_RT_3052_ESW/d" $(1); \
-			echo "CONFIG_RT_3052_ESW=y" >>$(1); \
-		fi; \
 		if [ "$(SPI_FAST_CLOCK)" = "y" ] ; then \
 			sed -i "/CONFIG_MTD_SPI_FAST_CLOCK/d" $(1); \
 			echo "CONFIG_MTD_SPI_FAST_CLOCK=y" >>$(1); \
@@ -515,14 +415,6 @@ define platformKernelConfig
 	done; \
 	sed -i "/CONFIG_MTD_ANY_RALINK/d" $(1); \
 	echo "# CONFIG_MTD_ANY_RALINK is not set" >>$(1); \
-	for dram in $(DRAM_POOL) ; do \
-		sed -i "/CONFIG_RT2880_DRAM_$${dram}\>/d" $(1); \
-		if [ "$(DRAM)" = "$${dram}" ] ; then \
-			echo "CONFIG_RT2880_DRAM_$${dram}=y" >> $(1); \
-		else \
-			echo "# CONFIG_RT2880_DRAM_$${dram} is not set" >> $(1); \
-		fi; \
-	done; \
 	for sec_if in $(SECOND_IF_POOL) ; do \
 		sed -i "/CONFIG_MTD_$${sec_if}_RALINK\>/d" $(1); \
 		if [ "$(SECOND_IF)" = "$${sec_if}" ] ; then \

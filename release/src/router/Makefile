@@ -932,7 +932,7 @@ obj-$(RTCONFIG_SOC_IPQ8064) += taskset
 obj-$(RTCONFIG_SOC_IPQ8074) += taskset
 
 # IPQ4019 ILQ 1.1
-obj-$(RTCONFIG_SOC_IPQ40XX) += ethtool-3.7
+#obj-$(RTCONFIG_SOC_IPQ40XX) += ethtool-3.7
 obj-$(or $(RTCONFIG_SOC_IPQ40XX),$(RTCONFIG_SOC_IPQ8074)) += stress-1.x
 
 obj-$(PLC_UTILS) += plc-utils
@@ -968,17 +968,10 @@ obj-$(RTCONFIG_BT_CONN) += libiconv-1.14
 obj-$(RTCONFIG_BT_CONN) += expat-2.0.1
 obj-$(RTCONFIG_BT_CONN) += dbus-1.8.8
 obj-$(RTCONFIG_BT_CONN) += libffi-3.0.11
-obj-$(RTCONFIG_BT_CONN) += zlib
 obj-$(RTCONFIG_BT_CONN) += pcre-8.31
 obj-$(RTCONFIG_BT_CONN) += glib-2.59.0
 obj-$(RTCONFIG_BT_CONN) += udev-173
 obj-$(RTCONFIG_BT_CONN) += libical-2.0.0
-ifeq ($(RTCONFIG_NCURSES_6_1),y)
-obj-$(RTCONFIG_BT_CONN) += ncurses-6.1
-else
-obj-$(RTCONFIG_BT_CONN) += ncurses-6.3
-endif
-obj-$(RTCONFIG_BT_CONN) += readline-6.2
 obj-$(RTCONFIG_BT_CONN) += bluez-5.56
 ifeq ($(or $(HND_ROUTER_AX_675X),$(HND_ROUTER_AX_6756)),y)
 obj-$(RTCONFIG_BT_CONN) += btconfig
@@ -1059,8 +1052,9 @@ obj-y += wsc_upnp
 endif
 
 # ethtool to disable TSO
-ifeq ($(RTCONFIG_WLMODULE_MT7915D_AP), y)
-obj-y += ethtool-3.7
+ifeq ($(RTCONFIG_GROCTRL), y)
+#obj-y += ethtool-3.7
+obj-y += ethtool-6.2
 endif
 
 # !!TB - updated Broadcom Wireless driver
@@ -8044,6 +8038,26 @@ batctl-2016.0-install:
 	install -D batctl-2016.0/batctl $(INSTALLDIR)/batctl-2016.0/usr/sbin/batctl
 	$(STRIP) $(INSTALLDIR)/batctl-2016.0/usr/sbin/batctl
 
+ethtool-6.2/configure:
+	cd ethtool-6.2 && ./autogen.sh \
+
+ethtool-6.2/Makefile: ethtool-6.2/configure
+	cd ethtool-6.2 && $(CONFIGURE) \
+		--with-kernel=$(LINUXDIR)
+
+ethtool-6.2: ethtool-6.2/Makefile
+	$(MAKE) -C $@ KERNEL_DIR=$(LINUXDIR) \
+	CFLAGS="$(CFLAGS) -I$(TOP)/libmnl-1.0.4/include -L$(TOP)/libmnl-1.0.4/src/.libs -lmnl" \
+	LIBMNL_CFLAGS="-L$(TOP)/libmnl-1.0.4/src/.libs" \
+	LIBMNL_LIBS="-lmnl" \
+
+ethtool-6.2-clean:
+	[ ! -f ethtool-6.2/Makefile ] || $(MAKE) -C ethtool-6.2 distclean
+	@rm -f ethtool-6.2/Makefile
+
+ethtool-6.2-install: ethtool-6.2
+	install -D ethtool-6.2/ethtool $(INSTALLDIR)/ethtool-6.2/usr/sbin/ethtool
+	$(STRIP) $(INSTALLDIR)/ethtool-6.2/usr/sbin/ethtool
 
 .PHONY: lm-sensors-master btconfig ethtool-3.7 i2c-tools-3.1.2 i2c-tools-2013-12-15 bluez-5.41
 ethtool-3.7/configure:
