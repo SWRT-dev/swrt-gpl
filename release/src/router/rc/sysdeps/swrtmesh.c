@@ -74,6 +74,7 @@ int start_swrtmesh(void)
 		return 0;
 	if(sw_mode == SW_MODE_REPEATER || sw_mode == SW_MODE_HOTSPOT || sw_mode == SW_MODE_NONE)
 		return 0;
+	swrtmesh_autoconf();
 	stop_swrtmesh();
 	if(nvram_match("swrtmesh_debug", "1")){
 		system("touch /tmp/SWRTMESHUTILS_DEBUG");
@@ -215,40 +216,64 @@ int wl_isup(char* ifname)
 void start_bandsteer()
 {
 	int sw_mode = sw_mode();
-	char value[16] = {0};
+	struct uci_context *ctx = NULL;
+	struct uci_package *pkg = NULL;
+	struct uci_section *section = NULL;
 	if(nvram_match("swrtmesh_enable", "0") || nvram_match("x_Setting", "0"))
 		return;
 	if(sw_mode == SW_MODE_REPEATER || sw_mode == SW_MODE_HOTSPOT || sw_mode == SW_MODE_NONE)
 		return;
-	if(swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "enabled", value, sizeof(value)))
+	pkg = swrtmesh_uci_load_pkg(&ctx, "mapcontroller");
+	if(!pkg){
+		SWRTMESHUTILS_DBG("uci_load mapcontroller failed\n");
 		return;
-	if(swrtmesh_get_value_by_string("mapcontroller", "controller", "initial_channel_scan", value, sizeof(value)) || strcmp(value, "1"))
-		swrtmesh_set_value_by_string("mapcontroller", "controller", "initial_channel_scan", "1", UCI_TYPE_STRING);
-	if(swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "enable_sta_steer", value, sizeof(value)) || strcmp(value, "1"))
-		swrtmesh_set_value_by_string("mapcontroller", "sta_steering", "enable_sta_steer", "1", UCI_TYPE_STRING);
+	}
+	section = swrtmesh_config_get_section(ctx, pkg, "controller", "initial_channel_scan", "0");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "initial_channel_scan", "1", false);
+	section = swrtmesh_config_get_section(ctx, pkg, "sta_steering", "enable_sta_steer", "0");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "enable_sta_steer", "1", false);
 #if defined(RTCONFIG_QCA_LBD) || defined(RTCONFIG_MTK_BSD) || defined(RTCONFIG_RALINK_BSD)
-	if(swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "bandsteer", value, sizeof(value)) || strcmp(value, "1"))
-		swrtmesh_set_value_by_string("mapcontroller", "sta_steering", "bandsteer", "1", UCI_TYPE_STRING);
+	section = swrtmesh_config_get_section(ctx, pkg, "sta_steering", "bandsteer", "0");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "bandsteer", "1", false);
 #endif
 //#if defined(RTCONFIG_BCN_RPT) || defined(RTCONFIG_BTM_11V)
-	if(swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "use_bcn_metrics", value, sizeof(value)) || strcmp(value, "1"))
-		swrtmesh_set_value_by_string("mapcontroller", "sta_steering", "use_bcn_metrics", "1", UCI_TYPE_STRING);
+	section = swrtmesh_config_get_section(ctx, pkg, "sta_steering", "use_bcn_metrics", "0");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "use_bcn_metrics", "1", false);
 //#endif
+	uci_commit(ctx, &pkg, false);
+	uci_unload(ctx, pkg);
 }
 
 void stop_bandsteer()
 {
-	char value[16] = {0};
-	if(swrtmesh_get_value_by_string("mapcontroller", "controller", "initial_channel_scan", value, sizeof(value)) || strcmp(value, "0"))
-		swrtmesh_set_value_by_string("mapcontroller", "controller", "initial_channel_scan", "0", UCI_TYPE_STRING);
-	if(swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "enable_sta_steer", value, sizeof(value)) || strcmp(value, "0"))
-		swrtmesh_set_value_by_string("mapcontroller", "sta_steering", "enable_sta_steer", "0", UCI_TYPE_STRING);
+	struct uci_context *ctx = NULL;
+	struct uci_package *pkg = NULL;
+	struct uci_section *section = NULL;
+	pkg = swrtmesh_uci_load_pkg(&ctx, "mapcontroller");
+	if(!pkg){
+		SWRTMESHUTILS_DBG("uci_load mapcontroller failed\n");
+		return;
+	}
+	section = swrtmesh_config_get_section(ctx, pkg, "controller", "initial_channel_scan", "1");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "initial_channel_scan", "0", false);
+	section = swrtmesh_config_get_section(ctx, pkg, "sta_steering", "enable_sta_steer", "1");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "enable_sta_steer", "0", false);
 #if defined(RTCONFIG_QCA_LBD) || defined(RTCONFIG_MTK_BSD) || defined(RTCONFIG_RALINK_BSD)
-	if(swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "bandsteer", value, sizeof(value)) || strcmp(value, "0"))
-		swrtmesh_set_value_by_string("mapcontroller", "sta_steering", "bandsteer", "0", UCI_TYPE_STRING);
+	section = swrtmesh_config_get_section(ctx, pkg, "sta_steering", "bandsteer", "1");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "bandsteer", "0", false);
 #endif
 //#if defined(RTCONFIG_BCN_RPT) || defined(RTCONFIG_BTM_11V)
-	if(swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "use_bcn_metrics", value, sizeof(value)) || strcmp(value, "0"))
-		swrtmesh_set_value_by_string("mapcontroller", "sta_steering", "use_bcn_metrics", "0", UCI_TYPE_STRING);
+	section = swrtmesh_config_get_section(ctx, pkg, "sta_steering", "use_bcn_metrics", "1");
+	if(section)
+		swrtmesh_uci_add_option(ctx, pkg, section, "use_bcn_metrics", "0", false);
 //#endif
+	uci_commit(ctx, &pkg, false);
+	uci_unload(ctx, pkg);
 }

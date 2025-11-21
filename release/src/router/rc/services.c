@@ -25090,15 +25090,17 @@ void start_qca_lbd(void)
 #if defined(RTCONFIG_HAS_5G_2)
 	char ssid5[32 + 1] = { 0 };
 #endif
+#if !defined(RTCONFIG_SWRTMESH)
 	char *lbd_argv[]= { "lbd", "-C", LBD_PATH, 
 #if defined(RTCONFIG_CFG80211)
 		"-cfg80211",
 #endif
 		NULL, NULL };
+#endif
 
 	if (!nvram_get_int("smart_connect_x") || (!nvram_get_int("x_Setting")
 		|| __repeater_mode(sw_mode) || __mediabridge_mode(sw_mode) || __aimesh_re_node(sw_mode)
-#if defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8074) && !defined(RTCONFIG_SWRTMESH)
 		|| nvram_match("wl1_precacen", "1")	/* band steering conflict with Agile DFS */
 #endif
 #if defined(RTCONFIG_WIFI_SON)
@@ -25178,13 +25180,30 @@ void start_qca_lbd(void)
 	}
 
 	if (no_lbd) {
+#if defined(RTCONFIG_SWRTMESH)
+		stop_bandsteer();
+		if(pids("ieee1905d")){
+			stop_swrtmesh();
+			start_swrtmesh();
+		}
+		logmessage("QCA LBD", "band steer is stopped");
+#else
 		if (pids("lbd")) {
 			killall_tk("lbd");
 			logmessage("QCA LBD", "daemon is stopped");
 		}
 		unlink(LBD_PATH);
 		return;
+#endif
 	}
+#if defined(RTCONFIG_SWRTMESH)
+	start_bandsteer();
+	if(pids("ieee1905d")){
+		stop_swrtmesh();
+		start_swrtmesh();
+	}
+	logmessage("QCA LBD", "band steer is started");
+#else
 	if (pids("lbd"))
 		return;
 
@@ -25204,13 +25223,16 @@ void start_qca_lbd(void)
 		dis_steer();
 #endif
 	}
+#endif
 }
 
 void stop_qca_lbd(void)
 {
+#if !defined(RTCONFIG_SWRTMESH)
 	killall_tk("lbd");
 	unlink(LBD_PATH);
 	logmessage("QCA LBD", "daemon is stopped");
+#endif
 }
 #endif
 #ifdef RTCONFIG_QCA_PLC2

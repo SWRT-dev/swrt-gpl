@@ -2958,7 +2958,7 @@ void update_macfilter_relist(void)
 		if (nvram_match("wifison_ready", "1"))
 			sec = "_sec";
 #endif
-#ifdef RTCONFIG_QCA_LBD
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 		if (nvram_match("smart_connect_x", "1"))
 			sec = "_sec";
 #endif
@@ -3047,7 +3047,7 @@ int swap_5g_band(int band)
 }
 #endif
 
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 static int make_lbd_conn(char *ip, int port)
 {
 	int sfd, flags;

@@ -633,6 +633,17 @@ define platformKernelConfig
 		sed -i "/CONFIG_SPI_QUP/d" $(1); \
 		echo "CONFIG_SPI_QUP=y" >>$(1); \
 	fi; \
+	if [ "$(DEBUG)" = "y" ] ; then \
+		sed -i "/CONFIG_DEBUG_KMEMLEAK/d" $(1); \
+		echo "CONFIG_DEBUG_KMEMLEAK=y" >>$(1); \
+		echo "CONFIG_DEBUG_KMEMLEAK_MEM_POOL_SIZE=16000" >>$(1); \
+		echo "CONFIG_DEBUG_KMEMLEAK_TEST=y" >>$(1); \
+		echo "# CONFIG_DEBUG_KMEMLEAK_DEFAULT_OFF is not set" >>$(1); \
+		echo "# CONFIG_DEBUG_KMEMLEAK_AUTO_SCAN is not set" >>$(1); \
+		sed -i "/CONFIG_SLUB_DEBUG/d" $(1); \
+		echo "CONFIG_SLUB_DEBUG=y" >>$(1); \
+		echo "# CONFIG_SLUB_DEBUG_ON is not set" >>$(1); \
+	fi; \
 	)
 endef
 

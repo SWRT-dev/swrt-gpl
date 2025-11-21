@@ -2818,7 +2818,7 @@ void set_maclist_mode(char *ifname, int mode)
 	if (nvram_match("wifison_ready", "1"))
 		sec = "_sec";
 #endif
-#ifdef RTCONFIG_QCA_LBD
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	if (nvram_match("smart_connect_x", "1"))
 		sec = "_sec";
 #endif
@@ -2843,7 +2843,7 @@ void set_maclist_add_kick(char *ifname, int mode, char *sta_addr)
 	if (nvram_match("wifison_ready", "1"))
 		sec = "_sec";
 #endif
-#ifdef RTCONFIG_QCA_LBD
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	if (nvram_match("smart_connect_x", "1"))
 		sec = "_sec";
 #endif
@@ -2867,7 +2867,7 @@ void set_maclist_del_kick(char *ifname, int mode, char *sta_addr)
 	if (nvram_match("wifison_ready", "1"))
 		sec = "_sec";
 #endif
-#ifdef RTCONFIG_QCA_LBD
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	if (nvram_match("smart_connect_x", "1"))
 		sec = "_sec";
 #endif
@@ -2922,7 +2922,7 @@ void set_macfilter_unit(int unit, int subnet, FILE *fp)
 	if (nvram_match("wifison_ready", "1"))
 		sec = "_sec";
 #endif
-#ifdef RTCONFIG_QCA_LBD
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	if (nvram_match("smart_connect_x", "1"))
 		sec = "_sec";
 #endif

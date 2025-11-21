@@ -28,7 +28,7 @@ else ifneq (, $(findstring $(hal_arch), "ipq50xx"))
 else ifneq (, $(findstring $(hal_arch), "ipq53xx"))
 	QCASSDK_CONFIG_OPTS+= CHIP_TYPE=MPPE
 endif
-ifneq (, $(findstring $(CONFIG_KERNEL_IPQ_MEM_PROFILE), 256 512)$(CONFIG_LOWMEM_FLASH))
+ifneq (, $(CONFIG_LOWMEM_FLASH))
 	QCASSDK_CONFIG_OPTS+= MINI_SSDK=enable
 	#Disable MINI_SSDK on MP 512 profile
 	ifneq (, $(findstring $(hal_arch), "ipq50xx"))
@@ -52,6 +52,12 @@ QCASSDK_CONFIG_OPTS+= TOOL_PATH=/ \
 	SoC=$(hal_arch)
 
 TARGET_CFLAGS+= -DSWRT_PATCH -D$(MODEL)
+
+EXTRA_CFLAGS+= \
+	-fno-stack-protector \
+	-Wno-missing-prototypes \
+	-Wno-missing-declarations \
+	-I$(STAGING_DIR)/usr/include
 
 ifneq (, $(findstring $(hal_arch), "ipq53xx"))
 QCASSDK_CONFIG_OPTS += LNX_MAKEOPTS='$(KERNEL_MAKEOPTS)' MODULE_TYPE=KSLIB modules

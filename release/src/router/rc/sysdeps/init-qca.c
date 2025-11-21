@@ -4089,22 +4089,41 @@ static void __load_wifi_driver(int testmode)
 
 void load_wifi_driver(void)
 {
-#if defined(RTCONFIG_SOC_IPQ8074)
+	int total_mem __attribute__((unused)) = get_meminfo_item("MemTotal");
+#if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX)
 	char val[4];
 
 	snprintf(val, sizeof(val), "%d", min(get_pagecache_ratio(), 25));
 	f_write_string("/proc/sys/vm/pagecache_ratio", val, 0, 0);
-	f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);	/* remove skb and pause skb recycler. */
+	if(total_mem <= (256 * 1024)){
+		f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);
+		f_write_string("/proc/net/skb_recycler/max_skbs", "256", 0, 0);
+		f_write_string("/proc/net/skb_recycler/max_spare_skbs", "64", 0, 0);
+	}else if(total_mem <= (512 * 1024)){
+		f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);
+		f_write_string("/proc/net/skb_recycler/max_skbs", "512", 0, 0);
+		f_write_string("/proc/net/skb_recycler/max_spare_skbs", "128", 0, 0);
+	}//else{//default
+	//	f_write_string("/proc/net/skb_recycler/max_skbs", "1024", 0, 0);
+	//	f_write_string("/proc/net/skb_recycler/max_spare_skbs", "256", 0, 0);
+	//}
 #elif defined(RTCONFIG_SOC_IPQ8064)
 	f_write_string("/proc/sys/vm/pagecache_ratio", "25", 0, 0);
 	f_write_string("/proc/net/skb_recycler/max_skbs", "2176", 0, 0);
-#elif defined(RTCONFIG_SOC_IPQ40XX)
+#elif defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX)
 	/* For lower memory system, e.g., IPQ40xx + 128MB RAM models. */
-	if (get_meminfo_item("MemTotal") <= 131072) {
+	if (total_mem <= (128 * 1024)){
 		f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);
-		f_write_string("/proc/net/skb_recycler/max_skbs", "10", 0, 0);
-		f_write_string("/proc/net/skb_recycler/max_spare_skbs", "10", 0, 0);
-	}
+		f_write_string("/proc/net/skb_recycler/max_skbs", "256", 0, 0);
+		f_write_string("/proc/net/skb_recycler/max_spare_skbs", "64", 0, 0);
+	}else if(total_mem <= (256 * 1024)){
+		f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);
+		f_write_string("/proc/net/skb_recycler/max_skbs", "512", 0, 0);
+		f_write_string("/proc/net/skb_recycler/max_spare_skbs", "128", 0, 0);
+	}//else{//default
+	//	f_write_string("/proc/net/skb_recycler/max_skbs", "1024", 0, 0);
+	//	f_write_string("/proc/net/skb_recycler/max_spare_skbs", "256", 0, 0);
+	//}
 #elif defined(RTCONFIG_QSDK6PLUS) && (defined(RTCONFIG_QCA953X) || \
 				      defined(RTCONFIG_QCA956X) || \
 				      defined(RTCONFIG_QCN550X))
@@ -4611,7 +4630,7 @@ void fini_wl(void)
 	if (wisp_mode())
 		ifconfig(get_staifname(nvram_get_int("wlc_band")), 0, NULL, NULL);
 #endif
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	stop_qca_lbd();
 #endif
 

@@ -10656,7 +10656,7 @@ wdp:
 #endif
 #if defined(RTCONFIG_AMAS)
 	amaslib_check();
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	if (nvram_match("smart_connect_x", "1") && !pids("lbd") && !mediabridge_mode() && f_exists(LBD_PATH))
 		start_qca_lbd();
 #endif

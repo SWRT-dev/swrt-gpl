@@ -2264,7 +2264,7 @@ define RouterOptions
 				echo "RTCONFIG_TUXERA_HFS=y" >>$(1); \
 			fi; \
 		fi; \
-		if [ "$(APFS)" != "" ]; then \
+		if [ "$(APFS)" != "n" ]; then \
 			sed -i "/RTCONFIG_APFS/d" $(1); \
 			echo "RTCONFIG_APFS=y" >>$(1); \
 			if [ "$(findstring tuxera, $(APFS))" = "tuxera" ]; then \

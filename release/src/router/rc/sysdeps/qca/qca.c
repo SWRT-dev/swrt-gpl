@@ -5828,7 +5828,7 @@ static void __stop_wsc(int multiband)
 			++i;
 			continue;
 		}
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 		if(nvram_match("smart_connect_x", "1") && pids("lbd"))
 			getWscStatus(word, tmp, sizeof(tmp));
 #endif
@@ -6282,7 +6282,7 @@ char *getWscStatus(char *ifname, char *buf, int buflen)
 				pt2 = pt1 + strlen("Last WPS result: ");
 				pt1 = strstr(pt2, "Peer Address: ");
 				if (pt1) {
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 					if(nvram_match("smart_connect_x", "1") && pids("lbd") && strstr(pt2, "Success")){
 						*(pt1 + 31) = '\0';
 						set_steer(pt1 + 14, 1);
@@ -6544,7 +6544,7 @@ int getSiteSurvey(int band,char* ofile)
 	int is_ready, wlc_band = -1;
 	char temp1[200];
 	char prefix_header[]="Cell xx - Address:";
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	int start_ldb = 0;
 #endif
 	dbG("site survey...\n");
@@ -6568,7 +6568,7 @@ int getSiteSurvey(int band,char* ofile)
 		wlc_band = nvram_get_int("wlc_band");
 #endif
 
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	if(nvram_match("smart_connect_x", "1") && pids("lbd")){
 		stop_qca_lbd();
 		start_ldb = 1;
@@ -6645,7 +6645,7 @@ skip_init:
 #endif
 	file_unlock(lock);
 
-#if defined(RTCONFIG_QCA_LBD)
+#if defined(RTCONFIG_QCA_LBD) && !defined(RTCONFIG_SWRTMESH)
 	if(start_ldb)
 		start_qca_lbd();
 #endif

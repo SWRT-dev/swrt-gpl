@@ -139,7 +139,7 @@ distclean: clean
 	)
 
 qsdk.config:
-	ln -s qsdk64.config qsdk.config
+	ln -sf qsdk64.config qsdk.config
 
 $(pobj-y) $(pobj-n) $(pobj-clean) $(pobj-install): dummy
 
