@@ -2179,12 +2179,17 @@ int qca_driver_info(const char *name, struct wifi_metainfo *info)
 	int fd;
 
 	libwifi_dbg("%s %s called\n", name, __func__);
-	if(d_exists("/sys/devices/platform/soc/a000000.wifi") && d_exists("/sys/devices/platform/soc/a800000.wifi")){//no pci card
-		snprintf(info->vendor_id, sizeof(info->vendor_id), "%s", "0x17cb");
-		snprintf(info->device_id, sizeof(info->device_id), "%s", "0x1001");
+//ipq4019+qca9984 or ipq4019+ipq4019+qca9984
+	if(!strcmp(name, "ath0")
+#if defined(RTCONFIG_HAS_5G_2) //|| !defined(RTCONFIG_PCIE_QCA9984)
+		|| !strcmp(name, "ath1")
+#endif
+	){
+		snprintf(info->vendor_id, sizeof(info->vendor_id), "%s", "0x168c");
+		snprintf(info->device_id, sizeof(info->device_id), "%s", "0x4019");
 		return 0;
 	}
-	snprintf(path, sizeof(path), "%s", "/sys/devices/platform/soc/40000000.pci/pci0000:00/0000:00:00.0/vendor");
+	snprintf(path, sizeof(path), "/sys/devices/platform/soc/40000000.pci/pci0000:00/0000:00:00.0/%s", "vendor");
 	fd = open(path, O_RDONLY);
 	if (WARN_ON(fd < 0))
 		return -1;
@@ -2196,7 +2201,7 @@ int qca_driver_info(const char *name, struct wifi_metainfo *info)
 		*pos = '\0';
 	close(fd);
 
-	snprintf(path, sizeof(path), "%s", "/sys/devices/platform/soc/40000000.pci/pci0000:00/0000:00:00.0/device");
+	snprintf(path, sizeof(path), "/sys/devices/platform/soc/40000000.pci/pci0000:00/0000:00:00.0/%s", "device");
 	fd = open(path, O_RDONLY);
 	if (WARN_ON(fd < 0))
 		return -1;

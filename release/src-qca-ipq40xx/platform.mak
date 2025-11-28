@@ -71,13 +71,11 @@ define platformRouterOptions
 			sed -i "/RTCONFIG_QCA_VAP_LOCALMAC/d" $(1); \
 			echo "RTCONFIG_QCA_VAP_LOCALMAC=y" >>$(1); \
 		fi; \
-		if [ "$(RTAC82U)" = "y" ] ; then \
+		if [ "$(QCA9984)" = "y" ] ; then \
 			sed -i "/RTCONFIG_PCIE_QCA9984/d" $(1); \
 			echo "RTCONFIG_PCIE_QCA9984=y" >>$(1); \
 		fi; \
 		if [ "$(RTAC95U)" = "y" ] ; then \
-			sed -i "/RTCONFIG_PCIE_QCA9984/d" $(1); \
-			echo "RTCONFIG_PCIE_QCA9984=y" >>$(1); \
 			sed -i "/RTCONFIG_HAS_5G_2/d" $(1); \
 			echo "RTCONFIG_HAS_5G_2=y" >>$(1); \
 		fi; \

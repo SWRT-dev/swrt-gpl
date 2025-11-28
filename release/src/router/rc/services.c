@@ -22341,7 +22341,19 @@ void stop_bsd(void)
 int start_bsd(void)
 {
 	int ret = 0;
-
+#if defined(RTCONFIG_SWRTMESH)
+	if (!nvram_get_int("smart_connect_x")){
+		ret = -1;
+		stop_bandsteer();
+	}else{
+		//stop_bandsteer();
+		start_bandsteer();
+	}
+	if(pids("ieee1905d")){
+		stop_swrtmesh();
+		start_swrtmesh();
+	}
+#else
 	stop_bsd();
 	if (!nvram_get_int("smart_connect_x"))
 		ret = -1;
@@ -22349,13 +22361,15 @@ int start_bsd(void)
 		gen_bsd_conf();
 		ret = eval("/usr/sbin/bndstrg2");
 	}
-
+#endif
 	return ret;
 }
 
 void stop_bsd(void)
 {
+#if !defined(RTCONFIG_SWRTMESH)
 	killall_tk("bndstrg2");
+#endif
 }
 #endif
 

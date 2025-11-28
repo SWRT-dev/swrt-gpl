@@ -963,8 +963,11 @@ int dpp_gen_bootstrap_info(const char *curve, char *channel_list, char *mac,
 	base64 = calloc(1, base64_len * sizeof(char));
 	if (!base64)
 		goto fail_2;
-
+#if defined(RTCONFIG_SWRTMESH)
+	ret = easy_base64_encode(der, der_len, (unsigned char *)base64, &base64_len);
+#else
 	ret = base64_encode(der, der_len, (unsigned char *)base64, &base64_len);
+#endif
 	if (ret)
 		goto fail_2;
 
@@ -1127,8 +1130,11 @@ int dpp_build_bootstrap_info_from_uri(const char *uri,
 			tmp += 2;
 			bo->pk = strdup(tmp);
 			pr_debug("pk: %s\n", bo->pk);
-
+#if defined(RTCONFIG_SWRTMESH)
+			if (easy_base64_decode((unsigned char *)bo->pk, strlen(bo->pk), out, &olen)) {
+#else
 			if (base64_decode((unsigned char *)bo->pk, strlen(bo->pk), out, &olen)) {
+#endif
 				pr_debug("%s: Invalid 'K:'\n", __func__);
 				ret = -1;
 				break;
@@ -4444,8 +4450,11 @@ static uint8_t * dpp_get_csr_attrs(uint8_t *attrs, size_t attrs_len, size_t *len
 		free(data);
 		return NULL;
 	}
-
+#if defined(RTCONFIG_SWRTMESH)
+	easy_base64_decode((const unsigned char *) b64, b64_len, data, len);
+#else
 	base64_decode((const unsigned char *) b64, b64_len, data, len);
+#endif
 
 	return data;
 }

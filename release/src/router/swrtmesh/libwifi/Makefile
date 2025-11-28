@@ -66,6 +66,9 @@ endif
 ifeq ($(RTCONFIG_SWRTMESH),y)
 TARGET_CFLAGS += -DRTCONFIG_SWRTMESH
 endif
+ifeq ($(RTCONFIG_HAS_5G_2),y)
+TARGET_CFLAGS += -DRTCONFIG_HAS_5G_2
+endif
 ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_MT798X)),y)
 TARGET_CFLAGS += -Wno-stringop-truncation -Wno-format-truncation
 endif

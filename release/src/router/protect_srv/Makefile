@@ -48,7 +48,7 @@ all:
 	-cp -f prebuild/$(BUILD_NAME)/req_ptcsrv req_ptcsrv
 
 else
-all: Send_Event2ptcsrv protect_srv
+all: ptcsrvdir Send_Event2ptcsrv protect_srv
 endif
 
 ptcsrvdir:

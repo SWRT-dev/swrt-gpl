@@ -576,8 +576,11 @@ uint8_t *json_get_member_base64(struct json_token *json,
 	token = json_get_member(json, name);
 	if (!token || token->type != JSON_STRING)
 		goto fail;
-
+#if defined(RTCONFIG_SWRTMESH)
+	ret = easy_base64_decode((const unsigned char *)token->string, strlen(token->string), buf, buflen);
+#else
 	ret = base64_decode((const unsigned char *)token->string, strlen(token->string), buf, buflen);
+#endif
 	if (ret)
 		goto fail;
 	return buf;

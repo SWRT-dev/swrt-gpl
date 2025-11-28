@@ -6589,32 +6589,43 @@ void gen_bsd_conf(void)
 
 void bandstr_sync_wl_settings(void)
 {
-	char tmp[100], tmp2[100], prefix[16] = "wlXXXXXXXXXX_", wlprefix[16] = "wlXXXXXXXXXX_";
-	int i, n;
-	memset(tmp, 0, sizeof(tmp));
-	memset(tmp2, 0, sizeof(tmp2));
-	n = num_of_wl_if();
+	int unit = 1, unitmax = num_of_wl_if();
+	int dwb_band = nvram_get_int("dwb_band"), dwb_mode = nvram_get_int("dwb_mode");
+	char prefix[] = "wlXXXXXXX_", prefix2[] = "wlXXXXXXX_";
 	snprintf(prefix, sizeof(prefix), "wl%d_", 0);
-	for(i = 1; i < n; i++){
-		snprintf(wlprefix, sizeof(wlprefix), "wl%d_", i);
-		nvram_set(strcat_r(wlprefix, "ssid", tmp), nvram_safe_get(strcat_r(prefix, "ssid", tmp2)));
-		nvram_set(strcat_r(wlprefix, "auth_mode_x", tmp), nvram_safe_get(strcat_r(prefix, "auth_mode_x", tmp2)));
-		nvram_set(strcat_r(wlprefix, "wep_x", tmp), nvram_safe_get(strcat_r(prefix, "wep_x", tmp2)));
-		nvram_set(strcat_r(wlprefix, "key", tmp), nvram_safe_get(strcat_r(prefix, "key", tmp2)));
-		nvram_set(strcat_r(wlprefix, "key1", tmp), nvram_safe_get(strcat_r(prefix, "key1", tmp2)));
-		nvram_set(strcat_r(wlprefix, "key2", tmp), nvram_safe_get(strcat_r(prefix, "key2", tmp2)));
-		nvram_set(strcat_r(wlprefix, "key3", tmp), nvram_safe_get(strcat_r(prefix, "key3", tmp2)));
-		nvram_set(strcat_r(wlprefix, "key4", tmp), nvram_safe_get(strcat_r(prefix, "key4", tmp2)));
-		nvram_set(strcat_r(wlprefix, "phrase_x", tmp), nvram_safe_get(strcat_r(prefix, "phrase_x", tmp2)));
-		nvram_set(strcat_r(wlprefix, "crypto", tmp), nvram_safe_get(strcat_r(prefix, "crypto", tmp2)));
-		nvram_set(strcat_r(wlprefix, "wpa_psk", tmp), nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp2)));
-		nvram_set(strcat_r(wlprefix, "radius_ipaddr", tmp), nvram_safe_get(strcat_r(prefix, "radius_ipaddr", tmp2)));
-		nvram_set(strcat_r(wlprefix, "radius_key", tmp), nvram_safe_get(strcat_r(prefix, "radius_key", tmp2)));
-		nvram_set(strcat_r(wlprefix, "radius_port", tmp), nvram_safe_get(strcat_r(prefix, "radius_port", tmp2)));
-		nvram_set(strcat_r(wlprefix, "closed", tmp), nvram_safe_get(strcat_r(prefix, "closed", tmp2)));
+	for(unit = 1; unit < unitmax; unit++){
+		if((dwb_mode == 1 || dwb_mode == 3) && dwb_band > 0 && unit == dwb_band){
+			dbg("Don't apply wl0 to wl%d in smart_connect function, if enabled DWB mode.\n", unit);
+		}else{
+			snprintf(prefix2, sizeof(prefix2), "wl%d_", unit);
+			nvram_pf_set(prefix2, "ssid",  nvram_pf_safe_get(prefix, "ssid"));
+			nvram_pf_set(prefix2, "auth_mode_x", nvram_pf_safe_get(prefix, "auth_mode_x"));
+			nvram_pf_set(prefix2, "wep_x", nvram_pf_safe_get(prefix, "wep_x"));
+			nvram_pf_set(prefix2, "key", nvram_pf_safe_get(prefix, "key"));
+			nvram_pf_set(prefix2, "key1", nvram_pf_safe_get(prefix, "key1"));
+			nvram_pf_set(prefix2, "key2", nvram_pf_safe_get(prefix, "key2"));
+			nvram_pf_set(prefix2, "key3", nvram_pf_safe_get(prefix, "key3"));
+			nvram_pf_set(prefix2, "key4", nvram_pf_safe_get(prefix, "key4"));
+			nvram_pf_set(prefix2, "phrase_x", nvram_pf_safe_get(prefix, "phrase_x"));
+			nvram_pf_set(prefix2, "crypto", nvram_pf_safe_get(prefix, "crypto"));
+			nvram_pf_set(prefix2, "wpa_psk", nvram_pf_safe_get(prefix, "wpa_psk"));
+			nvram_pf_set(prefix2, "radius_ipaddr", nvram_pf_safe_get(prefix, "radius_ipaddr"));
+			nvram_pf_set(prefix2, "radius_key", nvram_pf_safe_get(prefix, "radius_key"));
+			nvram_pf_set(prefix2, "radius_port", nvram_pf_safe_get(prefix, "radius_port"));
+			nvram_pf_set(prefix2, "closed", nvram_pf_safe_get(prefix, "closed"));
+#if defined(RTCONFIG_WLMODULE_MT7915D_AP) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
+			nvram_pf_set(prefix2, "11ax", nvram_pf_safe_get(prefix, "11ax"));
+#endif
+			nvram_pf_set(prefix2, "mfp", nvram_pf_safe_get(prefix, "mfp"));
+#if defined(RTCONFIG_SWRTMESH)
+			duplicate_wl_sync_uci(prefix, wlprefix);
+#endif
+		}
 	}
+#if !defined(RTCONFIG_SWRTMESH)
 	stop_bsd();
 	start_bsd();
+#endif
 }
 #endif
 

@@ -1374,9 +1374,23 @@ static int iface_sta_disconnect_ap(const char *ifname, uint32_t reason)
 	return hostapd_cli_sta_disconnect_ap(ifname, reason);
 }
 
+static int ipq_driver_info(const char *name, struct wifi_metainfo *info)
+{
+	char path[] = "/sys/devices/soc0/machine", buf[12] = {0};
+
+	libwifi_dbg("%s %s called\n", name, __func__);
+	if(check_if_file_exist(path) && f_read_string(path, buf, sizeof(buf)) > 0){
+		if(strstr(buf, "IPQ807")){
+			snprintf(info->vendor_id, sizeof(info->vendor_id), "%s", "0x168c");
+			snprintf(info->device_id, sizeof(info->device_id), "%s", "0x8074");
+		}
+	}
+	return 0;
+}
+
 const struct wifi_driver qca_driver = {
 	.name = "ath,wifi,sta,phy",
-	.info = nlwifi_driver_info,
+	.info = ipq_driver_info,
 
 	/* Radio/phy callbacks */
 	.radio.is_multiband = nlwifi_radio_is_multiband,

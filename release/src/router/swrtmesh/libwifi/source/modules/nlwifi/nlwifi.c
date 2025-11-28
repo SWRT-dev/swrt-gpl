@@ -176,6 +176,10 @@ int nlwifi_get_phy_wifi_ifaces(const char *name, enum wifi_band band, struct wif
 			continue;
 		if (!strcmp(p->d_name, ".."))
 			continue;
+#if defined(RTCONFIG_SWRTMESH) && defined(WIFI_QUALCOMM)
+		if (!strncmp(p->d_name, "soc", 3))
+			continue;
+#endif
 
 		nlwifi_get_phyname(p->d_name, netdevphy);
 		if (strcmp(phy, netdevphy))
@@ -253,6 +257,10 @@ int nlwifi_phy_to_netdev_with_type_and_band(const char *phy, char *netdev, size_
 			continue;
 		if (!strcmp(p->d_name, ".."))
 			continue;
+#if defined(RTCONFIG_SWRTMESH) && defined(WIFI_QUALCOMM)
+		if (!strncmp(p->d_name, "soc", 3))
+			continue;
+#endif
 		if (get_ifstatus(p->d_name, &ifstatus))
 			continue;
 		if(!(ifstatus & IFF_UP))

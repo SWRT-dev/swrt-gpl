@@ -80,6 +80,7 @@ static void send_ptcsrv_event(int s_type, int status, const char *data, const ch
 	size_t n;
 	PTCSRV_SOCK_DATA_T ptcsrv;
 	memset(&ptcsrv, 0, sizeof(PTCSRV_SOCK_DATA_T));
+	ptcsrv.d_type = PTCSRV_S_RPT;
 	ptcsrv.report.s_type = s_type;
 	ptcsrv.report.status = status;
 	snprintf(ptcsrv.report.addr, sizeof(ptcsrv.report.addr), "%s", data);
@@ -126,7 +127,7 @@ int ptcsrv_cli_create()
 	fcntl(sockfd, F_SETFL, O_NONBLOCK);
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
-	strlcpy(addr.sun_path, "/var/run/protect_srv_socket", sizeof(addr.sun_path));
+	strlcpy(addr.sun_path, PROTECT_SRV_SOCKET_PATH, sizeof(addr.sun_path));
 	if(connect(sockfd, (struct sockaddr*)&addr, sizeof(addr)) == 0)
 		return sockfd;
 	syslog(LOG_ERR, "[%s:(%d)] ERROR connect:%s.\n", __FUNCTION__, __LINE__, strerror(errno));

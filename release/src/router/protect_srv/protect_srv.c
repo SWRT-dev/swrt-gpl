@@ -1,5 +1,6 @@
  /*
  * Copyright 2017, ASUSTeK Inc.
+ * Copyright 2024-2025, SWRTdev.
  * All Rights Reserved.
  * 
  * THIS SOFTWARE IS OFFERED "AS IS", AND ASUS GRANTS NO WARRANTIES OF ANY
@@ -23,6 +24,7 @@
 #include <sys/stat.h>
 #include <syslog.h>
 #include <limits.h>
+#include <arpa/inet.h>
 /*--*/
 #include <libptcsrv.h>
 #include "nvram.cc"
@@ -60,11 +62,11 @@ typedef struct __ptcsrv_lock_data_t_
 	int field_2C;
 } PTCSRV_LOCK_DATA_T;
 
-static int RECV_SIG_FLAG = 0;
+static int RECV_SIG_FLAG = F_ON;
 static int terminated = 1;
 
-PTCSRV_LOGIN_RECORD_T *wan_list = NULL;
-PTCSRV_LOGIN_RECORD_T *ssh_list = NULL;
+PTCSRV_LOGIN_RECORD_T *wan_ssh_list = NULL;
+PTCSRV_LOGIN_RECORD_T *lan_ssh_list = NULL;
 PTCSRV_LOGIN_RECORD_T *telnet_list = NULL;
 
 PTCSRV_LOCK_DATA_T ssh_lock_t = {0};
@@ -84,13 +86,11 @@ static void SEND_FAIL_LOGIN_EVENT(int e, char *ip)
 
 static uint32_t parseIpaddrstr(char const *ipAddress)
 {
-	unsigned int ip[4];
+	uint32_t ip;
 	
-	if ( 4 != sscanf(ipAddress, "%u.%u.%u.%u", &ip[0], &ip[1], &ip[2], &ip[3]) ) {
-		return 0;
-	}
-	
-	return ip[3] + ip[2] * 0x100 + ip[1] * 0x10000ul + ip[0] * 0x1000000ul;
+	if(inet_pton(AF_INET, ipAddress, &ip) > 0)
+		return ip;
+	return 0;
 }
 static int IsSameSubnet(uint32_t ip, uint32_t netIp, uint32_t netMask)
 {
@@ -99,18 +99,10 @@ static int IsSameSubnet(uint32_t ip, uint32_t netIp, uint32_t netMask)
 		return 1;
 	}
 	return 0;
-	
 }
 static int IsLanSide(uint32_t ip)
 {
 	char lan_ip[64], lan_netmask[64];
-//	uint8_t p1, p2, p3, p4;
-	
-//	p1 = (uint8_t) (ip >> 24);
-//	p2 = (uint8_t)((ip >> 16) & 0x0ff);
-//	p3 = (uint8_t)((ip >> 8 ) & 0x0ff);
-//	p4 = (uint8_t) (ip & 0x0ff);
-	
 	
 	if (GetLanIpaddr(lan_ip, sizeof(lan_ip)) && GetLanNetmask(lan_netmask, sizeof(lan_netmask))) {
 		if (IsSameSubnet(ip, parseIpaddrstr(lan_ip), parseIpaddrstr(lan_netmask))) {
@@ -118,7 +110,7 @@ static int IsLanSide(uint32_t ip)
 			return 1;
 		}
 	}
-	
+
 	MyDBG("From WAN side.\n");
 	return 0;
 }
@@ -176,7 +168,7 @@ PTCSRV_LOCK_DATA_T* _load_record_info(const char *wanType, int serType)
 	return NULL;
 }
 
-static int insert_lock_rule(char *wanType, int serType)
+static void insert_lock_rule(char *wanType, int serType)
 {
 	int i, j, n, ret = 0;
 	PTCSRV_LOCK_DATA_T *plock;
@@ -188,20 +180,20 @@ static int insert_lock_rule(char *wanType, int serType)
 		sysinfo(&info);
 		plock->stat.lock_rule_cnt = 0;
 		if(plock->cnt > 0){
-			record = plock->record;
 			for(i = 0, j = 0; i < plock->cnt; i++, j++){
-				if(record[j].addr[0]){
-					n = record[j].fail_cnt;
-					if(n > 6)
-						n = 6;
-					if(record[j].fail_cnt){
-						if(time_list[n] > 0 && (info.uptime - record[j].lock_time) < time_list[n]){
-							add_lock_rule(wanType, serType, record[j].addr);
+				record = &plock->record[j];
+				if(record->addr[0]){
+					n = record->fail_cnt;
+					if(n){
+						if(n > 6)
+							n = 6;
+						if(time_list[n] > 0 && (info.uptime - record->lock_time) < time_list[n]){
+							add_lock_rule(wanType, serType, record->addr);
 							plock->stat.lock_rule_cnt++;
-							if(!record[j].lock_time)
-								record[j].lock_time = info.uptime;
-							if(!record[j].locked)
-								record[j].locked = 1;
+							if(!record->lock_time)
+								record->lock_time = info.uptime;
+							if(!record->locked)
+								record->locked = 1;
 						}
 					}
 				}
@@ -210,10 +202,9 @@ static int insert_lock_rule(char *wanType, int serType)
 		}
 		if(plock->stat.lock_rule_peak < ret)
 			plock->stat.lock_rule_peak = ret;
-		if(plock->maxcnt < ret)
-			return add_lockall_rule(wanType, serType);
+		if(plock->maxcnt <= ret)
+			add_lockall_rule(wanType, serType);
 	}
-	return ret;
 }
 
 static int del_lock_rule(char *wanType, int serType, char *ipaddr)
@@ -259,69 +250,55 @@ static void update_lock_rule(char *wanType, int serType)
 	plock = _load_record_info(wanType, serType);
 	if(plock->cnt > 0){
 		sysinfo(&info);
-		record = plock->record;
-		for(i = 0; i < plock->cnt; i++, plock->stat.record_cnt--){
-			if(record[i].addr[0]){
-				n = record[i].fail_cnt;
-				if(n > 6)
-					n = 6;
-				if(record[i].fail_cnt){
-					if(time_list[n] > 0 && record[i].lock_time && record[i].locked != 0){
-						if((info.uptime - record[i].lock_time) > time_list[n] && record[i].locked == 1){
+		for(i = 0; i < plock->cnt; i++){
+			record = &plock->record[i];
+			if(record->addr[0]){
+				if(record->fail_cnt){
+					n = record->fail_cnt > 6 ? 6 : record->fail_cnt;
+					if(time_list[n] <= 0)
+						continue;
+					if(record->lock_time && record->locked != 0){
+						if((info.uptime - record->lock_time) > time_list[n] && record->locked == 1){
 							if(plock->stat.lock_rule_cnt == plock->maxcnt)
 								del_lockall_rule(wanType, serType);
-							add_lock_rule(wanType, serType, record[i].addr);
+							del_lock_rule(wanType, serType, record->addr);
 							plock->stat.lock_rule_cnt--;
-							record[i].locked = 0;
+							record->locked = 0;
 						}
 					}else{
-						add_lock_rule(wanType, serType, record[i].addr);
-						record[i].lock_time = info.uptime;
-						record[i].locked = 1;
+						add_lock_rule(wanType, serType, record->addr);
+						record->lock_time = info.uptime;
+						record->locked = 1;
 						plock->stat.lock_rule_cnt++;
 						if(plock->stat.lock_rule_cnt > plock->stat.lock_rule_peak)
 							plock->stat.lock_rule_peak = plock->stat.lock_rule_cnt;
-						if(plock->stat.lock_rule_cnt > plock->maxcnt)
+						if(plock->stat.lock_rule_cnt == plock->maxcnt)
 							add_lockall_rule(wanType, serType);
 					}
 				}else{
-					if(record[i].locked){
-						del_lock_rule(wanType, serType, record[i].addr);
+					if(record->locked){
+						del_lock_rule(wanType, serType, record->addr);
 						plock->stat.lock_rule_cnt--;
 						if(plock->stat.lock_rule_cnt == plock->maxcnt)
 							del_lockall_rule(wanType, serType);
 					}else if(plock->stat.lock_rule_cnt == plock->maxcnt)
 						del_lockall_rule(wanType, serType);
-					record[i].addr[0] = 0;
-					record[i].locked = 0;
-					record[i].fail_cnt = 0;
-					record[i].fail_time = 0;
-					record[i].lock_time = 0;
+					record->addr[0] = 0;
+					record->locked = 0;
+					record->fail_cnt = 0;
+					record->fail_time = 0;
+					record->lock_time = 0;
+					plock->stat.record_cnt--;
 				}
 			}
 		}
 	}
 }
-static void check_wanlan_lock()
-{
-	if(RECV_SIG_FLAG){
-		RECV_SIG_FLAG = F_OFF;
-		insert_lock_rule("WAN", PROTECTION_SERVICE_SSH);
-		insert_lock_rule("LAN", PROTECTION_SERVICE_SSH);
-		insert_lock_rule("LAN", PROTECTION_SERVICE_TELNET);
-		sleep(1);
-		if(!terminated)
-			return;
-	}
-	update_lock_rule("WAN", PROTECTION_SERVICE_SSH);
-	update_lock_rule("LAN", PROTECTION_SERVICE_SSH);
-	update_lock_rule("LAN", PROTECTION_SERVICE_TELNET);
-}
 
 static void _add_record(char *wanType, PTCSRV_STATE_REPORT_T *report)
 {
 	int i, j, status = 0;
-	long fail_max, n = 0;
+	long fail_max;
 	char cmd[256];
 	PTCSRV_LOCK_DATA_T *plock;
 	PTCSRV_LOGIN_RECORD_T *record;
@@ -330,82 +307,78 @@ static void _add_record(char *wanType, PTCSRV_STATE_REPORT_T *report)
 	if(!plock)
 		return;
 	sysinfo(&info);
-	if(plock->cnt <= 0){
-		if(report->status)
-			return;
-		MyDBG("FULL. Ignore this case: %s\n", report->addr);
-		return;
-	}
-	record = plock->record;
-	for(i = 0; i < plock->cnt; i++){
-		if(strcmp(record[i].addr, report->addr))
-			continue;
-		status = report->status;
-		if(status){
-			if(status != RPT_SUCCESS){
-				status = 1;
+
+	if(plock->cnt > 0){
+		for(i = 0; i < plock->cnt; i++){
+			record = &plock->record[i];
+			if(strcmp(record->addr, report->addr))
 				continue;
-			}
-			snprintf(cmd, sizeof(cmd), "logger -t %s [%s] login succeeded from %s after %zd attempts",
-				PROTECT_SRV_RULE_CHAIN, report->s_type ? "TELNET" : "SSH", record[i].addr, record[i].fail_cnt);
-			system(cmd);
-			record[i].fail_cnt = 0;
-			record[i].fail_time = 0;
-		}else{
-			record[i].fail_cnt++;
-			record[i].fail_time = info.uptime;
-			j = record[i].fail_cnt;
-			if(j > 6)
-				j = 6;
-			if(time_list[j] && record[i].locked == 0){
-				record[i].lock_it = 1;
-#ifdef RTCONFIG_NOTIFICATION_CENTER
-				snprintf(cmd, sizeof(cmd), "{\"IP\":\"%s\",\"msg\":\"\"}", report->addr);
-				SEND_NT_EVENT(plock->event, cmd);
-#endif
-			}
-			status = 1;
-		}
-	}
-	if(!status){
-		i = report->status;
-		if(i == 0){
-			if(plock->cnt <= 0){
-				MyDBG("FULL. Ignore this case: %s\n", report->addr);
-				return;
-			}
-			if(record[0].addr[0]){
-				fail_max = LONG_MAX;
-				for(i = 0, j = -1; i < plock->cnt; i++){
-					if(record[i].locked == 0){
-						n = i;
-						if(n >= fail_max)
-							n = fail_max;
-						if(record[i].fail_time < fail_max)
-							fail_max = record[i].fail_time;
-					}
-					if(!record[i+1].addr[0]){
-						strlcpy(record[i+1].addr, report->addr, sizeof(record[0].addr));
-						plock->stat.record_cnt++;
-						record[i+1].fail_cnt = 1;
-						record[i+1].fail_time = info.uptime;
-						return;
-					}
-				}
-				if(n == -1){
-					MyDBG("FULL. Ignore this case: %s\n", report->addr);
-				}else{
-					strlcpy(record[n].addr, report->addr, sizeof(record[0].addr));
-					record[n].fail_cnt = 1;
-					record[n].fail_time = info.uptime;
-				}
+			status = report->status;
+			if(status){
+				if(status == RPT_SUCCESS){
+					snprintf(cmd, sizeof(cmd), "logger -t %s [%s] login succeeded from %s after %zd attempts",
+						PROTECT_SRV_RULE_CHAIN, report->s_type ? "TELNET" : "SSH", record->addr, record->fail_cnt);
+					system(cmd);
+					record->fail_cnt = 0;
+					record->fail_time = 0;
+				}else
+					status = RPT_SUCCESS;//bug?
 			}else{
-				strlcpy(record[0].addr, report->addr, sizeof(record[0].addr));
-				record[0].fail_cnt = 1;
-				record[0].fail_time = info.uptime;
+				record->fail_cnt++;
+				record->fail_time = info.uptime;
+				j = record->fail_cnt > 6 ? 6 : record->fail_cnt;
+				if(time_list[j] && record->locked == 0){
+					record->lock_it = 1;
+#ifdef RTCONFIG_NOTIFICATION_CENTER
+					snprintf(cmd, sizeof(cmd), "{\"IP\":\"%s\",\"msg\":\"\"}", report->addr);
+					SEND_NT_EVENT(plock->event, cmd);
+#endif
+				}
+				status = RPT_SUCCESS;
 			}
 		}
 	}
+	if(status || report->status != RPT_FAIL)
+		return;
+	//login failed, add ipaddr to list
+	record = plock->record;
+	if(record->addr[0]){
+		fail_max = LONG_MAX;
+		for(i = 0, j = -1; i < plock->cnt; i++){
+			if(i){
+				if(!record[i].addr[0]){
+					strlcpy(record[i].addr, report->addr, sizeof(record[0].addr));
+					plock->stat.record_cnt++;
+					record[i].fail_cnt = 1;
+					record[i].fail_time = info.uptime;
+					plock->cnt++;
+					return;
+				}
+			}
+			if(record[i].locked == 0){
+				j = record[i].fail_time >= fail_max ? j : i;
+				if(record[i].fail_time < fail_max)
+					fail_max = record[i].fail_time;
+			}
+		}
+		if(j != -1){
+			strlcpy(record[j].addr, report->addr, sizeof(record->addr));
+			record[j].fail_cnt = 1;
+			record[j].fail_time = info.uptime;
+			plock->stat.record_cnt++;
+			plock->cnt++;
+		}
+	}else{
+		strlcpy(record->addr, report->addr, sizeof(record->addr));
+		record->fail_cnt = 1;
+		record->fail_time = info.uptime;
+		plock->stat.record_cnt++;
+		plock->cnt++;
+	}
+
+	if(report->status)
+		return;
+	MyDBG("FULL. Ignore this case: %s\n", report->addr);
 }
 
 void receive_s(int newsockfd)
@@ -425,14 +398,15 @@ void receive_s(int newsockfd)
 
 	switch(ptcsrv.d_type){
 		case PTCSRV_S_RPT:
-			MyDBG("[receive report] addr:[%s] s_type:[%d] status:[%d] msg:[%s]\n", ptcsrv.report.addr, ptcsrv.report.s_type, ptcsrv.report.status, ptcsrv.report.msg);
-			
-			if (GetDebugValue(PROTECT_SRV_DEBUG)) {
-				char info[440];
-				snprintf(info, sizeof(info), "echo \"[ProtectionSrv][receive report] addr:[%s] s_type:[%d] status:[%d] msg:[%s]\" >> %s",
-				ptcsrv.report.addr, ptcsrv.report.s_type, ptcsrv.report.status, ptcsrv.report.msg, PROTECT_SRV_LOG_FILE);
-				system(info);
-			}
+			MyDBG("[receive report] addr:[%s] s_type:[%d] status:[%d] msg:[%s]\n", ptcsrv.report.addr,
+				ptcsrv.report.s_type, ptcsrv.report.status, ptcsrv.report.msg);
+
+//			if (GetDebugValue(PROTECT_SRV_DEBUG)) {
+//				char info[440];
+//				snprintf(info, sizeof(info), "echo \"[ProtectionSrv][receive report] addr:[%s] s_type:[%d] status:[%d] msg:[%s]\" >> %s",
+//				ptcsrv.report.addr, ptcsrv.report.s_type, ptcsrv.report.status, ptcsrv.report.msg, PROTECT_SRV_LOG_FILE);
+//				system(info);
+//			}
 			if(IsLanSide(parseIpaddrstr(ptcsrv.report.addr)))
 				_add_record("LAN", &ptcsrv.report);
 			else
@@ -443,8 +417,10 @@ void receive_s(int newsockfd)
 		case PTCSRV_G_WAN_RECORD:
 		case PTCSRV_G_LAN_RECORD:
 			//it only works with asuswrt
+			MyDBG("d_type:[%d] unsupport\n", ptcsrv.d_type);
 			return;
 		case PTCSRV_G_LOCK:
+			MyDBG("d_type:[%d] s_type:[%d] addr:[%s]\n", ptcsrv.d_type, ptcsrv.report.s_type, ptcsrv.report.addr);
 			if(ptcsrv.report.s_type == PROTECTION_SERVICE_SSH){
 				if(IsLanSide(parseIpaddrstr(ptcsrv.report.addr)))
 					pt = &ssh_lock_t;
@@ -453,39 +429,30 @@ void receive_s(int newsockfd)
 			}else if(ptcsrv.report.s_type == PROTECTION_SERVICE_TELNET){
 				if(IsLanSide(parseIpaddrstr(ptcsrv.report.addr)))
 					pt = &telnet_lock_t;
-				else
-					return;
-			}else
-				return;
-			sysinfo(&info);
-			if(pt->stat.lock_rule_cnt < pt->maxcnt){
-				if(pt->cnt <= 0){
-					n = write(newsockfd, &ret, sizeof(int));
-					if(n < 0){
-						MyDBG("ERROR write.\n");
-						return;
-					}
-				}else{
-					record = pt->record;
-					for(i = 0; i < pt->cnt; i++){
-						if(record[i].addr[0] && !strncmp(record[i].addr, ptcsrv.ilk.addr, 15)){
-							if(record[i].locked)
-								break;
-							if(record[i].lock_it == 1){
-								if(record[i].lock_time == 0)
+			}
+			if(pt){
+				sysinfo(&info);
+				if(pt->stat.lock_rule_cnt < pt->maxcnt){
+					if(pt->cnt > 0){
+						for(i = 0; i < pt->cnt; i++){
+							record = &pt->record[i];
+							if(record->addr[0] && !strncmp(record->addr, ptcsrv.report.addr, 15)){
+								if(record->locked)
 									break;
-								n = record[i].fail_cnt;
-								if(n > 6)
-									n = 6;
-								if(info.uptime - record[i].lock_time > time_list[n])
-									break;
+								if(record->lock_it == 1){
+									if(record->lock_time == 0)
+										break;
+									n = record->fail_cnt > 6 ? 6 : record->fail_cnt;
+									if(info.uptime - record->lock_time > time_list[n])
+										break;
+								}
 							}
 						}
 					}
 				}
+				if(i != pt->cnt)
+					ret = 1;
 			}
-			if(i != pt->cnt)
-				ret = 1;
 			n = write(newsockfd, &ret, sizeof(int));
 			if(n < 0){
 				MyDBG("ERROR write.\n");
@@ -552,8 +519,7 @@ static void local_socket_thread(void)
 
 static void dump_record_to_file(PTCSRV_LOCK_DATA_T *plock)
 {
-	int record_cnt = 0, rule_cnt = 0, i;
-	size_t fail_cnt;
+	int record_cnt = 0, rule_cnt = 0, i, n;
 	FILE *fp;
 	PTCSRV_LOGIN_RECORD_T *record;
 	struct sysinfo info __attribute__ ((unused));
@@ -562,16 +528,14 @@ static void dump_record_to_file(PTCSRV_LOCK_DATA_T *plock)
 	if(fp){
 		fprintf(fp, "        address     retry  since_last_try   block_time   block_status\n");
 		if(plock->cnt > 0){
-			record = plock->record;
 			for(i = 0; i < plock->cnt; i++, rule_cnt++){
-				if(record[i].addr[0]){
-					fail_cnt = record[i].fail_cnt;
+				record = &plock->record[i];
+				if(record->addr[0]){
 					record_cnt++;
-					if(fail_cnt > 6)
-						fail_cnt = 6;
-					fprintf(fp, "%15s%10zu%16ld%13d%15d\n", record[i].addr, record[i].fail_cnt,
-						info.uptime - record[i].fail_time, time_list[fail_cnt], record[i].locked);
-					if(record[i].locked)
+					n = record->fail_cnt > 6 ? 6 : record->fail_cnt;
+					fprintf(fp, "%15s%10zu%16ld%13d%15d\n", record->addr, record->fail_cnt,
+						info.uptime - record->fail_time, time_list[n], record->locked);
+					if(record->locked)
 						break;
 				}
 			}
@@ -620,10 +584,10 @@ static void signal_register(void)
 
 static void free_list()
 {
-	if(wan_list)
-		free((void *)wan_list);
-	if(ssh_list)
-		free((void *)ssh_list);
+	if(wan_ssh_list)
+		free((void *)wan_ssh_list);
+	if(lan_ssh_list)
+		free((void *)lan_ssh_list);
 	if(telnet_list)
 		free((void *)telnet_list);
 }
@@ -638,10 +602,10 @@ int main(void)
 	pid = getpid();
 	snprintf(cmd, sizeof(cmd), "echo %d > %s",pid, PROTECT_SRV_PID_PATH);
 	system(cmd);
-	wan_list = (PTCSRV_LOGIN_RECORD_T *)calloc(500, sizeof(PTCSRV_LOGIN_RECORD_T));
-	ssh_list = (PTCSRV_LOGIN_RECORD_T *)calloc(50, sizeof(PTCSRV_LOGIN_RECORD_T));
+	wan_ssh_list = (PTCSRV_LOGIN_RECORD_T *)calloc(500, sizeof(PTCSRV_LOGIN_RECORD_T));
+	lan_ssh_list = (PTCSRV_LOGIN_RECORD_T *)calloc(50, sizeof(PTCSRV_LOGIN_RECORD_T));
 	telnet_list = (PTCSRV_LOGIN_RECORD_T *)calloc(50, sizeof(PTCSRV_LOGIN_RECORD_T));
-	if(wan_list == NULL || ssh_list == NULL || telnet_list == NULL){
+	if(wan_ssh_list == NULL || lan_ssh_list == NULL || telnet_list == NULL){
 		free_list();
 		exit(-1);
 	}
@@ -652,7 +616,7 @@ int main(void)
 	ssh_lock_t.event = ADMIN_LOGIN_FAIL_SSH_EVENT;
 #endif
 	ssh_lock_t.maxcnt = 50;
-	ssh_lock_t.record = ssh_list;
+	ssh_lock_t.record = lan_ssh_list;
 	ssh_lock_t.log_path = "/tmp/protect_srv_lan_ssh.log";
 	wan_lock_t.stat.lock_rule_cnt = 0;
 	wan_lock_t.stat.record_cnt = 0;
@@ -661,7 +625,7 @@ int main(void)
 	wan_lock_t.event = ADMIN_LOGIN_FAIL_SSH_EVENT;
 #endif
 	wan_lock_t.maxcnt = 500;
-	wan_lock_t.record = wan_list;
+	wan_lock_t.record = wan_ssh_list;
 	wan_lock_t.log_path = "/tmp/protect_srv_wan_ssh.log";
 	telnet_lock_t.stat.lock_rule_cnt = 0;
 	telnet_lock_t.stat.record_cnt = 0;
@@ -679,7 +643,16 @@ int main(void)
 	local_socket_thread();
 	
 	while (terminated) {
-		check_wanlan_lock();
+		if(RECV_SIG_FLAG){
+			RECV_SIG_FLAG = F_OFF;
+			insert_lock_rule("WAN", PROTECTION_SERVICE_SSH);
+			insert_lock_rule("LAN", PROTECTION_SERVICE_SSH);
+			insert_lock_rule("LAN", PROTECTION_SERVICE_TELNET);
+		}else{
+			update_lock_rule("WAN", PROTECTION_SERVICE_SSH);
+			update_lock_rule("LAN", PROTECTION_SERVICE_SSH);
+			update_lock_rule("LAN", PROTECTION_SERVICE_TELNET);
+		}
 		sleep(1);
 	}
 	free_list();

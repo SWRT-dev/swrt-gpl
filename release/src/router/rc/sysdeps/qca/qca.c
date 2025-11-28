@@ -8006,12 +8006,11 @@ void post_delif_bridge(int iftype)
 void duplicate_wl_ifaces(void)
 {
 	int unit = 1, unitmax = num_of_wl_if();
+	int dwb_band = nvram_get_int("dwb_band"), dwb_mode = nvram_get_int("dwb_mode");
 	char prefix[] = "wlXXXXXXX_", prefix2[] = "wlXXXXXXX_";
-
 	snprintf(prefix, sizeof(prefix), "wl%d_", 0);
-	for(unit = 1; unit < unitmax; unit++)
-	{
-		if((nvram_get_int("dwb_mode") == 1 || nvram_get_int("dwb_mode") == 3) && nvram_get_int("dwb_band") > 0 && unit == nvram_get_int("dwb_band")){
+	for(unit = 1; unit < unitmax; unit++){
+		if((dwb_mode == 1 || dwb_mode == 3) && dwb_band > 0 && unit == dwb_band){
 			dbg("Don't apply wl0 to wl%d in smart_connect function, if enabled DWB mode.\n", unit);
 		}else{
 			snprintf(prefix2, sizeof(prefix2), "wl%d_", unit);
@@ -8034,6 +8033,9 @@ void duplicate_wl_ifaces(void)
 			nvram_pf_set(prefix2, "11ax", nvram_pf_safe_get(prefix, "11ax"));
 #endif
 			nvram_pf_set(prefix2, "mfp", nvram_pf_safe_get(prefix, "mfp"));
+#if defined(RTCONFIG_SWRTMESH)
+			duplicate_wl_sync_uci(prefix, prefix2);
+#endif
 		}
 	}
 	nvram_commit();

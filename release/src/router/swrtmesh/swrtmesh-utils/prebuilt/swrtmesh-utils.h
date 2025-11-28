@@ -37,6 +37,7 @@ SWRTMESH_FUNC int swrtmesh_get_value_by_string(const char *package, const char *
 SWRTMESH_FUNC int swrtmesh_get_band_value_by_string(const char *package, const char *section, const char *band, const char *key, char *value, size_t len);
 SWRTMESH_FUNC bool swrtmesh_uci_set_option(char *package_name, char *section_type, char *search_key, char *search_val, char *option, char *value);
 SWRTMESH_FUNC struct uci_section *swrtmesh_config_get_section(struct uci_context *ctx, struct uci_package *pkg, const char *type, const char *key, const char *value);
+SWRTMESH_FUNC struct uci_section *swrtmesh_config_get_section_by_unit(struct uci_context *ctx, struct uci_package *pkg, const char *type, const char *key, const char *value, int unit);
 SWRTMESH_FUNC void swrtmesh_uci_add_option(struct uci_context *ctx, struct uci_package *p, struct uci_section *s, const char *option, void *value, bool is_list);
 SWRTMESH_FUNC void swrtmesh_uci_del_option(struct uci_context *ctx, struct uci_package *p, struct uci_section *s, const char *option);
 SWRTMESH_FUNC int swrtmesh_lookup_option_match(struct uci_context *ctx, struct uci_section *s, char *option, char *value);
