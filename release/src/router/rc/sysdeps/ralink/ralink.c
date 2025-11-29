@@ -6618,7 +6618,7 @@ void bandstr_sync_wl_settings(void)
 #endif
 			nvram_pf_set(prefix2, "mfp", nvram_pf_safe_get(prefix, "mfp"));
 #if defined(RTCONFIG_SWRTMESH)
-			duplicate_wl_sync_uci(prefix, wlprefix);
+			duplicate_wl_sync_uci(prefix, prefix2);
 #endif
 		}
 	}
