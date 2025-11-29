@@ -5329,6 +5329,10 @@ define BusyboxOptions
 		sed -i "/RTCONFIG_DNS_PING/d" $(1); \
 		echo "RTCONFIG_DNS_PING=y" >>$(1); \
 	fi;
+	if [ "$(SWRTMESH)" = "y" ]; then \
+		sed -i "/CONFIG_TIMEOUT/d" $(1); \
+		echo "CONFIG_TIMEOUT=y" >>$(1); \
+	fi;
 	$(call platformBusyboxOptions, $(1))
 endef
 
