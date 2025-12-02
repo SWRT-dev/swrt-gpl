@@ -10,6 +10,7 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	cp prebuilt/$(BUILD_NAME)/8021xd $(PKG_BUILD_DIR)/8021xd
 endif
+	touch stamp-h1
 
 install:
 	install -D $(PKG_BUILD_DIR)/8021xd $(INSTALLDIR)/usr/sbin/8021xd
