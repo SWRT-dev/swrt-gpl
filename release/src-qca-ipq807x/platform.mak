@@ -36,7 +36,7 @@ export EXTRACFLAGS
 export STAGING_DIR=$(TOOLS)
 
 EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST #-mfpu=neon-vfpv4 -mfloat-abi=softfp
-EXTRA_CFLAGS += -D_GNU_SOURCE -D_BSD_SOURCE
+EXTRA_CFLAGS += -D_GNU_SOURCE -D_BSD_SOURCE -march=armv8-a -mcpu=cortex-a53+crypto
 
 export CONFIG_LINUX26=y
 export CONFIG_QCA=y

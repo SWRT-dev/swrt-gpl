@@ -1,15 +1,18 @@
+# Convert swrt build environment variable to sdk
+include ../rules.mk
+PKG_BUILD_DIR=$(shell pwd)/source
 
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/8021xd/Makefile),)
-	[ -d 8021xd ] || ln -sf $(SDK_DIR_PLATFORM)/8021xd 8021xd
-	$(MAKE) -C 8021xd all
+	ln -sf $(SDK_DIR_PLATFORM)/8021xd source
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS)
 else
-	mkdir -p 8021xd
-	cp prebuilt/$(BUILD_NAME)/8021xd 8021xd/8021xd
+	mkdir -p $(PKG_BUILD_DIR)
+	cp prebuilt/$(BUILD_NAME)/8021xd $(PKG_BUILD_DIR)/8021xd
 endif
 
 install:
-	install -D 8021xd/8021xd $(INSTALLDIR)/usr/sbin/8021xd
+	install -D $(PKG_BUILD_DIR)/8021xd $(INSTALLDIR)/usr/sbin/8021xd
 	$(STRIP) $(INSTALLDIR)/usr/sbin/8021xd
 
 clean:

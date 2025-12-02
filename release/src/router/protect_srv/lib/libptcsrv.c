@@ -124,7 +124,7 @@ int ptcsrv_cli_create()
 		perror("socket error");
 		return -1;
 	}
-	fcntl(sockfd, F_SETFL, O_NONBLOCK);
+	//fcntl(sockfd, F_SETFL, O_NONBLOCK);
 	memset(&addr, 0, sizeof(addr));
 	addr.sun_family = AF_UNIX;
 	strlcpy(addr.sun_path, PROTECT_SRV_SOCKET_PATH, sizeof(addr.sun_path));
@@ -145,31 +145,25 @@ int ptcsrv_get_data(PTCSRV_SOCK_DATA_T *s_data, void* data, size_t len)
 		return -1;
 	wlen = sizeof(PTCSRV_SOCK_DATA_T);
 	while(1){
-		while(1){
-			n = write(sockfd, s_data, sizeof(PTCSRV_SOCK_DATA_T));
-			if(n < 0){
-				syslog(LOG_ERR, "[%s:(%d)] ERROR write:%s.\n", __FUNCTION__, __LINE__, strerror(errno));
-				perror("write error");
-				close(sockfd);
-				return -1;
-			}else
-				break;
+		n = write(sockfd, s_data, wlen);
+		if(n < 0){
+			syslog(LOG_ERR, "[%s:(%d)] ERROR write:%s.\n", __FUNCTION__, __LINE__, strerror(errno));
+			perror("write error");
+			close(sockfd);
+			return -1;
 		}
 		if(n == wlen)
 			break;
-		 wlen -= n;
+		wlen -= n;
 		s_data = (PTCSRV_SOCK_DATA_T *)((char *)s_data + n);
 	}
 	while(1){
-		while(1){
-			n = read(sockfd, data, len);
-			if(n < 0){
-				syslog(LOG_ERR, "[%s:(%d)] ERROR read:%s.\n", __FUNCTION__, __LINE__, strerror(errno));
-				perror("read error");
-				close(sockfd);
-				return -1;
-			}else
-				break;
+		n = read(sockfd, data, len);
+		if(n < 0){
+			syslog(LOG_ERR, "[%s:(%d)] ERROR read:%s.\n", __FUNCTION__, __LINE__, strerror(errno));
+			perror("read error");
+			close(sockfd);
+			return -1;
 		}
 		if(n == 0)
 			break;

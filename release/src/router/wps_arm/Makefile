@@ -94,7 +94,7 @@ ifeq ($(RTCONFIG_AMAS),y)
 LDFLAGS += -L$(TOP)/json-c/.libs -ljson-c
 endif
 
-WPSM_LIBS = -lnvram -lbcm -lshared -lbcmcrypto -lm
+WPSM_LIBS = -lnvram -lshared -lbcmcrypto -lm #-lbcm
 # Set link libraries search path
 export LIBPATH  = -L$(TOP)/libbcmcrypto -L$(INSTALLDIR)/libbcmcrypto/usr/lib
 export LIBPATH += -L$(TOP)/libbcm -L$(INSTALLDIR)/libbcm/usr/lib
@@ -106,7 +106,7 @@ ifeq ($(WPS_UPNP_DEVICE),1)
 # Always use LIBUPNP
 export LIBPATH += -L$(TOP)/libupnp${BCMEX} -L$(INSTALLDIR)/libupnp${BCMEX}/usr/lib
 WPSM_LIBS += -lupnp
-CFLAGS += -I$(SRCBASE)/router/libupnp${BCMEX}/include -I$(SRCBASE)/wps/brcm_apps/upnp/WFADevice
+CFLAGS += -I$(SRCBASE)/router/libupnp${BCMEX}/include -I$(LINUXDIR)/brcm/arm/wps/brcm_apps/upnp/WFADevice
 endif
 
 ifeq ($(WPS_NFC_DEVICE),1)
@@ -130,7 +130,7 @@ WPS_OSL += wps/brcm_apps/linux/wps_enr_linux_osl.c
 endif
 
 WPS_OSLOBJS := $(foreach file, $(WPS_OSL), \
-	 $(patsubst %.c,%.o,$(file)))
+	 $(patsubst wps/%.c,obj/%.o,$(file)))
 
 WPS_DIRS := $(foreach file, $(WPS_OSLOBJS), \
 	 $(dir $(file)))
@@ -142,12 +142,12 @@ ifneq ($(wildcard $(WPSSRC)/common/ap/*.c),)
 all: mkversion sta_build_check dirs variants_build osl wps_monitor
 else
 all: 
-ifeq ($(or $(RTAC3200),$(SBRAC3200P)),y)
-	-cp ./prebuilt/wps_monitor_7 ./wps_monitor
-else ifeq ($(or $(RTAC68U)),y)
-	-cp ./prebuilt/wps_monitor_6 ./wps_monitor
-else
+ifeq ($(RTCONFIG_BCM_7114),y)
 	-cp ./prebuilt/wps_monitor_7114 ./wps_monitor
+else ifeq ($(RTCONFIG_BCM7),y)
+	-cp ./prebuilt/wps_monitor_7 ./wps_monitor
+else
+	-cp ./prebuilt/wps_monitor_6 ./wps_monitor
 endif
 endif
 
@@ -159,7 +159,7 @@ osl:
 objs: variants_build | dirs
 	+$(MAKE) parallel=true $(WPS_OSLOBJS)
 
-$(WPS_OSLOBJS) : %.o: %.c
+$(WPS_OSLOBJS) : obj%.o: $(addprefix $(LINUXDIR)/brcm/arm/,wps%.c)
 	$(CC) -c $(CFLAGS) $(EXTRA_CFLAGS) -o $@ $<
 
 # Variants build rules

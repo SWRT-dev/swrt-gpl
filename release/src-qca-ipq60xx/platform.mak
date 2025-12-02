@@ -63,7 +63,7 @@ export ARCH := arm64
 export HOST := aarch64-linux
 
 ifeq ($(EXTRACFLAGS),)
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a --target=aarch64-arm-none-eabi -mcpu=cortex-a53
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mcpu=cortex-a53
 endif
 
 else
@@ -106,7 +106,7 @@ export ENTRYADDR := $(LOADADDR)
 # OpenWRT's toolchain needs STAGING_DIR environment variable that points to top directory of toolchain.
 export STAGING_DIR=$(TOOLS)
 
-EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -mfpu=vfpv3-d16 -mfloat-abi=softfp
+EXTRA_CFLAGS := -DLINUX26 -DCONFIG_QCA -pipe -DDEBUG_NOISY -DDEBUG_RCTEST
 
 ifneq ($(findstring $(_BUILD_NAME_),$(GCC520_MUSLLIBC32_MODEL_LIST)),)
 	EXTRA_CFLAGS+=-march=armv7-a -D_GNU_SOURCE -D_BSD_SOURCE

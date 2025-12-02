@@ -10248,6 +10248,20 @@ void feedback_check(void)
 }
 #endif /* RTCONFIG_FRS_FEEDBACK */
 
+#if defined(RTCONFIG_SWRTMESH)
+void swrtmesh_check(void)
+{
+	pid_t pid;
+	char *wifimngr_argv[] = { "wifimngr", NULL };
+
+	if(!pids("wifimngr"))
+		_eval(wifimngr_argv, NULL, 0, &pid);
+	if((nvram_match("swrtmesh_controller_enable", "1") && !pids("mapcontroller"))
+		|| (nvram_match("swrtmesh_agent_enable", "1") && !pids("mapagent")))
+		start_swrtmesh();
+}
+#endif
+
 /* wathchdog is runned in NORMAL_PERIOD, 1 seconds
  * check in each NORMAL_PERIOD
  *	1. button
@@ -10731,6 +10745,9 @@ wdp:
 #ifdef RTCONFIG_FRS_FEEDBACK
 	feedback_check();
 #endif /* RTCONFIG_FRS_FEEDBACK */
+#if defined(RTCONFIG_SWRTMESH)
+	swrtmesh_check();
+#endif
 }
 
 #if ! (defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK))

@@ -1,16 +1,20 @@
+# Convert swrt build environment variable to sdk
+include ../rules.mk
+PKG_BUILD_DIR=$(shell pwd)/source
 
 all:
-ifneq ($(wildcard $(SDK_DIR_PLATFORM)/bndstrg_plus/Makefile),)
-	ln -sf $(SDK_DIR_PLATFORM)/bndstrg_plus bndstrg_plus
-	$(MAKE) -C bndstrg_plus all
+ifneq ($(wildcard $(SDK_DIR_PLATFORM)/8021xd/Makefile),)
+	ln -sf $(SDK_DIR_PLATFORM)/8021xd source
+	$(TARGET_MAKE) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS)
 else
-	mkdir -p bndstrg_plus
-	cp prebuilt/$(BUILD_NAME)/bndstrg2 bndstrg_plus/bndstrg2
+	mkdir -p $(PKG_BUILD_DIR)
+	cp prebuilt/$(BUILD_NAME)/8021xd $(PKG_BUILD_DIR)/8021xd
 endif
+	touch stamp-h1
 
 install:
-	install -D bndstrg_plus/bndstrg2 $(INSTALLDIR)/usr/sbin/bndstrg2
-	$(STRIP) $(INSTALLDIR)/usr/sbin/bndstrg2
+	install -D $(PKG_BUILD_DIR)/8021xd $(INSTALLDIR)/usr/sbin/8021xd
+	$(STRIP) $(INSTALLDIR)/usr/sbin/8021xd
 
 clean:
 

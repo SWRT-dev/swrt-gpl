@@ -64,7 +64,7 @@ $(TARGET): $(OBJ)
 
 install:
 	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGET))
-	install -D $(TARGET) $(INSTALLDIR)/libasc/usr/lib/$(TARGET)
+	install -D $(TARGET) $(INSTALLDIR)/libswrt/usr/lib/$(TARGET)
 
 clean:
 	-rm *.o $(TARGET)

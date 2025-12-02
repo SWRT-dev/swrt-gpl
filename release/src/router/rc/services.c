@@ -22346,8 +22346,11 @@ int start_bsd(void)
 		ret = -1;
 		stop_bandsteer();
 	}else{
-		//stop_bandsteer();
-		start_bandsteer();
+		if(repeater_mode || wisp_mode() || mediabridge_mode()){
+			nvram_set("smart_connect_x", "0");
+			stop_bandsteer();
+		}else
+			start_bandsteer();
 	}
 	if(pids("ieee1905d")){
 		stop_swrtmesh();
@@ -25095,11 +25098,15 @@ void start_qca_lbd(void)
 	const int sw_mode = sw_mode();
 #endif
 	const int max_nr_wl_if = min(MAX_NR_WL_IF, WL_5G_2_BAND + 1);
+#if !defined(RTCONFIG_SWRTMESH)
 	const char *dbglvlstr[] = { "none", "err", "info", "debug", "dump" };
 	pid_t pid;
+#endif
 	int band, dbglvl, no_lbd = 0, nr_ssid = 0;
 	int radio_on[WL_NR_BANDS] = { 0 };
+#if !defined(RTCONFIG_SWRTMESH)
 	char lvlstr[sizeof("all=debugXXXXX")];
+#endif
 	char prefix[sizeof("wlXXXXXX_")], ssid[32 + 1] = { 0 };
 #if defined(RTCONFIG_HAS_5G_2)
 	char ssid5[32 + 1] = { 0 };
@@ -25114,6 +25121,7 @@ void start_qca_lbd(void)
 
 	if (!nvram_get_int("smart_connect_x") || (!nvram_get_int("x_Setting")
 		|| __repeater_mode(sw_mode) || __mediabridge_mode(sw_mode) || __aimesh_re_node(sw_mode)
+		|| __wisp_mode(sw_mode)
 #if defined(RTCONFIG_SOC_IPQ8074) && !defined(RTCONFIG_SWRTMESH)
 		|| nvram_match("wl1_precacen", "1")	/* band steering conflict with Agile DFS */
 #endif
@@ -25195,12 +25203,16 @@ void start_qca_lbd(void)
 
 	if (no_lbd) {
 #if defined(RTCONFIG_SWRTMESH)
-		stop_bandsteer();
-		if(pids("ieee1905d")){
-			stop_swrtmesh();
-			start_swrtmesh();
+		swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "bandsteer", ssid, sizeof(ssid));
+		if(!strcmp(ssid, "1")){
+			stop_bandsteer();
+			if(pids("ieee1905d")){
+				stop_swrtmesh();
+				start_swrtmesh();
+			}
 		}
 		logmessage("QCA LBD", "band steer is stopped");
+		return;
 #else
 		if (pids("lbd")) {
 			killall_tk("lbd");
@@ -25211,10 +25223,13 @@ void start_qca_lbd(void)
 #endif
 	}
 #if defined(RTCONFIG_SWRTMESH)
-	start_bandsteer();
-	if(pids("ieee1905d")){
-		stop_swrtmesh();
-		start_swrtmesh();
+	swrtmesh_get_value_by_string("mapcontroller", "sta_steering", "bandsteer", ssid, sizeof(ssid));
+	if(!strcmp(ssid, "0")){
+		start_bandsteer();
+		if(pids("ieee1905d")){
+			stop_swrtmesh();
+			start_swrtmesh();
+		}
 	}
 	logmessage("QCA LBD", "band steer is started");
 #else

@@ -165,7 +165,7 @@ out_exit:
 	return -1;
 }
 
-#if defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_SWRTMESH) && 0
 static void gen_evmap_file(const char *path)
 {
 	struct json_object *root = json_object_new_object(), *tmpobj = json_object_new_object();
@@ -194,7 +194,7 @@ static void gen_evmap_file(const char *path)
 	json_object_array_add(arrayObj, tmpobj);
 	json_object_object_add(root, "events", arrayObj);
 	json_object_to_file_ext(path, root, JSON_C_TO_STRING_PRETTY);
-	json_object_put(root);	
+	json_object_put(root);
 }
 #endif
 
@@ -204,7 +204,7 @@ int wifimngr_event_main(void *ctx, const char *evmap_file)
 	int len = 0;
 	int ret = 0;
 	int i, j;
-#if defined(RTCONFIG_SWRTMESH)
+#if defined(RTCONFIG_SWRTMESH) && 0
 	if(!f_exists(evmap_file))
 		gen_evmap_file(evmap_file);
 #endif

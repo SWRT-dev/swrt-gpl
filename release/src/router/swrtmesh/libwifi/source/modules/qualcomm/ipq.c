@@ -302,11 +302,17 @@ static int radio_get_curr_opclass(const char *name, struct wifi_opclass *o)
 	return wifi_get_opclass(netdev, o);
 }
 
+extern int get_bw_by_mode_str(char *mode);
+
 static int radio_get_bandwidth(const char *name, enum wifi_bw *bw)
 {
-	int bandwidth = 0, nctrlsb = 0;
+	int bandwidth = 0;
+	char orig_mode[32] = {0};
 	libwifi_dbg("[%s] %s called\n", name, __func__);
-	get_bw_nctrlsb(name, &bandwidth, &nctrlsb);
+
+	strlcpy(orig_mode, iwpriv_get(name, "get_mode")? : "", sizeof(orig_mode));
+	bandwidth = get_bw_by_mode_str(orig_mode);
+
 	switch (bandwidth) {
 		case 20:
 			*bw = BW20;
@@ -1389,7 +1395,7 @@ static int ipq_driver_info(const char *name, struct wifi_metainfo *info)
 }
 
 const struct wifi_driver qca_driver = {
-	.name = "ath,wifi,sta,phy",
+	.name = "ath,sta,phy",
 	.info = ipq_driver_info,
 
 	/* Radio/phy callbacks */

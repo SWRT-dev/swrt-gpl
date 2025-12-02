@@ -1,22 +1,31 @@
-include $(TOP)/common.mak
-include $(SRCBASE)/.config
-TARGET_CC=$(CROSS_COMPILE)gcc
-LINUX_VERSION=$(LINUX_KERNEL)
+# Convert swrt build environment variable to sdk
+include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
-TARGET_CFLAGS:= \
-	-I$(STAGEDIR)/usr/include/libnl-tiny \
-	-DCONFIG_LIBNL20 \
-	-D_GNU_SOURCE \
-	-flto -DIW_FULL
 
-TARGET_LDFLAGS:= \
-	-Wl,--gc-sections -flto -L$(STAGEDIR)/usr/lib
+TARGET_CFLAGS += -fpie
+TARGET_LDFLAGS += -pie
+
+TARGET_CPPFLAGS:= \
+	-I$(STAGING_DIR)/usr/include/libnl-tiny \
+	$(TARGET_CPPFLAGS) \
+	-DCONFIG_LIBNL20 \
+	-D_GNU_SOURCE
+
+MAKE_FLAGS += \
+	NL1FOUND="" NL2FOUND=Y \
+	NLLIBNAME="libnl-tiny" \
+	LIBS="-lm -lnl-tiny" \
+	V=1 IW_FULL=1
+
+CFLAGS+="$(TARGET_CPPFLAGS) $(TARGET_CFLAGS) -ffunction-sections -fdata-sections"
+LDFLAGS+="$(TARGET_LDFLAGS) -Wl,--gc-sections"
 
 all:
 	echo "const char iw_version[] = \"5.9-8fab0c9e\";" > $(PKG_BUILD_DIR)/version.c
 	echo "#!/bin/sh" > $(PKG_BUILD_DIR)/version.sh
 	chmod +x $(PKG_BUILD_DIR)/version.sh
-	$(MAKE) -C $(PKG_BUILD_DIR) TARGET_CFLAGS="$(TARGET_CFLAGS)" TARGET_LDFLAGS="$(TARGET_LDFLAGS)" IW_FULL=1 NL1FOUND="" NL2FOUND=Y NLLIBNAME="libnl-tiny" LIBS="-lm -lnl-tiny" V=1
+	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS) $(MAKE_FLAGS)
+	touch stamp-h1
 
 install:
 	install -D  $(PKG_BUILD_DIR)/iw $(INSTALLDIR)/usr/sbin/iw

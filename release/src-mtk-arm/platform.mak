@@ -1,7 +1,7 @@
 export LINUXDIR := $(SRCBASE)/linux/linux-5.4.x
 
 ifeq ($(EXTRACFLAGS),)
-export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mfpu=neon -mfloat-abi=softfp -mcpu=cortex-a53 -fsigned-char
+export EXTRACFLAGS := -DBCMWPA2 -fno-delete-null-pointer-checks -march=armv8-a -mcpu=cortex-a53 -fsigned-char
 endif
 
 export RTVER := 0.9.30.1
@@ -87,7 +87,7 @@ export DTS_DIR := $(LINUXDIR)/arch/$(ARCH)/boot/dts
 export STAGING_DIR:=$(TOOLS)
 
 EXTRA_CFLAGS := -DLINUX26 -DCONFIG_RALINK -pipe -DDEBUG_NOISY -DDEBUG_RCTEST
-EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8 -mfpu=neon -mfloat-abi=softfp -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC -fsigned-char -DKERNEL5_MUSL64
+EXTRA_CFLAGS += -Os -mcpu=cortex-a53 -march=armv8-a -D_GNU_SOURCE -D_BSD_SOURCE -D__BIT_TYPES_DEFINED__ -DMUSL_LIBC -fsigned-char -DKERNEL5_MUSL64
 
 export CONFIG_LINUX26=y
 export CONFIG_RALINK=y

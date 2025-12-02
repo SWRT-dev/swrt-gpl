@@ -884,7 +884,7 @@ ifeq ($(RTCONFIG_RALINK),y)
 obj-y += wireless_tools$(WTOOL_SUFFIX)
 ifeq ($(RTCONFIG_SWRTMESH),y)
 ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_RALINK_MT7621)),y)
-obj-y += hostapd-mtk wireless-regdb
+obj-y += wireless-regdb
 endif
 endif
 ifeq ($(RTCONFIG_RALINK_MT7621),y)
@@ -10104,33 +10104,6 @@ ifeq ($(RTCONFIG_SWRTMESH),y)
 swrtmesh: json-c libubox libubus libnl libuci openssl libgcrypt-1.5.1 avahi libmnl-1.0.4 libnfnetlink-1.0.1 libnetfilter_conntrack-1.0.7 ebtables
 	$(MAKE) -C swrtmesh all
 endif
-
-hostapd2: 
-	$(MAKE) -C hostapd2/hostapd clean
-	$(MAKE) -C hostapd2/wpa_supplicant clean
-	$(MAKE) -C hostapd2/hostapd $(PARALLEL_BUILD)
-	$(MAKE) -C hostapd2/wpa_supplicant $(PARALLEL_BUILD)
-
-hostapd2-clean:
-	$(MAKE) -C hostapd2/hostapd clean
-	$(MAKE) -C hostapd2/wpa_supplicant clean
-
-hostapd2-install:
-	$(MAKE) -C hostapd2/hostapd install
-	$(MAKE) -C hostapd2/wpa_supplicant install
-
-wpa_supplicant2: hostapd2
-	$(MAKE) -C hostapd2/wpa_supplicant clean
-	$(MAKE) -C hostapd2/wpa_supplicant $(PARALLEL_BUILD)
-
-wpa_supplicant2-install: 
-	install -D hostapd2/wpa_supplicant/wpa_supplicant $(INSTALLDIR)/wpa_supplicant2/usr/bin/wpa_supplicant
-#	install -D hostapd2/wpa_supplicant/wpa_cli $(TARGETDIR)/wpa_supplicant2/usr/bin/wpa_cli
-	$(STRIP) $(INSTALLDIR)/wpa_supplicant2/usr/bin/wpa_supplicant
-#	$(STRIP) $(INSTALLDIR)/wpa_supplicant2/usr/bin/wpa_cli
-
-wpa_supplicant2-clean:
-	$(MAKE) -C hostapd2/wpa_supplicant clean
 
 htop/Makefile:ncurses-6.3
 	cd htop && ./autogen.sh && $(CONFIGURE) \

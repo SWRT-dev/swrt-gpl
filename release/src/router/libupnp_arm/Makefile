@@ -36,12 +36,12 @@ OBJFILES = ${SRCFILES:.c=.o}
 ifeq ($(wildcard ./upnp),)
 all:
 	echo use prebuilt 
-ifeq ($(or $(RTAC3200),$(SBRAC3200P)),y)
-	-cp ./prebuilt/$(UPNPLIB_NAME)_7 ./$(UPNPLIB_NAME)
-else ifeq ($(or $(RTAC68U)),y)
-	-cp ./prebuilt/$(UPNPLIB_NAME)_6 ./$(UPNPLIB_NAME)
-else
+ifeq ($(RTCONFIG_BCM_7114),y)
 	-cp ./prebuilt/$(UPNPLIB_NAME)_7114 ./$(UPNPLIB_NAME)
+else ifeq ($(RTCONFIG_BCM7),y)
+	-cp ./prebuilt/$(UPNPLIB_NAME)_7 ./$(UPNPLIB_NAME)
+else
+	-cp ./prebuilt/$(UPNPLIB_NAME)_6 ./$(UPNPLIB_NAME)
 endif
 else
 all: $(OBJFILES)

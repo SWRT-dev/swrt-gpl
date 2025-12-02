@@ -1165,9 +1165,9 @@ CFLAGS += -I$(TOP)/shared/sysdeps/swrtmesh -I$(STAGEDIR)/usr/include
 OBJS += hostapd_helper.o swrtmesh.o
 ifeq ($(RTCONFIG_RALINK),y)
 OBJS += $(if $(wildcard sysdeps/ralink/swrtmesh-ralink.c),swrtmesh-ralink.o,prebuild/swrtmesh-ralink.o)
-CFLAGS += -I$(TOP)/hostapd-mtk/src/utils/ -I$(TOP)/hostapd-mtk/src/common/
-vpath %.c $(TOP)/hostapd-mtk/src/common
-vpath %.c $(TOP)/hostapd-mtk/src/utils
+CFLAGS += -I$(TOP)/hostapd/src/utils/ -I$(TOP)/hostapd/src/common/
+vpath %.c $(TOP)/hostapd/src/common
+vpath %.c $(TOP)/hostapd/src/utils
 OBJS += wpa_ctrl.o
 OBJS += os_unix.o
 else ifeq ($(RTCONFIG_QCA),y)
@@ -1181,7 +1181,7 @@ else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += $(if $(wildcard sysdeps/lantiq/swrtmesh-lantiq.c),swrtmesh-lantiq.o,prebuild/swrtmesh-lantiq.o)
 CFLAGS += -I$(TOP)/hostapd-2.6/src/utils/ -I$(TOP)/hostapd-2.6/src/common/
 vpath %.c $(TOP)/hostapd-2.6/src/common
-vpath %.c (TOP)/hostapd-2.6/src/utils
+vpath %.c $(TOP)/hostapd-2.6/src/utils
 OBJS += wpa_ctrl.o
 OBJS += os_unix.o
 else ifeq ($(RTCONFIG_BCMARM),y)

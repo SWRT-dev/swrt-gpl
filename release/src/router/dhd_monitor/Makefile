@@ -29,10 +29,10 @@ OBJS := dhd_monitor.o
 
 ifeq ($(wildcard $(SRCBASE)/router/dhd_monitor/*.c),)
 all:
-ifeq ($(or $(RTAC3200),$(SBRAC3200P)),y)
-	-cp ./prebuilt/dhd_monitor_7 ./dhd_monitor
-else
+ifeq ($(RTCONFIG_BCM_7114),y)
 	-cp ./prebuilt/dhd_monitor_7114 ./dhd_monitor
+else
+	-cp ./prebuilt/dhd_monitor_7 ./dhd_monitor
 endif
 else
 all: dhd_monitor

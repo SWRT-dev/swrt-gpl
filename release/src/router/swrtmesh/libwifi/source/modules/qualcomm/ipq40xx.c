@@ -2296,7 +2296,7 @@ static int recv_event(const char *ifname, void *evhandle)
 }
 
 const struct wifi_driver qca_driver = {
-	.name = "ath,wifi,sta,phy",
+	.name = "ath,sta,phy",
 	.info = qca_driver_info,
 
 	/* Radio/phy callbacks */

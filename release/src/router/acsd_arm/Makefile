@@ -27,12 +27,12 @@ vpath %.c $(SRCBASE)/shared/ $(SRCBASE)/shared/bcmwifi/src
 
 ifeq ($(wildcard $(SRCBASE)/router/acsd_arm/*.c),)
 all:
-ifeq ($(or $(RTAC3200),$(SBRAC3200P)),y)
-	-cp ./prebuilt/acsd_7 ./acsd
-else ifeq ($(or $(RTAC68U)),y)
-	-cp ./prebuilt/acsd_6 ./acsd
-else
+ifeq ($(RTCONFIG_BCM_7114),y)
 	-cp ./prebuilt/acsd_7114 ./acsd
+else ifeq ($(RTCONFIG_BCM7),y)
+	-cp ./prebuilt/acsd_7 ./acsd
+else
+	-cp ./prebuilt/acsd_6 ./acsd
 endif
 else
 all: acsd
