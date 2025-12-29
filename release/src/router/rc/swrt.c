@@ -105,10 +105,13 @@ void swrt_init_pre()
 	if(swrt_init_model)
 		swrt_init_model();
 #if defined(RTCONFIG_ROG_UI)
-	nvram_set("swrt_rog", "1");
-#endif
-#if defined(RTCONFIG_TUF_UI)
-	nvram_set("swrt_tuf", "1");
+	nvram_set("swrt_skin", "rog");
+#elif defined(RTCONFIG_TUF_UI)
+	nvram_set("swrt_skin", "tuf");
+#elif defined(RTCONFIG_GS_UI)
+	nvram_set("swrt_skin", "gs");
+#elif defined(RTCONFIG_TS_UI)
+	nvram_set("swrt_skin", "ts");
 #endif
 	if(!nvram_get("modelname"))
 #if defined(SWRT360V6)
@@ -833,7 +836,7 @@ void start_entware(void)
 					system("sed -i 's|http://bin.entware.net|http://mirrors.bfsu.edu.cn/entware|g' /opt/etc/opkg.conf");
 				system("/tmp/installentware.sh");
 				nvram_set("entware_installed", "1");
-#if defined(RTCONFIG_HND_ROUTER_AX_6756)
+#if defined(RTCONFIG_HND_ROUTER_AX_6756) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 				eval("ln", "-sf", "/bin/rm", "/opt/bin/rm");//protect system files
 #endif
 			}else
@@ -1160,7 +1163,7 @@ int check_bwdpi_nvram_setting(){ return 0; }
 int check_wrs_switch(){ return 0; }
 #endif
 
-#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER_AX)
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER_AX) && !defined(RTCONFIG_HND_ROUTER_BE_4916)
 #define	HAPD_MAX_BUF			512
 void __attribute__((weak)) wl_apply_akm_by_auth_mode(int unit, int subunit, char *sp_prefix_auth)
 {
@@ -1824,23 +1827,25 @@ const unsigned int devpath_idx[4] = {4, 2, 1, 3};    // 5G-1, 5G-2, 6G, 2.4G
 #elif defined(GTBE98)
 const unsigned int devpath_idx[4] = {1, 4, 2, 3};    // 5G-1, 5G-2, 6G, 2.4G
 #elif defined(BT10)
-const unsigned int devpath_idx[3] = {ENVRAM_2G_DEVPATH, ENVRAM_5G_DEVPATH, ENVRAM_6G_DEVPATH};    // 2G, 5G, 6G (devpath, not wlx index)
+const unsigned int devpath_idx[3] = {ENVRAM_6G_DEVPATH, ENVRAM_5G_DEVPATH, ENVRAM_2G_DEVPATH};    // 6G, 5G, 2G (devpath, not wlx index)
 #elif defined(BQ16)
 const unsigned int devpath_idx[4] = {0, 2, 1, 3};    // 5G-1, 5G-2, 6G, 2.4G
 #elif defined(BQ16_PRO)
 const unsigned int devpath_idx[4] = {0, 1, 2, 3};    // 5G, 6G-1, 6G-2, 2.4G
 #elif defined(GTBE98_PRO)
-const unsigned int devpath_idx[4] = {1, 2, 4, 3};    // 5G, 6G-1, 6G-2, 2.4G
+const unsigned int devpath_idx[4] = {4, 2, 1, 3};    // 5G, 6G-1, 6G-2, 2.4G
 #elif defined(GTAX11000_PRO)
 const unsigned int devpath_idx[4] = {3, 4, 1, 2};    // 2.4G, 5G-1, 5G-2
 #elif defined(GT10) || defined(RTAX9000)
 const unsigned int devpath_idx[4] = {1, 2, 0};    // 2.4G, 5G-1, 5G-2
-#elif defined(RTBE96U) || defined(GTBE19000)
+#elif defined(RTBE96U) || defined(GTBE19000) || defined(GTBE19000AI)
 const unsigned int devpath_idx[4] = {3, 4, 2, 1};    // 2.4G, 5G, 6G
 #elif defined(GTBE96)
 const unsigned int devpath_idx[4] = {3, 1, 4};	// 2.4G, 5G-1, 5G-2
 #elif defined(RTBE88U)
 const unsigned int devpath_idx[4] = {0, 1};	// 2.4G, 5G
+#elif defined(GTBE96_AI)
+const unsigned int devpath_idx[4] = {3, 2, 4};  // 2.4G, 5G-1, 5G-2
 #endif
 
 	if(which == SUFFIX_TXPWR){
@@ -1933,27 +1938,34 @@ const unsigned int devpath_idx[4] = {0, 1};	// 2.4G, 5G
 #endif
 			snprintf(buf, len, "%d:%s", unit + 1, str);
 			break;
-#if defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX9000) || defined(GTBE98) || defined(RTBE96U) || defined(GTBE98_PRO) || defined(GTBE96) || defined(RTBE88U) || defined(BQ16) || defined(BQ16_PRO) || defined(BT10)
-			case MODEL_GTAX11000_PRO:
-			case MODEL_GTAXE16000:
-			case MODEL_GT10:
-			case MODEL_RTAX9000:
+#if defined(GTAXE16000) || defined(GTAX11000_PRO) || defined(GT10) || defined(RTAX9000) || defined(GTBE98) || defined(RTBE96U) || defined(GTBE98_PRO) || defined(GTBE96) || defined(RTBE88U) || defined(BQ16) || defined(BQ16_PRO) || defined(BT10) || defined(GTBE19000) || defined(GTBE19000AI) || defined(GTBE96_AI)
+		case MODEL_GTAX11000_PRO:
+		case MODEL_GTAXE16000:
+		case MODEL_GT10:
+		case MODEL_RTAX9000:
 #if defined(RTCONFIG_HND_ROUTER_BE_4916)
-			case MODEL_GTBE98:
-			case MODEL_GTBE98_PRO:
-			case MODEL_RTBE96U:
-			case MODEL_GTBE96:
-			case MODEL_RTBE88U:
-			case MODEL_BT10:
-			case MODEL_BQ16:
-			case MODEL_BQ16_PRO:
-			case MODEL_GTBE19000:
+		case MODEL_GTBE98:
+		case MODEL_GTBE98_PRO:
+		case MODEL_RTBE96U:
+		case MODEL_GTBE96:
+		case MODEL_RTBE88U:
+		case MODEL_BT10:
+		case MODEL_BQ16:
+		case MODEL_BQ16_PRO:
+		case MODEL_GTBE19000:
+		case MODEL_GTBE19000AI:
+		case MODEL_GTBE96_AI:
 #endif
 			snprintf(buf, len, "%d:%s", devpath_idx[unit], str);
 			break;
 #endif
 #if defined(RTCONFIG_HND_ROUTER_BE_4916)
+		case MODEL_RTBE58_GO:
 		case MODEL_RTBE58U:
+		case MODEL_RTBE58U_V2:
+		case MODEL_RTBE82U:
+		case MODEL_RTBE82M:
+		case MODEL_RTBE58U_PRO:
 			snprintf(buf, len, "sb/%d/%s", 1 - unit, str);
 			break;
 		case MODEL_RTBE92U:
@@ -2068,7 +2080,7 @@ int set_wltxpower_swrt(void)
 #if defined(RTCONFIG_QUADBAND)
 	p4 = txpower4;
 #endif
-#if defined(RTCONFIG_HND_ROUTER_AX)
+#if defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 	if(max2g < p1)
 		p1 = max2g;
 	if(max5g < p2)
@@ -2080,7 +2092,7 @@ int set_wltxpower_swrt(void)
 		p4 = max6g;
 #endif
 #endif
-#if defined(RTCONFIG_HND_ROUTER_AX)
+#if defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_HND_ROUTER_BE_4916)
 	if(unit & 1){
 		logmessage("SWRT", "[%s], unit: %d, txpower: %d, max: %d\n", __func__, 0, p1, max2g);
 		snprintf(tmp2, sizeof(tmp2), "%d", max2g - p1);

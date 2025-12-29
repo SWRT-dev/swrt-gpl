@@ -420,14 +420,14 @@ void receive_s(int newsockfd)
 			MyDBG("d_type:[%d] unsupport\n", ptcsrv.d_type);
 			return;
 		case PTCSRV_G_LOCK:
-			MyDBG("d_type:[%d] s_type:[%d] addr:[%s]\n", ptcsrv.d_type, ptcsrv.report.s_type, ptcsrv.report.addr);
-			if(ptcsrv.report.s_type == PROTECTION_SERVICE_SSH){
-				if(IsLanSide(parseIpaddrstr(ptcsrv.report.addr)))
+			MyDBG("d_type:[%d] s_type:[%d] addr:[%s]\n", ptcsrv.d_type, ptcsrv.ilk.s_type, ptcsrv.ilk.addr);
+			if(ptcsrv.ilk.s_type == PROTECTION_SERVICE_SSH){
+				if(IsLanSide(parseIpaddrstr(ptcsrv.ilk.addr)))
 					pt = &ssh_lock_t;
 				else
 					pt = &wan_lock_t;
-			}else if(ptcsrv.report.s_type == PROTECTION_SERVICE_TELNET){
-				if(IsLanSide(parseIpaddrstr(ptcsrv.report.addr)))
+			}else if(ptcsrv.ilk.s_type == PROTECTION_SERVICE_TELNET){
+				if(IsLanSide(parseIpaddrstr(ptcsrv.ilk.addr)))
 					pt = &telnet_lock_t;
 			}
 			if(pt){
@@ -436,7 +436,7 @@ void receive_s(int newsockfd)
 					if(pt->cnt > 0){
 						for(i = 0; i < pt->cnt; i++){
 							record = &pt->record[i];
-							if(record->addr[0] && !strncmp(record->addr, ptcsrv.report.addr, 15)){
+							if(record->addr[0] && !strncmp(record->addr, ptcsrv.ilk.addr, 15)){
 								if(record->locked)
 									break;
 								if(record->lock_it == 1){

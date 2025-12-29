@@ -18,6 +18,9 @@
 #include "dnsfilter.h"
 #endif
 
+#if defined(RTCONFIG_SMARTDNS)
+const char sdservers[];
+#endif
 extern const char dmservers[];
 
 const char sdn_dir[] = "/tmp/.sdn";
@@ -556,7 +559,11 @@ static int _gen_sdn_dnsmasq_conf(const MTLAN_T *pmtl, char *config_file, const s
 		fprintf(fp, "bind-interfaces\n");
 		fprintf(fp, "listen-address=%s\n", pmtl->nw_t.addr);
 		fprintf(fp, "no-resolv\n");
+#if defined(RTCONFIG_SMARTDNS)
+		fprintf(fp, "servers-file=%s\n", resolv_flag ? resolv_path : nvram_match("smartdns_enable", "1") ? sdservers : dmservers);
+#else
 		fprintf(fp, "servers-file=%s\n", resolv_flag ? resolv_path : dmservers);
+#endif
 		fprintf(fp, "no-poll\n");
 		fprintf(fp, "no-negcache\n");
 		fprintf(fp, "cache-size=1500\n");
@@ -588,7 +595,7 @@ static int _gen_sdn_dnsmasq_conf(const MTLAN_T *pmtl, char *config_file, const s
 		/* limit number of outstanding requests */
 		{
 			int max_queries = nvram_get_int("max_dns_queries");
-#if defined(RTCONFIG_SOC_IPQ8064)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
 			if (max_queries == 0)
 				max_queries = 1500;
 #endif

@@ -7,12 +7,44 @@ IS_INSTALLED=$(nvram get sc_installed)
 PLUGINS=$(find /jffs/softcenter/webs/ -name 'Module_*.asp' 2>/dev/null)
 [ -f /jffs/softcenter/.sc_mounted ] && IS_MOUNTED="1" || IS_MOUNTED="0"
 [ -f /jffs/softcenter/.sc_cifs ] && IS_CIFS="1" || IS_CIFS="0"
-MODEL=$(nvram get productid)
-if [ "${MODEL:0:3}" == "GT-" ] || [ "$(nvram get swrt_rog)" == "1" ];then
-	ROG=1
-elif [ "${MODEL:0:3}" == "TUF" ] || [ "$(nvram get swrt_tuf)" == "1" ];then
-	TUF=1
-fi
+
+set_skin(){
+	local UI_TYPE=ASUSWRT
+	local SC_SKIN=$(nvram get sc_skin)
+	local TS_FLAG=$(grep -o "2ED9C3" /www/css/difference.css 2>/dev/null|head -n1)
+	local ROG_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|sed 's/,//g'|grep -o "2071044")
+	local TUF_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|sed 's/,//g'|grep -o "D0982C")
+	local WRT_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|sed 's/,//g'|grep -o "4F5B5F")
+
+	if [ -n "${TS_FLAG}" ];then
+		UI_TYPE="TS"
+	else
+		if [ -n "${TUF_FLAG}" ];then
+			UI_TYPE="TUF"
+		fi
+		if [ -n "${ROG_FLAG}" ];then
+			UI_TYPE="ROG"
+		fi
+		if [ -n "${WRT_FLAG}" ];then
+			UI_TYPE="ASUSWRT"
+		fi
+	fi
+	if [ -z "${SC_SKIN}" -o "${SC_SKIN}" != "${UI_TYPE}" ];then
+		nvram set sc_skin="${UI_TYPE}"
+		nvram commit
+	fi
+
+	# compatibile
+	if [ "${UI_TYPE}" == "ASUSWRT" ];then
+		ln -sf /jffs/softcenter/res/softcenter_asus.css /jffs/softcenter/res/softcenter.css
+	elif [ "${UI_TYPE}" == "ROG" ];then
+		ln -sf /jffs/softcenter/res/softcenter_rog.css /jffs/softcenter/res/softcenter.css
+	elif [ "${UI_TYPE}" == "TUF" ];then
+		ln -sf /jffs/softcenter/res/softcenter_tuf.css /jffs/softcenter/res/softcenter.css
+	elif [ "${UI_TYPE}" == "TS" ];then
+		ln -sf /jffs/softcenter/res/softcenter_ts.css /jffs/softcenter/res/softcenter.css
+	fi
+}
 
 mkdir -p /jffs/softcenter
 
@@ -122,12 +154,7 @@ if [ "$PLUGINS" = "" ];then
 	cp -rf /rom/etc/softcenter/webs/* /jffs/softcenter/webs/
 	cp -rf /rom/etc/softcenter/bin/* /jffs/softcenter/bin/
 
-if [ "$ROG" == "1" ]; then
-	cp -rf /rom/etc/softcenter/ROG/res/* /jffs/softcenter/res/
-elif [ "$TUF" == "1" ]; then
-	cp -rf /rom/etc/softcenter/ROG/res/* /jffs/softcenter/res/
-	sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /jffs/softcenter/res/*.css >/dev/null 2>&1
-fi
+	set_skin
 fi
 cd /jffs/softcenter/bin && ln -sf /usr/sbin/base64_encode base64_encode
 cd /jffs/softcenter/bin && ln -sf /usr/sbin/base64_encode base64_decode
@@ -140,7 +167,7 @@ chmod 755 /jffs/softcenter/configs/*.sh
 chmod 755 /jffs/softcenter/bin/*
 chmod 755 /jffs/softcenter/init.d/*
 chmod 755 /jffs/softcenter/automount.sh
-echo 1.5.3 > /jffs/softcenter/.soft_ver
+echo 1.5.7 > /jffs/softcenter/.soft_ver
 dbus set softcenter_api="1.5"
 dbus set softcenter_version=`cat /jffs/softcenter/.soft_ver`
 nvram set sc_installed=1

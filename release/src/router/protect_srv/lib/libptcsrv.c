@@ -185,8 +185,8 @@ int IS_PTCSRV_LOCKED(int s_type, const char *addr)
 	PTCSRV_SOCK_DATA_T ptcsrv;
 	memset(&ptcsrv, 0, sizeof(PTCSRV_SOCK_DATA_T));
 	ptcsrv.d_type = PTCSRV_G_LOCK;
-	ptcsrv.report.s_type = s_type;
-	snprintf(ptcsrv.report.addr, sizeof(ptcsrv.report.addr), "%s", addr);
+	ptcsrv.ilk.s_type = s_type;
+	snprintf(ptcsrv.ilk.addr, sizeof(ptcsrv.ilk.addr), "%s", addr);
 	ptcsrv_get_data(&ptcsrv, &ret, sizeof(ret));
 	return ret;
 }
