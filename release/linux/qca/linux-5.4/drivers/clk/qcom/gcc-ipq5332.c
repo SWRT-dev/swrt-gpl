@@ -1887,42 +1887,6 @@ static struct clk_branch gcc_mem_noc_q6_axi_clk = {
 	},
 };
 
-static struct clk_branch gcc_mem_noc_snoc_axi_clk = {
-	.halt_reg = 0x19018,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0x19018,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data){
-			.name = "gcc_mem_noc_snoc_axi_clk",
-			.parent_hws = (const struct clk_hw*[]){
-				&gcc_system_noc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_mem_noc_ts_clk = {
-	.halt_reg = 0x19028,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0x19028,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data){
-			.name = "gcc_mem_noc_ts_clk",
-			.parent_hws = (const struct clk_hw*[]){
-				&gcc_qdss_tsctr_div8_clk_src.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
 static struct clk_branch gcc_nss_ts_clk = {
 	.halt_reg = 0x17018,
 	.halt_check = BRANCH_HALT_VOTED,
@@ -3861,42 +3825,6 @@ static struct clk_branch gcc_nssnoc_pcnoc_1_clk = {
 	},
 };
 
-static struct clk_branch gcc_mem_noc_ahb_clk = {
-	.halt_reg = 0x1900c,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x1900c,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data){
-			.name = "gcc_mem_noc_ahb_clk",
-			.parent_hws = (const struct clk_hw*[]){
-				&gcc_pcnoc_bfdcd_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
-static struct clk_branch gcc_mem_noc_apss_axi_clk = {
-	.halt_reg = 0x1901c,
-	.halt_check = BRANCH_HALT_VOTED,
-	.clkr = {
-		.enable_reg = 0xb004,
-		.enable_mask = BIT(6),
-		.hw.init = &(const struct clk_init_data){
-			.name = "gcc_mem_noc_apss_axi_clk",
-			.parent_hws = (const struct clk_hw*[]){
-				&gcc_apss_axi_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
-			.ops = &clk_branch2_ops,
-		},
-	},
-};
-
 static struct clk_regmap_div gcc_snoc_qosgen_extref_div_clk_src = {
 	.reg = 0x2e010,
 	.shift = 0,
@@ -3909,24 +3837,6 @@ static struct clk_regmap_div gcc_snoc_qosgen_extref_div_clk_src = {
 		.num_parents = 1,
 		.flags = CLK_SET_RATE_PARENT,
 		.ops = &clk_regmap_div_ro_ops,
-	},
-};
-
-static struct clk_branch gcc_mem_noc_qosgen_extref_clk = {
-	.halt_reg = 0x19024,
-	.halt_check = BRANCH_HALT,
-	.clkr = {
-		.enable_reg = 0x19024,
-		.enable_mask = BIT(0),
-		.hw.init = &(const struct clk_init_data){
-			.name = "gcc_mem_noc_qosgen_extref_clk",
-			.parent_hws = (const struct clk_hw*[]){
-				&gcc_snoc_qosgen_extref_div_clk_src.clkr.hw,
-			},
-			.num_parents = 1,
-			.flags = CLK_SET_RATE_PARENT | CLK_IGNORE_UNUSED,
-			.ops = &clk_branch2_ops,
-		},
 	},
 };
 
@@ -4037,8 +3947,6 @@ static struct clk_regmap *gcc_ipq5332_dummy_clocks[] = {
 	[GCC_MDIO_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_mdio_ahb_clk),
 	[GCC_MDIO_SLAVE_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_mdio_slave_ahb_clk),
 	[GCC_MEM_NOC_Q6_AXI_CLK] = &gcc_mem_noc_q6_axi_clk.clkr,
-	[GCC_MEM_NOC_SNOC_AXI_CLK] = DEFINE_DUMMY_CLK(gcc_mem_noc_snoc_axi_clk),
-	[GCC_MEM_NOC_TS_CLK] = DEFINE_DUMMY_CLK(gcc_mem_noc_ts_clk),
 	[GCC_NSS_TS_CLK] = DEFINE_DUMMY_CLK(gcc_nss_ts_clk),
 	[GCC_NSS_TS_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_nss_ts_clk_src),
 	[GCC_NSSCC_CLK] = DEFINE_DUMMY_CLK(gcc_nsscc_clk),
@@ -4177,10 +4085,7 @@ static struct clk_regmap *gcc_ipq5332_dummy_clocks[] = {
 	[GCC_XO_DIV4_CLK] = &gcc_xo_div4_clk.clkr,
 	[GCC_IM_SLEEP_CLK] = DEFINE_DUMMY_CLK(gcc_im_sleep_clk),
 	[GCC_NSSNOC_PCNOC_1_CLK] = DEFINE_DUMMY_CLK(gcc_nssnoc_pcnoc_1_clk),
-	[GCC_MEM_NOC_AHB_CLK] = DEFINE_DUMMY_CLK(gcc_mem_noc_ahb_clk),
-	[GCC_MEM_NOC_APSS_AXI_CLK] = DEFINE_DUMMY_CLK(gcc_mem_noc_apss_axi_clk),
 	[GCC_SNOC_QOSGEN_EXTREF_DIV_CLK_SRC] = DEFINE_DUMMY_CLK(gcc_snoc_qosgen_extref_div_clk_src),
-	[GCC_MEM_NOC_QOSGEN_EXTREF_CLK] = DEFINE_DUMMY_CLK(gcc_mem_noc_qosgen_extref_clk),
 	[GCC_PCIE3X2_PIPE_CLK_SRC] = DEFINE_DUMMY_CLK(pcie3x2_pipe_clk_src),
 	[GCC_PCIE3X1_0_PIPE_CLK_SRC] = DEFINE_DUMMY_CLK(pcie3x1_0_pipe_clk_src),
 	[GCC_PCIE3X1_1_PIPE_CLK_SRC] = DEFINE_DUMMY_CLK(pcie3x1_1_pipe_clk_src),
@@ -4236,8 +4141,6 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_MDIO_AHB_CLK] = &gcc_mdio_ahb_clk.clkr,
 	[GCC_MDIO_SLAVE_AHB_CLK] = &gcc_mdio_slave_ahb_clk.clkr,
 	[GCC_MEM_NOC_Q6_AXI_CLK] = &gcc_mem_noc_q6_axi_clk.clkr,
-	[GCC_MEM_NOC_SNOC_AXI_CLK] = &gcc_mem_noc_snoc_axi_clk.clkr,
-	[GCC_MEM_NOC_TS_CLK] = &gcc_mem_noc_ts_clk.clkr,
 	[GCC_NSS_TS_CLK] = &gcc_nss_ts_clk.clkr,
 	[GCC_NSS_TS_CLK_SRC] = &gcc_nss_ts_clk_src.clkr,
 	[GCC_NSSCC_CLK] = &gcc_nsscc_clk.clkr,
@@ -4376,10 +4279,7 @@ static struct clk_regmap *gcc_ipq5332_clocks[] = {
 	[GCC_XO_DIV4_CLK] = &gcc_xo_div4_clk.clkr,
 	[GCC_IM_SLEEP_CLK] = &gcc_im_sleep_clk.clkr,
 	[GCC_NSSNOC_PCNOC_1_CLK] = &gcc_nssnoc_pcnoc_1_clk.clkr,
-	[GCC_MEM_NOC_AHB_CLK] = &gcc_mem_noc_ahb_clk.clkr,
-	[GCC_MEM_NOC_APSS_AXI_CLK] = &gcc_mem_noc_apss_axi_clk.clkr,
 	[GCC_SNOC_QOSGEN_EXTREF_DIV_CLK_SRC] = &gcc_snoc_qosgen_extref_div_clk_src.clkr,
-	[GCC_MEM_NOC_QOSGEN_EXTREF_CLK] = &gcc_mem_noc_qosgen_extref_clk.clkr,
 	[GCC_PCIE3X2_PIPE_CLK_SRC] = &pcie3x2_pipe_clk_src.clkr,
 	[GCC_PCIE3X1_0_PIPE_CLK_SRC] = &pcie3x1_0_pipe_clk_src.clkr,
 	[GCC_PCIE3X1_1_PIPE_CLK_SRC] = &pcie3x1_1_pipe_clk_src.clkr,

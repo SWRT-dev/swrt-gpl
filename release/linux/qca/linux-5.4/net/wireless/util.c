@@ -2222,16 +2222,13 @@ void
 cfg80211_dfs_event_notify(struct wiphy *wiphy,
 			  struct cfg80211_chan_def *chandef,
 			  enum nl80211_radar_event event,
-			  struct net_device *dev)
+			  struct net_device *dev,
+			  gfp_t gfp)
 {
 	struct cfg80211_registered_device *rdev = wiphy_to_rdev(wiphy);
-	gfp_t gfp = GFP_ATOMIC;
 
 	if (!rdev || !chandef ||!dev)
 		return;
-
-	if (in_task())
-		gfp = GFP_KERNEL;
 
 	nl80211_radar_notify(rdev, chandef, event, dev, gfp);
 }

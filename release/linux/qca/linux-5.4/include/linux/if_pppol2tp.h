@@ -23,14 +23,14 @@ struct  pppol2tp_common_addr {
 	__u32 local_session_id, remote_session_id;	/* session id */
 	struct sockaddr_in local_addr, remote_addr; /* ip address and port */
 };
-#ifdef __KERNEL__
+
 /*
  * L2TP channel operations
  */
 struct pppol2tp_channel_ops {
 	struct ppp_channel_ops ops; /* ppp channel ops */
 };
-#endif
+
 /*
  * exported function which calls pppol2tp channel's get addressing
  * function

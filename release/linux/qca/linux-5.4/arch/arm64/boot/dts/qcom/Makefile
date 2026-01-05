@@ -15,6 +15,8 @@ else ifeq ($(CONFIG_MODEL_RMAX5),y)
 dtb-y += ipq6018-rmax5.dtb
 else ifeq ($(CONFIG_MODEL_TUFBE6500),y)
 dtb-y += ipq5332-tuf-be6500.dtb
+else ifeq ($(CONFIG_MODEL_JDCBE6500),y)
+dtb-y += ipq5332-jdc-be6500.dtb
 else
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb
 dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb

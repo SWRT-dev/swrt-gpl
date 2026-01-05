@@ -109,6 +109,27 @@ void debug_object_trace_init(void *addr, void **stack, size_t size)
 	raw_spin_unlock_irqrestore(&db->lock, flags);
 }
 
+void debug_object_trace_update(void *addr, void **stack)
+{
+
+	struct debug_bucket *db;
+	unsigned long flags;
+	struct debug_obj_trace *trace_obj;
+
+	db = get_bucket((unsigned long) addr);
+
+	raw_spin_lock_irqsave(&db->lock, flags);
+
+	trace_obj = lookup_object_with_trace(addr, db);
+	if (!trace_obj)
+		goto out_unlock;
+
+	memcpy(trace_obj->stack, stack, 9 * sizeof(void *));
+
+out_unlock:
+	raw_spin_unlock_irqrestore(&db->lock, flags);
+}
+
 void debug_object_trace_free(void *addr)
 {
 	struct debug_bucket *db;

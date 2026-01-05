@@ -56,6 +56,9 @@ struct ice_config_sec {
 	uint8_t key_mode;
 } __attribute__((packed));
 
+#define DATA_COTEXT_LEN 128
+#define SALT_COTEXT_LEN 128
+
 typedef void (*ice_error_cb)(void *, u32 error);
 
 struct qcom_ice_variant_ops *qcom_ice_get_variant_ops(struct device_node *node);
@@ -83,4 +86,6 @@ struct qcom_ice_variant_ops {
 	void	(*debug)(struct platform_device *);
 };
 
+void ice_setting_init(struct ice_crypto_setting *settings);
+void ice_setting_deinit(void);
 #endif /* _INLINE_CRYPTO_ENGINE_H_ */

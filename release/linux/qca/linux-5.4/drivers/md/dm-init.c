@@ -38,6 +38,7 @@ struct dm_device {
 
 const char * const dm_allowed_targets[] __initconst = {
 	"crypt",
+	"inline-crypt",
 	"delay",
 	"linear",
 	"snapshot-origin",

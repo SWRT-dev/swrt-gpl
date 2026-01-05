@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-2.0
 VERSION = 5
 PATCHLEVEL = 4
-SUBLEVEL = 213
+SUBLEVEL = 277
 EXTRAVERSION =
 NAME = Kleptomaniac Octopus
 
@@ -89,9 +89,16 @@ endif
 
 # If the user is running make -s (silent mode), suppress echoing of
 # commands
+# make-4.0 (and later) keep single letter options in the 1st word of MAKEFLAGS.
 
-ifneq ($(findstring s,$(filter-out --%,$(MAKEFLAGS))),)
-  quiet=silent_
+ifeq ($(filter 3.%,$(MAKE_VERSION)),)
+silence:=$(findstring s,$(firstword -$(MAKEFLAGS)))
+else
+silence:=$(findstring s,$(filter-out --%,$(MAKEFLAGS)))
+endif
+
+ifeq ($(silence),s)
+quiet=silent_
 endif
 
 export quiet Q KBUILD_VERBOSE
@@ -724,6 +731,13 @@ KBUILD_CFLAGS	+= $(call cc-disable-warning, address-of-packed-member)
 MODEL = $(subst -,,$(BUILD_NAME))
 KBUILD_CFLAGS += -D$(MODEL)
 KBUILD_CFLAGS += -D$(SWRT_NAME)
+ifneq ($(wildcard ./net/swrt_fastpath/*.c),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+else ifneq ($(wildcard ./net/swrt_fastpath/fast_path_*.o),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+endif
 
 ifdef CONFIG_CC_OPTIMIZE_FOR_PERFORMANCE
 KBUILD_CFLAGS += -O2 $(EXTRA_OPTIMIZATION)
@@ -783,6 +797,10 @@ endif
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-but-set-variable)
 
 KBUILD_CFLAGS += $(call cc-disable-warning, unused-const-variable)
+
+# These result in bogus false positives
+KBUILD_CFLAGS += $(call cc-disable-warning, dangling-pointer)
+
 ifdef CONFIG_FRAME_POINTER
 KBUILD_CFLAGS	+= -fno-omit-frame-pointer -fno-optimize-sibling-calls
 else
@@ -809,7 +827,9 @@ DEBUG_CFLAGS	+= -gsplit-dwarf
 else
 DEBUG_CFLAGS	+= -g
 endif
-ifneq ($(LLVM_IAS),1)
+ifeq ($(LLVM_IAS),1)
+KBUILD_AFLAGS	+= -g
+else
 KBUILD_AFLAGS	+= -Wa,-gdwarf-2
 endif
 endif
@@ -1876,3 +1896,4 @@ FORCE:
 # Declare the contents of the PHONY variable as phony.  We keep that
 # information in a variable so we can use it in if_changed and friends.
 .PHONY: $(PHONY)
+

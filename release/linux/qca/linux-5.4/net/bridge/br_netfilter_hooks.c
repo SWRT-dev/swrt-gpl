@@ -33,6 +33,7 @@
 #include <net/ip.h>
 #include <net/ipv6.h>
 #include <net/addrconf.h>
+#include <net/dst_metadata.h>
 #include <net/route.h>
 #include <net/netfilter/br_netfilter.h>
 #include <net/netns/generic.h>
@@ -763,6 +764,10 @@ static int br_nf_dev_queue_xmit(struct net *net, struct sock *sk, struct sk_buff
 		return br_dev_queue_push_xmit(net, sk, skb);
 	}
 
+	/* Fragmentation on metadata/template dst is not supported */
+	if (unlikely(!skb_valid_dst(skb)))
+		goto drop;
+
 	/* This is wrong! We should preserve the original fragment
 	 * boundaries by preserving frag_list rather than refragmenting.
 	 */
@@ -878,11 +883,17 @@ static unsigned int ip_sabotage_in(void *priv,
 {
 	struct nf_bridge_info *nf_bridge = nf_bridge_info_get(skb);
 
-	if (nf_bridge && !nf_bridge->in_prerouting &&
-	    !netif_is_l3_master(skb->dev) &&
-	    !netif_is_l3_slave(skb->dev)) {
-		state->okfn(state->net, state->sk, skb);
-		return NF_STOLEN;
+	if (nf_bridge) {
+		if (nf_bridge->sabotage_in_done)
+			return NF_ACCEPT;
+
+		if (!nf_bridge->in_prerouting &&
+		    !netif_is_l3_master(skb->dev) &&
+		    !netif_is_l3_slave(skb->dev)) {
+			nf_bridge->sabotage_in_done = 1;
+			state->okfn(state->net, state->sk, skb);
+			return NF_STOLEN;
+		}
 	}
 
 	return NF_ACCEPT;

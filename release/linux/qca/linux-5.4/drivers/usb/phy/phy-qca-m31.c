@@ -45,14 +45,15 @@ enum clk_reset_action {
 #define USB2PHY_USB_PHY_M31_XCFGI_1	0xBC
 #define USB2PHY_USB_PHY_M31_XCFGI_4	0xC8
 #define USB2PHY_USB_PHY_M31_XCFGI_5	0xCC
+#define USB2PHY_USB_PHY_M31_XCFGI_9	0xDC
 #define USB2PHY_USB_PHY_M31_XCFGI_11	0xE4
 
 #define USB2_0_TX_ENABLE		BIT(2)
-#define HSTX_SLEW_RATE_565PS		3
+#define HSTX_SLEW_RATE_400PS		7
 #define PLL_CHARGING_PUMP_CURRENT_35UA	(3 << 3)
 #define ODT_VALUE_38_02_OHM		(3 << 6)
-#define ODT_VALUE_45_02_OHM		BIT(2)
 #define HSTX_PRE_EMPHASIS_LEVEL_0_55MA	(1)
+#define HSTX_CURRENT_17_1MA_385MV	BIT(1)
 
 #define UTMI_PHY_OVERRIDE_EN		BIT(1)
 #define POR_EN				BIT(1)
@@ -136,20 +137,27 @@ static void ipq5332_m31usb_phy_enable_clock(struct m31usb_phy *qphy)
 		qphy->base + USB_PHY_HS_PHY_CTRL2);
 	writel(XCFG_COARSE_TUNE_NUM  | XCFG_FINE_TUNE_NUM,
 				qphy->base + USB2PHY_USB_PHY_M31_XCFGI_11);
-	/* Adjust HSTX slew rate to 565 ps*/
+	/* Adjust HSTX slew rate to 400 ps*/
 	/* Adjust PLL lock Time counter for release clock to 35uA */
 	/* Adjust Manual control ODT value to 38.02 Ohm */
-	writel(HSTX_SLEW_RATE_565PS | PLL_CHARGING_PUMP_CURRENT_35UA |
+	writel(HSTX_SLEW_RATE_400PS | PLL_CHARGING_PUMP_CURRENT_35UA |
 		ODT_VALUE_38_02_OHM, qphy->base + USB2PHY_USB_PHY_M31_XCFGI_4);
 	/*
 	* Enable to always turn on USB 2.0 TX driver
 	* when system is in USB 2.0 HS mode
 	*/
 	writel(USB2_0_TX_ENABLE, qphy->base + USB2PHY_USB_PHY_M31_XCFGI_1);
-	/* Adjust Manual control ODT value to 45.02 Ohm */
+
 	/* Adjust HSTX Pre-emphasis level to 0.55mA */
-	writel(ODT_VALUE_45_02_OHM | HSTX_PRE_EMPHASIS_LEVEL_0_55MA,
+	writel(HSTX_PRE_EMPHASIS_LEVEL_0_55MA,
 		qphy->base + USB2PHY_USB_PHY_M31_XCFGI_5);
+	/*
+	* Adjust HSTX Current of current-mode driver,
+	* default 18.5mA * 22.5ohm = 416mV
+	* 17.1mA * 22.5ohm = 385mV
+	*/
+	writel(HSTX_CURRENT_17_1MA_385MV,
+		qphy->base + USB2PHY_USB_PHY_M31_XCFGI_9);
 	udelay(4);
 	writel(0x0, qphy->base + USB_PHY_UTMI_CTRL5);
 	writel(USB2_SUSPEND_N | USB2_UTMI_CLK_EN,

@@ -44,12 +44,18 @@ obj-$(CONFIG_IP_NF_SECURITY) += iptable_security.o
 # matches
 obj-$(CONFIG_IP_NF_MATCH_AH) += ipt_ah.o
 obj-$(CONFIG_IP_NF_MATCH_RPFILTER) += ipt_rpfilter.o
+obj-$(CONFIG_IP_NF_MATCH_TOS) += ipt_tos.o
+obj-$(CONFIG_IP_NF_MATCH_IPP2P) += ipt_ipp2p.o
+obj-$(CONFIG_IP_NF_MATCH_WEB) += ipt_web.o
+obj-$(CONFIG_IP_NF_MATCH_WEBMON) += ipt_webmon.o
 
 # targets
 obj-$(CONFIG_IP_NF_TARGET_CLUSTERIP) += ipt_CLUSTERIP.o
 obj-$(CONFIG_IP_NF_TARGET_ECN) += ipt_ECN.o
 obj-$(CONFIG_IP_NF_TARGET_REJECT) += ipt_REJECT.o
 obj-$(CONFIG_IP_NF_TARGET_SYNPROXY) += ipt_SYNPROXY.o
+obj-$(CONFIG_IP_NF_TARGET_TOS) += ipt_TOS.o
+obj-$(CONFIG_IP_NF_TARGET_TRIGGER) += ipt_TRIGGER.o
 
 # generic ARP tables
 obj-$(CONFIG_IP_NF_ARPTABLES) += arp_tables.o
@@ -59,3 +65,6 @@ obj-$(CONFIG_IP_NF_ARP_MANGLE) += arpt_mangle.o
 obj-$(CONFIG_IP_NF_ARPFILTER) += arptable_filter.o
 
 obj-$(CONFIG_NF_DUP_IPV4) += nf_dup_ipv4.o
+
+# LFP
+obj-$(CONFIG_IP_NF_LFP) += lfp.o

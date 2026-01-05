@@ -302,7 +302,7 @@ static unsigned long oops_begin(void)
 {
 	int cpu;
 	unsigned long flags;
-	enable_oopsbuf(1);
+
 	oops_enter();
 
 	/* racy, but better than risking deadlock. */
@@ -341,7 +341,7 @@ static void oops_end(unsigned long flags, struct pt_regs *regs, int signr)
 	if (panic_on_oops)
 		panic("Fatal exception");
 	if (signr)
-		do_exit(signr);
+		make_task_dead(signr);
 }
 
 /*

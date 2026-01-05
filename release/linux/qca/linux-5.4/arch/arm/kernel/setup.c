@@ -1116,6 +1116,9 @@ void __init setup_arch(char **cmdline_p)
 	init_mm.brk	   = (unsigned long) _end;
 
 	/* populate cmd_line too for later use, preserving boot_command_line */
+#if defined(CONFIG_MTD_UBI)
+	strlcat(boot_command_line, "ubi.mtd=UBI_DEV", COMMAND_LINE_SIZE);
+#endif
 	strlcpy(cmd_line, boot_command_line, COMMAND_LINE_SIZE);
 	*cmdline_p = cmd_line;
 

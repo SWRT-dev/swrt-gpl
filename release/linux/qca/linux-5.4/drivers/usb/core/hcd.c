@@ -35,8 +35,8 @@
 #include <linux/phy/phy.h>
 #include <linux/usb.h>
 #include <linux/usb/hcd.h>
-#include <linux/usb/usb-bus-stats.h>
 #include <linux/usb/otg.h>
+#include <linux/usb/usb-bus-stats.h>
 
 #include "usb.h"
 #include "phy.h"

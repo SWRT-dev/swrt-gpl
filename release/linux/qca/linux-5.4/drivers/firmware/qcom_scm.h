@@ -11,6 +11,7 @@
 #define QCOM_SCM_SET_REMOTE_STATE	0xa
 #define QCOM_SCM_IS_TZ_LOG_ENCRYPTED	0xb
 #define QCOM_SCM_GET_TZ_LOG_ENCRYPTED	0xc
+#define QTI_SCM_ICE_CONTEXT_CMD         0x3
 extern int __qcom_scm_set_remote_state(struct device *dev, u32 state, u32 id);
 extern int __qcom_scm_set_dload_mode(struct device *dev, bool enable);
 
@@ -75,7 +76,7 @@ extern int  __qcom_scm_pas_auth_and_reset(struct device *dev, u32 peripheral,
 		u32 debug, u32 reset_cmd_id);
 extern int  __qcom_scm_pas_shutdown(struct device *dev, u32 peripheral);
 extern int  __qcom_scm_pas_mss_reset(struct device *dev, bool reset);
-extern int  __qti_config_ice_sec(struct device *dev, void *confBuf, int size);
+extern int  __qcom_config_ice_sec(struct device *dev, void *confBuf, int size);
 /* common error codes */
 #define QCOM_SCM_V2_EBUSY	-12
 #define QCOM_SCM_ENOMEM		-5
@@ -313,6 +314,9 @@ extern int __qti_scm_aes(struct device *dev, uint32_t req_addr,
 			 uint32_t req_size, u32 cmd_id);
 
 extern int __qti_scm_aes_clear_key_handle(struct device *dev, uint32_t key_handle, u32 cmd_id);
+extern int  __qcom_context_ice_sec(struct device *dev, u32 type, u8 key_size,
+		u8 algo_mode, u8 *data_ctxt, u32 data_ctxt_len,
+		u8 *salt_ctxt, u32 salt_ctxt_len);
 
 #define QTI_SCM_SVC_RESETTYPE_CMD	0x18
 extern int  __qti_scm_set_resettype(struct device *dev, u32 reset_type);

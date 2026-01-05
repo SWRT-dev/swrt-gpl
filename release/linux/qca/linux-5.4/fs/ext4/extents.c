@@ -409,7 +409,7 @@ static int ext4_valid_extent_entries(struct inode *inode,
 {
 	unsigned short entries;
 	ext4_lblk_t lblock = 0;
-	ext4_lblk_t prev = 0;
+	ext4_lblk_t cur = 0;
 
 	if (eh->eh_entries == 0)
 		return 1;
@@ -435,12 +435,12 @@ static int ext4_valid_extent_entries(struct inode *inode,
 
 			/* Check for overlapping extents */
 			lblock = le32_to_cpu(ext->ee_block);
-			if ((lblock <= prev) && prev) {
+			if (lblock < cur) {
 				pblock = ext4_ext_pblock(ext);
 				es->s_last_error_block = cpu_to_le64(pblock);
 				return 0;
 			}
-			prev = lblock + ext4_ext_get_actual_len(ext) - 1;
+			cur = lblock + ext4_ext_get_actual_len(ext);
 			ext++;
 			entries--;
 		}
@@ -460,13 +460,13 @@ static int ext4_valid_extent_entries(struct inode *inode,
 
 			/* Check for overlapping index extents */
 			lblock = le32_to_cpu(ext_idx->ei_block);
-			if ((lblock <= prev) && prev) {
+			if (lblock < cur) {
 				*pblk = ext4_idx_pblock(ext_idx);
 				return 0;
 			}
 			ext_idx++;
 			entries--;
-			prev = lblock;
+			cur = lblock + 1;
 		}
 	}
 	return 1;
@@ -498,6 +498,10 @@ static int __ext4_ext_check(const char *function, unsigned int line,
 	}
 	if (unlikely(le16_to_cpu(eh->eh_entries) > le16_to_cpu(eh->eh_max))) {
 		error_msg = "invalid eh_entries";
+		goto corrupted;
+	}
+	if (unlikely((eh->eh_entries == 0) && (depth > 0))) {
+		error_msg = "eh_entries is 0 but eh_depth is > 0";
 		goto corrupted;
 	}
 	if (!ext4_valid_extent_entries(inode, eh, lblk, &pblk, depth)) {
@@ -1032,6 +1036,11 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
 		ix = curp->p_idx;
 	}
 
+	if (unlikely(ix > EXT_MAX_INDEX(curp->p_hdr))) {
+		EXT4_ERROR_INODE(inode, "ix > EXT_MAX_INDEX!");
+		return -EFSCORRUPTED;
+	}
+
 	len = EXT_LAST_INDEX(curp->p_hdr) - ix + 1;
 	BUG_ON(len < 0);
 	if (len > 0) {
@@ -1039,11 +1048,6 @@ static int ext4_ext_insert_index(handle_t *handle, struct inode *inode,
 				"move %d indices from 0x%p to 0x%p\n",
 				logical, len, ix, ix + 1);
 		memmove(ix + 1, ix, len * sizeof(struct ext4_extent_idx));
-	}
-
-	if (unlikely(ix > EXT_MAX_INDEX(curp->p_hdr))) {
-		EXT4_ERROR_INODE(inode, "ix > EXT_MAX_INDEX!");
-		return -EFSCORRUPTED;
 	}
 
 	ix->ei_block = cpu_to_le32(logical);
@@ -6017,6 +6021,15 @@ int ext4_clu_mapped(struct inode *inode, ext4_lblk_t lclu)
 	int depth, mapped = 0, err = 0;
 	struct ext4_extent *extent;
 	ext4_lblk_t first_lblk, first_lclu, last_lclu;
+
+	/*
+	 * if data can be stored inline, the logical cluster isn't
+	 * mapped - no physical clusters have been allocated, and the
+	 * file has no extents
+	 */
+	if (ext4_test_inode_state(inode, EXT4_STATE_MAY_INLINE_DATA) ||
+	    ext4_has_inline_data(inode))
+		return 0;
 
 	/* search for the extent closest to the first block in the cluster */
 	path = ext4_find_extent(inode, EXT4_C2B(sbi, lclu), NULL, 0);

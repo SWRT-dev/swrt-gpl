@@ -118,10 +118,6 @@ inline struct sk_buff *skb_recycler_alloc(struct net_device *dev,
 			shinfo = skb_shinfo(skb);
 			prefetchw(shinfo);
 			zero_struct(skb, offsetof(struct sk_buff, tail));
-#ifdef CONFIG_IP_NF_LFP
-			skb->nfcache = 0;
-#endif
-			skb->fast_forwarded = 0;
 			refcount_set(&skb->users, 1);
 			skb->mac_header = (typeof(skb->mac_header))~0U;
 			skb->transport_header = (typeof(skb->transport_header))~0U;
@@ -608,12 +604,11 @@ void __init skb_recycler_init(void)
 
 void skb_recycler_print_all_lists(void)
 {
-
+	struct sk_buff_head *h;
 	unsigned long flags;
 	int cpu;
 #ifdef CONFIG_SKB_RECYCLER_MULTI_CPU
 	int i;
-	struct sk_buff_head *h;
 
 	cpu = get_cpu();
 	spin_lock_irqsave(&glob_recycler.lock, flags);

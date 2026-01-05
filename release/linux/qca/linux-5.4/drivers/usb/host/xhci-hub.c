@@ -1388,7 +1388,7 @@ int xhci_hub_control(struct usb_hcd *hcd, u16 typeReq, u16 wValue,
 			xhci_set_port_power(xhci, hcd, wIndex, true, &flags);
 			break;
 		case USB_PORT_FEAT_RESET:
-#if !defined(CONFIG_PINCTRL_IPQ8074)
+#if defined(CONFIG_PLAX56XP4)
 			xhci_dbg(xhci, "Patch - Add clear PLC\n");
 			temp = (temp | PORT_RESET | 0x400000);
 #else

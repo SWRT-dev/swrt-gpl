@@ -2556,7 +2556,7 @@ static ssize_t devx_async_event_read(struct file *filp, char __user *buf,
 {
 	struct devx_async_event_file *ev_file = filp->private_data;
 	struct devx_event_subscription *event_sub;
-	struct devx_async_event_data *uninitialized_var(event);
+	struct devx_async_event_data *event;
 	int ret = 0;
 	size_t eventsz;
 	bool omit_data;
@@ -2811,7 +2811,7 @@ DECLARE_UVERBS_NAMED_METHOD(
 	MLX5_IB_METHOD_DEVX_OBJ_MODIFY,
 	UVERBS_ATTR_IDR(MLX5_IB_ATTR_DEVX_OBJ_MODIFY_HANDLE,
 			UVERBS_IDR_ANY_OBJECT,
-			UVERBS_ACCESS_WRITE,
+			UVERBS_ACCESS_READ,
 			UA_MANDATORY),
 	UVERBS_ATTR_PTR_IN(
 		MLX5_IB_ATTR_DEVX_OBJ_MODIFY_CMD_IN,

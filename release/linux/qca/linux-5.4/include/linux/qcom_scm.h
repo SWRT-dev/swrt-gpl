@@ -180,6 +180,9 @@ struct fuse_blow {
 #define FUSEPROV_INVALID_HASH           0x09
 #define FUSEPROV_SECDAT_LOCK_BLOWN      0xB
 
+#define QTI_SCM_DERIVE_KEY             0xA
+#define QTI_SCM_DERIVE_KEY_PARAM_ID    0xD
+
 #define SCM_SVC_EXTWDT         0x5
 #define SCM_CMD_EXTWDT         0x2
 
@@ -273,7 +276,7 @@ extern int qti_sec_crypt(void *buf, int size);
 extern int qti_qcekey_release_xpu_prot(void);
 extern int qti_seccrypt_clearkey(void);
 extern int qti_scm_set_resettype(u32 reset_type);
-extern int qti_config_sec_ice(void *buf, int size);
+extern int qcom_config_sec_ice(void *buf, int size);
 extern int qti_scm_pshold(void);
 extern int qti_scm_extwdt(u32 svc_id, u32 cmd_id, unsigned int regaddr,
 			   unsigned int val);
@@ -303,12 +306,22 @@ extern int qti_scm_get_device_provision_response(u32 svc_id, u32 cmd_id,
 extern int __qti_scm_get_device_provision_response(struct device *dev, u32 svc_id,
 		u32 cmd_id, void *provreq_buf, u32 provreq_buf_len,
 		void *provresp_buf, u32 provresp_buf_len, u32 *prov_resp_size);
+extern int qti_scm_derive_and_share_key(u32 svc_id, u32 cmd_id,
+		uint32_t key_len, uint8_t *sw_context,
+		u32 sw_context_len, uint8_t *derived_key,
+		u32 derived_key_len);
+extern int __qti_scm_derive_and_share_key(struct device *dev, u32 svc_id, u32 cmd_id,
+		uint32_t key_len, uint8_t *sw_context,
+		u32 sw_context_len, uint8_t *derived_key,
+		u32 derived_key_len);
 extern int qti_scm_get_ecdsa_blob(u32 svc_id, u32 cmd_id, dma_addr_t nonce_buf,
 		u32 nonce_buf_len, dma_addr_t ecdsa_buf, u32 ecdsa_buf_len,
 		u32 *ecdsa_consumed_len);
 extern int __qti_scm_get_ecdsa_blob(struct device *dev, u32 svc_id, u32 cmd_id,
 		dma_addr_t nonce_buf, u32 nonce_buf_len, dma_addr_t ecdsa_buf,
 		u32 ecdsa_buf_len, u32 *ecdsa_consumed_len);
+extern int qcom_context_sec_ice(u32 type, u8 key_size, u8 algo_mode,
+		u8 *data_ctxt, u32 data_ctxt_len, u8 *salt_ctxt, u32 salt_ctxt_len);
 
 #else
 

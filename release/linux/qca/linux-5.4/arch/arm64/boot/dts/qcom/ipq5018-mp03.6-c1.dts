@@ -644,6 +644,14 @@
 	status = "ok";
 	perst-gpio = <&tlmm 18 GPIO_ACTIVE_LOW>;
 	slot_id = <0>;
+
+	reg =  <0x80000000 0xf1d
+		0x80000F20 0xa8
+		0x80001000 0x1000
+		0x78000 0x3000
+		0x80100000 0x1000>;
+	reg-names = "dbi", "elbi", "atu", "parf", "config";
+
 };
 
 &pcie_x2 {

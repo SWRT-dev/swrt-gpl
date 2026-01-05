@@ -32,7 +32,7 @@
 #include "ubi.h"
 #include "ubi-media.h"
 
-#if defined(SWRT360V6) || defined(JDCAX1800)
+#if defined(SWRT360V6) || defined(JDCAX1800) || defined(JDCBE6500)
 #include <linux/magic.h>
 #endif
 
@@ -919,7 +919,7 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 				   struct ubi_volume_info *vi)
 {
 	struct mtd_partition *part = NULL;
-#if defined(SWRT360V6) || defined(JDCAX1800)
+#if defined(SWRT360V6) || defined(JDCAX1800) || defined(JDCBE6500)
 	int ret = 0;
 	size_t retlen;
 	uint32_t rootfs_offset = 0;
@@ -959,11 +959,8 @@ static int create_rootfs_partition(struct mtd_info *mtd,
 	part->offset = 0;
 	part->size = mtd->size;
 	part->mask_flags |= MTD_WRITEABLE;
-#if defined(SWRT360V6) || defined(JDCAX1800)
-#if defined(SWRT360V6) || defined(JDCAX1800)
-	for(rootfs_offset = 0x3c0000; rootfs_offset < 0x400000; rootfs_offset += 0x40)
-#endif
-	{
+#if defined(SWRT360V6) || defined(JDCAX1800) || defined(JDCBE6500)
+	for(rootfs_offset = 0x3c0000; rootfs_offset < 0x400000; rootfs_offset += 0x40) {
 		ret = mtd_read(mtd, rootfs_offset, sizeof(magic), &retlen, (unsigned char *) &magic);
 		if (le32_to_cpu(magic) == SQUASHFS_MAGIC){
 			ret = 0;

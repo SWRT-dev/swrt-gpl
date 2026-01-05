@@ -71,14 +71,14 @@ static void qce_skcipher_done(void *data)
 				DMA_MEM_TO_DEV);
 	}
 
-	error = qce_check_status(qce, &status);
-	if (error < 0)
-		dev_dbg(qce->dev, "skcipher operation error (%x)\n", status);
-
 	error = qce_dma_terminate_all(&qce->dma);
 	if (error)
 		dev_dbg(qce->dev, "skcipher dma termination error (%d)\n",
 			error);
+
+	error = qce_check_status(qce, &status);
+	if (error < 0)
+		dev_dbg(qce->dev, "skcipher operation error (%x)\n", status);
 
 	memcpy(rctx->iv, result_buf->encr_cntr_iv, rctx->ivsize);
 	qce->async_req_done(tmpl->qce, error);
@@ -446,7 +446,7 @@ static int qce_skcipher_register_one(const struct qce_skcipher_def *def,
 	alg->encrypt			= qce_skcipher_encrypt;
 	alg->decrypt			= qce_skcipher_decrypt;
 
-	alg->base.cra_priority		= 300;
+	alg->base.cra_priority		= 10;
 	alg->base.cra_flags		= CRYPTO_ALG_ASYNC |
 					  CRYPTO_ALG_KERN_DRIVER_ONLY;
 	alg->base.cra_ctxsize		= sizeof(struct qce_cipher_ctx);

@@ -83,6 +83,10 @@
 #include <linux/netlink.h>
 #include <linux/tcp.h>
 
+#ifdef PGB_QUICK_PATH
+#include <linux/swrt_fastpath/fast_path.h>
+#endif
+
 static int
 ip_fragment(struct net *net, struct sock *sk, struct sk_buff *skb,
 	    unsigned int mtu,
@@ -111,7 +115,11 @@ int __ip_local_out(struct net *net, struct sock *sk, struct sk_buff *skb)
 		return 0;
 
 	skb->protocol = htons(ETH_P_IP);
-
+#ifdef PGB_QUICK_PATH
+	if (SWRT_FASTPATH(skb))
+		return dst_output(net, sk, skb);
+	else 
+#endif 
 	return nf_hook(NFPROTO_IPV4, NF_INET_LOCAL_OUT,
 		       net, sk, skb, NULL, skb_dst(skb)->dev,
 		       dst_output);
@@ -222,7 +230,7 @@ static int ip_finish_output2(struct net *net, struct sock *sk, struct sk_buff *s
 	if (lwtunnel_xmit_redirect(dst->lwtstate)) {
 		int res = lwtunnel_xmit(skb);
 
-		if (res < 0 || res == LWTUNNEL_XMIT_DONE)
+		if (res != LWTUNNEL_XMIT_CONTINUE)
 			return res;
 	}
 
@@ -421,7 +429,11 @@ int ip_mc_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 				net, sk, newskb, NULL, newskb->dev,
 				ip_mc_finish_output);
 	}
-
+#ifdef PGB_QUICK_PATH
+	if (SWRT_FASTPATH(skb))
+		return ip_finish_output(net, sk, skb);
+	else 
+#endif 
 	return NF_HOOK_COND(NFPROTO_IPV4, NF_INET_POST_ROUTING,
 			    net, sk, skb, NULL, skb->dev,
 			    ip_finish_output,
@@ -436,7 +448,11 @@ int ip_output(struct net *net, struct sock *sk, struct sk_buff *skb)
 
 	skb->dev = dev;
 	skb->protocol = htons(ETH_P_IP);
-
+#ifdef PGB_QUICK_PATH
+	if (SWRT_FASTPATH(skb))
+		return ip_finish_output(net, sk, skb);
+	else 
+#endif 
 	return NF_HOOK_COND(NFPROTO_IPV4, NF_INET_POST_ROUTING,
 			    net, sk, skb, NULL, dev,
 			    ip_finish_output,
@@ -993,7 +1009,7 @@ static int __ip_append_data(struct sock *sk,
 	mtu = cork->gso_size ? IP_MAX_MTU : cork->fragsize;
 	paged = !!cork->gso_size;
 
-	if (cork->tx_flags & SKBTX_ANY_SW_TSTAMP &&
+	if (cork->tx_flags & SKBTX_ANY_TSTAMP &&
 	    sk->sk_tsflags & SOF_TIMESTAMPING_OPT_ID)
 		tskey = sk->sk_tskey++;
 
@@ -1255,6 +1271,12 @@ static int ip_setup_cork(struct sock *sk, struct inet_cork *cork,
 	if (unlikely(!rt))
 		return -EFAULT;
 
+	cork->fragsize = ip_sk_use_pmtu(sk) ?
+			 dst_mtu(&rt->dst) : READ_ONCE(rt->dst.dev->mtu);
+
+	if (!inetdev_valid_mtu(cork->fragsize))
+		return -ENETUNREACH;
+
 	/*
 	 * setup for corking.
 	 */
@@ -1270,12 +1292,6 @@ static int ip_setup_cork(struct sock *sk, struct inet_cork *cork,
 		cork->flags |= IPCORK_OPT;
 		cork->addr = ipc->addr;
 	}
-
-	cork->fragsize = ip_sk_use_pmtu(sk) ?
-			 dst_mtu(&rt->dst) : READ_ONCE(rt->dst.dev->mtu);
-
-	if (!inetdev_valid_mtu(cork->fragsize))
-		return -ENETUNREACH;
 
 	cork->gso_size = ipc->gso_size;
 
@@ -1559,9 +1575,19 @@ struct sk_buff *__ip_make_skb(struct sock *sk,
 	cork->dst = NULL;
 	skb_dst_set(skb, &rt->dst);
 
-	if (iph->protocol == IPPROTO_ICMP)
-		icmp_out_count(net, ((struct icmphdr *)
-			skb_transport_header(skb))->type);
+	if (iph->protocol == IPPROTO_ICMP) {
+		u8 icmp_type;
+
+		/* For such sockets, transhdrlen is zero when do ip_append_data(),
+		 * so icmphdr does not in skb linear region and can not get icmp_type
+		 * by icmp_hdr(skb)->type.
+		 */
+		if (sk->sk_type == SOCK_RAW && !inet_sk(sk)->hdrincl)
+			icmp_type = fl4->fl4_icmp_type;
+		else
+			icmp_type = icmp_hdr(skb)->type;
+		icmp_out_count(net, icmp_type);
+	}
 
 	ip_cork_release(cork);
 out:

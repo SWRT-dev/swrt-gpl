@@ -810,6 +810,18 @@ int qti_scm_get_device_provision_response(u32 svc_id, u32 cmd_id, void *provreq_
 }
 EXPORT_SYMBOL(qti_scm_get_device_provision_response);
 
+int qti_scm_derive_and_share_key(u32 svc_id, u32 cmd_id, uint32_t key_len,
+			uint8_t *sw_context, u32 sw_context_len,
+			uint8_t *derived_key, u32 derived_key_len)
+{
+	int ret;
+	ret = __qti_scm_derive_and_share_key(__scm->dev, svc_id, cmd_id,
+			key_len, sw_context, sw_context_len, derived_key,
+			derived_key_len);
+	return ret;
+}
+EXPORT_SYMBOL_GPL(qti_scm_derive_and_share_key);
+
 int qti_scm_wcss_boot(u32 svc_id, u32 cmd_id, void *cmd_buf)
 {
 	int ret;
@@ -1041,11 +1053,19 @@ EXPORT_SYMBOL(qti_scm_tcsr_reg_write);
 /*
  * qti_config_sec_ice() - Configure ICE block securely
  */
-int qti_config_sec_ice(void *buf, int size)
+int qcom_config_sec_ice(void *buf, int size)
 {
-	return __qti_config_ice_sec(__scm->dev, buf, size);
+	return __qcom_config_ice_sec(__scm->dev, buf, size);
 }
-EXPORT_SYMBOL(qti_config_sec_ice);
+EXPORT_SYMBOL(qcom_config_sec_ice);
+
+int qcom_context_sec_ice(u32 type, u8 key_size, u8 algo_mode, u8 *data_ctxt,
+		u32 data_ctxt_len, u8 *salt_ctxt, u32 salt_ctxt_len)
+{
+	return __qcom_context_ice_sec(__scm->dev, type, key_size, algo_mode,
+			data_ctxt, data_ctxt_len, salt_ctxt, salt_ctxt_len);
+}
+EXPORT_SYMBOL(qcom_context_sec_ice);
 
 /*
  * qti_scm_pshold() - TZ performs the PSHOLD operation
@@ -1264,8 +1284,7 @@ static int qcom_scm_probe(struct platform_device *pdev)
 static void qcom_scm_shutdown(struct platform_device *pdev)
 {
 	/* Clean shutdown, disable download mode to allow normal restart */
-	if (download_mode)
-		qcom_scm_set_download_mode(false);
+	qcom_scm_set_download_mode(false);
 }
 
 static const struct of_device_id qcom_scm_dt_match[] = {

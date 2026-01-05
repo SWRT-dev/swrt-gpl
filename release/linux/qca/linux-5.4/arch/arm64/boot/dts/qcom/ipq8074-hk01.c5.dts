@@ -500,6 +500,7 @@
 &pcie0 {
 	pinctrl-0 = <&pcie_sdx_pins>, <&pcie_wake_pins>;
 	pinctrl-names = "default";
+	x65_attached = <1>;
 	e911-gpio =  <&tlmm 33 GPIO_ACTIVE_HIGH>;
 	e911_x65-gpio =  <&tlmm 22 GPIO_ACTIVE_HIGH>;
 
@@ -531,7 +532,9 @@
 		reg = <0 0 0 0 0 >;
 
 		ap2mdm-gpio = <&tlmm 26 0>;
+		ap2mdm-x65-gpio = <&tlmm 45 0>;
 		mdm2ap-gpio = <&tlmm 25 0>;
+		mdm2ap-x65-gpio = <&tlmm 21 0>;
 
 		// controller specific configuration
 		qcom,iommu-dma = "disabled";

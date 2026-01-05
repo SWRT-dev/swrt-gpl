@@ -2751,6 +2751,7 @@ static int __init si_domain_init(int hw)
 
 	if (md_domain_init(si_domain, DEFAULT_DOMAIN_ADDRESS_WIDTH)) {
 		domain_exit(si_domain);
+		si_domain = NULL;
 		return -EFAULT;
 	}
 
@@ -3370,6 +3371,10 @@ free_iommu:
 	for_each_active_iommu(iommu, drhd) {
 		disable_dmar_iommu(iommu);
 		free_dmar_iommu(iommu);
+	}
+	if (si_domain) {
+		domain_exit(si_domain);
+		si_domain = NULL;
 	}
 
 	kfree(g_iommus);
@@ -5453,7 +5458,7 @@ static void intel_iommu_aux_detach_device(struct iommu_domain *domain,
 
 static int intel_iommu_map(struct iommu_domain *domain,
 			   unsigned long iova, phys_addr_t hpa,
-			   size_t size, int iommu_prot)
+			   size_t size, int iommu_prot, gfp_t gfp)
 {
 	struct dmar_domain *dmar_domain = to_dmar_domain(domain);
 	u64 max_addr;

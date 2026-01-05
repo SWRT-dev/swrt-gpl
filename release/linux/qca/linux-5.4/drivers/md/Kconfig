@@ -469,6 +469,13 @@ config DM_DELAY
 
 	If unsure, say N.
 
+config DM_INLINE_CRYPT
+	tristate "I/O Inline crypt target"
+	depends on BLK_DEV_DM
+	---help---
+	A target that do inline enc/dec for block devices.
+	If unsure, say N.
+
 config DM_DUST
 	tristate "Bad sector simulation target"
 	depends on BLK_DEV_DM

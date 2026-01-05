@@ -69,6 +69,7 @@ obj-$(CONFIG_DM_ERA)		+= dm-era.o
 obj-$(CONFIG_DM_CLONE)		+= dm-clone.o
 obj-$(CONFIG_DM_LOG_WRITES)	+= dm-log-writes.o
 obj-$(CONFIG_DM_REQ_CRYPT)	+= dm-req-crypt.o
+obj-$(CONFIG_DM_INLINE_CRYPT)	+= dm-inline-crypt.o
 obj-$(CONFIG_DM_INTEGRITY)	+= dm-integrity.o
 obj-$(CONFIG_DM_ZONED)		+= dm-zoned.o
 obj-$(CONFIG_DM_WRITECACHE)	+= dm-writecache.o

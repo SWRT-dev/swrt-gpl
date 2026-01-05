@@ -434,6 +434,7 @@ static void handle_wake_func(struct work_struct *work)
 					      handle_wake_work);
 	struct pcie_port *pp = &(pcie->pci)->pp;
 
+	pr_debug("PCIE wake recieved\n");
 	pci_lock_rescan_remove();
 	if (pcie->enumerated) {
 		pr_info("PCIe: RC has been already enumerated\n");
@@ -442,6 +443,7 @@ static void handle_wake_func(struct work_struct *work)
 	}
 
 	if (!gpiod_get_value(mdm2ap_e911)) {
+		pr_debug("[%s]No data call.", __func__);
 		ret = pci_create_scan_root_bus(pp);
 		if (ret) {
 			pr_err("PCIe: failed to enable RC upon wake request from the device\n");
@@ -1714,16 +1716,20 @@ static int qcom_pcie_post_init_2_9_0_5018(struct qcom_pcie *pcie)
 	u32 val;
 	struct dw_pcie *pci = pcie->pci;
 	u32 max_speed = SPEED_GEN2;
-	u32 rate_adapter_val = SYSTEM_NOC_PCIE_RATEADAPT_VAL_MAX;
+	u32 rate_adapter_val = 0;
 
-	if (of_device_is_compatible(pci->dev->of_node, "qcom,pcie-ipq5018")
-		&& (pcie->num_lanes == 1))
-		rate_adapter_val = SYSTEM_NOC_PCIE_RATEADAPT_VAL;
+	if (of_device_is_compatible(pci->dev->of_node, "qcom,pcie-ipq5018")) {
+		if (pcie->num_lanes == 1)
+			rate_adapter_val = SYSTEM_NOC_PCIE_RATEADAPT_VAL;
+		else
+			rate_adapter_val = SYSTEM_NOC_PCIE_RATEADAPT_VAL_MAX;
+	}
 
 	if (of_device_is_compatible(pci->dev->of_node, "qti,pcie-ipq5332")) {
 		max_speed = SPEED_GEN3;
 		if (pcie->num_lanes == 2)
 			rate_adapter_val = SYSTEM_NOC_PCIE_RATEADAPT_BYPASS;
+		/* For sigle lane, default value(0) to be used */
 	}
 
 	val = readl(pcie->parf + PCIE20_PARF_PHY_CTRL);
@@ -2448,6 +2454,7 @@ static ssize_t rcrescan_store(struct bus_type *bus, const char *buf,
 
 	if (val) {
 		pci_lock_rescan_remove();
+		pr_debug("rcrescan from sysfs\n");
 		pcie_rescan();
 		pci_unlock_rescan_remove();
 	}
@@ -2465,6 +2472,7 @@ static ssize_t rcremove_store(struct bus_type *bus, const char *buf,
 
 	if (val) {
 		pci_lock_rescan_remove();
+		pr_debug("rcremove from sysfs\n");
 		pcie_remove_bus();
 		pci_unlock_rescan_remove();
 	}
@@ -2542,6 +2550,7 @@ static ssize_t slot_rescan_store(struct bus_type *bus, const char *buf,
 	if (kstrtoul(buf, 0, &val) < 0)
 		return -EINVAL;
 
+	pr_debug("Slot rescan from sysfs\n");
 	pcie_slot_rescan(val);
 
 	return count;
@@ -2556,6 +2565,7 @@ static ssize_t slot_remove_store(struct bus_type *bus, const char *buf,
 	if (kstrtoul(buf, 0, &val) < 0)
 		return -EINVAL;
 
+	pr_debug("Slot remove from sysfs\n");
 	pcie_slot_remove(val);
 
 	return count;
@@ -2570,10 +2580,13 @@ static void handle_e911_func(struct work_struct *work)
 	pcie = container_of(work, struct qcom_pcie, handle_e911_work);
 	slot_id = pcie->slot_id;
 
-	if (gpiod_get_value(mdm2ap_e911))
+	if (gpiod_get_value(mdm2ap_e911)) {
+		pr_debug("E911 call ON\n");
 		pcie_slot_remove(slot_id);
-	else
+	} else {
+		pr_debug("E911 call OFF\n");
 		pcie_slot_rescan(slot_id);
+	}
 }
 
 static irqreturn_t handle_mdm2ap_e911_irq(int irq, void *data)
@@ -2962,12 +2975,12 @@ static int qcom_pcie_probe(struct platform_device *pdev)
 			pm_runtime_disable(&pdev->dev);
 			goto err_phy_exit;
 		}
-		pr_info("PCIe: RC%d is not enabled during bootup: "
-			"It will be enumerated upon client request\n", rc_idx);
+		pr_info("[%s] PCIe: RC%d is not enabled during bootup: "
+			"It will be enumerated upon client request\n", __func__, rc_idx);
 
 	} else {
 		pcie->enumerated = true;
-		pr_info("PCIe: RC enabled during bootup\n");
+		pr_info("[%s ] PCIe: RC enabled during bootup\n", __func__);
 	}
 
 	if (pcie->wake_irq >= 0) {

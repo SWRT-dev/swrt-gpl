@@ -95,6 +95,9 @@
 
 #define __put_page			__wrap___put_page
 
+#define mem_tracer_update_caller	__wrap_update_call_stack
+#else
+#define mem_tracer_update_caller
 #endif
 
 #endif /* __DEBUG_MEM_USAGE_H__ */

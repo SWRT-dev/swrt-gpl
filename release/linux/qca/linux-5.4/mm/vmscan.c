@@ -63,8 +63,6 @@
 #define CREATE_TRACE_POINTS
 #include <trace/events/vmscan.h>
 
-extern int check_pagecache_overlimit(void);
-
 struct scan_control {
 	/* How many pages shrink_list() should reclaim */
 	unsigned long nr_to_reclaim;
@@ -108,9 +106,6 @@ struct scan_control {
 
 	/* Allocation order */
 	s8 order;
-
-	s8 reclaim_pagecache_only;  /* Set when called from
-					pagecache controller */
 
 	/* Scan (total_size >> priority) pages at once */
 	s8 priority;
@@ -1159,16 +1154,6 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 
 		nr_pages = compound_nr(page);
 
-		/* Take it easy if we are doing only pagecache pages */
-		if (sc->reclaim_pagecache_only) {
-			/* Check if this is a pagecache page they are not mapped */
-			if (page_mapped(page))
-				goto keep_locked;
-			/* Check if pagecache limit is exceeded */
-			if (!check_pagecache_overlimit())
-				goto keep_locked;
-		}
-
 		/* Account the number of base pages even though THP */
 		sc->nr_scanned += nr_pages;
 
@@ -1399,8 +1384,7 @@ static unsigned long shrink_page_list(struct list_head *page_list,
 				goto activate_locked;
 			}
 
-			/* Reclaim even referenced pagecache pages if over limit */
-			if (!check_pagecache_overlimit() && references == PAGEREF_RECLAIM_CLEAN)
+			if (references == PAGEREF_RECLAIM_CLEAN)
 				goto keep_locked;
 			if (!may_enter_fs)
 				goto keep_locked;
@@ -2110,14 +2094,6 @@ static void shrink_active_list(unsigned long nr_to_scan,
 			}
 		}
 
-		/* While reclaiming pagecache make it easy */
-		if (sc->reclaim_pagecache_only) {
-			if (page_mapped(page) || !check_pagecache_overlimit()) {
-				list_add(&page->lru, &l_active);
-				continue;
-			}
-		}
-
 		if (page_referenced(page, 0, sc->target_mem_cgroup,
 				    &vm_flags)) {
 			nr_rotated += hpage_nr_pages(page);
@@ -2715,7 +2691,7 @@ static void shrink_node_memcg(struct pglist_data *pgdat, struct mem_cgroup *memc
 /* Use reclaim/compaction for costly allocs or under memory pressure */
 static bool in_reclaim_compaction(struct scan_control *sc)
 {
-	if (IS_ENABLED(CONFIG_COMPACTION) && sc->order &&
+	if (gfp_compaction_allowed(sc->gfp_mask) && sc->order &&
 			(sc->order > PAGE_ALLOC_COSTLY_ORDER ||
 			 sc->priority < DEF_PRIORITY - 2))
 		return true;
@@ -2963,6 +2939,9 @@ static inline bool compaction_ready(struct zone *zone, struct scan_control *sc)
 {
 	unsigned long watermark;
 	enum compact_result suitable;
+
+	if (!gfp_compaction_allowed(sc->gfp_mask))
+		return false;
 
 	suitable = compaction_suitable(zone, sc->order, 0, sc->reclaim_idx);
 	if (suitable == COMPACT_SUCCESS)
@@ -3315,7 +3294,6 @@ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
 		.gfp_mask = current_gfp_context(gfp_mask),
 		.reclaim_idx = gfp_zone(gfp_mask),
 		.order = order,
-		.reclaim_pagecache_only = 0,
 		.nodemask = nodemask,
 		.priority = DEF_PRIORITY,
 		.may_writepage = !laptop_mode,
@@ -3346,31 +3324,6 @@ unsigned long try_to_free_pages(struct zonelist *zonelist, int order,
 
 	trace_mm_vmscan_direct_reclaim_end(nr_reclaimed);
 	set_task_reclaim_state(current, NULL);
-
-	return nr_reclaimed;
-}
-
-unsigned long shrink_all_pagecache_memory(unsigned long nr_pages)
-{
-	struct scan_control sc = {
-		.gfp_mask = GFP_KERNEL,
-		.nr_to_reclaim = nr_pages,
-		.may_swap = 0,
-		.may_writepage = 1,
-		.reclaim_pagecache_only = 1, /* Flag it */
-	};
-	struct zonelist *zonelist = node_zonelist(numa_node_id(), sc.gfp_mask);
-	unsigned long nr_reclaimed;
-
-	current->flags |= PF_MEMALLOC;
-	fs_reclaim_acquire(sc.gfp_mask);
-	set_task_reclaim_state(current, &sc.reclaim_state);
-
-	nr_reclaimed = do_try_to_free_pages(zonelist, &sc);
-
-	set_task_reclaim_state(current, NULL);
-	fs_reclaim_release(sc.gfp_mask);
-	current->flags &= ~PF_MEMALLOC;
 
 	return nr_reclaimed;
 }
@@ -4111,7 +4064,6 @@ unsigned long shrink_all_memory(unsigned long nr_to_reclaim)
 		.may_writepage = 1,
 		.may_unmap = 1,
 		.may_swap = 1,
-		.reclaim_pagecache_only = 0,
 		.hibernation_mode = 1,
 	};
 	struct zonelist *zonelist = node_zonelist(numa_node_id(), sc.gfp_mask);

@@ -5,6 +5,7 @@ config ARM
 	select ARCH_32BIT_OFF_T
 	select ARCH_CLOCKSOURCE_DATA
 	select ARCH_HAS_BINFMT_FLAT
+	select ARCH_HAS_CPU_FINALIZE_INIT if MMU
 	select ARCH_HAS_DEBUG_VIRTUAL if MMU
 	select ARCH_HAS_DEVMEM_IS_ALLOWED
 	select ARCH_HAS_DMA_COHERENT_TO_PFN if SWIOTLB
@@ -1835,14 +1836,6 @@ config ARM_ATAG_DTB_COMPAT_CMDLINE_EXTEND
 
 endchoice
 
-config CMDLINE_OVERRIDE
-	bool "Use alternative cmdline from device tree"
-	help
-	  Some bootloaders may have uneditable bootargs. While CMDLINE_FORCE can
-	  be used, this is not a good option for kernels that are shared across
-	  devices. This setting enables using "chosen/cmdline-override" as the
-	  cmdline if it exists in the device tree.
-
 config CMDLINE
 	string "Default kernel command string"
 	default ""
@@ -1856,7 +1849,6 @@ config CMDLINE
 choice
 	prompt "Kernel command line type" if CMDLINE != ""
 	default CMDLINE_FROM_BOOTLOADER
-	depends on ATAGS
 
 config CMDLINE_FROM_BOOTLOADER
 	bool "Use bootloader kernel arguments if available"

@@ -295,7 +295,7 @@ ipt_do_table(struct sk_buff *skb,
 	/* Initialization */
 	WARN_ON(!(table->valid_hooks & (1 << hook)));
 	local_bh_disable();
-	private = READ_ONCE(table->private); /* Address dependency. */
+	private = READ_ONCE(table->private);
 	cpu        = smp_processor_id();
 	table_base = private->entries;
 

@@ -10,8 +10,10 @@
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
  */
-
+#include <linux/moduleparam.h>
 #include "sdhci-msm-ice.h"
+
+static int per_part_dun;
 
 static void sdhci_msm_ice_error_cb(void *host_ctrl, u32 error)
 {
@@ -359,7 +361,14 @@ int sdhci_msm_ice_cfg(struct sdhci_host *host, struct mmc_request *mrq,
 			dun = req->__sector;
 		}
 #else
-		dun = req->__sector;
+#ifdef MMC_SDHCI_MSM_ICE_PER_PART_DUN
+		dun = (req->__sector - req->part->start_sect);
+#else
+		if (per_part_dun == 1)
+			dun = (req->__sector - req->part->start_sect);
+		else
+			dun = req->__sector;
+#endif
 #endif
 		err = sdhci_msm_ice_get_cfg(msm_host, req, &bypass, &key_index);
 		if (err)
@@ -585,3 +594,5 @@ void sdhci_msm_ice_print_regs(struct sdhci_host *host)
 	if (msm_host->ice.vops->debug)
 		msm_host->ice.vops->debug(msm_host->ice.pdev);
 }
+
+module_param(per_part_dun, int, 0);

@@ -580,6 +580,65 @@
 				   <0 358 4>;			/* PPEDS Node #3(RxFill Desc ring id #3) Rx Fill IRQ info */
 
 		};
+
+		apc_rail: apc-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-apc";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <850000>;
+			regulator-max-microvolt = <925000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 57 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <850000 0>, <925000 1>;
+		};
+
+		cx_rail: cx-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-cx";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <800000>;
+			regulator-max-microvolt = <863000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 47 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <800000 0>, <863000 1>;
+		};
+
+		mx_rail: mx-gpio-regulator {
+			compatible = "regulator-gpio";
+			regulator-name = "vdd-mx";
+			regulator-type = "voltage";
+			regulator-boot-on;
+			regulator-always-on;
+			regulator-min-microvolt = <850000>;
+			regulator-max-microvolt = <925000>;
+			regulator-ramp-delay = <250>; /* 20ms */
+			gpios = <&tlmm 45 GPIO_ACTIVE_HIGH>;
+			gpios-states = <0x1>;
+			states = <850000 0>, <925000 1>;
+		};
+
+		qcom,gpio-regulator {
+			compatible = "qcom,ipq9574-gpio-regulator";
+			reg = <0xa4000 0x1000>;
+			reg-names = "fuse_base";
+			apc-supply = <&apc_rail>;
+			cx-supply = <&cx_rail>;
+			mx-supply = <&mx_rail>;
+			/* AL01 RDP's scaled voltage can only support upto CPU Freq
+			 * 1.8 GHz. But SKUs like IPQ9574/IPQ9570 supports 2.2GHz of
+			 * CPU freq. So, if we do scaling on AL01 + IPQ9574/IPQ9570,
+			 * then voltage becomes insufficient when CPU operates at 2.2GHz.
+			 * Below quirk disables the voltage scaling if AL01 has
+			 * IPQ9574/IPQ9570
+			 */
+			skip-voltage-scaling-turboL1-sku-quirk;
+		};
 	};
 };
 

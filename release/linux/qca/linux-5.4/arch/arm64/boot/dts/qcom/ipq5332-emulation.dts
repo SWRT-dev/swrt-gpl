@@ -378,20 +378,13 @@
 				 <&gcc GCC_NSSNOC_TIMEOUT_REF_CLK>,
 				 <&gcc GCC_NSSNOC_XO_DCD_CLK>,
 				 <&gcc GCC_SNOC_NSSNOC_CLK>,
-				 <&gcc GCC_SNOC_NSSNOC_1_CLK>,
-				 <&gcc GCC_MEM_NOC_AHB_CLK>,
-				 <&gcc GCC_MEM_NOC_SNOC_AXI_CLK>,
-				 <&gcc GCC_MEM_NOC_APSS_AXI_CLK>,
-				 <&gcc GCC_MEM_NOC_QOSGEN_EXTREF_CLK>,
-				 <&gcc GCC_MEM_NOC_TS_CLK>;
+				 <&gcc GCC_SNOC_NSSNOC_1_CLK>;
 			clock-names = "nss-csr-clk", "nss-nssnoc-csr-clk", "nss-ce-ahb-clk",
 				      "nss-ce-axi-clk", "nss-nssnoc-ce-ahb-clk", "nss-nssnoc-ce-axi-clk",
 				      "nss-ts-clk", "nss-nsscc-clk", "nss-nsscfg-clk", "nss-nsscnoc-atb-clk",
 				      "nss-nssnoc-nsscc-clk", "nss-nssnoc-pcnoc-1-clk", "nss-nssnoc-qosgen-ref-clk",
 				      "nss-nssnoc-snoc-1-clk", "nss-nssnoc-snoc-clk", "nss-nssnoc-timeout-ref-clk",
-				      "nss-nssnoc-xo-dcd-clk", "nss-snoc-nssnoc-clk", "nss-snoc-nssnoc-1-clk",
-				      "nss-mem-noc-ahb-clk", "nss-mem-noc-snoc-axi-clk", "nss-mem-noc-apss-axi-clk",
-				      "nss-mem-noc-qosgen-extref-clk","nss-mem-noc-ts-clk";
+				      "nss-nssnoc-xo-dcd-clk", "nss-snoc-nssnoc-clk", "nss-snoc-nssnoc-1-clk";
 			qcom,txdesc-ring-start = <4>;		/* Tx desc ring start ID */
 			qcom,txdesc-rings = <12>;		/* Total number of Tx desc rings to be provisioned */
 			qcom,txcmpl-ring-start = <4>;		/* Tx complete ring start ID */

@@ -46,7 +46,8 @@ struct br_ip_list {
 #define BR_VLAN_TUNNEL		BIT(13)
 #define BR_BCAST_FLOOD		BIT(14)
 #define BR_NEIGH_SUPPRESS	BIT(15)
-#define BR_ISOLATED		BIT(16)
+#define BR_ISOLATED		BIT(16)	/* block skb if both src/dst ports are isolated. */
+#define BR_ISOLATE_MODE		BIT(17)	/* block skb if dst port is isolated, from OpenWRT. */
 
 #define BR_DEFAULT_AGEING_TIME	(300 * HZ)
 

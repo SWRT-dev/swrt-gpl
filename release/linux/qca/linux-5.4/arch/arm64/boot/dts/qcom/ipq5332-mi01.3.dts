@@ -166,6 +166,7 @@
 			phy-mode = "sgmii";
 			qcom,ppe-offload-disabled = <1>;
 			qcom,is_switch_connected = <1>;
+			qcom,mht-dev = <1>;
 		};
 
 		mdio:mdio@90000 {
@@ -292,8 +293,10 @@
 		edma@3ab00000 {
 			qcom,txdesc-ring-start = <4>;		/* Tx desc ring start ID */
 			qcom,txdesc-rings = <12>;		/* Total number of Tx desc rings to be provisioned */
+			qcom,mht-txdesc-rings = <8>;            /* Extra Tx desc rings to be provisioned for MHT SW ports. */
 			qcom,txcmpl-ring-start = <4>;		/* Tx complete ring start ID */
 			qcom,txcmpl-rings = <12>;		/* Total number of Tx complete rings to be provisioned */
+			qcom,mht-txcmpl-rings = <8>;		/* Extra Tx complete rings to be provisioned for mht sw ports. */
 			qcom,rxfill-ring-start = <4>;		/* Rx fill ring start ID */
 			qcom,rxfill-rings = <4>;		/* Total number of Rx fill rings to be provisioned */
 			qcom,rxdesc-ring-start = <12>;		/* Rx desc ring start ID */
@@ -306,9 +309,11 @@
 			qcom,ppeds-map = <1 1 1 1 32 8>,	/* PPEDS Node#0 ring and queue map */
 					<2 2 2 2 40 8>;		/* PPEDS Node#1 ring and queue map */
 			qcom,txdesc-map = <8 9 10 11>,		/* Port0 per-core Tx ring map */
-					  <12 13 14 15>,	/* Port1 per-core Tx ring map */
-					  <4 5 6 7>;		/* used only for packets from  vp*/
-			qcom,txdesc-fc-grp-map = <1 2>;		/* Per GMAC flow control group map */
+					  <12 13 14 15>,	/* MHT-Port1 per-core Tx ring map */
+					  <4 5 6 7>,		/* MHT-Port2 per-core Tx ring map/packets from  vp*/
+					  <16 17 18 19>,	/* MHT-Port3 per-core Tx ring map */
+					  <20 21 22 23>;	/* MHT-Port4 per-core Tx ring map */
+			qcom,txdesc-fc-grp-map = <1 2 3 4 5>;	/* Per GMAC flow control group map */
 			qcom,rxfill-map = <4 5 6 7>;		/* Per-core Rx fill ring map */
 			qcom,rxdesc-map = <12 13 14 15>;	/* Per-core Rx desc ring map */
 			qcom,rx-queue-start = <0>;		/* Rx queue start */
@@ -342,7 +347,15 @@
 				<0 152 4>,			/* PPEDS Node #1(RxFill Desc ring id #1) Rx Fill IRQ info */
 				<0 161 4>,			/* PPEDS Node #2(TxComp ring id #2) TxComplete IRQ info */
 				<0 129 4>,			/* PPEDS Node #2(Rx Desc ring id #2) Rx Desc IRQ info */
-				<0 153 4>;			/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
+				<0 153 4>,			/* PPEDS Node #2(RxFill Desc ring id #2) Rx Fill IRQ info */
+				   <0 175 4>,			/* MHT port Tx complete ring id #16 IRQ info */
+				   <0 176 4>,			/* MHT port Tx complete ring id #17 IRQ info */
+				   <0 177 4>,			/* MHT port Tx complete ring id #18 IRQ info */
+				   <0 178 4>,			/* MHT port Tx complete ring id #19 IRQ info */
+				   <0 179 4>,			/* MHT port Tx complete ring id #20 IRQ info */
+				   <0 180 4>,			/* MHT port Tx complete ring id #21 IRQ info */
+				   <0 181 4>,			/* MHT port Tx complete ring id #22 IRQ info */
+				   <0 182 4>;			/* MHT port Tx complete ring id #23 IRQ info */
 		};
 
 		serial@78af000 {

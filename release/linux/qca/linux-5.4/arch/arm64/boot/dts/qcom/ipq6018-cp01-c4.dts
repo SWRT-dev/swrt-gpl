@@ -16,70 +16,74 @@
  */
 
 #include "ipq6018-cp01.dtsi"
+#include "ipq6018-cpr-regulator.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc. IPQ6018/AP-CP01-C4";
 	compatible = "qcom,ipq6018-ap-cp01-c4", "qcom,ipq6018-ap-cp01", "qcom,ipq6018";
 };
 
+&soc {
+	dummy_reg_cpu: dummy-regulator@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "dummy-reg-cpu";
+		regulator-min-microvolt = <1100000>;
+		regulator-max-microvolt = <1100000>;
+		regulator-always-on;
+		regulator-boot-on;
+	};
+};
+
 &CPU0 {
-	operating-points = <
-		/* kHz   uV (fixed) */
-		864000   1100000
-		1056000  1100000
-		1320000  1100000
-		1440000  1100000
-		1608000  1100000
-		1800000  1100000
-	>;
-	clock-latency = <200000>;
-	/delete-property/ operating-points-v2;
-	/delete-property/ cpu-supply;
+        cpu0-supply = <&dummy_reg_cpu>;
 };
 
 &CPU1 {
-	operating-points = <
-		/* kHz   uV (fixed) */
-		864000   1100000
-		1056000  1100000
-		1320000  1100000
-		1440000  1100000
-		1608000  1100000
-		1800000  1100000
-	>;
-	clock-latency = <200000>;
-	/delete-property/ operating-points-v2;
-	/delete-property/ cpu-supply;
+        cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU2 {
-	operating-points = <
-		/* kHz   uV (fixed) */
-		864000   1100000
-		1056000  1100000
-		1320000  1100000
-		1440000  1100000
-		1608000  1100000
-		1800000  1100000
-	>;
-	clock-latency = <200000>;
-	/delete-property/ operating-points-v2;
-	/delete-property/ cpu-supply;
+        cpu-supply = <&dummy_reg_cpu>;
 };
 
 &CPU3 {
-	operating-points = <
-		/* kHz   uV (fixed) */
-		864000   1100000
-		1056000  1100000
-		1320000  1100000
-		1440000  1100000
-		1608000  1100000
-		1800000  1100000
-	>;
-	clock-latency = <200000>;
-	/delete-property/ operating-points-v2;
-	/delete-property/ cpu-supply;
+        cpu-supply = <&dummy_reg_cpu>;
+};
+
+&cpu_opp_table {
+	/delete-node/ opp-0;
+	opp-864000000 {
+		opp-microvolt = <1100000>;
+	};
+	opp-1056000000 {
+		opp-microvolt = <1100000>;
+	};
+	opp-1200000000 {
+		opp-microvolt = <1100000>;
+	};
+	opp-1320000000 {
+		opp-microvolt = <1100000>;
+	};
+	opp-1440000000 {
+		opp-microvolt = <1100000>;
+	};
+	opp-1488000000 {
+		opp-microvolt = <1100000>;
+	};
+	opp-1608000000 {
+		opp-microvolt = <1100000>;
+	};
+	opp-1800000000 {
+		opp-microvolt = <1100000>;
+	};
+};
+
+&apc_apm {
+	status = "disabled";
+};
+
+&apc_cpr {
+	status = "disabled";
 };
 
 &tlmm {

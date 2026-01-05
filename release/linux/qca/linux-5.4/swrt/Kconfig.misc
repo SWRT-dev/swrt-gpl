@@ -24,4 +24,8 @@ config  MODEL_TUFBE6500
         bool "TUF-BE6500"
         default n
 
+config  MODEL_JDCBE6500
+        bool "JDC-BE6500"
+        default n
+
 endmenu        

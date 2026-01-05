@@ -441,6 +441,16 @@ void *__wrap_kmalloc(size_t size, gfp_t flags)
 }
 EXPORT_SYMBOL(__wrap_kmalloc);
 
+void __wrap_update_call_stack(void *addr)
+{
+	if (addr && debug_mem_usage_enabled) {
+		void *stack[9] = {0};
+		get_stacktrace(stack);
+		debug_object_trace_update(addr, stack);
+	}
+}
+EXPORT_SYMBOL(__wrap_update_call_stack);
+
 void *__wrap_kmalloc_array(size_t n, size_t size, gfp_t flags)
 {
 	void *addr = (void *)kmalloc_array(n, size, flags);

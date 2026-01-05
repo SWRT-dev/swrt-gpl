@@ -31,6 +31,8 @@
 #define QCOM_ICE_UFS		10
 #define QCOM_ICE_SDCC		20
 
+static struct ice_crypto_setting *ice_settings;
+
 struct ice_clk_info {
 	struct list_head list;
 	struct clk *clk;
@@ -78,6 +80,18 @@ struct ice_device {
 	ktime_t			ice_reset_start_time;
 	ktime_t			ice_reset_complete_time;
 };
+
+void ice_setting_init(struct ice_crypto_setting *settings)
+{
+	ice_settings = settings;
+}
+EXPORT_SYMBOL(ice_setting_init);
+
+void ice_setting_deinit(void)
+{
+	ice_settings = NULL;
+}
+EXPORT_SYMBOL(ice_setting_deinit);
 
 static int qti_ice_setting_config(struct request *req,
 		struct platform_device *pdev,
@@ -1245,7 +1259,6 @@ static int qcom_ice_config_start(struct platform_device *pdev,
 		struct ice_data_setting *setting, bool async)
 {
 	struct ice_crypto_setting *crypto_data;
-	union map_info *info;
 
 	if (!pdev || !req || !setting) {
 		pr_err("%s: Invalid params passed\n", __func__);
@@ -1273,14 +1286,8 @@ static int qcom_ice_config_start(struct platform_device *pdev,
 	 * based request, check BIO_DONT_FREE flag
 	 */
 	if (bio_flagged(req->bio, BIO_INLINECRYPT)) {
-		info = dm_get_rq_mapinfo(req);
-		if (!info) {
-			pr_debug("%s info not available in request\n",
-				 __func__);
-			return 0;
-		}
 
-		crypto_data = (struct ice_crypto_setting *)info->ptr;
+		crypto_data = ice_settings;
 		if (!crypto_data) {
 			pr_err("%s crypto_data not available in request\n",
 				 __func__);

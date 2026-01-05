@@ -22,6 +22,7 @@
 #include <linux/net.h>
 #include <net/regulatory.h>
 
+#define CFG80211_SUPPORT_AUTH_DEAUTH_TA_RANDOMIZATION 1
 /**
  * DOC: Introduction
  *
@@ -454,6 +455,9 @@ ieee80211_get_sband_iftype_data(const struct ieee80211_supported_band *sband,
 
 	if (WARN_ON(iftype >= NL80211_IFTYPE_MAX))
 		return NULL;
+
+	if (iftype == NL80211_IFTYPE_AP_VLAN)
+		iftype = NL80211_IFTYPE_AP;
 
 	for (i = 0; i < sband->n_iftype_data; i++)  {
 		const struct ieee80211_sband_iftype_data *data =
@@ -7687,6 +7691,7 @@ int cfg80211_clear_current_bss(struct net_device *dev);
  * @chandef: the channel definition
  * @event: DFS event to be sent to userspace
  * @dev: network device
+ * @gfp: GFP kernel flags
  *
  * Return: void
  */
@@ -7694,5 +7699,6 @@ void
 cfg80211_dfs_event_notify(struct wiphy *wiphy,
 			  struct cfg80211_chan_def *chandef,
 			  enum nl80211_radar_event event,
-			  struct net_device *dev);
+			  struct net_device *dev,
+			  gfp_t gfp);
 #endif /* __NET_CFG80211_H */

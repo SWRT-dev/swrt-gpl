@@ -116,6 +116,7 @@ struct debug_obj_trace {
 
 extern void debug_object_trace_init(void *addr, void **stack, size_t size);
 extern void debug_object_trace_free(void *addr);
+extern void debug_object_trace_update(void *addr, void **stack);
 extern void debug_mem_usage_init(void);
 #else
 static inline void debug_mem_usage_init(void) { }

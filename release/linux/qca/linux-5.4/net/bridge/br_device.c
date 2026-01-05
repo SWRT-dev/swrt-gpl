@@ -41,6 +41,13 @@ netdev_tx_t br_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 	struct net_bridge_port *pdst;
 	br_get_dst_hook_t *get_dst_hook;
 
+	if (unlikely(!pskb_may_pull(skb, ETH_HLEN))) {
+		kfree_skb(skb);
+		return NETDEV_TX_OK;
+	}
+
+	memset(skb->cb, 0, sizeof(struct br_input_skb_cb));
+
 	rcu_read_lock();
 	nf_ops = rcu_dereference(nf_br_ops);
 	if (nf_ops && nf_ops->br_dev_xmit_hook(skb)) {
@@ -85,7 +92,7 @@ netdev_tx_t br_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 
 	dest = eth_hdr(skb)->h_dest;
 	if (is_broadcast_ether_addr(dest)) {
-		br_flood(br, skb, BR_PKT_BROADCAST, false, true);
+		br_flood(br, skb, BR_PKT_BROADCAST, false, true, false);
 	} else if (is_multicast_ether_addr(dest)) {
 		br_multicast_handle_hook_t *multicast_handle_hook =
 			rcu_dereference(br_multicast_handle_hook);
@@ -93,7 +100,7 @@ netdev_tx_t br_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 			goto out;
 
 		if (unlikely(netpoll_tx_running(dev))) {
-			br_flood(br, skb, BR_PKT_MULTICAST, false, true);
+			br_flood(br, skb, BR_PKT_MULTICAST, false, true, false);
 			goto out;
 		}
 		if (br_multicast_rcv(br, NULL, skb, vid)) {
@@ -106,7 +113,7 @@ netdev_tx_t br_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 		    br_multicast_querier_exists(br, eth_hdr(skb)))
 			br_multicast_flood(mdst, skb, false, true);
 		else
-			br_flood(br, skb, BR_PKT_MULTICAST, false, true);
+			br_flood(br, skb, BR_PKT_MULTICAST, false, true, false);
 	} else {
 		pdst = __br_get(get_dst_hook, NULL, NULL, &skb);
 		if (pdst) {
@@ -118,7 +125,7 @@ netdev_tx_t br_dev_xmit(struct sk_buff *skb, struct net_device *dev)
 			if (dst)
 				br_forward(dst->dst, skb, false, true);
 			else
-				br_flood(br, skb, BR_PKT_UNICAST, false, true);
+				br_flood(br, skb, BR_PKT_UNICAST, false, true, true);
 		}
 	}
 

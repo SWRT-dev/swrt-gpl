@@ -349,6 +349,10 @@ checkSMB(char *buf, unsigned int total_read, struct TCP_Server_Info *server)
 			cifs_dbg(VFS, "Length less than smb header size\n");
 		}
 		return -EIO;
+	} else if (total_read < sizeof(*smb) + 2 * smb->WordCount) {
+		cifs_dbg(VFS, "%s: can't read BCC due to invalid WordCount(%u)\n",
+			 __func__, smb->WordCount);
+		return -EIO;
 	}
 
 	/* otherwise, there is enough to get to the BCC */
@@ -972,8 +976,8 @@ cifs_free_hash(struct crypto_shash **shash, struct sdesc **sdesc)
  * Input: rqst - a smb_rqst, page - a page index for rqst
  * Output: *len - the length for this page, *offset - the offset for this page
  */
-void rqst_page_get_length(struct smb_rqst *rqst, unsigned int page,
-				unsigned int *len, unsigned int *offset)
+void rqst_page_get_length(const struct smb_rqst *rqst, unsigned int page,
+			  unsigned int *len, unsigned int *offset)
 {
 	*len = rqst->rq_pagesz;
 	*offset = (page == 0) ? rqst->rq_offset : 0;

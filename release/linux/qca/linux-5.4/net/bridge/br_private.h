@@ -605,11 +605,17 @@ enum br_pkt_type {
 	BR_PKT_BROADCAST
 };
 int br_dev_queue_push_xmit(struct net *net, struct sock *sk, struct sk_buff *skb);
-void br_forward(const struct net_bridge_port *to, struct sk_buff *skb,
-		bool local_rcv, bool local_orig);
+void _br_forward(const struct net_bridge_port *to, struct sk_buff *skb,
+		bool local_rcv, bool local_orig, bool chk_isolate_mode);
+static inline void br_forward(const struct net_bridge_port *to,
+	struct sk_buff *skb, bool local_rcv, bool local_orig)
+{
+	return _br_forward(to, skb, local_rcv, local_orig, false);
+}
 int br_forward_finish(struct net *net, struct sock *sk, struct sk_buff *skb);
 void br_flood(struct net_bridge *br, struct sk_buff *skb,
-	      enum br_pkt_type pkt_type, bool local_rcv, bool local_orig);
+	      enum br_pkt_type pkt_type, bool local_rcv, bool local_orig,
+	      bool forward);
 
 /* return true if both source port and dest port are isolated */
 static inline bool br_skb_isolated(const struct net_bridge_port *to,
@@ -1303,3 +1309,4 @@ static inline void __br_notify(int group, int type, const void *data)
 }
 
 #endif
+

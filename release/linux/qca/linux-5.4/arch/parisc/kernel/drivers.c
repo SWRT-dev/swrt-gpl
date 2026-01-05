@@ -882,15 +882,13 @@ void __init walk_central_bus(void)
 			&root);
 }
 
-static void print_parisc_device(struct parisc_device *dev)
+static __init void print_parisc_device(struct parisc_device *dev)
 {
-	char hw_path[64];
-	static int count;
+	static int count __initdata;
 
-	print_pa_hwpath(dev, hw_path);
-	pr_info("%d. %s at %pap [%s] { %d, 0x%x, 0x%.3x, 0x%.5x }",
-		++count, dev->name, &(dev->hpa.start), hw_path, dev->id.hw_type,
-		dev->id.hversion_rev, dev->id.hversion, dev->id.sversion);
+	pr_info("%d. %s at %pap { type:%d, hv:%#x, sv:%#x, rev:%#x }",
+		++count, dev->name, &(dev->hpa.start), dev->id.hw_type,
+		dev->id.hversion, dev->id.sversion, dev->id.hversion_rev);
 
 	if (dev->num_addrs) {
 		int k;
@@ -926,9 +924,9 @@ static __init void qemu_header(void)
 	pr_info("#define PARISC_MODEL \"%s\"\n\n",
 			boot_cpu_data.pdc.sys_model_name);
 
+	#define p ((unsigned long *)&boot_cpu_data.pdc.model)
 	pr_info("#define PARISC_PDC_MODEL 0x%lx, 0x%lx, 0x%lx, "
 		"0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx, 0x%lx\n\n",
-	#define p ((unsigned long *)&boot_cpu_data.pdc.model)
 		p[0], p[1], p[2], p[3], p[4], p[5], p[6], p[7], p[8]);
 	#undef p
 
@@ -1079,7 +1077,7 @@ static __init int qemu_print_iodc_data(struct device *lin_dev, void *data)
 
 
 
-static int print_one_device(struct device * dev, void * data)
+static __init int print_one_device(struct device * dev, void * data)
 {
 	struct parisc_device * pdev = to_parisc_device(dev);
 

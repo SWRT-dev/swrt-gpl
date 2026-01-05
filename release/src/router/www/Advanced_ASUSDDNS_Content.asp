@@ -336,7 +336,7 @@ function show_warning_message(){
 			else
 				setTimeout("get_real_ip();", 3000);
 		}
-		else if(realip_state != "2"){
+		/*else if(realip_state != "2"){
 			if(cur_wan_ipaddr == "0.0.0.0" || validator.isPrivateIP(cur_wan_ipaddr))
 				showhide("wan_ip_hide2", 1);
 			else
@@ -347,10 +347,10 @@ function show_warning_message(){
 				showhide("wan_ip_hide2", 1);
 			else
 				showhide("wan_ip_hide2", 0);
-		}
+		}*/
 	}
-	else if(cur_wan_ipaddr == "0.0.0.0" || validator.isPrivateIP(cur_wan_ipaddr))
-		showhide("wan_ip_hide2", 1);
+	/*else if(cur_wan_ipaddr == "0.0.0.0" || validator.isPrivateIP(cur_wan_ipaddr))
+		showhide("wan_ip_hide2", 1);*/
 }
 
 function get_real_ip(){
@@ -634,7 +634,7 @@ function validForm(){
 				}else if(!validator.string(document.form.ddns_hostname_x)){
 					return false;
 				}
-
+			if(document.form.ddns_server_x.value != "CUSTOM"){             // Not CUSTOM
 				if(document.form.ddns_server_x.value != "DNS.HE.NET" && document.form.ddns_username_x.value == ""){
 					alert("<#QKSet_account_nameblank#>");
 					document.form.ddns_username_x.focus();
@@ -652,7 +652,7 @@ function validForm(){
 				}else if(!validator.string(document.form.ddns_passwd_x)){
 					return false;
 				}
-
+			}
 				if(document.form.ddns_regular_period.value < 30){
 					alert("<#period_time_validation#> : 30");
 					document.form.ddns_regular_period.focus();
@@ -1496,3 +1496,4 @@ function showDescTooltip(e){
 </form>
 </body>
 </html>
+
