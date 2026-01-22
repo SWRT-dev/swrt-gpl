@@ -545,7 +545,7 @@ int cp_le_cert(int type, char* dst_path)
     	get_path_le_domain_key(path, sizeof(path));
 	else
 		return -1;
-	eval("cp", path, dst_path);
+	eval("cp", "-af", path, dst_path);
 	return 0;
 }
 
