@@ -71,17 +71,17 @@ static void _le_jobs_install(int min, char *hostname)
 			snprintf(tmp, sizeof(tmp), "%s %u", hostname, ++le_time);
 			nvram_set("le_retry", tmp);
 			if((le_time & 3) == 1)
-				strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 1, sizeof(jobs));
+				snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", 1, sizeof(jobs));
 			else if((le_time & 3) == 2)
-				strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 10, sizeof(jobs));
+				snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", 10, sizeof(jobs));
 			else if((le_time & 3) == 3)
-				strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 59, sizeof(jobs));
+				snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", 59, sizeof(jobs));
 			else 
 				strlcpy(jobs, "30 12 * * * service restart_letsencrypt", sizeof(jobs));
 		}else{
 			snprintf(tmp, sizeof(tmp), "%s 1", hostname);
 			nvram_set("le_retry", tmp);
-			strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 1, sizeof(jobs));
+			snprintf(jobs, "*/%d * * * * service restart_letsencrypt", 1, sizeof(jobs));
 		}
 	}else
 		snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", jobs_min);
