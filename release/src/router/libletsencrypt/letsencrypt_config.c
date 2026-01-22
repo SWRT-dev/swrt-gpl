@@ -18,8 +18,8 @@
 
 /*
  * Copyright 2021-2022, ASUS
- * Copyright 2023-2025, SWRTdev
- * Copyright 2023-2025, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2026, SWRTdev
+ * Copyright 2023-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -39,7 +39,6 @@
 
 #include <bcmnvram.h>
 #include <bcmparams.h>
-#include <utils.h>
 #include <shutils.h>
 #include <shared.h>
 #include <openssl/pem.h>
@@ -99,7 +98,7 @@ le_auxsts_t check_le_status(void)
 le_conf_t* get_le_conf(le_conf_t* conf)
 {
 	conf->enable = nvram_match("le_enable", "1") != 0;
-	if(nvram_match("le_acme_auth", "dns") || nvram_match("ddns_server_x", "WWW.ASUS.COM") || nvram_match("ddns_server_x", "WWW.CLOUDFLARE.COM"))
+	if(nvram_match("le_acme_auth", "dns") || nvram_match("ddns_server_x", "WWW.ASUS.COM"))
 		conf->authtype = LE_ACME_AUTH_DNS;
 	else if(nvram_match("le_acme_auth", "tls"))
 		conf->authtype = LE_ACME_AUTH_TLS;

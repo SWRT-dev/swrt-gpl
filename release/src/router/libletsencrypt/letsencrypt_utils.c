@@ -18,8 +18,8 @@
 
 /*
  * Copyright 2021-2022, ASUS
- * Copyright 2023, SWRTdev
- * Copyright 2023, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2026, SWRTdev
+ * Copyright 2023-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -40,7 +40,6 @@
 
 #include <bcmnvram.h>
 #include <bcmparams.h>
-#include <utils.h>
 #include <shutils.h>
 #include <shared.h>
 #include <openssl/pem.h>

@@ -18,8 +18,8 @@
 
 /*
  * Copyright 2021-2022, ASUS
- * Copyright 2023-2025, SWRTdev
- * Copyright 2023-2025, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2026, SWRTdev
+ * Copyright 2023-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -31,7 +31,7 @@
 #include <dirent.h>
 #include <string.h>
 #include <time.h>
-
+#include <inttypes.h>
 #include <rtconfig.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -39,7 +39,6 @@
 
 #include <bcmnvram.h>
 #include <bcmparams.h>
-#include <utils.h>
 #include <shutils.h>
 #include <shared.h>
 #include <openssl/pem.h>
@@ -65,28 +64,24 @@ static void _le_jobs_install(int min, char *hostname)
 		if(min == 0){
 			f_read("/dev/urandom", &urandom1, sizeof(urandom1));
 			f_read("/dev/urandom", &urandom2, sizeof(urandom2));
-#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_SOC_IPQ50XX) || defined(RTCONFIG_SOC_IPQ60XX) || defined(RTCONFIG_SOC_IPQ8074)
-			snprintf(jobs, sizeof(jobs), "%lu %lu */%d * * service restart_letsencrypt", urandom2 % 60, urandom1 % 24, 7);
-#else
-			snprintf(jobs, sizeof(jobs), "%llu %llu */%d * * service restart_letsencrypt", urandom2 % 60, urandom1 % 24, 7);
-#endif
+			snprintf(jobs, sizeof(jobs), "%" PRIu64 "%" PRIu64 " */%d * * service restart_letsencrypt", urandom2 % 60, urandom1 % 24, 7);
 		}else if(nvram_get_int("le_auxstate_t") != LE_AUX_ACME)
 			snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", min);
 		else if(le_retry && sscanf(le_retry, "%s %u", tmp, &le_time) == 2 && !strncmp(hostname, tmp, sizeof(tmp))){
 			snprintf(tmp, sizeof(tmp), "%s %u", hostname, ++le_time);
 			nvram_set("le_retry", tmp);
 			if((le_time & 3) == 1)
-				strlcpy(jobs, "*/1 * * * * service restart_letsencrypt", sizeof(jobs));
+				strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 1, sizeof(jobs));
 			else if((le_time & 3) == 2)
-				strlcpy(jobs, "*/10 * * * * service restart_letsencrypt", sizeof(jobs));
+				strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 10, sizeof(jobs));
 			else if((le_time & 3) == 3)
-				strlcpy(jobs, "*/59 * * * * service restart_letsencrypt", sizeof(jobs));
+				strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 59, sizeof(jobs));
 			else 
 				strlcpy(jobs, "30 12 * * * service restart_letsencrypt", sizeof(jobs));
 		}else{
 			snprintf(tmp, sizeof(tmp), "%s 1", hostname);
 			nvram_set("le_retry", tmp);
-			strlcpy(jobs, "*/1 * * * * service restart_letsencrypt", sizeof(jobs));
+			strlcpy(jobs, "*/%d * * * * service restart_letsencrypt", 1, sizeof(jobs));
 		}
 	}else
 		snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", jobs_min);
@@ -199,7 +194,7 @@ static void _le_acme_term(int no)
 			_dprintf("%s: waiting name=%s n=%d\n", __FUNCTION__, "/usr/sbin/acme.sh", n);
 			sleep(1);
 		}
-		if (n < 0) {
+		if (n <= 0) {
 			n = 10;
 			while ((killall("/usr/sbin/acme.sh", SIGKILL) == 0) && (n-- > 0)) {
 				_dprintf("%s: SIGKILL name=%s n=%d\n", __FUNCTION__, "/usr/sbin/acme.sh", n);
@@ -514,7 +509,7 @@ int le_acme_main(int argc, char **argv)
 				update_le_sts(LE_STS_WAIT_RENEW);
 				update_le_auxsts(LE_AUX_NONE);
 				get_path_le_domain_fullchain(path, sizeof(path));
-				if(f_diff("/etc/cert.pem", path) && !cp_le_cert(LE_FULLCHAIN, "/etc/cert.pem") && !cp_le_cert(LE_KEY, "/etc/key.pem")){
+				if(f_diff(HTTPD_CERT, path) && !cp_le_cert(LE_FULLCHAIN, HTTPD_CERT) && !cp_le_cert(LE_KEY, HTTPD_KEY)){
 					if(conf.https_enabled){
 						nvram_set("le_restart_httpd", "1");
 						sleep(6);
