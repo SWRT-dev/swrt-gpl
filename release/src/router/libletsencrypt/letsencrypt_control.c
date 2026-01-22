@@ -514,7 +514,7 @@ int le_acme_main(int argc, char **argv)
 				update_le_sts(LE_STS_WAIT_RENEW);
 				update_le_auxsts(LE_AUX_NONE);
 				get_path_le_domain_fullchain(path, sizeof(path));
-				if(f_diff("/etc/cert.pem", path) && cp_le_cert(LE_FULLCHAIN, "/etc/cert.pem") && !cp_le_cert(LE_KEY, "/etc/key.pem")){
+				if(f_diff("/etc/cert.pem", path) && !cp_le_cert(LE_FULLCHAIN, "/etc/cert.pem") && !cp_le_cert(LE_KEY, "/etc/key.pem")){
 					if(conf.https_enabled){
 						nvram_set("le_restart_httpd", "1");
 						sleep(6);
