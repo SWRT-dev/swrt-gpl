@@ -35,15 +35,15 @@ endif
 	touch stamp-h1
 
 install:
-	@[ -d $(INSTALLDIR)/usr/bin ] || install -d $(INSTALLDIR)/usr/bin
-	@install -D $(PKG_BUILD_DIR)/hostapd/hostapd $(INSTALLDIR)/usr/bin
-	@install -D $(PKG_BUILD_DIR)/hostapd/hostapd_cli $(INSTALLDIR)/usr/bin
-	@install -D $(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant $(INSTALLDIR)/usr/bin
-	@install -D $(PKG_BUILD_DIR)/wpa_supplicant/wpa_cli $(INSTALLDIR)/usr/bin
-	$(STRIP) $(INSTALLDIR)/usr/bin/hostapd
-	$(STRIP) $(INSTALLDIR)/usr/bin/hostapd_cli
-	$(STRIP) $(INSTALLDIR)/usr/bin/wpa_supplicant
-	$(STRIP) $(INSTALLDIR)/usr/bin/wpa_cli
+	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
+	@install -D $(PKG_BUILD_DIR)/hostapd/hostapd $(INSTALLDIR)/usr/sbin
+	@install -D $(PKG_BUILD_DIR)/hostapd/hostapd_cli $(INSTALLDIR)/usr/sbin
+	@install -D $(PKG_BUILD_DIR)/wpa_supplicant/wpa_supplicant $(INSTALLDIR)/usr/sbin
+	@install -D $(PKG_BUILD_DIR)/wpa_supplicant/wpa_cli $(INSTALLDIR)/usr/sbin
+	$(STRIP) $(INSTALLDIR)/usr/sbin/hostapd
+	$(STRIP) $(INSTALLDIR)/usr/sbin/hostapd_cli
+	$(STRIP) $(INSTALLDIR)/usr/sbin/wpa_supplicant
+	$(STRIP) $(INSTALLDIR)/usr/sbin/wpa_cli
 
 clean:
 
