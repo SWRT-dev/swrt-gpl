@@ -78,6 +78,10 @@ void auto_generate_config(void)
 		swrtmesh_generate_hosts_config();
 }
 
+void swrtmesh_wl_sync_uci(void)
+{
+}
+
 int start_swrtmesh(void)
 {
 	int idx = 1;
@@ -115,7 +119,7 @@ int start_swrtmesh(void)
 		//ieee1905_argv[idx] = "-f";
 	}
 	auto_generate_config();
-//	swrtmesh_resync_config();
+//	swrtmesh_wl_sync_uci();
 	_eval(ubusd_argv, NULL, 0, &pid);
 	_eval(wifimngr_argv, NULL, 0, &pid);
 	_eval(ieee1905_argv, NULL, 0, &pid);
@@ -306,80 +310,93 @@ void stop_bandsteer()
 	uci_unload(ctx, pkg);
 }
 
-void duplicate_wl_sync_uci(char *prefix, char *prefix2)
+void duplicate_wl_sync_uci(void)
 {
+	int unit, unitmax = num_of_wl_if();
+	char prefix[] = "wlXXXXXXX_";
+	char wlif[64] = {0};
 	char ssid[64] = {0}, key[64] = {0}, encryption[32] = {0};
-	char ssid2[64] = {0}, key2[64] = {0}, encryption2[32] = {0};
 	struct uci_context *ctx = NULL;
 	struct uci_package *pkg = NULL;
 	struct uci_section *section = NULL;
+
+	snprintf(prefix, sizeof(prefix), "wl%d_", 0);
 	strlcpy(ssid, nvram_pf_safe_get(prefix, "ssid"), sizeof(ssid));
 	strlcpy(encryption, wl_auth_mode_to_uci(nvram_pf_safe_get(prefix, "auth_mode_x")), sizeof(encryption));
 	if(!strcmp(encryption, "wpa") || !strcmp(encryption, "wpa2") || !strcmp(encryption, "wpa-mixed"))
 		strlcpy(key, nvram_pf_safe_get(prefix, "key"), sizeof(key));
 	else
 		strlcpy(key, nvram_pf_safe_get(prefix, "wpa_psk"), sizeof(key));
-	strlcpy(ssid2, nvram_pf_safe_get(prefix2, "ssid"), sizeof(ssid2));
-	strlcpy(encryption2, wl_auth_mode_to_uci(nvram_pf_safe_get(prefix2, "auth_mode_x")), sizeof(encryption2));
-	if(!strcmp(encryption2, "wpa") || !strcmp(encryption2, "wpa2") || !strcmp(encryption2, "wpa-mixed"))
-		strlcpy(key2, nvram_pf_safe_get(prefix2, "key"), sizeof(key2));
-	else
-		strlcpy(key2, nvram_pf_safe_get(prefix2, "wpa_psk"), sizeof(key2));
 
-	pkg = swrtmesh_uci_load_pkg(&ctx, "mapcontroller");
-	if(pkg){
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "ssid", ssid2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "encryption", encryption2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "key", key2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
-		uci_commit(ctx, &pkg, false);
-		uci_unload(ctx, pkg);
-	}
-	pkg = swrtmesh_uci_load_pkg(&ctx, "mapagent");
-	if(pkg){
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "ssid", ssid2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "encryption", encryption2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "key", key2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
-		uci_commit(ctx, &pkg, false);
-		uci_unload(ctx, pkg);
-	}
-	pkg = swrtmesh_uci_load_pkg(&ctx, "ieee1905");
-	if(pkg){
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "ssid", ssid2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "encryption", encryption2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "ap", "key", key2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
-		uci_commit(ctx, &pkg, false);
-		uci_unload(ctx, pkg);
-	}
-	pkg = swrtmesh_uci_load_pkg(&ctx, "wireless");
-	if(pkg){
-		section = swrtmesh_config_get_section(ctx, pkg, "wifi-iface", "ssid", ssid2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "wifi-iface", "encryption", encryption2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
-		section = swrtmesh_config_get_section(ctx, pkg, "wifi-iface", "key", key2);
-		if(section)
-			swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
-		uci_commit(ctx, &pkg, false);
-		uci_unload(ctx, pkg);
+	for(unit = 0; unit < unitmax; unit++){//2g -> 5g -> 5g2/6g -> 6g2
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		snprintf(wlif, sizeof(wlif), "%s", nvram_pf_safe_get(prefix, "ifname"));
+		pkg = swrtmesh_uci_load_pkg(&ctx, "mapcontroller");
+		if(pkg){
+			if(unit == 0)
+				section = swrtmesh_config_get_section(ctx, pkg, "ap", "band", "2");
+#if defined(RTCONFIG_WIFI6E)
+			else if(unit == 2)//fix me
+				section = swrtmesh_config_get_section_by_unit(ctx, pkg, "ap", "band", "6");
+#endif
+			else
+				section = swrtmesh_config_get_section_by_unit(ctx, pkg, "ap", "band", "5", unit - 1);
+			if(section){
+				swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
+			}
+			uci_commit(ctx, &pkg, false);
+			uci_unload(ctx, pkg);
+		}
+		pkg = swrtmesh_uci_load_pkg(&ctx, "mapagent");
+		if(pkg){
+			if(unit == 0)
+				section = swrtmesh_config_get_section(ctx, pkg, "ap", "band", "2");
+#if defined(RTCONFIG_WIFI6E)
+			else if(unit == 2)//fix me
+				section = swrtmesh_config_get_section_by_unit(ctx, pkg, "ap", "band", "6");
+#endif
+			else
+				section = swrtmesh_config_get_section_by_unit(ctx, pkg, "ap", "band", "5", unit - 1);
+			if(section){
+				swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
+			}
+			uci_commit(ctx, &pkg, false);
+			uci_unload(ctx, pkg);
+		}
+		pkg = swrtmesh_uci_load_pkg(&ctx, "ieee1905");
+		if(pkg){
+			if(unit == 0)
+				section = swrtmesh_config_get_section(ctx, pkg, "ap", "band", "2");
+#if defined(RTCONFIG_WIFI6E)
+			else if(unit == 2)//fix me
+				section = swrtmesh_config_get_section_by_unit(ctx, pkg, "ap", "band", "6");
+#endif
+			else
+				section = swrtmesh_config_get_section_by_unit(ctx, pkg, "ap", "band", "5", unit - 1);
+			if(section){
+				swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
+			}
+			uci_commit(ctx, &pkg, false);
+			uci_unload(ctx, pkg);
+		}
+		pkg = swrtmesh_uci_load_pkg(&ctx, "wireless");
+		if(pkg){
+			section = swrtmesh_config_get_section(ctx, pkg, "wifi-iface", "ifname", wlif);
+			if(section){
+				swrtmesh_uci_add_option(ctx, pkg, section, "ssid", ssid, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "encryption", encryption, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "key", key, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "multi_ap_backhaul_ssid", ssid, false);
+				swrtmesh_uci_add_option(ctx, pkg, section, "multi_ap_backhaul_key", key, false);
+			}
+			uci_commit(ctx, &pkg, false);
+			uci_unload(ctx, pkg);
+		}
 	}
 }

@@ -8033,11 +8033,11 @@ void duplicate_wl_ifaces(void)
 			nvram_pf_set(prefix2, "11ax", nvram_pf_safe_get(prefix, "11ax"));
 #endif
 			nvram_pf_set(prefix2, "mfp", nvram_pf_safe_get(prefix, "mfp"));
-#if defined(RTCONFIG_SWRTMESH)
-			duplicate_wl_sync_uci(prefix, prefix2);
-#endif
 		}
 	}
+#if defined(RTCONFIG_SWRTMESH)
+	duplicate_wl_sync_uci();
+#endif
 	nvram_commit();
 }
 #endif
