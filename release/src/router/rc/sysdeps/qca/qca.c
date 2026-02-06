@@ -1627,10 +1627,10 @@ next_mrate:
 #endif
 //	if(nvram_match("smart_connect_x", "1") && sw_mode() != SW_MODE_REPEATER)
 //		fprintf(fp2, "rc rc_service restart_qca_lbd &\n");
-	if(nvram_get_int("pagecache_ratio") > 4 && nvram_get_int("pagecache_ratio") <= 90)
-		fprintf(fp2, "echo %d > /proc/sys/vm/pagecache_ratio\n", nvram_get_int("pagecache_ratio"));
-	else
-		fprintf(fp2, "echo %d > /proc/sys/vm/pagecache_ratio\n", 30);
+//	if(nvram_get_int("pagecache_ratio") > 4 && nvram_get_int("pagecache_ratio") <= 90)
+//		fprintf(fp2, "echo %d > /proc/sys/vm/pagecache_ratio\n", nvram_get_int("pagecache_ratio"));
+//	else
+//		fprintf(fp2, "echo %d > /proc/sys/vm/pagecache_ratio\n", 30);
 	fprintf(fp2, "echo 0 > /proc/net/skb_recycler/flush\n");
 
 #if !defined(RTCONFIG_CONCURRENTREPEATER)

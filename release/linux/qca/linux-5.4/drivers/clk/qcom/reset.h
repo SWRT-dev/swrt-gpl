@@ -11,7 +11,6 @@
 struct qcom_reset_map {
 	unsigned int reg;
 	u8 bit;
-	u8 udelay;
 	u32 bitmask;
 };
 

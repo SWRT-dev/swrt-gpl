@@ -23392,6 +23392,7 @@ int set_pcie_aspm(void)
 
 int limit_page_cache_ratio(int ratio)
 {
+#if 0
 	int min = 5;
 	char p[] = "100XXX";
 
@@ -23412,6 +23413,9 @@ int limit_page_cache_ratio(int ratio)
 
 	sprintf(p, "%d", ratio);
 	return f_write_string("/proc/sys/vm/pagecache_ratio", p, 0, 0);
+#else
+	return 0;
+#endif
 }
 
 #if defined(RTCONFIG_DUAL_TRX2)

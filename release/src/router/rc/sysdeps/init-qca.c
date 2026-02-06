@@ -4093,8 +4093,8 @@ void load_wifi_driver(void)
 #if defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_SOC_IPQ60XX)
 	char val[4];
 
-	snprintf(val, sizeof(val), "%d", min(get_pagecache_ratio(), 25));
-	f_write_string("/proc/sys/vm/pagecache_ratio", val, 0, 0);
+//	snprintf(val, sizeof(val), "%d", min(get_pagecache_ratio(), 25));
+//	f_write_string("/proc/sys/vm/pagecache_ratio", val, 0, 0);
 	if(total_mem <= (256 * 1024)){
 		f_write_string("/proc/net/skb_recycler/flush", "1", 0, 0);
 		f_write_string("/proc/net/skb_recycler/max_skbs", "256", 0, 0);
@@ -4108,7 +4108,7 @@ void load_wifi_driver(void)
 	//	f_write_string("/proc/net/skb_recycler/max_spare_skbs", "256", 0, 0);
 	//}
 #elif defined(RTCONFIG_SOC_IPQ8064)
-	f_write_string("/proc/sys/vm/pagecache_ratio", "25", 0, 0);
+//	f_write_string("/proc/sys/vm/pagecache_ratio", "25", 0, 0);
 	f_write_string("/proc/net/skb_recycler/max_skbs", "2176", 0, 0);
 #elif defined(RTCONFIG_SOC_IPQ40XX) || defined(RTCONFIG_SOC_IPQ50XX)
 	/* For lower memory system, e.g., IPQ40xx + 128MB RAM models. */
