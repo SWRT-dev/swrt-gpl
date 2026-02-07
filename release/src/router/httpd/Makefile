@@ -344,6 +344,11 @@ ifeq ($(RTCONFIG_LANTIQ),y)
 LIBS += -L$(TOP)/fapi_wlan_common-05.04.00.131 -lfapiwlancommon -ldl -L$(TOP)/libhelper-1.4.0.2 -lhelper -L$(TOP)/libfapi-0.1 -lfapi -L$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -liw
 endif
 
+ifeq ($(RTCONFIG_SWRTMESH),y)
+CFLAGS += -I$(STAGEDIR)/usr/include
+LIBS += -L$(STAGEDIR)/usr/lib -lubus -lubox -lblobmsg_json -luci -ljson-c  -lswrtmesh
+endif
+
 ifeq ($(RTCONFIG_LIBASUSLOG),y)
 CFLAGS += -I$(TOP)/libasuslog
 LIBS += -L$(TOP)/libasuslog -lasuslog

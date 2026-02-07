@@ -524,7 +524,7 @@ int build_temp_rootfs(const char *newroot)
 			     " libwpa_client.so* "
 			     " libsqlite3.so.0* libjson-c.so.2* libasc.so* libvpn.so* "
 #else
-			     " libjson*"
+			     " libjson* libasc.so* libvpn.so* "
 #endif
 #if defined(RTCONFIG_BWDPI)
 			     " libbwdpi.so libbwdpi_sql.so"
@@ -582,6 +582,7 @@ int build_temp_rootfs(const char *newroot)
 			     " libev.so.4"
 			     " libcodb.so"
 			     " libswrt.so"
+			     " libubus.so* libubox.so libblobmsg_json.so libuci.so"
 #if defined(RTCONFIG_SWRTMESH)
 				 " libswrtmesh.so*"
 #endif

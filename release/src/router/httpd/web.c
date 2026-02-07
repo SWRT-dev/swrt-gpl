@@ -243,6 +243,10 @@ typedef unsigned long long u64;
 #ifdef RTCONFIG_COMFW
 #include <comfw.h>
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+#include <swrtmesh.h>
+#include <swrtmesh-utils.h>
+#endif
 
 extern int ej_wl_sta_list_2g(int eid, webs_t wp, int argc, char_t **argv);
 extern int ej_wl_sta_list_5g(int eid, webs_t wp, int argc, char_t **argv);
@@ -4423,6 +4427,9 @@ int validate_apply(webs_t wp, json_object *root)
 	memset(cfg_action_script, 0, sizeof(cfg_action_script));
 	memset(acc_action_script, 0, sizeof(acc_action_script));
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+	int nvram_modified_uci = 0;
+#endif
 	action_script = check_xss_blacklist(action_script, 0) ? "" : action_script;
 
 	/* go through each nvram value */
@@ -4562,6 +4569,9 @@ int validate_apply(webs_t wp, json_object *root)
 					nvram_modified_wl = 1;
 					_dprintf("set %s=%s\n", tmp, value);
 					validate_apply_set_wl_var(tmp, value);
+#if defined(RTCONFIG_SWRTMESH)
+					nvram_modified_uci = 1;
+#endif
 #if defined(RTCONFIG_NOTIFICATION_CENTER) && (defined(RTCONFIG_IFTTT) || defined(RTCONFIG_ALEXA) || defined(RTCONFIG_GOOGLE_ASST))
 					if(check_user_agent(user_agent) == FROM_IFTTT || check_user_agent(user_agent) == FROM_ALEXA)
 						IFTTT_DEBUG("[HTTPD] set %s=%s\n", tmp, value);
@@ -5249,7 +5259,10 @@ int validate_apply(webs_t wp, json_object *root)
 				nvram_set_int("nmp_db_delete", 1);
 			}
 		}
-
+#if defined(RTCONFIG_SWRTMESH)
+		if(nvram_modified_uci)
+			swrtmesh_sync_wl_to_uci();
+#endif
 #ifdef RTCONFIG_CFGSYNC
 		if (is_cfg_server_ready())
 		{

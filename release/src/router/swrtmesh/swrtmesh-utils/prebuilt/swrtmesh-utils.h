@@ -30,6 +30,8 @@ extern struct json_object *json_msg;
 //
 ////////////////////////////////////////////////////////////////////////////////
 SWRTMESH_FUNC int type_to_multi_ap(const char *type);
+SWRTMESH_FUNC char *wl_auth_mode_to_uci(char *auth_mode);
+SWRTMESH_FUNC char *swrtmesh_get_htmode(int unit, int bw, int bw_160, int ax, char *htmode, size_t len);
 SWRTMESH_FUNC struct uci_package *swrtmesh_uci_load_pkg(struct uci_context **ctx, const char *config);
 SWRTMESH_FUNC int swrtmesh_set_value(struct uci_context *ctx, struct uci_package *pkg, struct uci_section *section, const char *key, const char *value, enum uci_option_type type);
 SWRTMESH_FUNC int swrtmesh_set_value_by_string(const char *package, const char *section, const char *key, const char *value, enum uci_option_type type);
@@ -47,6 +49,7 @@ SWRTMESH_FUNC int swrtmesh_generate_wireless_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_ieee1905_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_topology_config(void);
 SWRTMESH_FUNC int swrtmesh_generate_hosts_config(void);
+SWRTMESH_FUNC void swrtmesh_sync_wl_to_uci(void);
 SWRTMESH_FUNC int swrtmesh_ubus_call(char *path, char *method, char *message);
 SWRTMESH_FUNC int swrtmesh_ubus_list(const char *path);
 SWRTMESH_FUNC char *swrtmesh_utils_version_text(void);

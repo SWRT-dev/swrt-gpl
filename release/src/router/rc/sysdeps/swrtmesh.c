@@ -34,30 +34,6 @@
 #include <swrtmesh.h>
 #include <swrtmesh-utils.h>
 
-static char *wl_auth_mode_to_uci(char *auth_mode)
-{
-	if(!strcmp(auth_mode, "open") || !strcmp(auth_mode, "none"))
-		return "none";
-	else if(!strcmp(auth_mode, "psk"))
-		return "psk";
-	else if(!strcmp(auth_mode, "psk2"))
-		return "psk2";
-	else if(!strcmp(auth_mode, "pskpsk2"))
-		return "psk-mixed";
-	else if(!strcmp(auth_mode, "sae"))
-		return "sae";
-	else if(!strcmp(auth_mode, "psk2sae"))
-		return "sae-mixed";
-	else if(!strcmp(auth_mode, "wpa"))
-		return "wpa";
-	else if(!strcmp(auth_mode, "wpa2"))
-		return "wpa2";
-	else if(!strcmp(auth_mode, "wpawpa2"))
-		return "wpa-mixed";
-	else
-		return "none";
-}
-
 void auto_generate_config(void)
 {
 	if(!check_if_dir_exist("/var/run/multiap"))
