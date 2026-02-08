@@ -244,7 +244,6 @@ typedef unsigned long long u64;
 #include <comfw.h>
 #endif
 #if defined(RTCONFIG_SWRTMESH)
-#include <swrtmesh.h>
 #include <swrtmesh-utils.h>
 #endif
 
