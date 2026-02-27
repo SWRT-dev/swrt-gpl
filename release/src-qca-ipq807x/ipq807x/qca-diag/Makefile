@@ -21,13 +21,13 @@ ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-diag/*.c),)
 else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/lib
-	mkdir -p $(PKG_BUILD_DIR)/sbin
+	mkdir -p $(PKG_BUILD_DIR)/bin
 	$(CP) prebuilt/$(BUILD_NAME)/libdiag.so $(PKG_BUILD_DIR)/lib
-	$(CP) prebuilt/$(BUILD_NAME)/diag_socket_app $(PKG_BUILD_DIR)/sbin
-	$(CP) prebuilt/$(BUILD_NAME)/diag_stress_app $(PKG_BUILD_DIR)/sbin
-	$(CP) prebuilt/$(BUILD_NAME)/registerReboot $(PKG_BUILD_DIR)/sbin
-	$(CP) prebuilt/$(BUILD_NAME)/qld_server $(PKG_BUILD_DIR)/sbin
-	$(CP) prebuilt/$(BUILD_NAME)/diag_mdlog $(PKG_BUILD_DIR)/sbin
+	$(CP) prebuilt/$(BUILD_NAME)/diag_socket_app $(PKG_BUILD_DIR)/bin
+	$(CP) prebuilt/$(BUILD_NAME)/diag_stress_app $(PKG_BUILD_DIR)/bin
+	$(CP) prebuilt/$(BUILD_NAME)/registerReboot $(PKG_BUILD_DIR)/bin
+	$(CP) prebuilt/$(BUILD_NAME)/qld_server $(PKG_BUILD_DIR)/bin
+	$(CP) prebuilt/$(BUILD_NAME)/diag_mdlog $(PKG_BUILD_DIR)/bin
 endif
 	touch stamp-h1
 
