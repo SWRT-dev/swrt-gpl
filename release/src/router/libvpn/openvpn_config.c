@@ -39,7 +39,6 @@
 
 #include <bcmnvram.h>
 #include <bcmparams.h>
-#include <utils.h>
 #include <shutils.h>
 #include <shared.h>
 

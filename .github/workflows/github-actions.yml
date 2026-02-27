@@ -1,0 +1,100 @@
+name: Build testing 
+run-name: "Building images 🚀"
+on: [push, pull_request]
+jobs:          
+    build-job:
+      name: Build
+      runs-on: ubuntu-latest
+      strategy:
+        fail-fast: false
+        matrix:
+          cfg:
+            - { model: "swrt-xm-ax3600",      sdk: "src-qca-ipq807x",   skip: false }
+            - { model: "rt-ac82u",            sdk: "src-qca-ipq40xx",   skip: false }
+            - { model: "rt-ac95u",            sdk: "src-qca-ipq40xx",   skip: false }
+            - { model: "netgear-r7000p",      sdk: "src-bcm-470x",      skip: false }
+            - { model: "swrt-sbrac3200p",     sdk: "src-bcm-470x",      skip: false }
+            - { model: "rt-ac68u",            sdk: "src-bcm-470x",      skip: true  }
+            - { model: "rt-ac88u",            sdk: "src-bcm-470x",      skip: true  }
+            - { model: "rt-ac85p",            sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-rm-ac2100",      sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-r6800",          sdk: "src-mtk-mips",      skip: false }
+            - { model: "rt-ax53u",            sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-pgb-m1",         sdk: "src-mtk-mips",      skip: true  }
+            - { model: "swrt-jcg-q10pro",     sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-jcg-q20",        sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-h3c-tx1801",     sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-xm-cr660x",      sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-cmcc-a9",        sdk: "src-mtk-mips",      skip: false }
+            - { model: "swrt-rm-ax6000",      sdk: "src-mtk-arm",       skip: false }
+            - { model: "swrt-swrt360t7",      sdk: "src-mtk-arm",       skip: false }
+      container:
+        image: paldier/swrt-docker:latest
+        env:
+          MODEL: ${{ matrix.cfg.model }}
+          SDK: ${{ matrix.cfg.sdk }}
+          SKIP_BUILD: ${{ matrix.cfg.skip }}
+          GIT_REPO: "https://github.com/SWRT-dev/swrt-gpl.git"
+          PROJECT_DIR: "/project/swrt-gpl"
+          PROJECTBASEDIR: "/project" # REMOVE_ME: Fixes https://github.com/SonarSource/sonarcloud-github-action/pull/58
+        options: --user docker 
+        volumes:
+          - /mnt:/project # HACK: Use /mnt partition since bigger than others. This prevents to run out of space
+      steps:
+        - name: Run debug commands - post
+          run: |
+            cd /
+            echo "--- Disk available ----"
+            df -h
+        - name: Fix permissions in docker image
+          if: matrix.cfg.skip == false
+          run: |
+            sudo chown -R docker:docker /github/home /home/docker /project
+        - name: "Fetch code"
+          if: matrix.cfg.skip == false
+          run: |
+            cd /project
+            if [[ $SKIP_BUILD == "true" ]]; then
+              echo "Skipping build!"
+              exit 0
+            fi
+            if [[ $GITHUB_REF_TYPE == "tag" ]]; then
+                export TAG="${GITHUB_REF#refs/tags/}"
+                echo "Fetching code from tag $TAG"
+            else
+                export BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}"
+                echo "Fetching code from branch $BRANCH"
+            fi
+
+            if git clone --depth 1 --branch "${TAG:-$BRANCH}" "$GIT_REPO"; then
+                echo "Code fetched successfully."
+            else
+                echo "Failed to fetch code. Check the repository and settings."
+                exit 1
+            fi
+
+            ls /home/docker
+        - name: "Build"
+          if: matrix.cfg.skip == false
+          run: |
+            if [[ $SKIP_BUILD == "true" ]]; then
+              echo "Skipping build!"
+              exit 0
+            fi
+            echo "----- Space available -----"
+            df -h
+            echo "----- I am: $(id) -----"
+            cd ${PROJECT_DIR}/release/${SDK}
+            echo "----- Files in dir: $(pwd) -----"
+            ls -alh
+            echo "----- Setting toolchains for ${SDK} -----"
+			sudo /home/docker/envs/toolchain.sh
+            echo "----- Check envs dir ---------"
+
+            ls -alh /home/docker/envs/
+            echo "----- Debugging env vars -----"
+            env
+
+            echo "----- BUILD ${MODEL}-----"
+            make "${MODEL}"
+
