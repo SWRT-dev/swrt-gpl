@@ -97,4 +97,4 @@ jobs:
 
             echo "----- BUILD ${MODEL}-----"
             make "${MODEL}"
-
+            cat .config
