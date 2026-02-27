@@ -183,6 +183,9 @@ KBUILD_EXTRA_SYMBOLS += $(LINUXDIR)/Module.symvers
 KBUILD_EXTRA_SYMBOLS += $(SRCBASE)/$(PLATFORM_ROUTER)/nat46/source/nat46/modules/Module.symvers
 export KBUILD_EXTRA_SYMBOLS
 
+PBBINS=$(wildcard prebuilt/$(BUILD_NAME)/*)
+NSS_KMOD=$(filter %.ko,$(PBBINS))
+
 all:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-nss-clients/*.c),)
 	ln -sf $(SDK_DIR_PLATFORM)/qca-nss-clients source
@@ -247,7 +250,7 @@ endif
 	@install -D $(PKG_BUILD_DIR)/l2tp/l2tpv2/qca-nss-l2tpv2.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/qca-nss-tun6rd.ko $(INSTALLKMODDIR)
 else
-	@for i in $(wildcard PKG_BUILD_DIR/*); do install -D $$i $(INSTALLKMODDIR) ; done
+	@install -D $(foreach f,$(NSS_KMOD),$(f)) $(INSTALLKMODDIR)
 endif
 	@$(STRIPX) $(INSTALLKMODDIR)/*.ko
 
