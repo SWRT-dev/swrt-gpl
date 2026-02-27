@@ -84,7 +84,7 @@ PBBINS=$(wildcard prebuilt/$(BUILD_NAME)/*)
 QCAWIFI_KMOD=$(filter %.ko,$(PBBINS))
 QCAWIFI_LIBS=$(filter %.so,$(PBBINS))
 QCAWIFI_XML=$(wildcard prebuilt/*.xml)
-QCAWIFI_USR_SBIN=$(filter-out $(QCAWIFI_KMOD) $(QCAWIFI_LIBS) $(QCAWIFI_XML) cfg80211tool,$(PBBINS))
+QCAWIFI_USR_SBIN=$(filter-out $(QCAWIFI_KMOD) $(QCAWIFI_LIBS) $(QCAWIFI_XML),$(PBBINS))
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 
@@ -194,7 +194,7 @@ else
 	@install $(foreach f,$(QCAWIFI_USR_SBIN),$(f)) $(INSTALLDIR)/usr/sbin
 	@install $(foreach f,$(QCAWIFI_LIBS),$(f)) $(INSTALLDIR)/usr/lib
 	@install $(foreach f,$(QCAWIFI_XML),$(f)) $(INSTALLDIR)/lib/wifi
-	@install -m 755 -D prebuilt/$(BUILD_NAME)/cfg80211tool $(INSTALLDIR)/sbin
+	@install -m 755 -D prebuilt/cfg80211tool $(INSTALLDIR)/sbin
 	ln -sf /sbin/cfg80211tool $(INSTALLDIR)/sbin/cfg80211tool_mesh
 endif
 	@$(STRIPX) $(INSTALLKMODDIR)/*
