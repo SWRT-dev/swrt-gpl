@@ -45,7 +45,7 @@ endif
 
 export BUILD_VARIANT="unified-profile"
 export DRIVER_PATH
-include $(DRIVER_PATH)/config.mk
+-include $(DRIVER_PATH)/config.mk
 ifeq ($(CONFIG_LINUX_5_4),y)
 export QCA_WIFI_KERNEL_VERSION_5_4=1
 endif
