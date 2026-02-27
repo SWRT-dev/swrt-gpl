@@ -23,27 +23,22 @@
 # FOR A SPECIFIC PURPOSE OR NONINFRINGEMENT CONCERNING THIS SOFTWARE.
 
 PWD=$(shell pwd)
+INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 
 all:
-ifeq ($(RALINK),y)
-ifeq ($(R6800),y)
-	@[ -f driver/gpio-sx1503-leds.c ] || cp -f $(PWD)/prebuild/R6800/i2cleds.ko $(PWD)/driver/
-	@[ -f driver/gpio-sx1503-leds.c ] && $(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver modules
-else ifeq ($(RMAX6000),y)
-	@[ -f driver/rmax6000-leds.c ] || cp -f $(PWD)/prebuild/RMAX6000/i2cleds.ko $(PWD)/driver/
-	@[ -f driver/rmax6000-leds.c ] && $(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver modules
-endif
-else ifeq ($(QCA),y)
-ifeq ($(RAX120),y)
-	@[ -f driver/rax120-leds.c ] || cp -f $(PWD)/prebuild/RAX120/i2cleds.ko $(PWD)/driver/
-	@[ -f driver/rax120-leds.c ] && $(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver modules
-endif
+
+ifneq ($(wildcard $(SRCBASE)/router/i2cled/driver/*.c),)
+	$(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver modules
+else
+	mkdir -p driver
+	cp prebuild/$(BUILD_NAME)/i2cleds.ko driver/i2cleds.ko
 endif
 
+
 install:
-	$(MAKE) -C $(LINUXDIR) EXTRA_CFLAGS=-I$(TOP)/shared SUBDIRS=$(PWD)/driver INSTALL_MOD_PATH=$(INSTALLDIR) modules_install
-	@find $(INSTALLDIR) -name "modules.*" | xargs rm -f
-	@find $(INSTALLDIR) -name "*.ko" | xargs $(STRIPX)
+	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)
+	@install -D driver/i2cleds.ko $(INSTALLKMODDIR)
+	@$(STRIPX) $(INSTALLKMODDIR)/*.ko
 
 clean:
 	$(RM) *.o *.ko driver/*.o driver/*.ko driver/*.mod.*
