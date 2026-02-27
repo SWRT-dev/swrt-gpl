@@ -15,8 +15,8 @@ else
 	mkdir -p $(PKG_BUILD_DIR)
 	mkdir -p $(PKG_BUILD_DIR)/qrtr
 	mkdir -p $(PKG_BUILD_DIR)/lib
-	cp -rf prebuilt/$(BUILD_NAME)/{qrtr-cfg,qrtr-ns,qrtr-lookup} $(PKG_BUILD_DIR)/qrtr
-	cp -rf prebuilt/$(BUILD_NAME)/{*.so} $(PKG_BUILD_DIR)/lib
+	$(CP) prebuilt/$(BUILD_NAME)/{qrtr-cfg,qrtr-ns,qrtr-lookup} $(PKG_BUILD_DIR)/qrtr
+	$(CP) prebuilt/$(BUILD_NAME)/libqmi_*.so $(PKG_BUILD_DIR)/lib
 endif
 	touch stamp-h1
 
@@ -40,8 +40,8 @@ clean:
 
 stage:
 ifneq ($(wildcard $(SDK_DIR_PLATFORM)/qca-qmi-framework/qmi-framework.mk),)
-	cp -rf $(PKG_BUILD_DIR)/inc/*.h $(STAGING_DIR)/usr/include/
-	cp -rf $(PKG_BUILD_DIR)/qcci/inc/*.h $(STAGING_DIR)/usr/include/
-	cp -rf $(PKG_BUILD_DIR)/common/inc/*.h $(STAGING_DIR)/usr/include/
-	cp -rf $(PKG_BUILD_DIR)/lib/*.so $(STAGING_DIR)/usr/lib/
+	$(CP) $(PKG_BUILD_DIR)/inc/*.h $(STAGING_DIR)/usr/include/
+	$(CP) $(PKG_BUILD_DIR)/qcci/inc/*.h $(STAGING_DIR)/usr/include/
+	$(CP) $(PKG_BUILD_DIR)/common/inc/*.h $(STAGING_DIR)/usr/include/
+	$(CP) $(PKG_BUILD_DIR)/lib/*.so $(STAGING_DIR)/usr/lib/
 endif
