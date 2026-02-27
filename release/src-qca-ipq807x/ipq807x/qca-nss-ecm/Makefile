@@ -180,7 +180,17 @@ endif
 	@install -D $(PKG_BUILD_DIR)/examples/ecm_ae_select.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/ecm.ko $(INSTALLKMODDIR)
 else
-	@for i in $(wildcard PKG_BUILD_DIR/*); do install -D $$i $(INSTALLKMODDIR) ; done
+ifeq ($(CONFIG_QCA_NSS_ECM_EXAMPLES_PCC),y)
+	@install -D $(PKG_BUILD_DIR)/ecm_pcc_test.ko $(INSTALLKMODDIR)
+endif
+ifeq ($(CONFIG_QCA_NSS_ECM_EXAMPLES_MARK),y)
+	@install -D $(PKG_BUILD_DIR)/ecm_mark_test.ko $(INSTALLKMODDIR)
+endif
+ifeq ($(CONFIG_QCA_NSS_ECM_OVS),y)
+	@install -D $(PKG_BUILD_DIR)/ecm_ovs.ko $(INSTALLKMODDIR)
+endif
+	@install -D $(PKG_BUILD_DIR)/ecm_ae_select.ko $(INSTALLKMODDIR)
+	@install -D $(PKG_BUILD_DIR)/ecm.ko $(INSTALLKMODDIR)
 endif
 	@$(STRIPX) $(INSTALLKMODDIR)/*.ko
 
