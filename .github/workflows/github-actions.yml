@@ -31,7 +31,7 @@ jobs:
       container:
         image: paldier/swrt-docker:latest
         env:
-          MODEL: ${{ matrix.cfg.model }}
+          MODELCFG: ${{ matrix.cfg.model }}
           SDK: ${{ matrix.cfg.sdk }}
           SKIP_BUILD: ${{ matrix.cfg.skip }}
           GIT_REPO: "https://github.com/SWRT-dev/swrt-gpl.git"
@@ -95,6 +95,5 @@ jobs:
             echo "----- Debugging env vars -----"
             env
 
-            echo "----- BUILD ${MODEL}-----"
-            make "${MODEL}"
-            cat .config
+            echo "----- BUILD ${MODELCFG}-----"
+            make "${MODELCFG}"
