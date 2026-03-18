@@ -1,0 +1,2873 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Copyright (c) 2016,2017,2019 Qualcomm Innovation Center, Inc. -->
+<!-- All Rights Reserved. -->
+<!-- Confidential and Proprietary – Qualcomm Innovation Center, Inc -->
+<!-- 2016 Qualcomm Atheros, Inc. -->
+<!-- All Rights Reserved. -->
+<!-- Qualcomm Atheros Confidential and Proprietary. -->
+<WCN_VenTool>
+  <VendorCmd name="dp_peer_stats" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="247"/>
+    <Attribute name="value0" ID="19" TYPE="MAC_ADDR"/>
+    <Attribute name="value1" ID="18" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="fc_peer_stats" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="240"/>
+    <Attribute name="value0" ID="19" TYPE="MAC_ADDR"/>
+  </VendorCmd>
+  <VendorCmd name="atf_sched_dur" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="239"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="aggr_burst" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="238"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_ba_timeout" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="274"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_ba_timeout" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="275"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_pcp_tid_map" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="279"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_pcp_tid_map" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="279"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <VendorRsp name="get_pcp_tid_map" ID="75" ATTR_MAX="2">
+      <Attribute name="get_pcp_tid_map" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_tidmap_prec" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="280"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_tidmap_prec" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="280"/>
+    <VendorRsp name="get_tidmap_prec" ID="75" ATTR_MAX="2">
+      <Attribute name="get_tidmap_prec" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_sa_param" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="290"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="19" TYPE="u32"/>
+    <Attribute name="value2" ID="20" TYPE="u32"/>
+    <Attribute name="value3" ID="21" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_sa_param" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="290"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="19" TYPE="u32"/>
+    <Attribute name="value2" ID="20" TYPE="u32"/>
+    <VendorRsp name="get_sa_param" ID="75" ATTR_MAX="2">
+      <Attribute name="get_sa_param" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+<VendorCmd name="setHwaddr" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="237" />
+    <Attribute name="value0" ID="19" TYPE="MAC_ADDR" />
+  </VendorCmd>
+  <VendorCmd name="setCountry" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="236" />
+    <Attribute name="value0" ID="19" TYPE="STRING" />
+  </VendorCmd>
+  <VendorCmd name="getCountry" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="236" />
+    <VendorRsp name="getCountry" ID="75" ATTR_MAX="2">
+      <Attribute name="getCountry" ID="1" TYPE="STRING" />
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_if_path" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4210"/>
+    <VendorRsp name="get_if_path" ID="75" ATTR_MAX="2">
+      <Attribute name="get_if_path" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setHALparam" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="35808"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getHALparam" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="35809"/>
+    <VendorRsp name="getHALparam" ID="75" ATTR_MAX="2">
+      <Attribute name="getHALparam" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="DMABcnRespT" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="0"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="txchainmask" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4097"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_txchainmask" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4097"/>
+    <VendorRsp name="get_txchainmask" ID="75" ATTR_MAX="2">
+      <Attribute name="get_txchainmask" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="rxchainmask" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4098"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_rxchainmask" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4098"/>
+    <VendorRsp name="get_rxchainmask" ID="75" ATTR_MAX="2">
+      <Attribute name="get_rxchainmask" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="AMPDU" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4102"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getAMPDU" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4102"/>
+    <VendorRsp name="getAMPDU" ID="75" ATTR_MAX="2">
+      <Attribute name="getAMPDU" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="AMPDULim" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4103"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getAMPDULim" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4103"/>
+    <VendorRsp name="getAMPDULim" ID="75" ATTR_MAX="2">
+      <Attribute name="getAMPDULim" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="AMPDUFrames" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4104"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getAMPDUFrames" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4104"/>
+    <VendorRsp name="getAMPDUFrames" ID="75" ATTR_MAX="2">
+      <Attribute name="getAMPDUFrames" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LDPC" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4128"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLDPC" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4128"/>
+    <VendorRsp name="getLDPC" ID="75" ATTR_MAX="2">
+      <Attribute name="getLDPC" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="ps_report" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4296"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_ps_report" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4296"/>
+    <VendorRsp name="get_ps_report" ID="75" ATTR_MAX="2">
+      <Attribute name="get_ps_report" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="nonaggr_swretry" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4238"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="aggr_swretry" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4239"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="sta_kickout" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4243"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="LTR" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4245"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTR" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4245"/>
+    <VendorRsp name="getLTR" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTR" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRBE" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4246"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRBE" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4246"/>
+    <VendorRsp name="getLTRBE" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRBE" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRBK" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4247"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRBK" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4247"/>
+    <VendorRsp name="getLTRBK" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRBK" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRVO" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4249"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRVO" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4249"/>
+    <VendorRsp name="getLTRVO" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRVO" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRVI" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4248"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRVI" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4248"/>
+    <VendorRsp name="getLTRVI" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRVI" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRACTimeout" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4250"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRACTimeout" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4250"/>
+    <VendorRsp name="getLTRACTimeout" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRACTimeout" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRTxTimeout" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4251"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRTxTimeout" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4251"/>
+    <VendorRsp name="getLTRTxTimeout" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRTxTimeout" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRSLEEP" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4252"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRSLEEP" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4252"/>
+    <VendorRsp name="getLTRSLEEP" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRSLEEP" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="LTRRX" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4253"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getLTRRX" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4253"/>
+    <VendorRsp name="getLTRRX" ID="75" ATTR_MAX="2">
+      <Attribute name="getLTRRX" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="L1SS" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4254"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getL1SS" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4254"/>
+    <VendorRsp name="getL1SS" ID="75" ATTR_MAX="2">
+      <Attribute name="getL1SS" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="DSLEEP" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4255"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getDSLEEP" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4255"/>
+    <VendorRsp name="getDSLEEP" ID="75" ATTR_MAX="2">
+      <Attribute name="getDSLEEP" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_bcnburst" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4176"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_bcnburst" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4176"/>
+    <VendorRsp name="get_bcnburst" ID="75" ATTR_MAX="2">
+      <Attribute name="get_bcnburst" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="arpdhcp_ac" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4237"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_arpdhcp_ac" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4237"/>
+    <VendorRsp name="g_arpdhcp_ac" ID="75" ATTR_MAX="2">
+      <Attribute name="g_arpdhcp_ac" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="sIgmpDscpOvrid" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4235"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gIgmpDscpOvrid" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4235"/>
+    <VendorRsp name="gIgmpDscpOvrid" ID="75" ATTR_MAX="2">
+      <Attribute name="gIgmpDscpOvrid" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="sIgmpDscpTidMap" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4236"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gIgmpDscpTidMap" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4236"/>
+    <VendorRsp name="gIgmpDscpTidMap" ID="75" ATTR_MAX="2">
+      <Attribute name="gIgmpDscpTidMap" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="TXPowLim2G" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4108"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getTxPowLim2G" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4108"/>
+    <VendorRsp name="getTxPowLim2G" ID="75" ATTR_MAX="2">
+      <Attribute name="getTxPowLim2G" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setctsrate" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4188"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_ctsrate" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4188"/>
+    <VendorRsp name="get_ctsrate" ID="75" ATTR_MAX="2">
+      <Attribute name="get_ctsrate" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setdeauthcnt" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4285"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getdeauthcnt" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4285"/>
+    <VendorRsp name="getdeauthcnt" ID="75" ATTR_MAX="2">
+      <Attribute name="getdeauthcnt" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="TXPowLim5G" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4109"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getTxPowLim5G" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4109"/>
+    <VendorRsp name="getTxPowLim5G" ID="75" ATTR_MAX="2">
+      <Attribute name="getTxPowLim5G" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dyn_grouping" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4293"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_dyngroup" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4293"/>
+    <VendorRsp name="g_dyngroup" ID="75" ATTR_MAX="2">
+      <Attribute name="g_dyngroup" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dpd_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4294"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_dpdenable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4294"/>
+    <VendorRsp name="g_dpdenable" ID="75" ATTR_MAX="2">
+      <Attribute name="g_dpdenable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dbglog_ratelim" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4295"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="tpscale" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4267"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_tpscale" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4267"/>
+    <VendorRsp name="get_tpscale" ID="75" ATTR_MAX="2">
+      <Attribute name="get_tpscale" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="ctlpwscale" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4402"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_ctlpwscale" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4402"/>
+    <VendorRsp name="get_ctlpwscale" ID="75" ATTR_MAX="2">
+      <Attribute name="get_ctlpwscale" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dcs_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4178"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_dcs_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4178"/>
+    <VendorRsp name="get_dcs_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dcs_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_dcs_coch_th" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4189"/>
+    <VendorRsp name="get_dcs_coch_th" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dcs_coch_th" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_dcs_coch_th" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4189"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_dcs_errth" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4190"/>
+    <VendorRsp name="get_dcs_errth" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dcs_errth" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_dcs_errth" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4190"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_dcs_phyerrth" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4191"/>
+    <VendorRsp name="g_dcs_phyerrth" ID="75" ATTR_MAX="2">
+      <Attribute name="g_dcs_phyerrth" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="s_dcs_phyerrth" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4191"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_dcs_maxcu" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4257"/>
+    <VendorRsp name="get_dcs_maxcu" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dcs_maxcu" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_dcs_maxcu" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4257"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_dcs_debug" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4260"/>
+    <VendorRsp name="get_dcs_debug" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dcs_debug" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_dcs_debug" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4260"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="burst_dur" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4174"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_burst_dur" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4174"/>
+    <VendorRsp name="get_burst_dur" ID="75" ATTR_MAX="2">
+      <Attribute name="get_burst_dur" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="burst" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4173"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_burst" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4173"/>
+    <VendorRsp name="get_burst" ID="75" ATTR_MAX="2">
+      <Attribute name="get_burst" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cca_threshold" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4429"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cca_threshold" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4429"/>
+    <VendorRsp name="g_cca_threshold" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cca_threshold" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="ani_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4261"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_ani_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4261"/>
+    <VendorRsp name="get_ani_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="get_ani_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="ani_poll_len" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4262"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="ani_listen_len" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4263"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="ani_ofdm_level" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4264"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="ani_cck_level" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4265"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dyntxchain" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4169"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_dyntxchain" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4169"/>
+    <VendorRsp name="get_dyntxchain" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dyntxchain" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="vow_extstats" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4141"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_vow_extstats" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4141"/>
+    <VendorRsp name="g_vow_extstats" ID="75" ATTR_MAX="2">
+      <Attribute name="g_vow_extstats" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="arp_dbg_srcaddr" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4324"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_arp_dbgstats" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4324"/>
+    <VendorRsp name="g_arp_dbgstats" ID="75" ATTR_MAX="2">
+      <Attribute name="g_arp_dbgstats" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="arp_dbg_dstaddr" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4325"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="arp_dbg_conf" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4326"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_arp_dbg_conf" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4326"/>
+    <VendorRsp name="g_arp_dbg_conf" ID="75" ATTR_MAX="2">
+      <Attribute name="g_arp_dbg_conf" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="he_bsscolor" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="261"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_he_bsscolor" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="261"/>
+    <VendorRsp name="get_he_bsscolor" ID="75" ATTR_MAX="2">
+      <Attribute name="get_he_bsscolor" ID="1" TYPE="STRING"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setCountryID" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8192"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getCountryID" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8192"/>
+    <VendorRsp name="getCountryID" ID="75" ATTR_MAX="2">
+      <Attribute name="getCountryID" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setRegdomain" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8204"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getRegdomain" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8204"/>
+    <VendorRsp name="getRegdomain" ID="75" ATTR_MAX="2">
+      <Attribute name="getRegdomain" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setCH144" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8203"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getCH144" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8203"/>
+    <VendorRsp name="getCH144" ID="75" ATTR_MAX="2">
+      <Attribute name="getCH144" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setCH144EppOvrd" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8216"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getCH144EppOvrd" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8216"/>
+    <VendorRsp name="getCH144EppOvrd" ID="75" ATTR_MAX="2">
+      <Attribute name="getCH144EppOvrd" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="enable_ol_stats" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8205"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="ol_stats_status" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8205"/>
+    <VendorRsp name="ol_stats_status" ID="75" ATTR_MAX="2">
+      <Attribute name="ol_stats_status" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="enable_statsv2" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8218"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="enable_macreq" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8206"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="bsta_fixed_idmask" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8220"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_reportsize" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8194"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_tstamprez" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8195"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_reporten" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8196"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_loglevel" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8197"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_vapon" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8198"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_vapoff" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8199"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_modon" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8200"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dl_modoff" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8201"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="disp_tpc" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8202"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dscp_tid_map" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4266"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="prof_id_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8214"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="prof_trigger" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8215"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="sHmmcDscpOvrid" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4271"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gHmmcDscpOvrid" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4271"/>
+    <VendorRsp name="gHmmcDscpOvrid" ID="75" ATTR_MAX="2">
+      <Attribute name="gHmmcDscpOvrid" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="sHmmcDscpTidMap" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4269"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gHmmcDscpTidMap" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4269"/>
+    <VendorRsp name="gHmmcDscpTidMap" ID="75" ATTR_MAX="2">
+      <Attribute name="gHmmcDscpTidMap" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_total_PER" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4185"/>
+    <VendorRsp name="get_total_PER" ID="75" ATTR_MAX="2">
+      <Attribute name="get_total_PER" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="antgain_2g" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4272"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="antgain_5g" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4273"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_rxfilter" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4274"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="enable_amsdu" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4241"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_amsdu" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4241"/>
+    <VendorRsp name="get_amsdu" ID="75" ATTR_MAX="2">
+      <Attribute name="get_amsdu" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="enable_ampdu" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4242"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_ampdu" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4242"/>
+    <VendorRsp name="get_ampdu" ID="75" ATTR_MAX="2">
+      <Attribute name="get_ampdu" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_aggr_burst" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="35821"/>
+    <VendorRsp name="get_aggr_burst" ID="75" ATTR_MAX="2">
+      <Attribute name="get_aggr_burst" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_buff_thresh" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4276"/>
+    <VendorRsp name="get_buff_thresh" ID="75" ATTR_MAX="2">
+      <Attribute name="get_buff_thresh" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_buff_thresh" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4276"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getBlkReportFld" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4277"/>
+    <VendorRsp name="getBlkReportFld" ID="75" ATTR_MAX="2">
+      <Attribute name="getBlkReportFld" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setBlkReportFld" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4277"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getDropSTAQuery" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4278"/>
+    <VendorRsp name="getDropSTAQuery" ID="75" ATTR_MAX="2">
+      <Attribute name="getDropSTAQuery" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="setDropSTAQuery" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4278"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="acs_bkscanen" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4214"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acs_bkscanen" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4214"/>
+    <VendorRsp name="g_acs_bkscanen" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acs_bkscanen" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_scanintvl" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4215"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acsscanintvl" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4215"/>
+    <VendorRsp name="g_acsscanintvl" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acsscanintvl" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_rssivar" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4216"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acs_rssivar" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4216"/>
+    <VendorRsp name="get_acs_rssivar" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acs_rssivar" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_chloadvar" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4217"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acschloadvar" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4217"/>
+    <VendorRsp name="g_acschloadvar" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acschloadvar" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_srloadvar" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4448"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acssrloadvar" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4448"/>
+    <VendorRsp name="g_acssrloadvar" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acssrloadvar" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_lmtobss" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4218"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acslmtobss" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4218"/>
+    <VendorRsp name="get_acslmtobss" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acslmtobss" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_ctrlflags" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4219"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getacsctrlflags" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4219"/>
+    <VendorRsp name="getacsctrlflags" ID="75" ATTR_MAX="2">
+      <Attribute name="getacsctrlflags" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_dbgtrace" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4220"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acs_dbgtrace" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4220"/>
+    <VendorRsp name="g_acs_dbgtrace" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acs_dbgtrace" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_bmode" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4301"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acs_bmode" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4301"/>
+    <VendorRsp name="g_acs_bmode" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acs_bmode" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="reset_ol_stats" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4283"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_fw_hang" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4233"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_fw_recovery" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4282"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_fw_recovery" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4282"/>
+    <VendorRsp name="get_fw_recovery" ID="75" ATTR_MAX="2">
+      <Attribute name="get_fw_recovery" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="ce_debug_stats" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4533"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_radio_type" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4234"/>
+    <VendorRsp name="get_radio_type" ID="75" ATTR_MAX="2">
+      <Attribute name="get_radio_type" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="blockdfslist" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4240"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_blockdfslist" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4240"/>
+    <VendorRsp name="g_blockdfslist" ID="75" ATTR_MAX="2">
+      <Attribute name="g_blockdfslist" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="qboost_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4279"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="sifs_frmtype" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4280"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="sifs_uapsd" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4281"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="block_interbss" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4286"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_blk_interbss" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4286"/>
+    <VendorRsp name="g_blk_interbss" ID="75" ATTR_MAX="2">
+      <Attribute name="g_blk_interbss" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="disable_reset" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4287"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="msdu_ttl" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4288"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="ppdu_duration" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4289"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="txbf_snd_int" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4290"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_txbf_snd" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4290"/>
+    <VendorRsp name="get_txbf_snd" ID="75" ATTR_MAX="2">
+      <Attribute name="get_txbf_snd" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="promisc" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4291"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_promisc" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4291"/>
+    <VendorRsp name="get_promisc" ID="75" ATTR_MAX="2">
+      <Attribute name="get_promisc" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="burst_mode" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4292"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="mcast_echo" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4297"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_mcast_echo" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4297"/>
+    <VendorRsp name="g_mcast_echo" ID="75" ATTR_MAX="2">
+      <Attribute name="g_mcast_echo" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="atfstrictsched" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4397"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gatfstrictsched" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4397"/>
+    <VendorRsp name="gatfstrictsched" ID="75" ATTR_MAX="2">
+      <Attribute name="gatfstrictsched" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="atfobsssched" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4403"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_atfobsssched" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4403"/>
+    <VendorRsp name="g_atfobsssched" ID="75" ATTR_MAX="2">
+      <Attribute name="g_atfobsssched" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="atfobssscale" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4404"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="atfgrouppolicy" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4398"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gatfgrouppolicy" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4398"/>
+    <VendorRsp name="gatfgrouppolicy" ID="75" ATTR_MAX="2">
+      <Attribute name="gatfgrouppolicy" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="obss_rssi_th" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4298"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gobss_rssi_th" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4298"/>
+    <VendorRsp name="gobss_rssi_th" ID="75" ATTR_MAX="2">
+      <Attribute name="gobss_rssi_th" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="obss_rxrssi_th" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4299"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gobss_rxrssi_th" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4299"/>
+    <VendorRsp name="gobss_rxrssi_th" ID="75" ATTR_MAX="2">
+      <Attribute name="gobss_rxrssi_th" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_txpwr_opt" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4302"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acs_txpwr_opt" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4302"/>
+    <VendorRsp name="g_acs_txpwr_opt" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acs_txpwr_opt" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="antenna_plzn" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4303"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="print_ratelim" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4304"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gprint_ratelim" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4304"/>
+    <VendorRsp name="gprint_ratelim" ID="75" ATTR_MAX="2">
+      <Attribute name="gprint_ratelim" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="pdev_reset" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4305"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_nohostcrash" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4306"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_nohostcrash" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4306"/>
+    <VendorRsp name="get_nohostcrash" ID="75" ATTR_MAX="2">
+      <Attribute name="get_nohostcrash" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="obss_longslot" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4307"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_obss_longslot" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4307"/>
+    <VendorRsp name="g_obss_longslot" ID="75" ATTR_MAX="2">
+      <Attribute name="g_obss_longslot" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_stats_global" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4308"/>
+    <VendorRsp name="fc_stats_global" ID="75" ATTR_MAX="2">
+      <Attribute name="fc_stats_global" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_flush_intv" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4309"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_flush_intv" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4309"/>
+    <VendorRsp name="g_fc_flush_intv" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_flush_intv" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_buf_max" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4310"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="fc_buf0_max" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4311"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="fc_buf1_max" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4312"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="fc_buf2_max" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4313"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="fc_buf3_max" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4314"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_buf_max" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4310"/>
+    <VendorRsp name="g_fc_buf_max" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_buf_max" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_q_max" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4316"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_q_max" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4316"/>
+    <VendorRsp name="g_fc_q_max" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_q_max" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_buf_min" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4315"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_buf_min" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4315"/>
+    <VendorRsp name="g_fc_buf_min" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_buf_min" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_q_min" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4317"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_q_min" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4317"/>
+    <VendorRsp name="g_fc_q_min" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_q_min" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_cong_timer" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4318"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_cong_timer" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4318"/>
+    <VendorRsp name="g_fc_cong_timer" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_cong_timer" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_stats_tmr" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4319"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_stats_tmr" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4319"/>
+    <VendorRsp name="g_fc_stats_tmr" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_stats_tmr" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_rot_timer" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4320"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_fc_rot_timer" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4320"/>
+    <VendorRsp name="g_fc_rot_timer" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fc_rot_timer" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_latency_on" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4321"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="fc_hostq_dump" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4322"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="fc_tidq_map" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4323"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="st_ht_noamsdu" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4327"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_st_ht_noamsdu" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4327"/>
+    <VendorRsp name="g_st_ht_noamsdu" ID="75" ATTR_MAX="2">
+      <Attribute name="g_st_ht_noamsdu" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="staDFSEn" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4396"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_staDFSEn" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4396"/>
+    <VendorRsp name="get_staDFSEn" ID="75" ATTR_MAX="2">
+      <Attribute name="get_staDFSEn" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="CSwOpts" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4423"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_CSwOpts" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4423"/>
+    <VendorRsp name="get_CSwOpts" ID="75" ATTR_MAX="2">
+      <Attribute name="get_CSwOpts" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="primaryradio" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4399"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getprimaryradio" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4399"/>
+    <VendorRsp name="getprimaryradio" ID="75" ATTR_MAX="2">
+      <Attribute name="getprimaryradio" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dbdc_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4400"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_dbdc_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4400"/>
+    <VendorRsp name="get_dbdc_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dbdc_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="client_mcast" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4409"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getclient_mcast" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4409"/>
+    <VendorRsp name="getclient_mcast" ID="75" ATTR_MAX="2">
+      <Attribute name="getclient_mcast" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="data_txstats" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8217"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_data_txstats" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="8217"/>
+    <VendorRsp name="g_data_txstats" ID="75" ATTR_MAX="2">
+      <Attribute name="g_data_txstats" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="tpdbscale" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4401"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_phyofdmerr" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4405"/>
+    <VendorRsp name="g_phyofdmerr" ID="75" ATTR_MAX="2">
+      <Attribute name="g_phyofdmerr" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_phycckerr" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4406"/>
+    <VendorRsp name="g_phycckerr" ID="75" ATTR_MAX="2">
+      <Attribute name="g_phycckerr" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_fcserr" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4407"/>
+    <VendorRsp name="g_fcserr" ID="75" ATTR_MAX="2">
+      <Attribute name="g_fcserr" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_chanutil" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4408"/>
+    <VendorRsp name="g_chanutil" ID="75" ATTR_MAX="2">
+      <Attribute name="g_chanutil" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_emiwar80p80" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4410"/>
+    <VendorRsp name="get_emiwar80p80" ID="75" ATTR_MAX="2">
+      <Attribute name="get_emiwar80p80" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="batch_mode" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4411"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="packaggrdelay" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4412"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_diag_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4413"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_diag_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4413"/>
+    <VendorRsp name="get_diag_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="get_diag_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="chanstats_th" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4415"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_chanstats_th" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4415"/>
+    <VendorRsp name="g_chanstats_th" ID="75" ATTR_MAX="2">
+      <Attribute name="g_chanstats_th" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="pas_scanen" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4416"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_pas_scanen" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4416"/>
+    <VendorRsp name="g_pas_scanen" ID="75" ATTR_MAX="2">
+      <Attribute name="g_pas_scanen" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_min_snr_en" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4417"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_min_snr_en" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4417"/>
+    <VendorRsp name="get_min_snr_en" ID="75" ATTR_MAX="2">
+      <Attribute name="get_min_snr_en" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_min_snr" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4418"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_min_snr" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4418"/>
+    <VendorRsp name="get_min_snr" ID="75" ATTR_MAX="2">
+      <Attribute name="get_min_snr" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_2g_allch" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4419"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acs_2g_allch" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4419"/>
+    <VendorRsp name="g_acs_2g_allch" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acs_2g_allch" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="delay_stavapup" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4420"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gdelay_stavapup" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4420"/>
+    <VendorRsp name="gdelay_stavapup" ID="75" ATTR_MAX="2">
+      <Attribute name="gdelay_stavapup" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="btcoex_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4424"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_btcoex_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4424"/>
+    <VendorRsp name="g_btcoex_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="g_btcoex_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="btcoex_wl_pri" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4425"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_btcoex_wl_pri" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4425"/>
+    <VendorRsp name="g_btcoex_wl_pri" ID="75" ATTR_MAX="2">
+      <Attribute name="g_btcoex_wl_pri" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="btcoex_dc" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="291"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_btcoex_dc" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4437"/>
+    <VendorRsp name="g_btcoex_dc" ID="75" ATTR_MAX="2">
+      <Attribute name="g_btcoex_dc" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="queue_map" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4426"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_queue_map" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4426"/>
+    <VendorRsp name="get_queue_map" ID="75" ATTR_MAX="2">
+      <Attribute name="get_queue_map" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="CalCheck" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4427"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_CalCheck" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4427"/>
+    <VendorRsp name="get_CalCheck" ID="75" ATTR_MAX="2">
+      <Attribute name="get_CalCheck" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="no_vlan" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4428"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_no_vlan" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4428"/>
+    <VendorRsp name="get_no_vlan" ID="75" ATTR_MAX="2">
+      <Attribute name="get_no_vlan" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="atf_log" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4430"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_atf_log" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4430"/>
+    <VendorRsp name="get_atf_log" ID="75" ATTR_MAX="2">
+      <Attribute name="get_atf_log" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="strict_doth" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4431"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_strict_doth" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4431"/>
+    <VendorRsp name="g_strict_doth" ID="75" ATTR_MAX="2">
+      <Attribute name="g_strict_doth" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="discon_time" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4432"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gdiscon_time" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4432"/>
+    <VendorRsp name="gdiscon_time" ID="75" ATTR_MAX="2">
+      <Attribute name="gdiscon_time" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="reconfig_time" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4433"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="greconfig_time" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4433"/>
+    <VendorRsp name="greconfig_time" ID="75" ATTR_MAX="2">
+      <Attribute name="greconfig_time" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="chswitchcnt" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4434"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_chswitchcnt" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4434"/>
+    <VendorRsp name="g_chswitchcnt" ID="75" ATTR_MAX="2">
+      <Attribute name="g_chswitchcnt" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="alwaysprimary" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4435"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="galwaysprimary" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4435"/>
+    <VendorRsp name="galwaysprimary" ID="75" ATTR_MAX="2">
+      <Attribute name="galwaysprimary" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fast_lane" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4436"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_fast_lane" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4436"/>
+    <VendorRsp name="get_fast_lane" ID="75" ATTR_MAX="2">
+      <Attribute name="get_fast_lane" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="pref_uplink" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4440"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_pref_uplink" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4440"/>
+    <VendorRsp name="get_pref_uplink" ID="75" ATTR_MAX="2">
+      <Attribute name="get_pref_uplink" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="sec_offsetie" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4438"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_sec_offsetie" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4438"/>
+    <VendorRsp name="g_sec_offsetie" ID="75" ATTR_MAX="2">
+      <Attribute name="g_sec_offsetie" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="wb_subelem" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4439"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_wb_subelem" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4439"/>
+    <VendorRsp name="g_wb_subelem" ID="75" ATTR_MAX="2">
+      <Attribute name="g_wb_subelem" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="preCACEn" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4441"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_preCACEn" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4441"/>
+    <VendorRsp name="get_preCACEn" ID="75" ATTR_MAX="2">
+      <Attribute name="get_preCACEn" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="pCACTimeout" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4442"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_pCACTimeout" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4442"/>
+    <VendorRsp name="get_pCACTimeout" ID="75" ATTR_MAX="2">
+      <Attribute name="get_pCACTimeout" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dump_chmsk_tbl" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4446"/>
+    <VendorRsp name="dump_chmsk_tbl" ID="75" ATTR_MAX="2">
+      <Attribute name="dump_chmsk_tbl" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_reo_dest" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4445"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_reo_dest" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4445"/>
+    <VendorRsp name="get_reo_dest" ID="75" ATTR_MAX="2">
+      <Attribute name="get_reo_dest" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="print_obj_refs" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4447"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_mgmt_rssi_thr" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="244" />
+    <Attribute name="value0" ID="19" TYPE="u32" />
+  </VendorCmd>
+  <VendorCmd name="get_mgmt_rssi_thr" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="244" />
+    <VendorRsp name="get_mgmt_rssi_thr" ID="75" ATTR_MAX="2">
+      <Attribute name="get_mgmt_rssi_thr" ID="1" TYPE="u32" />
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="ext_nss" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4450"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_ext_nss" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4450"/>
+    <VendorRsp name="g_ext_nss" ID="75" ATTR_MAX="2">
+      <Attribute name="g_ext_nss" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acktimeout" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4452"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acktimeout" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4452"/>
+    <VendorRsp name="get_acktimeout" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acktimeout" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="acs_rank_en" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4456"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_acs_rank_en" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4456"/>
+    <VendorRsp name="g_acs_rank_en" ID="75" ATTR_MAX="2">
+      <Attribute name="g_acs_rank_en" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="widebw_scan" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4458"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_widebw_scan" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4458"/>
+    <VendorRsp name="g_widebw_scan" ID="75" ATTR_MAX="2">
+      <Attribute name="g_widebw_scan" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_papi" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4460"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_papi" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4460"/>
+    <VendorRsp name="get_papi" ID="75" ATTR_MAX="2">
+      <Attribute name="get_papi" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_icm_active" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4453"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_icm_active" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4453"/>
+    <VendorRsp name="get_icm_active" ID="75" ATTR_MAX="2">
+      <Attribute name="get_icm_active" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_nominal_noisefloor" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4454"/>
+    <VendorRsp name="get_nominal_noisefloor" ID="75" ATTR_MAX="2">
+      <Attribute name="get_nominal_noisefloor" ID="1" TYPE="s32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dump_target" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4444"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="txchainsoft" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4457"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_txchainsoft" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4457"/>
+    <VendorRsp name="get_txchainsoft" ID="75" ATTR_MAX="2">
+      <Attribute name="get_txchainsoft" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cck_tx_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4459"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cck_tx_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4459"/>
+    <VendorRsp name="g_cck_tx_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cck_tx_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="isolation" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4461"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_isolation" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4461"/>
+    <VendorRsp name="get_isolation" ID="75" ATTR_MAX="2">
+      <Attribute name="get_isolation" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="max_radio_sta" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4462"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_max_radio_sta" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4462"/>
+    <VendorRsp name="g_max_radio_sta" ID="75" ATTR_MAX="2">
+      <Attribute name="g_max_radio_sta" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="interCACChan" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4469"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="getInterCACChan" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4469"/>
+    <VendorRsp name="getInterCACChan" ID="75" ATTR_MAX="2">
+      <Attribute name="getInterCACChan" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_dbr_ring_status" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4471"/>
+    <VendorRsp name="g_dbr_ring_status" ID="75" ATTR_MAX="2">
+      <Attribute name="g_dbr_ring_status" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="esp_period" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4472"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_esp_period" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4472"/>
+    <VendorRsp name="g_esp_period" ID="75" ATTR_MAX="2">
+      <Attribute name="g_esp_period" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="esp_airtime" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4473"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_esp_airtime" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4473"/>
+    <VendorRsp name="g_esp_airtime" ID="75" ATTR_MAX="2">
+      <Attribute name="g_esp_airtime" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="esp_ppdu_dur" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4474"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_esp_ppdu_dur" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4474"/>
+    <VendorRsp name="g_esp_ppdu_dur" ID="75" ATTR_MAX="2">
+      <Attribute name="g_esp_ppdu_dur" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="esp_ba_window" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4475"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_esp_ba_window" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4475"/>
+    <VendorRsp name="g_esp_ba_window" ID="75" ATTR_MAX="2">
+      <Attribute name="g_esp_ba_window" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="twice_antgain" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4483"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_activity_f" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4484"/>
+    <VendorRsp name="g_activity_f" ID="75" ATTR_MAX="2">
+      <Attribute name="g_activity_f" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cbs_bkscanen" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4476"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cbs_bkscanen" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4476"/>
+    <VendorRsp name="g_cbs_bkscanen" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cbs_bkscanen" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cbs_dwellspt" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4478"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cbs_dwellspt" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4478"/>
+    <VendorRsp name="g_cbs_dwellspt" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cbs_dwellspt" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+ <VendorCmd name="cbs_dwellrest" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4479"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cbs_dwellrest" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4479"/>
+    <VendorRsp name="g_cbs_dwellrest" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cbs_dwellrest" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cbs_waittime" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4480"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cbs_waittime" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4480"/>
+    <VendorRsp name="g_cbs_waittime" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cbs_waittime" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cbs_resttime" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4481"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cbs_resttime" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4481"/>
+    <VendorRsp name="g_cbs_resttime" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cbs_resttime" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cbs_csa" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4482"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_cbs_csa" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4482"/>
+    <VendorRsp name="g_cbs_csa" ID="75" ATTR_MAX="2">
+      <Attribute name="g_cbs_csa" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="dcs_sim" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4477"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_ch_util_ap_rx" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4485"/>
+    <VendorRsp name="g_ch_util_ap_rx" ID="75" ATTR_MAX="2">
+      <Attribute name="g_ch_util_ap_rx" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_ch_util_free" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4486"/>
+    <VendorRsp name="g_ch_util_free" ID="75" ATTR_MAX="2">
+      <Attribute name="g_ch_util_free" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_ch_util_ap_tx" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4487"/>
+    <VendorRsp name="g_ch_util_ap_tx" ID="75" ATTR_MAX="2">
+      <Attribute name="g_ch_util_ap_tx" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_ch_util_obss" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4488"/>
+    <VendorRsp name="g_ch_util_obss" ID="75" ATTR_MAX="2">
+      <Attribute name="g_ch_util_obss" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_ch_util_nwifi" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4489"/>
+    <VendorRsp name="g_ch_util_nwifi" ID="75" ATTR_MAX="2">
+      <Attribute name="g_ch_util_nwifi" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="fc_video_stats" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4490"/>
+    <VendorRsp name="fc_video_stats" ID="75" ATTR_MAX="2">
+      <Attribute name="fc_video_stats" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_retry_stats" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4492"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_retry_stats" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4492"/>
+    <VendorRsp name="get_retry_stats" ID="75" ATTR_MAX="2">
+      <Attribute name="get_retry_stats" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="he_ul_trig_int" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4493"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_he_ul_trig_int" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4493"/>
+    <VendorRsp name="get_he_ul_trig_int" ID="75" ATTR_MAX="2">
+      <Attribute name="get_he_ul_trig_int" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_bandinfo" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4495"/>
+    <VendorRsp name="get_bandinfo" ID="75" ATTR_MAX="2">
+      <Attribute name="get_bandinfo" ID="1" TYPE="u32"/>
+   </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="smartLogEn" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4465"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_smartLogEn" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4465"/>
+    <VendorRsp name="get_smartLogEn" ID="75" ATTR_MAX="2">
+      <Attribute name="get_smartLogEn" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="smartLogEvent" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4466"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="smartLogSkbsz" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4467"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_smartLogSkbsz" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4467"/>
+    <VendorRsp name="g_smartLogSkbsz" ID="75" ATTR_MAX="2">
+      <Attribute name="g_smartLogSkbsz" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="slPingFailLog" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4468"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_slPingFailLog" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4468"/>
+    <VendorRsp name="g_slPingFailLog" ID="75" ATTR_MAX="2">
+      <Attribute name="g_slPingFailLog" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="mark_subchan" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4494"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_mark_subchan" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4494"/>
+    <VendorRsp name="g_mark_subchan" ID="75" ATTR_MAX="2">
+      <Attribute name="g_mark_subchan" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="bw_reduceEn" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4496"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_bw_reduceEn" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4496"/>
+    <VendorRsp name="get_bw_reduceEn" ID="75" ATTR_MAX="2">
+      <Attribute name="get_bw_reduceEn" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="he_sr_ctrl_srp_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="1"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_he_sr_ctrl_srp_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="1"/>
+    <VendorRsp name="get_he_sr_ctrl_srp_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="he_sr_ctrl_srp_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="he_sr_ctrl_non_srg_obsspd_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="2"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+ </VendorCmd>
+  <VendorCmd name="get_he_sr_ctrl_non_srg_obsspd_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="2"/>
+    <VendorRsp name="get_he_sr_ctrl_non_srg_obsspd_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="he_sr_ctrl_non_srg_obsspd_enable" ID="1" TYPE="STRING"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="he_sr_ctrl_sr15_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="3"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_he_sr_ctrl_sr15_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="3"/>
+    <VendorRsp name="get_he_sr_ctrl_sr15_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="he_sr_ctrl_sr15_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_he_ul_ppdu_dur" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4498"/>
+    <VendorRsp name="get_he_ul_ppdu_dur" ID="75" ATTR_MAX="2">
+      <Attribute name="get_he_ul_ppdu_dur" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="cfr_timer" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4500"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_cfr_timer" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4500"/>
+    <VendorRsp name="get_cfr_timer" ID="75" ATTR_MAX="2">
+      <Attribute name="get_cfr_timer" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_cfr_capture_status" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4535"/>
+    <VendorRsp name="get_cfr_capture_status" ID="75" ATTR_MAX="2">
+      <Attribute name="get_cfr_capture_status" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_rxProtocolTag" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="288"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="19" TYPE="u32"/>
+    <Attribute name="value2" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="dump_rxProtocolTagStats" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="289"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="he_ru_alloc" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4499"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_he_ru_alloc" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4499"/>
+    <VendorRsp name="get_he_ru_alloc" ID="75" ATTR_MAX="2">
+      <Attribute name="get_he_ru_alloc" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="flush_rate_stats" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4501"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_dcs_enable_timer" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4502"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_dcs_enable_timer" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4502"/>
+    <VendorRsp name="get_dcs_enable_timer" ID="75" ATTR_MAX="2">
+      <Attribute name="get_dcs_enable_timer" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="rx_lite_monitor" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4503"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_rx_lite_monitor" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4503"/>
+    <VendorRsp name="get_rx_lite_monitor" ID="75" ATTR_MAX="2">
+      <Attribute name="get_rx_lite_monitor" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="wifi_down_ind" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4504"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+ </VendorCmd>
+  <VendorCmd name="gpio_config" ID="125" DEFAULTS="1">
+    <Attribute name="dparam0" ID="1" TYPE="u32" DEFAULT="0"/>
+    <Attribute name="value0" ID="2" TYPE="u32"/>
+    <Attribute name="value1" ID="3" TYPE="u32"/>
+    <Attribute name="value2" ID="4" TYPE="u32"/>
+    <Attribute name="value3" ID="5" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="gpio_output" ID="125" DEFAULTS="1">
+    <Attribute name="dparam0" ID="1" TYPE="u32" DEFAULT="1"/>
+    <Attribute name="value0" ID="2" TYPE="u32"/>
+    <Attribute name="value1" ID="3" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="tx_monitor" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4505"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_tx_monitor" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4505"/>
+    <VendorRsp name="get_tx_captureEn" ID="75" ATTR_MAX="2">
+      <Attribute name="get_tx_captureEn" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_wmi_dis_dump" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4506"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="acs_chan_grade_algo" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4507"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acs_chan_grade_algo" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4507"/>
+    <VendorRsp name="get_acs_chan_grade_algo" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acs_chan_grade_algo" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_acs_chan_eff_var" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4508"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acs_chan_eff_var" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4508"/>
+    <VendorRsp name="get_acs_chan_eff_var" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acs_chan_eff_var" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_acs_near_range_weightage" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4509"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acs_near_range_weightage" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4509"/>
+    <VendorRsp name="get_acs_near_range_weightage" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acs_near_range_weightage" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_acs_mid_range_weightage" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4510"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acs_mid_range_weightage" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4510"/>
+    <VendorRsp name="get_acs_mid_range_weightage" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acs_mid_range_weightage" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_acs_far_range_weightage" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4511"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_acs_far_range_weightage" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4511"/>
+    <VendorRsp name="get_acs_far_range_weightage" ID="75" ATTR_MAX="2">
+      <Attribute name="get_acs_far_range_weightage" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_self_obss_pd_tx_threshold" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4512"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_self_obss_pd_tx_threshold" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4512"/>
+    <VendorRsp name="get_self_obss_pd_tx_threshold" ID="75" ATTR_MAX="2">
+      <Attribute name="get_self_obss_pd_tx_threshold" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+    <VendorCmd name="set_mgmt_ttl" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4513"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_mgmt_ttl" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4513"/>
+    <VendorRsp name="get_mgmt_ttl" ID="75" ATTR_MAX="2">
+      <Attribute name="get_mgmt_ttl" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_prb_rsp_ttl" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4514"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_prb_rsp_ttl" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4514"/>
+    <VendorRsp name="get_prb_rsp_ttl" ID="75" ATTR_MAX="2">
+      <Attribute name="get_prb_rsp_ttl" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_mu_ppdu_dur" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4515"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_mu_ppdu_dur" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4515"/>
+    <VendorRsp name="get_mu_ppdu_dur" ID="75" ATTR_MAX="2">
+      <Attribute name="get_mu_ppdu_dur" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_tbtt_ctrl" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4516"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_tbtt_ctrl" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4516"/>
+    <VendorRsp name="get_tbtt_ttl" ID="75" ATTR_MAX="2">
+      <Attribute name="get_tbtt_ttl" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="self_obss_pd_tx_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4517"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_self_obss_pd_tx_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4517"/>
+    <VendorRsp name="get_self_obss_pd_tx_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="get_self_obss_pd_tx_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="get_rchwidth" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4518"/>
+    <VendorRsp name="get_rchwidth" ID="75" ATTR_MAX="2">
+      <Attribute name="get_rchwidth" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="nav_config" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="295"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_nav_config" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="295"/>
+    <VendorRsp name="get_nav_config" ID="75" ATTR_MAX="2">
+      <Attribute name="get_nav_config" ID="1" TYPE="STRING"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="srg_obss_pd_info_present" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_srg_obss_pd_info_present" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4"/>
+    <VendorRsp name="get_srg_obss_pd_info_present" ID="75" ATTR_MAX="2">
+      <Attribute name="srg_obss_pd_info_present" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="srg_obss_pd_min_offset" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="5"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_srg_obss_pd_min_offset" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="5"/>
+    <VendorRsp name="get_srg_obss_pd_min_offset" ID="75" ATTR_MAX="2">
+      <Attribute name="srg_obss_pd_min_offset" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="srg_obss_pd_max_offset" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="6"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_srg_obss_pd_max_offset" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="6"/>
+    <VendorRsp name="get_srg_obss_pd_max_offset" ID="75" ATTR_MAX="2">
+      <Attribute name="srg_obss_pd_max_offset" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="srg_bss_color_bitmap" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="296"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="1"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_srg_bss_color_bitmap" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="296"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="1"/>
+    <VendorRsp name="get_srg_bss_color_bitmap" ID="75" ATTR_MAX="2">
+      <Attribute name="srg_bss_color_bitmap" ID="1" TYPE="STRING"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="srg_partial_bssid_bitmap" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="296"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="2"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+    <Attribute name="value1" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_srg_partial_bssid_bitmap" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="296"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="2"/>
+    <VendorRsp name="get_srg_partial_bssid_bitmap" ID="75" ATTR_MAX="2">
+      <Attribute name="srg_partial_bssid_bitmap" ID="1" TYPE="STRING"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="sr_enable_per_ac" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="7"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_sr_enable_per_ac" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="293"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="7"/>
+    <VendorRsp name="get_sr_enable_per_ac" ID="75" ATTR_MAX="2">
+      <Attribute name="sr_enable_per_ac" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="hw_mode" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4520"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_hw_mode" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4520"/>
+    <VendorRsp name="get_hw_mode" ID="75" ATTR_MAX="2">
+      <Attribute name="hw_mode" ID="1" TYPE="u32"/>
+    </VendorRsp>
+    </VendorCmd>
+  <VendorCmd name="hw_mode_omn_timer" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4525"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_hw_mode_omn_timer" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4525"/>
+    <VendorRsp name="get_hw_mode_omn_timer" ID="75" ATTR_MAX="2">
+      <Attribute name="hw_mode_omn_timer" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="hw_mode_omn_enable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4526"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_hw_mode_omn_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4526"/>
+    <VendorRsp name="get_hw_mode_omn_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="hw_mode_omn_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="hw_mode_primary" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4527"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="set_peer_pkt_cap_enable" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="300"/>
+    <Attribute name="value0" ID="19" TYPE="MAC_ADDR"/>
+    <Attribute name="value1" ID="18" TYPE="u32"/>
+    <Attribute name="value2" ID="20" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="samessid_disable" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4521"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_mbss_en" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4522"/>
+    <VendorRsp name="get_mbss_en" ID="75" ATTR_MAX="2">
+     <Attribute name="get_mbss_en" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="he_muedca_mode" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="305"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_he_muedca_mode" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="305"/>
+    <VendorRsp name="get_he_muedca_mode" ID="75" ATTR_MAX="2">
+      <Attribute name="he_muedca_mode" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="chan_coex_disable" ID="74" DEFAULTS="17, 18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200" />
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4523"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_chan_coex_disable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4523"/>
+    <VendorRsp name="g_chan_coex_disable" ID="75" ATTR_MAX="2">
+      <Attribute name="chan_coex_disable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="oob_enable" ID="74" DEFAULTS="17, 18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200" />
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4524"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="g_oob_enable" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4524"/>
+    <VendorRsp name="g_oob_enable" ID="75" ATTR_MAX="2">
+      <Attribute name="oob_enable" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="non_ht_dup_en" ID="74" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="306"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <Attribute name="value1" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_non_ht_dup_en" ID="75" DEFAULTS="17">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="306"/>
+    <Attribute name="value0" ID="18" TYPE="u32"/>
+    <VendorRsp name="get_non_ht_dup_en" ID="75" ATTR_MAX="2">
+      <Attribute name="non_ht_dup_en" ID="1" TYPE="STRING"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_psoc_num_vdevs" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4528"/>
+    <VendorRsp name="g_psoc_num_vdevs" ID="75" ATTR_MAX="2">
+      <Attribute name="g_psoc_num_vdevs" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_psoc_num_peers" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4529"/>
+    <VendorRsp name="g_psoc_num_peers" ID="75" ATTR_MAX="2">
+      <Attribute name="g_psoc_num_peers" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_pdev_num_vdevs" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4530"/>
+    <VendorRsp name="g_pdev_num_vdevs" ID="75" ATTR_MAX="2">
+      <Attribute name="g_pdev_num_vdevs" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_pdev_num_peers" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4531"/>
+    <VendorRsp name="g_pdev_num_peers" ID="75" ATTR_MAX="2">
+      <Attribute name="g_pdev_num_peers" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="g_pdev_num_monitor_vdevs" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4532"/>
+    <VendorRsp name="g_pdev_num_monitor_vdevs" ID="75" ATTR_MAX="2">
+      <Attribute name="g_pdev_num_monitor_vdevs" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="set_opclass_tbl" ID="74" DEFAULTS="17, 18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200" />
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4534"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_opclass_tbl" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4534"/>
+    <VendorRsp name="get_opclass_tbl" ID="75" ATTR_MAX="2">
+      <Attribute name="set_opclass_tbl" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+  <VendorCmd name="txpwrpc" ID="74" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4796"/>
+    <Attribute name="value0" ID="19" TYPE="u32"/>
+  </VendorCmd>
+  <VendorCmd name="get_txpwrpc" ID="75" DEFAULTS="17,18">
+    <Attribute name="dparam0" ID="17" TYPE="u32" DEFAULT="200"/>
+    <Attribute name="dparam1" ID="18" TYPE="u32" DEFAULT="4796"/>
+    <VendorRsp name="get_txpwrpc" ID="75" ATTR_MAX="2">
+      <Attribute name="get_txpwrpc" ID="1" TYPE="u32"/>
+    </VendorRsp>
+  </VendorCmd>
+</WCN_VenTool>

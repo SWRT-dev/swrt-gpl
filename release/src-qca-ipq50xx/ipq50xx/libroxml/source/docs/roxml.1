@@ -1,0 +1,42 @@
+.TH ROXML 1 "February 28, 2010"
+.SH NAME
+roxml \- xml parsing in command line
+.SH SYNOPSIS
+.B roxml
+.RI [ options ] " file" 
+.I " xpath"
+.br
+.SH DESCRIPTION
+This manual page documents briefly the
+.B roxml
+commands.
+.PP
+\fBroxml\fP is a program that can be used for applying xpath on XML files from shell programs.
+.br
+It will search for nodes matching
+.I xpath
+inside
+.I file
+and will display all the results as text on separates lines.
+.br
+It will also prepend the keyword 
+.B ans[X]
+where X is the result index.
+
+.SH OPTIONS
+This program follow the usual GNU command line syntax, with long
+options starting with two dashes (`-').
+A summary of options is included below.
+For a complete description, see the Info files.
+.TP
+.B \-h, \-\-help
+Show summary of options.
+.TP
+.B \-q, \-\-quiet
+Only shows the results: no index
+.br
+.SH AUTHOR
+roxml was written by Tristan Lelong.
+.PP
+This manual page was written by Tristan Lelong <blunderer@blunderer.org>,
+for the Debian project (but may be used by others).
