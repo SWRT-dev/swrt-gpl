@@ -64,7 +64,7 @@ static void _le_jobs_install(int min, char *hostname)
 		if(min == 0){
 			f_read("/dev/urandom", &urandom1, sizeof(urandom1));
 			f_read("/dev/urandom", &urandom2, sizeof(urandom2));
-			snprintf(jobs, sizeof(jobs), "%" PRIu64 "%" PRIu64 " */%d * * service restart_letsencrypt", urandom2 % 60, urandom1 % 24, 7);
+			snprintf(jobs, sizeof(jobs), "%" PRIu64 " %" PRIu64 " */%d * * service restart_letsencrypt", urandom2 % 60, urandom1 % 24, 7);
 		}else if(nvram_get_int("le_auxstate_t") != LE_AUX_ACME)
 			snprintf(jobs, sizeof(jobs), "*/%d * * * * service restart_letsencrypt", min);
 		else if(le_retry && sscanf(le_retry, "%s %u", tmp, &le_time) == 2 && !strncmp(hostname, tmp, sizeof(tmp))){
