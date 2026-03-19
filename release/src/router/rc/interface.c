@@ -637,7 +637,7 @@ static void _mswan_stb_del()
 /* configure/start vlan interface(s) based on nvram settings */
 int start_vlan(void)
 {
-#if !defined(HND_ROUTER) && !defined(BLUECAVE)
+#if !defined(HND_ROUTER) && !defined(RTCONFIG_LANTIQ)
 	int s;
 	struct ifreq ifr;
 	int i, j;
@@ -645,12 +645,12 @@ int start_vlan(void)
 
 	if ((strtoul(nvram_safe_get("boardflags"), NULL, 0) & BFL_ENETVLAN) == 0) return 0;
 #endif
-#if !defined(BLUECAVE)
+#if !defined(RTCONFIG_LANTIQ)
 	/* set vlan i/f name to style "vlan<ID>" */
 	eval("vconfig", "set_name_type", "VLAN_PLUS_VID_NO_PAD");
 #endif
 
-#if !defined(HND_ROUTER) && !defined(BLUECAVE)
+#if !defined(HND_ROUTER) && !defined(RTCONFIG_LANTIQ)
 	/* create vlan interfaces */
 	if ((s = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0)
 		return errno;
@@ -789,7 +789,7 @@ int start_vlan(void)
 	}
 #endif
 
-#elif defined(BLUECAVE)
+#elif defined(RTCONFIG_LANTIQ)
 	if(!nvram_match("switch_wantag", "") && (nvram_get_int("switch_stb_x") > 0 || nvram_match("switch_wantag", "unifi_biz") || 
 		nvram_match("switch_wantag", "stuff_fibre") || nvram_match("switch_wantag", "spark") ||
 		nvram_match("switch_wantag", "2degrees") || nvram_match("switch_wantag", "slingshot") ||
@@ -824,7 +824,7 @@ int start_vlan(void)
 /* stop/rem vlan interface(s) based on nvram settings */
 int stop_vlan(void)
 {
-#if !defined(HND_ROUTER) && !defined(BLUECAVE)
+#if !defined(HND_ROUTER) && !defined(RTCONFIG_LANTIQ)
 	int i;
 	char nvvar_name[16];
 	char vlan_id[16];

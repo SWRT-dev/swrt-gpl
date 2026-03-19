@@ -1,4 +1,4 @@
-
+#include <dt-bindings/gpio/gpio.h>
 /******************************************************************************
 ** Board configuration: xRX500 ANYWAN Board
 ******************************************************************************/
@@ -17,219 +17,315 @@
 };
 
 /******************************************************************************
-** Board configuration: Enable Nand flash pinctrl. 
-******************************************************************************/
-&pinctrl_nand {
-    status = "ok";
-}; 
-
-/******************************************************************************
-** Board configuration: Enable fxs SS.  
-******************************************************************************/
-&pinctrl_vcodec {
-	status = "ok";
-};
-	
-/******************************************************************************
-** Board configuration: Enable spi1 SS.  
-******************************************************************************/
-
-&pinctrl_spi1 {  
-	status = "ok";
-};
-
-/******************************************************************************
 ** Board configuration: Enable dect SS.
 ******************************************************************************/
 / {
 dect {
 	compatible = "lantiq,ltqdect";
-	lantiq,dect-spi-int=<302>; /*271 GPIO base + GPIO 31 for cosic interrupt and driver Probe fn will look for string dect-spi-int */
 	lantiq,dect-cs= <0>; /*DECT chip select port Number; This is used by SSC interface*/
 	gpio-reset = <&gpio0 28 0>;
+	gpio-int = <&gpio0 31 0>; /*COSIC INT PIN connected to GPIO 31 */
 	status = "ok";
-     };
+	};
 
 dect-page {
 	compatible = "lantiq,ltqdect-page";
 	lantiq,pagebit= <1>; /*DECT Page Bit: Bit info meant for DECT*/
 	lantiq,pagepin= <&gpio0 29 0>; 
-	status = "ok";
-      };
+	status = "okay";
+	};
 };
 
 /******************************************************************************
 ** Board configuration: Enable spi0 configuration.
 ******************************************************************************/
 
-&pinctrl_spi0 {
-		status = "disabled";
+/******************************************************************************
+** PCIe PHY board configuration
+******************************************************************************/
+&pcie_phy0 {
+	status = "ok";
+	intel,ssc_enable = <1>;
 };
 
+&pcie_phy1 {
+	status = "ok";
+	intel,ssc_enable = <1>;
+};
+
+&pcie_phy2 {
+	status = "ok";
+	intel,ssc_enable = <1>;
+};
 
 /******************************************************************************
 ** Board configuration: Enable PCIe board configuration.
 ** PCIE sub-system feature configuration, the pcie0/1/2 are defined in Soc level  
 ******************************************************************************/
 &pcie0 {
-	status = "ok";
-	lantiq,rst-high-active = <0>; /* 0 - low activ, 1 -- high active */
-	lantiq,rst-interval = <200>; /* in mili-seconds, up to 500 ms*/
-	lantiq,inbound-swap = <1>; /* 0 -- no swap, 1 -- swap */
-	lantiq,outbound-swap = <0>; /* 0 -- no swap, 1 -- swap */
-	lantiq,phy-mode = <0>; /* 0 -36Mhz, 1 - 36MHzSSC, 2 - 25Mhz, 3 - 25MHzSSC, 4 - 100MHz, 5 - 100MHz SSC */
-	reset-gpio = <&gpio0 18 0>; // default value , it can be updated on board. 
+	status = "okay";
+	intel,rst-interval = <100>;
+	intel,inbound-swap = <1>;
+	intel,outbound-swap = <0>;
+	reset-gpios = <&gpio0 18 GPIO_ACTIVE_LOW>;
 };
 
 &pcie1 {
-	status = "ok";
-	lantiq,rst-high-active = <0>; /* 0 - low activ, 1 -- high active */
-	lantiq,rst-interval = <200>; /* in mili-seconds, up to 500 ms*/
-	lantiq,inbound-swap = <1>; /* 0 -- no swap, 1 -- swap */
-	lantiq,outbound-swap = <0>; /* 0 -- no swap, 1 -- swap */
-	lantiq,phy-mode = <0>; /* 0 -36Mhz, 1 - 36MHzSSC, 2 - 25Mhz, 3 - 25MHzSSC, 4 - 100MHz, 5 - 100MHz SSC */
-	reset-gpio = <&gpio0 17 0>;// default value , it can be updated on board. 
+	status = "okay";
+	intel,rst-interval = <100>;
+	intel,inbound-swap = <1>;
+	intel,outbound-swap = <0>;
+	reset-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
 };
 
 &pcie2 {
-	status = "ok";
-	lantiq,rst-high-active = <0>; /* 0 - low activ, 1 -- high active */
-	lantiq,rst-interval = <200>; /* in mili-seconds, up to 500 ms*/
-	lantiq,inbound-swap = <1>; /* 0 -- no swap, 1 -- swap */
-	lantiq,outbound-swap = <0>; /* 0 -- no swap, 1 -- swap */
-	lantiq,phy-mode = <0>; /* 0 -36Mhz, 1 - 36MHzSSC, 2 - 25Mhz, 3 - 25MHzSSC, 4 - 100MHz, 5 - 100MHz SSC */
-	reset-gpio = <&gpio0 16 0>;// default value , it can be updated on board. 
+	status = "okay";
+	intel,rst-interval = <100>;
+	intel,inbound-swap = <1>;
+	intel,outbound-swap = <0>;
+	reset-gpios = <&gpio0 16 GPIO_ACTIVE_HIGH>; /* High active reset */
 };
 
 /******************************************************************************
 ** Board configuration: Enable USB board configuration.  
 ******************************************************************************/
-&usb0{
-	status = "ok";
-	vbus-gpio = <&gpio0 7 0>;
+/ {
+	usb0_vbus:regulator-vbus@0 {
+		compatible = "regulator-fixed";
+		regulator-name = "usb0_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpio0 7 0>;
+		enable-active-high;
+	};
+
+	usb1_vbus:regulator-vbus@1 {
+		compatible = "regulator-fixed";
+		regulator-name = "usb1_vbus";
+		regulator-min-microvolt = <5000000>;
+		regulator-max-microvolt = <5000000>;
+		gpio = <&gpio0 2 0>;
+		enable-active-high;
+	};
 };
-&usb1{
-	status = "ok";
-	vbus-gpio = <&gpio0 2 0>;
+
+&usb0_phy {
+	vbus-supply = <&usb0_vbus>;
 };
-/*****************************************************************************/
+
+&usb0 {
+	status = "ok";
+};
+
+&usb1_phy {
+        vbus-supply = <&usb1_vbus>;
+};
+
+&usb1 {
+	status = "ok";
+};
+
+/******************************************************************************
+ ** Board configuration: Enable pinctrl board configuration.
+ ******************************************************************************/
+&pinctrl {
+	pinctrl_spi0_cs1: spi0_cs1 {
+		intel,pins =  <15>; /* SPI0_CS1 */
+		intel,function = "spi0_cs1";
+		intel,mux = <EQBR_MUX_1>;
+		intel,groups = "spi0_cs1";
+	};
+
+	pinctrl_spi1_cs0: spi1_cs0 {
+		intel,pins =  <14>; /* SPI1_CS0 */
+		intel,function = "spi1_cs0";
+		intel,mux = <EQBR_MUX_2>;
+		intel,groups = "spi1_cs0";
+	};
+};
 
 /******************************************************************************
 ** Board configuration: Enable Shift register LED board configuration.  
 ******************************************************************************/
-&pinctrl_ledc {
-			status="ok";
-		};
 
-&sso {
+&ssogpio {
 	status = "okay";
-	lantiq,phy2 = <0x1>;
-	lantiq,phy3 = <0x1>;
-	lantiq,phy4 = <0x1>;
-	lantiq,phy5 = <0x1>;
-	lantiq,phy6 = <0x1>;
-	lantiq,groups = <0x3>;
-	/* lantiq,rising; */
-	#address-cells = <1>;
-	#size-cells = <0>;
-	g6fled0 {
-		label = "g6fled0";
-		reg = <0x0>;
+	intel,sso-update-rate = <250000>;
+};
+
+&ssoled {
+	status = "okay";
+	/* led definition */
+
+	intel,sso-def-brightness = <0x80>;
+	intel,sso-def-blinkrate = <4>; /* HZ*/
+	/* blink rate list: 2, 4, 8, 10, 50K, 100K, 200K, 250K, 1000K */ 
+	led0: led0 {
+		label = "led0:green:gphy";
+		led-gpio = <&ssogpio 0 0>;
+		intel,led-pin = <0>;
+		intel,sso-hw-trigger;
 	};
-	g2led0 {
-		label = "g2led0";
-		reg = <0x1>;
+
+	led1: led1 {
+		label = "led1:green:gphy";
+		led-gpio = <&ssogpio 1 0>;
+		intel,led-pin = <1>;
+		intel,sso-hw-trigger;
 	};
-	g3led0 {
-		label = "g3led0";
-		reg = <0x2>;
+
+	led2: led2 {
+		label = "led2:green:gphy";
+		led-gpio = <&ssogpio 2 0>;
+		intel,led-pin = <2>;
+		intel,sso-hw-trigger;
 	};
-	g4led0 {
-		label = "g4led0";
-		reg = <0x3>;
+
+	led3: led3 {
+		label = "led3:green:gphy";
+		led-gpio = <&ssogpio 3 0>;
+		intel,led-pin = <3>;
+		intel,sso-hw-trigger;
 	};
-	g5led0 {
-		label = "g5led0";
-		reg = <0x4>;
+
+	led4: led4 {
+		label = "led4:green:gphy";
+		led-gpio = <&ssogpio 4 0>;
+		intel,led-pin = <4>;
+		intel,sso-hw-trigger;
 	};
-	dect_led {
-		label = "dect_led";
-		reg = <0x5>;
+
+	led5: led5 {
+		label = "led5:green:dect";
+		led-gpio = <&ssogpio 5 0>;
+		intel,led-pin = <5>;
+		intel,sso-brightness = <0x00>;
 	};
-	wifi5g_led {
-		label = "wifi5g_led";
-		reg = <0x6>;
+
+	led6: led6 {
+		label = "led6:green:wifi5g";
+		led-gpio = <&ssogpio 6 0>;
+		intel,led-pin = <6>;
+		intel,sso-brightness = <0x00>;
 	};
-	voip1_led {
-		label = "voip1_led";
-		reg = <0x7>;
+
+	led7: led7 {
+		label = "led7:green:voip";
+		led-gpio = <&ssogpio 7 0>;
+		intel,led-pin = <7>;
+		intel,sso-brightness = <0x00>;
 	};
-	voip0_led {
-		label = "voip0_led";
-		reg = <0x8>;
+
+	led8: led8 {
+		label = "led8:green:Broadband0";
+		led-gpio = <&ssogpio 8 0>;
+		intel,led-pin = <8>;
+		intel,sso-brightness = <0x00>;
 	};
-	lte_led {
-		label = "lte_led";
-		reg = <0x9>;
+
+	led9: led9 {
+		label = "led9:green:lte";
+		led-gpio = <&ssogpio 9 0>;
+		intel,led-pin = <9>;
+		intel,sso-brightness = <0x00>;
 	};
-	wifi2g_led {
-		label = "wifi2g_led";
-		reg = <0xa>;
+
+	led10: led10 {
+		label = "led10:green:wifi2g";
+		led-gpio = <&ssogpio 10 0>;
+		intel,led-pin = <10>;
+		intel,sso-brightness = <0x00>;
 	};
-	internet_led {
-		label = "internet_led";
-		reg = <0xb>;
+
+	led11: led11 {
+		label = "led11:green:Internet";
+		led-gpio = <&ssogpio 11 0>;
+		intel,led-pin = <11>;
+		intel,sso-brightness = <0x00>;
 	};
-	broadband_led1 {
-		label = "broadband_led1";
-		reg = <0xc>;
+
+	led12: led12 {
+		label = "led12:green:Broadband1";
+		led-gpio = <&ssogpio 12 0>;
+		intel,led-pin = <12>;
+		intel,sso-brightness = <0x00>;
 	};
-	broadband_led {
-		label = "broadband_led";
-		reg = <0xd>;
+
+	led13: led13 {
+		label = "board:red:power";
+		led-gpio = <&ssogpio 13 0>;
+		intel,led-pin = <13>;
+		intel,sso-brightness = <0x00>;
 	};
-	led14 {
-		label = "led14";
-		reg = <0xe>;
+
+	led14: led14 {
+		label = "board:blue:power";
+		led-gpio = <&ssogpio 14 0>;
+		intel,led-pin = <14>;
+		intel,sso-brightness = <0x00>;
 	};
-	led15 {
-		label = "led15";
-		reg = <0xf>;
+
+	led15: led15 {
+		label = "board:green:power";
+		led-gpio = <&ssogpio 15 0>;
+		intel,led-pin = <15>;
+		linux,default-trigger = "timer";
+		intel,sso-brightness = <255>;
 	};
 };
 
-/******************************************************************************
-** Board configuration: Enable Switch MDC/MDIO board setting.   
-******************************************************************************/
-&pinctrl_mdio {
-			status="disable";
-};
 /******************************************************************************
 ** Board configuration: Enable CoC power managment board feature  
 ******************************************************************************/
-&pinctrl_i2c {
+&pinctrl_i2c0 {
 			status="ok";
 };
 
+&cpu0 {
+	cpu-supply = <&buck2_reg>;
+};
+
 &i2c {
+	status = "ok";
 	ina219: ina219@40 {
-		status = "ok";
 		compatible = "ti,ina219";
 		reg = <0x40>;
 		shunt-resistor = <10000>;
+		config = <0x01FF>;
+		calibration = <0x0EE5>;
 		rail-name = "PWR_12V";
 		};
 
-	dcdc:tps65273@51 {
+	dcdc:tps65273@62 {
 		status = "ok";
 		compatible = "ti,tps65273";
-		reg = <0x51>;
-		vout1_status = <1>; 
-		vout2_status = <1>; 
-		vout1_slew_rate = <0>; 
-		vout2_slew_rate = <0>; 
-		vout1_psm_mode = <0>; 
-		vout2_psm_mode = <0>; 
+		reg = <0x62>;
+
+		regulators {
+			buck1_reg: BUCK1 {
+				regulator-name = "1V5VDD";
+				regulator-always-on;
+				regulator-boot-on;
+				regulator-min-microvolt = <1500000>;
+				regulator-max-microvolt = <1500000>;
+				regulator-microvolt-offset = <0>;
+				vout-slew-rate = <0>;
+				vout-psm-mode  = <0>;
+				vout-init-selector = <47>; /*0x2F - 1150000 uV*/
+			};
+
+			buck2_reg: BUCK2 {
+				regulator-name = "1V15VDD";
+				regulator-always-on;
+				regulator-boot-on;
+				regulator-min-microvolt = <1000000>;
+				regulator-max-microvolt = <1200000>;
+				regulator-microvolt-offset = <0>;
+				vout-slew-rate = <0>; 
+				vout-psm-mode  = <0>;
+				vout-init-selector = <47>; /*0x2F - 1150000 uV*/
+			};
+		};
 	};
 };
 
@@ -269,15 +365,34 @@ dect-page {
 &eth {
 	status = "ok";
 
+	lan0: interface@0 {
+		compatible = "lantiq,xrx500-pdi";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		reg = <1>;
+		intel,dp-dev-port = <1>;
+		intel,dp-port-id = <1>;
+
+		ethernet@1 {
+			compatible = "lantiq,xrx500-pdi-port";
+			reg = <1>;
+			phy-mode = "rgmii";
+		};
+	};
+
 	lan1: interface@1 {
 		compatible = "lantiq,xrx500-pdi";
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <1>;
+		intel,dp-dev-port = <2>;
+		intel,dp-port-id = <2>;
 
 		ethernet@1 {
 			compatible = "lantiq,xrx500-pdi-port";
 			reg = <2>;
+			interrupt-parent = <&gic>;
+			interrupts = <0 112 4>;
 			phy-mode = "rgmii";
 			phy-handle = <&phy2>;
 		};
@@ -288,10 +403,14 @@ dect-page {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <2>;
+		intel,dp-dev-port = <3>;
+		intel,dp-port-id = <3>;
 
 		ethernet@2 {
 			compatible = "lantiq,xrx500-pdi-port";
 			reg = <3>;
+			interrupt-parent = <&gic>;
+			interrupts = <0 113 4>;
 			phy-mode = "rgmii";
 			phy-handle = <&phy3>;
 		};
@@ -302,10 +421,14 @@ dect-page {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <3>;
+		intel,dp-dev-port = <4>;
+		intel,dp-port-id = <4>;
 
 		ethernet@3 {
 			compatible = "lantiq,xrx500-pdi-port";
 			reg = <4>;
+			interrupt-parent = <&gic>;
+			interrupts = <0 126 4>;
 			phy-mode = "rgmii";
 			phy-handle = <&phy4>;
 		};
@@ -316,10 +439,14 @@ dect-page {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <4>;
+		intel,dp-dev-port = <5>;
+		intel,dp-port-id = <5>;
 
 		ethernet@4 {
 			compatible = "lantiq,xrx500-pdi-port";
 			reg = <5>;
+			interrupt-parent = <&gic>;
+			interrupts = <0 127 4>;
 			phy-mode = "rgmii";
 			phy-handle = <&phy5>;
 		};
@@ -330,11 +457,15 @@ dect-page {
 		#address-cells = <1>;
 		#size-cells = <0>;
 		reg = <5>;
-		lantiq,wan;
+		lantiq,wan = <1>;
+		intel,dp-dev-port = <15>;
+		intel,dp-port-id = <15>;
 
 		ethernet@5 {
 			compatible = "lantiq,xrx500-pdi-port";
 			reg = <1>;
+			interrupt-parent = <&gic>;
+			interrupts = <0 111 4>;
 			phy-mode = "rgmii";
 			phy-handle = <&phy1>;
 		};

@@ -1923,6 +1923,9 @@ function limit_auth_method(g_unit){
 		else if(based_modelid == "BLUECAVE"){
 			var auth_array = [["Open System", "open"], ["WPA-Personal", "psk"], ["WPA2-Personal", "psk2"], ["WPA-Auto-Personal", "pskpsk2"], ["WPA-Enterprise", "wpa"], ["WPA2-Enterprise", "wpa2"], ["WPA-Auto-Enterprise", "wpawpa2"]];
 		}
+		else if(based_modelid == "RAX40"){
+			var auth_array = [["Open System", "open"], ["WPA2-Personal", "psk2"], ["WPA3-Personal", "sae"], ["WPA/WPA2-Personal", "pskpsk2"], ["WPA2/WPA3-Personal", "psk2sae"], ["WPA2-Enterprise", "wpa2"], ["WPA/WPA2-Enterprise", "wpawpa2"]];
+		}
 		else{
 			if(new_wifi_cert_support){
 				if(wpa3_support){

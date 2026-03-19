@@ -13,6 +13,7 @@ RTCONFIG_HTTPS=y
 # RTCONFIG_BCMARM is not set
 # RTCONFIG_ALPINE is not set
 # RTCONFIG_LANTIQ is not set
+# RTCONFIG_WLMODULE_WAV6XX_AP is not set
 # RTCONFIG_QSR10G is not set
 # RTCONFIG_BCM7 is not set
 # RTCONFIG_BCM_794 is not set

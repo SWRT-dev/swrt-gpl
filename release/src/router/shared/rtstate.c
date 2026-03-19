@@ -281,9 +281,9 @@ int get_wan_unit(char *ifname)
 	if (ifname == NULL || *ifname == '\0')
 		return -1;
 
-#ifdef BLUECAVE
+#ifdef RTCONFIG_LANTIQ
 	/* TODO: unclear, why this workaround is required? */
-	int bluecave = (get_model() == MODEL_BLUECAVE &&
+	int bluecave = (/*get_model() == MODEL_BLUECAVE &&*/
 			strcmp(ifname, "eth1") == 0 && nvram_get_int("switch_stb_x") > 0);
 #endif
 
@@ -312,7 +312,7 @@ int get_wan_unit(char *ifname)
 		default:
 			if (nvram_match(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)), ifname))
 				return unit;
-#ifdef BLUECAVE
+#ifdef RTCONFIG_LANTIQ
 			if (bluecave)
 				return unit;
 #endif
@@ -344,7 +344,7 @@ int get_wan_unit(char *ifname)
 		default:
 			if (nvram_match(strlcat_r(prefix, "ifname", tmp, sizeof(tmp)), ifname))
 				return unit;
-#ifdef BLUECAVE
+#ifdef RTCONFIG_LANTIQ
 			if (bluecave)
 				return unit;
 #endif

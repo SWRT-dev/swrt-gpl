@@ -940,7 +940,7 @@ function initial(){
 		if(amesh_support && current_page == "device-map/amesh.asp") {
 			return;
 		}
-		if(parent.based_modelid == "BLUECAVE"){
+		if(lantiq_support){
 			if(group_id == "mumimo" || group_id == "location"){
 				restart_time += 20;
 			}

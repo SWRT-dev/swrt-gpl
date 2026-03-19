@@ -1572,7 +1572,7 @@ function update_mr_mswan_idx(){
 }
 
 function change_switch_stb(switch_stb_x){
-	if(hnd_support || based_modelid == "BLUECAVE"){
+	if(hnd_support || lantiq_support){
 		if(switch_stb_x != "0"){
 			document.getElementById("mr_enable_x").style.display = "none";
 			document.getElementById("mr_disable").style.display = "";

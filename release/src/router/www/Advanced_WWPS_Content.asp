@@ -312,7 +312,7 @@ function resetWPS(){
 	}
 
 	var sec = 5;
-	if(based_modelid == "BLUECAVE")
+	if(lantiq_support)
 		sec = 30;
 	if (Qcawifi_support)
 		sec = 20;

@@ -2022,6 +2022,7 @@ misc_defaults(int restore_defaults)
 #endif
 #ifdef RTCONFIG_LANTIQ
 		case MODEL_BLUECAVE:
+		case MODEL_RAX40:
 			nvram_set("reboot_time", "160");
 			break;
 #endif
@@ -21635,6 +21636,158 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 #endif
 		break;
 #endif
+#ifdef RAX40
+	case MODEL_RAX40:
+		_dprintf("RAX40: todo, init_nvram()\n");
+		nvram_set("wave_action", "0");
+		nvram_set("lan_ifname", "br0");
+		nvram_set("landevs", "eth0_1 eth0_2 eth0_3 eth0_4");
+#ifdef RTCONFIG_AMAS
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wlan0 wlan2 eth1");
+			nvram_set("wan_ifnames", "");
+		}
+		else
+#endif
+		if (sw_mode()==SW_MODE_AP) {
+			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wlan0 wlan2 eth1");
+			nvram_set("wan_ifnames", "");
+		}
+		else {
+			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wlan0 wlan2");
+			nvram_set("wan_ifnames", "eth1");
+		}
+		nvram_set("wl_ifnames", "wlan0 wlan2");
+		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
+		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
+		/* WAN2 MAC = 3rd 5G GuestNetwork */
+		if (get_wans_dualwan()&WANSCAP_WAN && get_wans_dualwan()&WANSCAP_LAN){
+			nvram_set("wl1_vifnames", "wl1.1 wl1.2");
+			nvram_set("wl1.3_bss_enabled", "0");
+		}
+		// nvram_set("wl1_country_code", nvram_safe_get("1:ccode"));
+		// nvram_set("wl1_country_rev", nvram_safe_get("1:regrev"));
+		nvram_set("wl1_phytype", "v");
+
+		char prefix[] = "wlXXXXXXXXXXXXX_", tmp[100];
+		char prefix2[] = "wlXXXXXXXXXXXXX_", tmp2[100];
+		int i, j, wlc_band = nvram_get_int("wlc_band");
+
+		// only for the all SKIP_ABSENT_BAND().
+		for(i = 0; i < MAX_NR_WL_IF; ++i){
+			snprintf(prefix, sizeof(prefix), "wl%d_", i);
+
+#ifdef RTCONFIG_WIRELESSREPEATER
+#ifdef RTCONFIG_PROXYSTA
+			if(mediabridge_mode())
+				nvram_set(strcat_r(prefix, "ifname", tmp), "");
+			else
+#endif
+			if(repeater_mode() && i == wlc_band)
+				nvram_set(strcat_r(prefix, "ifname", tmp), get_staifname(i));
+			else
+#endif
+#ifdef RTCONFIG_AMAS
+			if(aimesh_re_mode())
+				nvram_set(strcat_r(prefix, "ifname", tmp), get_staifname(i));
+			else
+#endif
+				nvram_set(strcat_r(prefix, "ifname", tmp), get_wififname(i));
+
+			//for(j = 0; j < MAX_NO_MSSID; ++j){
+			for(j = 0; j < 1; ++j){
+				snprintf(prefix2, sizeof(prefix2), "wl%d.%d_", i, j+1);
+
+#ifdef RTCONFIG_WIRELESSREPEATER
+				if(client_mode() && i == wlc_band && j == 0)
+					nvram_set(strcat_r(prefix2, "ifname", tmp2), get_wififname(i));
+#endif
+#ifdef RTCONFIG_AMAS
+				if(aimesh_re_mode())
+					nvram_set(strcat_r(prefix2, "ifname", tmp), get_wififname(i));
+#endif
+				if(!nvram_get(strcat_r(prefix2, "nband", tmp2)) || strlen(nvram_safe_get(tmp2)) <= 0)
+					nvram_set(tmp2, nvram_safe_get(strcat_r(prefix, "nband", tmp)));
+			}
+		}
+
+		nvram_set_int("btn_wps_gpio", 30|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_rst_gpio", 0|GPIO_ACTIVE_LOW);
+#ifdef RTCONFIG_WIFI_TOG_BTN
+		nvram_set_int("btn_wltog_gpio", 4|GPIO_ACTIVE_LOW);
+#endif
+#ifdef RTCONFIG_LED_BTN
+		//nvram_set_int("btn_led_gpio", 22|GPIO_ACTIVE_LOW);
+#endif
+		nvram_set_int("led_pwr_gpio", 35|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_pwr_red_gpio", 10|GPIO_ACTIVE_LOW);
+#ifdef RTCONFIG_WANRED_LED
+		nvram_set_int("led_wan_gpio", 43|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wan_red_gpio", 14|GPIO_ACTIVE_LOW);
+#else
+		nvram_set_int("led_wan_gpio", 14|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wan_normal_gpio", 43|GPIO_ACTIVE_LOW);
+#endif
+		nvram_set_int("led_2g_gpio", 21|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_2g_gpio", 22|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_usb_gpio", 34|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wps_gpio", 31|GPIO_ACTIVE_LOW);
+		if(usb_usb3 == 1)
+			nvram_set("xhci_ports", "2-1");
+		else
+			nvram_unset("xhci_ports");
+		nvram_set("ehci_ports", "1-1");
+		nvram_set("ohci_ports", "1-1");
+
+		if (!nvram_get("ct_max"))
+			nvram_set("ct_max", "300000");
+		add_rc_support("mssid 2.4G 5G update usbX1");
+		add_rc_support("switchctrl"); // broadcom: for jumbo frame only
+		add_rc_support("manual_stb");
+		add_rc_support("pwrctrl");
+		add_rc_support("WIFI_LOGO");
+		add_rc_support("nandflash");
+		add_rc_support("meoVoda");
+		add_rc_support("movistarTriple");
+		add_rc_support("lantiq");
+		add_rc_support("app");
+#if defined(LANTIQ_BSD)
+		add_rc_support("bandstr");
+#endif
+#ifdef RTCONFIG_LED_BTN
+		nvram_set_int("AllLED", 1);
+#endif
+#ifdef RTCONFIG_WPS_DUALBAND
+	nvram_set_int("wps_band_x", 0);
+	nvram_set_int("wps_dualband", 1);
+#else
+	nvram_set_int("wps_dualband", 0);
+#endif
+#if 0
+		if (!nvram_get_int("x_Setting") && nvram_get_int("ac87uopmode") == 5) {
+			nvram_set("wl1_txbf", "0");
+			nvram_set("wl1_itxbf", "0");
+		}
+#endif
+
+//#if 0
+#ifdef RTCONFIG_AMAS
+		if ( nvram_match("re_mode", "1") ) {
+			_dprintf("[%s][%d] AMAS nvram testing init",
+						__func__, __LINE__);
+			_dprintf("[%s][%d] sw mode = %d, repeater=%d, ap= %d ",
+						__func__, __LINE__,
+						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
+			nvram_set("eth_ifnames", "eth1");
+			nvram_set("sta_phy_ifnames", "wlan1 wlan3");
+			nvram_set("sta_ifnames", "wlan1 wlan3");
+			nvram_unset("dfschinfo");
+		}
+		add_led_ctrl_capability(CENTRAL_LED);
+		nvram_set("wired_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4");
+#endif
+		break;
+#endif
 
 	default:
 		_dprintf("############################ unknown model(init.c:8512) #################################\n");
@@ -21724,7 +21877,7 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 
 #ifdef RTCONFIG_MULTICAST_IPTV
 	if (nvram_get_int("switch_stb_x") > 6) {
-#if !defined(HND_ROUTER) && !defined(BLUECAVE)
+#if !defined(HND_ROUTER) && !defined(RTCONFIG_LANTIQ)
 		if(nvram_match("switch_wantag", "singtel")) {
 			nvram_set("iptv_wan_ifnames", "vlan30 vlan40");
 		} else if(nvram_match("switch_wantag", "maxis_fiber_sp_iptv")) {
@@ -21746,7 +21899,7 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 			nvram_set("iptv_wan_ifnames", "eth0.v1 eth0.v2");
 			nvram_set("iptv_ifname", "eth0.v1");
 		}
-#elif defined(BLUECAVE)
+#elif defined(RTCONFIG_LANTIQ)
 		if(nvram_match("switch_wantag", "movistar")) {
 			nvram_set("iptv_wan_ifnames", "eth1.2 eth1.3");
 			nvram_set("iptv_ifname", "eth1.2");
@@ -24084,7 +24237,7 @@ static void sysinit(void)
 	MOUNT("sysfs", "/sys", "sysfs", MS_MGC_VAL, NULL);
 	MKDIR("/dev/shm", 0777);
 	MKDIR("/dev/pts", 0777);
-#ifdef BLUECAVE
+#ifdef RTCONFIG_LANTIQ
 	MKDIR("/dev/switch_api", 0775);
 	MKDIR("/tmp/wireless", 0777);
 	MKDIR("/tmp/ramdisk", 0777);
@@ -24168,7 +24321,7 @@ static void sysinit(void)
 		"/var/cache/inadyn",
 #endif
 		"/tmp/var/wwwext", "/tmp/var/wwwext/cgi-bin",	// !!TB - CGI support
-#ifdef BLUECAVE
+#ifdef RTCONFIG_LANTIQ
 		"/tmp/etc/rc.d",
 #endif
 		"/tmp/var/tmp",
@@ -25523,7 +25676,7 @@ logmessage("ATE", "boot/continue fail= %d/%d\n", nvram_get_int("Ate_boot_fail"),
 				set_default_accept_ra(0);
 #endif
 
-#if !defined(HND_ROUTER) && !defined(BLUECAVE)
+#if !defined(HND_ROUTER) && !defined(RTCONFIG_LANTIQ)
 			start_vlan();
 #elif defined(RTAX55) || defined(RTAX1800) || defined(RTAX58U_V2) || defined(RTAX3000N) || defined(BR63) || defined(GTBE98) || defined(GTBE98_PRO) || defined(GTBE96) //handle dualwan on rtkswitch
 			config_switch();
@@ -25608,7 +25761,7 @@ logmessage("ATE", "boot/continue fail= %d/%d\n", nvram_get_int("Ate_boot_fail"),
 #ifdef RTCONFIG_TR069
 			tr_switch_wan_line(WAN_UNIT_FIRST);
 #endif
-#if defined(HND_ROUTER) || defined(BLUECAVE)
+#if defined(HND_ROUTER) || defined(RTCONFIG_LANTIQ)
 			start_vlan();
 #endif
 			start_wan();

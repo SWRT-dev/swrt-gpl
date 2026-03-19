@@ -235,7 +235,7 @@ start_emf(char *lan_ifname)
 	char word[256], *next;
 	char *mgrp, *ifname;
 
-#ifdef BLUECAVE
+#ifdef RTCONFIG_LANTIQ
 	return;
 #endif
 

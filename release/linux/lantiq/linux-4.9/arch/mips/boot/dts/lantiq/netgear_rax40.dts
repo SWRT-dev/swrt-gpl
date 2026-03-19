@@ -1,0 +1,67 @@
+#include "easy550_anywan.dts"
+#include <dt-bindings/input/input.h>
+
+/ {
+//	model = "Netgear Nighthawk RAX40";
+//	compatible = "netgear,rax40", "lantiq,grx500", "lantiq,xrx500";
+
+	gpio-keys-polled {
+		compatible = "gpio-keys-polled";
+		#address-cells = <1>;
+		#size-cells = <0>;
+		poll-interval = <100>;
+
+		reset {
+			label = "reset";
+			gpios = <&gpio0 0 1>;
+			linux,code = <KEY_RESTART>;
+		};
+		wifi {
+			label = "wifi";
+			gpios = <&gpio1 4 1>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+		wps {
+			label = "wps";
+			gpios = <&gpio0 30 1>;
+			linux,code = <KEY_WPS_BUTTON>;
+		};
+	};
+
+	gpio-leds {
+		compatible = "gpio-leds";
+
+		wifi {
+			label = "rax40:green:wifi";
+			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+		wps {
+			label = "rax40:green:wps";
+			gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+		power {
+			label = "rax40:red:power";
+			gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+		inet {
+			label = "rax40:orange:inet";
+			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
+			default-state = "on";
+		};
+	};
+};
+
+&pcie0 {
+	reset-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
+};
+
+&pcie1 {
+	reset-gpios = <&gpio0 29 GPIO_ACTIVE_LOW>;
+};
+
+&pcie2 {
+	reset-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+};

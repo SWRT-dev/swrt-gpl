@@ -1,0 +1,11 @@
+choice
+	prompt "Choose Product"
+	help
+	   Choose specific product for different hardware layout
+
+config RAX40
+	bool "rax40 (grx350 + wav624)"
+
+
+endchoice
+

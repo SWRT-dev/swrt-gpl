@@ -20,6 +20,13 @@
         reg = <0x14900140 0x24>;
     };
 
+	sysrst {
+		compatible = "intel,sysrst-xrx500";
+		/* add required rcu definition here */
+		resets = <&rcu0 0x10 1>, <&rcu0 0x10 30>, <&rcu0 0x48 0>;
+		reset-names = "TEP", "GLB_SW", "VCODEC";
+	};
+
 	watchdog@0,0 {
 		compatible = "lantiq,bootcorewdt","lantiq, wdt-bootcore-xrx500"; 
 		reg = <0 0>;
@@ -102,10 +109,13 @@
 		reg = <0x16000000 0x2000000>;
 		ranges = <0x0 0x16000000 0x02000000>;
 
-		rcu0: rcu@0000000 {
-			compatible = "lantiq,rcu-grx500";
+		rcu0: reset-controller@0000000 {
+			compatible = "lantiq,rcu-grx500", "syscon";
 			reg = <0x000000 0x100000>;
+			#reset-cells = <2>;
+			intel,global-reset = <&rcu0 0x10 30>;
 		};
+
 
 		pmu0: pmu@100000 {
 			compatible = "lantiq,pmu-grx500";
@@ -143,7 +153,6 @@
 			gpio-controller;
 			
 		};
-
 		ssx4ctrl@1f00000 {
 			#address-cells = <1>;
 			#size-cells = <1>;

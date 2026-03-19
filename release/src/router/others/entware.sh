@@ -16,6 +16,8 @@ if [ "$(nvram get entware_mount)" == 1 ];then
 		logger "No supported disk type found!/没有找到可用的USB磁盘格式!" 
 		exit 1
 	else
+		local productid
+		productid=$(nvram get productid)
 		mkdir -p $usb_disk/opt
 		entwareopt="bin etc lib sbin share tmp usr include doc var home root libexec"
 		for f in $entwareopt
@@ -26,7 +28,7 @@ if [ "$(nvram get entware_mount)" == 1 ];then
 			ln -sf $usb_disk/opt/$f /jffs/opt/$f
 		done
 		ln -sf /jffs/opt /tmp/opt
-		if [ "$(nvram get productid)" == "BLUECAVE" ]; then
+		if [ "$productid" == "BLUECAVE" ] || [ "$productid" == "RAX40" ]; then
 			mount --bind /tmp/opt /opt
 			ln -sf /tmp/wireless/lantiq /opt/lantiq
 		fi

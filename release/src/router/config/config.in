@@ -1667,7 +1667,12 @@ config RTCONFIG_QSR10G
 	default n
 
 config RTCONFIG_LANTIQ
-	bool "Intel Lantiq"
+	bool "Intel Lantiq Chip Support"
+	default n
+
+config RTCONFIG_WLMODULE_WAV6XX_AP
+	bool "Intel Lantiq wav6xx WiFi Chip"
+	depends on RTCONFIG_LANTIQ
 	default n
 
 config RTCONFIG_RGMII_BRCM5301X

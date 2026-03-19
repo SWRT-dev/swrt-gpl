@@ -1,0 +1,17 @@
+#include "easy550_V1_anywan.dts"
+
+&buck1_reg {
+	regulator-name = "1V15VDD";
+	regulator-min-microvolt = <1000000>;
+	regulator-max-microvolt = <1200000>;
+};
+
+&buck2_reg {
+	regulator-name = "1V15VDD-shared";
+	regulator-min-microvolt = <1000000>;
+	regulator-max-microvolt = <1200000>;
+};
+
+&cpu0 {
+	cpu-supply = <&buck1_reg>;
+};

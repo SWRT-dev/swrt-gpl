@@ -71,7 +71,7 @@ else
 
 # current firmware information
 productid=`nvram get productid`
-if [ "$productid" == "BLUECAVE" ]; then
+if [ "$productid" == "BLUECAVE" ] || [ "$productid" == "RAX40" ]; then
        rc rc_service stop_wrs_force
 fi
 

@@ -1,6 +1,25 @@
 
 [ENGLISH](README_en.md) [中文](README.md)
 
+## 编译测试
+
+|型号|状态|
+|:--:|:-:|
+|rt-ac85p|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|r6800|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|rm-ac2100|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|jcg-q10pro|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|jcg-q20|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|h3c-tx1801|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|xm-cr660x|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|rt-ax53u|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|rm-ax6000|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|360t7|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|rt-ac82u|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|rt-ac95u|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|sbrac3200p|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|r7000p|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
+|xm-ax3600|[![Build testing](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml/badge.svg)](https://github.com/SWRT-dev/swrt-gpl/actions/workflows/github-actions.yml)|
 
 =======
 

@@ -638,6 +638,17 @@ CFLAGS_GCOV	:= -fprofile-arcs -ftest-coverage -fno-tree-loop-im $(call cc-disabl
 CFLAGS_KCOV	:= $(call cc-option,-fsanitize-coverage=trace-pc,)
 export CFLAGS_GCOV CFLAGS_KCOV
 
+MODEL = $(subst -,,$(BUILD_NAME))
+KBUILD_CFLAGS += -D$(MODEL)
+KBUILD_CFLAGS += -D$(SWRT_NAME)
+ifneq ($(wildcard ./net/swrt_fastpath/*.c),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+else ifneq ($(wildcard ./net/swrt_fastpath/fast_path_*.o),)
+KBUILD_CFLAGS += -DPGB_QUICK_PATH
+export PGB_QUICK_PATH=y
+endif
+
 # The arch Makefile can set ARCH_{CPP,A,C}FLAGS to override the default
 # values of the respective KBUILD_* variables
 ARCH_CPPFLAGS :=

@@ -500,7 +500,7 @@ stop_igmpproxy()
 
 #ifdef RTCONFIG_IMPROXY
 	stop_improxy(AF_INET);
-#elif defined(BLUECAVE)
+#elif defined(RTCONFIG_LANTIQ)
 	stop_mcast_proxy();
 #elif defined(HND_ROUTER) || defined(MCPD_PROXY)
 	/* nothing yet */
@@ -564,7 +564,7 @@ start_igmpproxy(char *wan_ifname)
 
 #ifdef RTCONFIG_IMPROXY
 	start_improxy(AF_INET, wan_ifname);
-#elif defined(BLUECAVE)
+#elif defined(RTCONFIG_LANTIQ)
 	nvram_set("igmp_ifname", wan_ifname);
 	start_mcast_proxy();
 #elif defined(HND_ROUTER) || defined(MCPD_PROXY)

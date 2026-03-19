@@ -755,7 +755,7 @@ define(function(){
 					retArray.push("Advanced_MobileBroadband_Content.asp");
 				}
 
-				if(based_modelid == "BLUECAVE"){
+				if(lantiq_support){
 					retArray.push("Advanced_Smart_Connect.asp");
 				}
 

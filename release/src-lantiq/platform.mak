@@ -48,8 +48,12 @@ EXTRACFLAGS += -DLINUX26
 define platformRouterOptions
 	@( \
 	if [ "$(INTEL)" = "y" ]; then \
-	        sed -i "/RTCONFIG_INTEL\>/d" $(1); \
-	        echo "RTCONFIG_INTEL=y" >>$(1); \
+		sed -i "/RTCONFIG_INTEL\>/d" $(1); \
+		echo "RTCONFIG_INTEL=y" >>$(1); \
+	fi; \
+	if [ "$(WAV6XX)" = "y" ]; then \
+		sed -i "/RTCONFIG_WLMODULE_WAV6XX_AP\>/d" $(1); \
+		echo "RTCONFIG_WLMODULE_WAV6XX_AP=y" >>$(1); \
 	fi; \
 	)
 endef
@@ -58,5 +62,11 @@ define platformBusyboxOptions
 endef
 
 define platformKernelConfig
+	@( \
+	if [ "$(RAX40)" = "y" ]; then \
+		sed -i "/CONFIG_RAX40\>/d" $(1); \
+		echo "CONFIG_RAX40=y" >>$(1); \
+	fi; \
+	)
 endef
 export PARALLEL_BUILD := -j$(shell grep -c '^processor' /proc/cpuinfo)

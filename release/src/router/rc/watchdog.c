@@ -498,6 +498,7 @@ void erase_nvram(void)
 {
 	switch (get_model()) {
 		case MODEL_BLUECAVE:
+		case MODEL_RAX40:
 		case MODEL_GTAC9600:
 			eval("cp", "-f", "/sbin/nvram.txt", "/tmp/nvram.txt");
 			eval("cp", "-f", "/sbin/nvram.txt", "/jffs/nvram.txt");
@@ -3505,11 +3506,13 @@ void btn_check(void)
 			else
 				bcm_cled_ctrl(BCM_CLED_OFF, BCM_CLED_STEADY_NOBLINK);
 #endif
+#ifdef RTCONFIG_LANTIQ
 #ifdef BLUECAVE
 					if(btn_pressed == 1) {
 						nvram_set("bc_ledbh", "reset");
 						kill_pidfile_s("/var/run/sw_devled.pid", SIGUSR1);
 					}
+#endif
 					run_app_script(NULL, "stop");
 					system("ejusb -1");
 #endif

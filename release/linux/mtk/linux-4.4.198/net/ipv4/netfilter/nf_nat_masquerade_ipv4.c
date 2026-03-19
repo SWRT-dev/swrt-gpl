@@ -153,7 +153,7 @@ static inline struct nf_conntrack_expect *find_fullcone_exp(struct nf_conn *ct)
 
 	return exp;
 }
-#endif /* CONFIG_KF_NETFILTER */
+#endif
 
 
 unsigned int
@@ -261,7 +261,7 @@ nf_nat_masquerade_ipv4(struct sk_buff *skb, unsigned int hooknum,
 		}
 		return ret;
 	}
-#endif /* CONFIG_KF_NETFILTER */
+#endif
 
 	/* Transfer from original range. */
 	memset(&newrange.min_addr, 0, sizeof(newrange.min_addr));

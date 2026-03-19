@@ -1,0 +1,209 @@
+/dts-v1/;
+#include <dt-bindings/interrupt-controller/mips-gic.h>
+#include <dt-bindings/clock/intel,grx500-clk.h>
+#include <dt-bindings/pinctrl/intel,equilibrium.h>
+/*****************************************************************
+** Include a chip configuration file
+*****************************************************************/
+#include "xrx500.dtsi"
+/*****************************************************************
+** Include a board configuration file
+*****************************************************************/
+#include "xrx500_anywan_bc.dtsi"
+
+/ {
+	model = "EASY350 ANYWAN (GRX350) Main model";
+	compatible = "intel,easy350_anywan", "lantiq,grx500", "lantiq,xrx500";
+
+	chosen {
+		bootargs = "earlycon=lantiq,0x16600000 nr_cpus=4 nocoherentio clk_ignore_unused";
+
+		stdout-path = "serial0";
+	};
+
+	memory@0 {
+		device_type = "memory";
+		reg = <0x20000000 0x0e000000>;
+	};
+
+	ssx4@16000000 {
+		localbus@0 {
+			ranges = <0 0 0x1c00000 0xfffff>;
+			nand-parts@0 {
+				compatible = "gen_nand","lantiq,nand-xway";
+				lantiq,cs = <1>;
+				bank-width = <2>;
+				reg = <0 0x0 0x100000>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				nand-ecc-mode = "soft";
+				nand-ecc-algo = "bch";
+				nand-ecc-strength = <4>;
+				nand-ecc-step-size = <512>;
+				partition@0 {
+					label = "uboot";
+					reg = <0x000000 0x100000>;
+				};
+				
+				partition@100000 {
+					label = "ubootconfigA";
+					reg = <0x100000 0x40000>;
+				};
+				
+				partition@140000 {
+					label = "ubootconfigB";
+					reg = <0x140000 0x40000>;
+				};
+				
+				partition@180000 {
+					label = "gphyfirmware";
+					reg = <0x180000 0x40000>;
+				};
+
+				partition@1c0000 {
+					label = "calibration";
+					reg = <0x1c0000 0x100000>;
+				};
+
+				partition@2c0000 {
+					label = "Bootcore";
+					reg = <0x2c0000 0x1000000>;
+				};
+
+				partition@12c0000 {
+					label = "system_sw";
+					reg = <0x12c0000 0x6C00000>;
+				};
+
+				partition@7Ec0000 {
+					label = "res";
+					reg = <0x7EC0000 0x140000>;
+				};
+			};
+		};
+	};
+};
+
+/******************************************************************************
+** Model configuration: Select Gigabit or fast ethernet firmware to load to 
+** internel GPHY.
+******************************************************************************/
+&phy_fw {
+	status = "okay";
+};
+
+/ {
+/******************************************************************************
+** Board configuration: MEI setting might not be needed for VRX318
+******************************************************************************/
+	mei@E116000 {
+		compatible = "lantiq,mei-xrx300";
+		reg = <0xE116000 0x100>;
+		interrupts = <63>;
+	};
+};
+
+/{
+/******************************************************************************
+** Model configuration: Select Gigabit or fast ethernet firmware to load to 
+** internel GPHY.
+** GE mode : 11G-FW
+** FE mode : 22F-FW
+******************************************************************************/
+	gphy_fw: gphy-fw {
+		compatible = "lantiq,xway-phy-fw";
+		fw-mode = "11G-FW"; /*"11G-FW"*/ /*22F-FW*/
+		no_of_phys = <5>;
+	};
+};
+/*******************************************************************************/
+
+/******************************************************************************
+** Model configuration: Arrange specific FW to run on VPEs. 
+******************************************************************************/
+/* use CPU1 for voice firmware */
+&cpu1 {
+	default-OS = "VOICEFW";
+};
+
+/* use CPU3 for MPE firmware */
+&cpu3 {
+	default-OS = "MPEFW";
+};
+
+/******************************************************************************/
+
+&cpu_opp_table {
+	compatible = "operating-points-v2";
+	opp-shared;
+
+	opp@800000000 {
+		opp-hz = /bits/ 64 <800000000>;
+		opp-supported-hw = <0x00000041>;
+						/* <target min max> */
+		opp-microvolt-slow_default = <1100000 1000000 1200000>;
+		opp-microvolt-not_defined = <1100000 1000000 1200000>;
+		opp-microvolt-slow0 = <1100000 1000000 1200000>;
+		opp-microvolt-slow1 = <1100000 1000000 1200000>;
+		opp-microvolt-slow2 = <1100000 1000000 1200000>;
+		opp-microvolt-slow3 = <1150000 1000000 1200000>;
+		opp-microvolt-typ0  = <1050000 1000000 1200000>;
+		opp-microvolt-typ1  = <1100000 1000000 1200000>;
+		opp-microvolt-typ2  = <1050000 1000000 1200000>;
+		opp-microvolt-typ3  = <1050000 1000000 1200000>;
+		opp-microvolt-fast0 = <1000000 1000000 1200000>;
+		opp-microvolt-fast1 = <1050000 1000000 1200000>;
+		opp-microvolt-fast2 = <1000000 1000000 1200000>;
+		opp-microvolt-fast3 = <1150000 1000000 1200000>;
+	};
+
+	opp@600000000 {
+		opp-hz = /bits/ 64 <600000000>;
+		opp-supported-hw = <0x00000041>;
+		opp-microvolt-slow_default = <1100000 1000000 1200000>;
+		opp-microvolt-not_defined = <1100000 1000000 1200000>;
+		opp-microvolt-slow0 = <1100000 1000000 1200000>;
+		opp-microvolt-slow1 = <1100000 1000000 1200000>;
+		opp-microvolt-slow2 = <1100000 1000000 1200000>;
+		opp-microvolt-slow3 = <1150000 1000000 1200000>;
+		opp-microvolt-typ0  = <1050000 1000000 1200000>;
+		opp-microvolt-typ1  = <1100000 1000000 1200000>;
+		opp-microvolt-typ2  = <1050000 1000000 1200000>;
+		opp-microvolt-typ3  = <1050000 1000000 1200000>;
+		opp-microvolt-fast0 = <1000000 1000000 1200000>;
+		opp-microvolt-fast1 = <1050000 1000000 1200000>;
+		opp-microvolt-fast2 = <1000000 1000000 1200000>;
+		opp-microvolt-fast3 = <1150000 1000000 1200000>;
+	};
+
+	opp@150000000 {
+		opp-hz = /bits/ 64 <150000000>;
+		opp-supported-hw = <0x00000041>;
+		opp-microvolt-slow_default = <1100000 1000000 1200000>;
+		opp-microvolt-not_defined = <1100000 1000000 1200000>;
+		opp-microvolt-slow0 = <1100000 1000000 1200000>;
+		opp-microvolt-slow1 = <1100000 1000000 1200000>;
+		opp-microvolt-slow2 = <1100000 1000000 1200000>;
+		opp-microvolt-slow3 = <1150000 1000000 1200000>;
+		opp-microvolt-typ0  = <1050000 1000000 1200000>;
+		opp-microvolt-typ1  = <1100000 1000000 1200000>;
+		opp-microvolt-typ2  = <1050000 1000000 1200000>;
+		opp-microvolt-typ3  = <1050000 1000000 1200000>;
+		opp-microvolt-fast0 = <1000000 1000000 1200000>;
+		opp-microvolt-fast1 = <1050000 1000000 1200000>;
+		opp-microvolt-fast2 = <1000000 1000000 1200000>;
+		opp-microvolt-fast3 = <1150000 1000000 1200000>;
+	};
+};
+
+/******************************************************************************
+** Model configuration: Enable SSC1 for DECT for this model.
+******************************************************************************/
+/* override ssc1 to use legacy SPI driver for DECT as default*/
+&ssc1 {
+	compatible = "lantiq,spi-ssc";
+	legacy,cs-api-port = <1>;
+	status = "okay";
+};
+
+/******************************************************************************/

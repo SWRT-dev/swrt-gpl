@@ -375,7 +375,7 @@ int linuxRead(const unsigned char *buf, int offset, int count)
 	if (get_active_fw_num() == 1)
 		mtd_name = LINUX2_MTD_NAME;
 #endif
-#if defined(RTCONFIG_ALPINE) || defined(BLUECAVE)
+#if defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
 	return -1;
 #endif
 	return MTDPartitionRead(mtd_name, buf, offset, count);

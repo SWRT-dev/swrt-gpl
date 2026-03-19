@@ -6170,7 +6170,7 @@ start_acsd()
 }
 #endif
 
-#ifdef BLUECAVE
+#if defined(RTCONFIG_LANTIQ)
 static void
 mcast_conf(void)
 {
@@ -14300,7 +14300,7 @@ int start_quagga(void)
 		fprintf(fp2, "debug rip packet\n");
 		fprintf(fp2, "router rip\n");
 		fprintf(fp2, " version 2\n");
-#if !defined(BLUECAVE)
+#if !defined(RTCONFIG_LANTIQ)
 		fprintf(fp2, " network vlan2\n");
 		fprintf(fp2, " network vlan3\n");
 		fprintf(fp2, " passive-interface vlan2\n");
@@ -16213,7 +16213,7 @@ script_allnet:
 			start_vlan();
 			config_switch();
 #else
-#if !defined(HND_ROUTER) && !defined(BLUECAVE)
+#if !defined(HND_ROUTER) && !defined(RTCONFIG_LANTIQ)
 			config_switch();
 			start_vlan();
 #endif
@@ -16247,7 +16247,7 @@ script_allnet:
 #if defined(RTCONFIG_MDNS)
 			start_mdns();
 #endif
-#if defined(HND_ROUTER) || defined(BLUECAVE)
+#if defined(HND_ROUTER) || defined(RTCONFIG_LANTIQ)
 			start_vlan();
 #endif
 			start_wan();
