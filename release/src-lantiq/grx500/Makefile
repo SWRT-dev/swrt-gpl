@@ -13,11 +13,11 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 #
 pobj-y:=
 
-pobj-y += directconnect_dp eip97 ltq_fw_phy_ip ppa_drv
-pobj-y += switch_cli wave_bin
+pobj-y += directconnect_dp eip97 ltq_fw_phy_ip ppa_drv switch_cli
+pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += ltq-wlan-wave_6x
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += dwpal swpal iwlwav-dev iwlwav-tools
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += iwlwav-hostap iwlwav-iw
-pobj-$(RTCONFIG_WLMODULE_WAV5XX_AP) += wav5xx_drv wav5xx_hostapd wav5xx_crda wav5xx_iw
+pobj-$(RTCONFIG_WLMODULE_WAV5XX_AP) += wav5xx_drv wav5xx_hostapd wav5xx_crda wav5xx_iw ltq-wlan-wave_5x
 
 
 pobj-clean := $(foreach pobj, $(pobj-y) $(pobj-n) $(pobj-), $(pobj)-clean)
