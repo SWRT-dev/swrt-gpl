@@ -1,74 +1,45 @@
-#/******************************************************************************
-#
-#         Copyright (c) 2020, MaxLinear, Inc.
-#         Copyright 2016 - 2020 Intel Corporation
-#         Copyright 2015 - 2016 Lantiq Beteiligungs-GmbH & Co. KG
-#         Copyright 2009 - 2014 Lantiq Deutschland GmbH
-#         Copyright 2007 - 2008 Infineon Technologies AG
-#
-#  For licensing information, see the file 'LICENSE' in the root folder of
-#  this software module.
-#
-#*******************************************************************************/
+# Convert swrt build environment variable to sdk
+include ../sdk.config
+include ../rules.mk
+PKG_BUILD_DIR=$(shell pwd)/source
 
-export abs_top = $(shell pwd)
-export abs_top_srcdir = $(abs_top)
-export abs_top_builddir = $(abs_top_srcdir)
-export abs_logprep_srcdir = $(abs_top_srcdir)/wireless/shared_iwlwav-dev
-export STAGING_DIR = 
+TARGET_CFLAGS += -DHAVE_C99=1
+LDFLAGS += -lnl-genl-3 -lnl-3 -pthread -lpthread -lsafec-3.3
+TARGET_CFLAGS += -fstack-protector-strong -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIC -Wl,-strip-debug
+LDFLAGS += -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,relro
 
-CFLAGS += -Werror=format-security -Wall -Wl,-strip-debug
-CFLAGS += `pkg-config --cflags libnl-3.0` -Wno-unused-result
-LDFLAGS += `pkg-config libnl-3.0 libnl-genl-3.0 --libs` -lpthread
 
-all: dutserver dump_handler logserver drvhlpr BclSockServer whm_handler;
+
+
+BUILD_VARIANT:=release
+ifeq ($(DEBUG),y)
+TARGET_CFLAGS += -DCONFIG_WAVE_DEBUG
+BUILD_VARIANT:=debug
+endif
+
+
+all:
+	@echo "LDFLAGS: $(LDFLAGS)"
+	$(MAKE) -C $(PKG_BUILD_DIR) clean
+	$(MAKE) $(TARGET_CONFIGURE_OPTS) -C $(PKG_BUILD_DIR) CFLAGS="$(TARGET_CFLAGS)" LDFLAGS="$(LDFLAGS)" $(BUILD_VARIANT)
+	touch stamp-h1
+
+install:
+	@[ -d $(INSTALLDIR)/opt/intel/bin/ ] || install -d $(INSTALLDIR)/opt/intel/bin/
+	@install -D $(PKG_BUILD_DIR)/tools/dutserver/linux/dutserver $(INSTALLDIR)/opt/intel/bin/
+	@install -D $(PKG_BUILD_DIR)/tools/dump_handler/dump_handler $(INSTALLDIR)/opt/intel/bin/
+	@install -D $(PKG_BUILD_DIR)/tools/whm_handler/whm_handler $(INSTALLDIR)/opt/intel/bin/
+	@install -D $(PKG_BUILD_DIR)/tools/drvhlpr/drvhlpr $(INSTALLDIR)/opt/intel/bin/
+ifeq ($(BUILD_VARIANT),debug)
+	@install -D $(PKG_BUILD_DIR)/tools/rtlogger/logserver/linux/logserver $(INSTALLDIR)/opt/intel/bin/
+	@install -D $(PKG_BUILD_DIR)/tools/BCLSockServer/BCLSockServer $(INSTALLDIR)/opt/intel/bin/
+endif
+	$(STRIP) $(INSTALLDIR)/opt/intel/bin/*
+	#echo -e "iwlwav_tools_hash=\"68e5c9477eab18cc2711394156cd5eb3474d22b6\"\niwlwav_tools_tag=\"68e5c9477eab18cc2711394156cd5eb3474d22b6\"" > $(1)/etc/iwlwav_tools.ver
+
 
 clean:
-	$(MAKE) -C tools/shared/linux/               clean
-	$(MAKE) -C wireless/                         clean
-	$(MAKE) -C tools/shared/3rd_party/iniparser/ clean
-	$(MAKE) -C tools/rtlogger/logserver/linux/   clean
-	$(MAKE) -C tools/dutserver/linux/            clean
-	$(MAKE) -C tools/drvhlpr/                    clean
-	$(MAKE) -C tools/dump_handler/               clean
-	$(MAKE) -C tools/whm_handler/                clean
-	$(MAKE) -C tools/BCLSockServer/              clean
-	find $(abs_top) -name "logmacros.*"   | xargs rm -f
-	find $(abs_top) -name "Makefile.am"   | xargs rm -f
-	find $(abs_top) -name "Makefile.in"   | xargs rm -f
-	find $(abs_top) -name "*.scd"         | xargs rm -f
-	find $(abs_top) -name "*.o.cmd"       | xargs rm -f 
-	find $(abs_top) -name "*.stderr"      | xargs rm -f
-	find $(abs_top) -name "*.pipe.result" | xargs rm -f
-	find $(abs_top) -name ".logprep_ts"   | xargs rm -rf
 
-libmtlkc:
-	$(MAKE) -C tools/shared/linux/
+stage:
 
-libmtlkwls:
-	$(MAKE) -C wireless/
 
-libiniparser:
-	$(MAKE) -C tools/shared/3rd_party/iniparser/
-
-dutserver: libmtlkc libmtlkwls libiniparser
-	$(MAKE) -C tools/dutserver/linux/
-
-logserver: libmtlkc libmtlkwls
-	$(MAKE) -C tools/rtlogger/logserver/linux/
-
-drvhlpr: libmtlkc libmtlkwls libiniparser
-	$(MAKE) -C tools/drvhlpr/
-
-dump_handler: libmtlkc libmtlkwls
-	$(MAKE) -C tools/dump_handler/
-
-whm_handler: libmtlkc libmtlkwls
-	$(MAKE) -C tools/whm_handler/
-
-BclSockServer: libmtlkc
-	$(MAKE) -C tools/BCLSockServer
-
-release: dutserver dump_handler drvhlpr whm_handler
-
-debug: all

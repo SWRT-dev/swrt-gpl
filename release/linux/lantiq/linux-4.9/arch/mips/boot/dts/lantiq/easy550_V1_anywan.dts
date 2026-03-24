@@ -1,0 +1,97 @@
+#include "easy350_V1_anywan.dts"
+
+/ {
+	model = "EASY550 ANYWAN (GRX550) Main model";
+	compatible = "intel,easy550_anywan", "intel,easy350_anywan", "lantiq,grx500", "lantiq,xrx500";
+};
+
+&cooling_maps {
+	map0 {
+		trip = <&cpu_alert0>;
+		cooling-device = <&cpu0 3 3>;
+	};
+};
+
+&cpu_opp_table {
+
+	/delete-node/ opp@800000000;
+	/delete-node/ opp@600000000;
+	/delete-node/ opp@150000000;
+
+	opp@1000000000 {
+		opp-hz = /bits/ 64 <1000000000>;
+		opp-supported-hw = <0x00000010>;
+						/* <target min max> */
+		opp-microvolt-slow_default = <1150000 1000000 1200000>;
+		opp-microvolt-not_defined = <1150000 1000000 1200000>;
+		opp-microvolt-slow0 = <1150000 1000000 1200000>;
+		opp-microvolt-slow1 = <1150000 1000000 1200000>;
+		opp-microvolt-slow2 = <1150000 1000000 1200000>;
+		opp-microvolt-slow3 = <1150000 1000000 1200000>;
+		opp-microvolt-typ0  = <1150000 1000000 1200000>;
+		opp-microvolt-typ1  = <1150000 1000000 1200000>;
+		opp-microvolt-typ2  = <1100000 1000000 1200000>;
+		opp-microvolt-typ3  = <1150000 1000000 1200000>;
+		opp-microvolt-fast0 = <1150000 1000000 1200000>;
+		opp-microvolt-fast1 = <1150000 1000000 1200000>;
+		opp-microvolt-fast2 = <1100000 1000000 1200000>;
+		opp-microvolt-fast3 = <1150000 1000000 1200000>;
+	};
+
+	opp@666666666 {
+		opp-hz = /bits/ 64 <666666666>;
+		opp-supported-hw = <0x00000010>;
+		opp-microvolt-slow_default = <1150000 1000000 1200000>;
+		opp-microvolt-not_defined = <1150000 1000000 1200000>;
+		opp-microvolt-slow0 = <1150000 1000000 1200000>;
+		opp-microvolt-slow1 = <1150000 1000000 1200000>;
+		opp-microvolt-slow2 = <1150000 1000000 1200000>;
+		opp-microvolt-slow3 = <1150000 1000000 1200000>;
+		opp-microvolt-typ0  = <1050000 1000000 1200000>;
+		opp-microvolt-typ1  = <1050000 1000000 1200000>;
+		opp-microvolt-typ2  = <1050000 1000000 1200000>;
+		opp-microvolt-typ3  = <1150000 1000000 1200000>;
+		opp-microvolt-fast0 = <1050000 1000000 1200000>;
+		opp-microvolt-fast1 = <1050000 1000000 1200000>;
+		opp-microvolt-fast2 = <1000000 1000000 1200000>;
+		opp-microvolt-fast3 = <1150000 1000000 1200000>;
+	};
+
+	opp@333333333 {
+		opp-hz = /bits/ 64 <333333333>;
+		opp-supported-hw = <0x00000010>;
+		opp-microvolt-slow_default = <1150000 1000000 1200000>;
+		opp-microvolt-not_defined = <1150000 1000000 1200000>;
+		opp-microvolt-slow0 = <1150000 1000000 1200000>;
+		opp-microvolt-slow1 = <1150000 1000000 1200000>;
+		opp-microvolt-slow2 = <1150000 1000000 1200000>;
+		opp-microvolt-slow3 = <1150000 1000000 1200000>;
+		opp-microvolt-typ0  = <1050000 1000000 1200000>;
+		opp-microvolt-typ1  = <1050000 1000000 1200000>;
+		opp-microvolt-typ2  = <1050000 1000000 1200000>;
+		opp-microvolt-typ3  = <1150000 1000000 1200000>;
+		opp-microvolt-fast0 = <1050000 1000000 1200000>;
+		opp-microvolt-fast1 = <1050000 1000000 1200000>;
+		opp-microvolt-fast2 = <1000000 1000000 1200000>;
+		opp-microvolt-fast3 = <1150000 1000000 1200000>;
+	};
+
+	opp@166666666 {
+		opp-hz = /bits/ 64 <166666666>;
+		opp-supported-hw = <0x00000010>;
+		opp-microvolt-slow_default = <1150000 1000000 1200000>;
+		opp-microvolt-not_defined = <1150000 1000000 1200000>;
+		opp-microvolt-slow0 = <1150000 1000000 1200000>;
+		opp-microvolt-slow1 = <1150000 1000000 1200000>;
+		opp-microvolt-slow2 = <1150000 1000000 1200000>;
+		opp-microvolt-slow3 = <1150000 1000000 1200000>;
+		opp-microvolt-typ0  = <1050000 1000000 1200000>;
+		opp-microvolt-typ1  = <1050000 1000000 1200000>;
+		opp-microvolt-typ2  = <1050000 1000000 1200000>;
+		opp-microvolt-typ3  = <1150000 1000000 1200000>;
+		opp-microvolt-fast0 = <1050000 1000000 1200000>;
+		opp-microvolt-fast1 = <1050000 1000000 1200000>;
+		opp-microvolt-fast2 = <1000000 1000000 1200000>;
+		opp-microvolt-fast3 = <1150000 1000000 1200000>;
+	};
+};

@@ -2,9 +2,9 @@
 #include <dt-bindings/input/input.h>
 
 / {
-//	model = "Netgear Nighthawk RAX40";
+	model = "Netgear Nighthawk RAX40";
 //	compatible = "netgear,rax40", "lantiq,grx500", "lantiq,xrx500";
-
+/*
 	gpio-keys-polled {
 		compatible = "gpio-keys-polled";
 		#address-cells = <1>;
@@ -50,6 +50,63 @@
 			label = "rax40:orange:inet";
 			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
 			default-state = "on";
+		};
+	};
+*/
+	ssx4@16000000 {
+		localbus@0 {
+			ranges = <0 0 0x1c00000 0xfffff>;
+			nand-parts@0 {
+				compatible = "gen_nand","lantiq,nand-xway";
+				lantiq,cs = <1>;
+				bank-width = <2>;
+				reg = <0 0x0 0x100000>;
+				#address-cells = <1>;
+				#size-cells = <1>;
+				nand-ecc-mode = "soft";
+				nand-ecc-algo = "bch";
+				nand-ecc-strength = <4>;
+				nand-ecc-step-size = <512>;
+				partition@0 {
+					label = "uboot";
+					reg = <0x000000 0x100000>;
+				};
+				
+				partition@100000 {
+					label = "ubootconfigA";
+					reg = <0x100000 0x40000>;
+				};
+				
+				partition@140000 {
+					label = "ubootconfigB";
+					reg = <0x140000 0x40000>;
+				};
+				
+				partition@180000 {
+					label = "gphyfirmware";
+					reg = <0x180000 0x40000>;
+				};
+
+				partition@1c0000 {
+					label = "calibration";
+					reg = <0x1c0000 0x100000>;
+				};
+
+				partition@2c0000 {
+					label = "system_sw";
+					reg = <0x2c0000 0xf600000>;
+				};
+
+				partition@f8c0000 {
+					label = "vendor";
+					reg = <0xf8c0000 0x6c0000>;
+				};
+
+				partition@ff80000 {
+					label = "res";
+					reg = <0xff80000 0x80000>;
+				};
+			};
 		};
 	};
 };

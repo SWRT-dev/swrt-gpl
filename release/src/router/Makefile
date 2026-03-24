@@ -952,6 +952,10 @@ obj-y += wireless_tools$(WTOOL_SUFFIX)
 #################################################################################
 else ifeq ($(RTCONFIG_LANTIQ),y)
 obj-y += wireless_tools$(WTOOL_SUFFIX)
+obj-y += safec3
+obj-y += ncurses-6.3 readline-6.2
+#obj-y += libhelper-2.3.0.16
+#obj-y += fapi_wlan_common-05.04.02.65
 else
 #################################################################################
 # Broadcom-specific packages
@@ -1063,11 +1067,7 @@ else ifeq ($(RTCONFIG_QCA),y)
 else ifeq ($(RTCONFIG_LANTIQ),y)
 obj-$(RTCONFIG_BT_CONN) += btconfig
 # obj-y += ppacmd
-obj-y += libhelper-1.4.0.2
-obj-y += fapi_wlan_common-05.04.00.131
 obj-y += libnl-bf
-obj-y += hostapd-2.6
-obj-y += libfapi-0.1
 obj-y += taskset
 else
 obj-y += libbcmcrypto

@@ -1,0 +1,14 @@
+{
+	"user": "root",
+	"group": "root",
+		"access": {
+		"service": {
+			"methods": [ "notify" ]
+		},
+		"wsd": {
+			"methods": [ "notify.status" ]
+		}
+		},
+	"publish":[ "dwpald" ]
+}
+

@@ -84,7 +84,7 @@ CFLAGS += -I$(TOP)/shared/sysdeps/alpine -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) 
 endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
-CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/fapi_wlan_common-05.04.00.131/include -I$(TOP)/libhelper-1.4.0.2/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
+CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/fapi_wlan_common-05.04.02.65/include -I$(TOP)/libhelper-2.3.0.16/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
 CFLAGS  += -I$(TOP)/wlc_nt
 endif
 
@@ -178,8 +178,7 @@ LDFLAGS += -L$(TOP)/libqcsapi_client_10g -lqcsapi_client
 endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
-# LDFLAGS += -L$(TOP)/fapi_wlan_common-1.0.0.1 -lfapiwlancommon -ldl -L$(TOP)/libhelper-1.4.0.2 -lhelper -lrt
-LDFLAGS += -L$(TOP)/fapi_wlan_common-05.04.00.131 -lfapiwlancommon -ldl -L$(TOP)/libhelper-1.4.0.2 -lhelper -L$(TOP)/libfapi-0.1 -lfapi
+LDFLAGS += -L$(TOP)/fapi_wlan_common-05.04.02.65 -lfapiwlancommon -ldl -L$(TOP)/libhelper-2.3.0.16 -lhelper #-L$(TOP)/libfapi-0.1 -lfapi
 LDFLAGS += -L$(TOP)/wlc_nt -lwlc_nt_client
 endif
 
@@ -499,7 +498,7 @@ OBJS += init-lantiq.o lantiq.o ate-lantiq.o lantiq-wave.o
 OBJS += $(if $(wildcard sysdeps/wps-lantiq.c),wps-lantiq.o,prebuild/wps-lantiq.o)
 ifeq ($(RTCONFIG_AMAS),y)
 OBJS += $(if $(wildcard sysdeps/lantiq/obd-lantiq.c),obd-lantiq.o,prebuild/obd-lantiq.o)
-endif
+endiflantiq
 endif
 
 OBJS += $(if $(wildcard private.c),private.o,prebuild/private.o)
@@ -1278,10 +1277,12 @@ ifeq ($(RTCONFIG_CONNTRACK),y)
 endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc wave_monitor
 ifeq ($(RTCONFIG_LANTIQ),y)
+ifeq ($(BLUECAVE),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc restart_bluetoothd
 	@cd $(INSTALLDIR)/sbin && ln -sf rc set_usb3_to_usb2
 	@cd $(INSTALLDIR)/sbin && ln -sf rc set_usb2_to_usb3
 	@cd $(INSTALLDIR)/sbin && ln -sf rc start_repeater
+endif
 endif
 ifneq ($(RTCONFIG_QCA)$(RTCONFIG_RALINK)$(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc watchdog02
@@ -2114,21 +2115,9 @@ endif
 endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
-ifneq ($(wildcard ./prebuild/lantiq.o),)
-lantiq.o:
-	@-cp -f ./prebuild/lantiq.o .
-endif
 ifneq ($(wildcard ./prebuild/ate-lantiq.o),)
 ate-lantiq.o:
 	@-cp -f ./prebuild/ate-lantiq.o .
-endif
-ifneq ($(wildcard ./prebuild/init-lantiq.o),)
-init-lantiq.o:
-	@-cp -f ./prebuild/init-lantiq.o .
-endif
-ifneq ($(wildcard ./prebuild/lantiq-wave.o),)
-lantiq-wave.o:
-	@-cp -f ./prebuild/lantiq-wave.o .
 endif
 ifneq ($(wildcard ./prebuild/client.o),)
 client.o:

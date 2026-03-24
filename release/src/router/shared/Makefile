@@ -53,7 +53,7 @@ endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
 CFLAGS += -I./sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -DWE_NOLIBM
-CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/fapi_wlan_common-1.0.0.1/include -I$(TOP)/libhelper-1.4.0.2/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
+CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/fapi_wlan_common-05.04.02.65/include -I$(TOP)/libhelper-2.3.0.16/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
 CFLAGS += -I$(TOP)/wlc_nt
 endif
 
@@ -427,8 +427,8 @@ CFLAGS += -DTRX_NEW
 OBJS	+= $(if $(wildcard sysdeps/qca/private.c),private.o,prebuild/private.o)
 vpath %.c sysdeps/qca
 else ifeq ($(RTCONFIG_LANTIQ),y)
-OBJS	+= $(if $(wildcard sysdeps/api-lantiq.c),api-lantiq.o,prebuild/api-lantiq.o)
-OBJS	+= $(if $(wildcard sysdeps/lantiq/lantiq.c),lantiq.o,prebuild/lantiq.o)
+OBJS	+= api-lantiq.o
+OBJS	+= lantiq.o
 OBJS	+= $(if $(wildcard sysdeps/lantiq/private.c),private.o,prebuild/private.o)
 vpath %.c sysdeps/lantiq
 else

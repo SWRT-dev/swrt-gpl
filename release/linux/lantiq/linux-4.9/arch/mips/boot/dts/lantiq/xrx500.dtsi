@@ -1,9 +1,10 @@
 
+#include <dt-bindings/thermal/thermal.h>
 
 / {
 	#address-cells = <1>;
 	#size-cells = <1>;
-	compatible = "lantiq,grx500","lantiq,xrx500"; 
+	compatible = "lantiq,grx500","lantiq,xrx500";
 
 	aliases {
 		serial0 = &asc0;
@@ -20,21 +21,32 @@
 		pcie2   = &pcie2;
 		usb0	= &usb0;
 		usb1	= &usb1;
-		spi1 	= &ssc1;
+		spi1	= &ssc1;
 		timer0  = &gptc0;
 		timer1  = &gptc1;
+		gpio0   = &gpio0;
+		gpio1	= &gpio1;
+		pciephy0= &pcie_phy0;
+		pciephy1= &pcie_phy1;
+		pciephy2= &pcie_phy2;
 	};
 
 	cpus {
 		#address-cells = <1>;
 		#size-cells = <0>;
 
-		cpu: cpu@0 {
+		cpu0: cpu@0 {
 			device_type = "cpu";
 			compatible = "mips,InterAptiv";
 			default-OS = "LINUX";
 			clocks = <&cpuclk>;
+			clock-names = "cpu";
+			clock-latency = <500000>; /* transition latency in ns */
 			reg = <0>;
+			operating-points-v2 = <&cpu_opp_table>;
+			cooling-min-level = <0>;
+			cooling-max-level = <2>;
+			#cooling-cells = <2>; /* min followed by max */
 		};
 
 		cpu1: cpu@1 {
@@ -42,6 +54,10 @@
 			compatible = "mips,InterAptiv";
 			default-OS = "LINUX";
 			reg = <1>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 87 IRQ_TYPE_EDGE_RISING>;
+			vmb-fw-ipi = <20>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		cpu2: cpu@2 {
@@ -49,6 +65,10 @@
 			compatible = "mips,InterAptiv";
 			default-OS = "LINUX";
 			reg = <2>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 88 IRQ_TYPE_EDGE_RISING>;
+			vmb-fw-ipi = <21>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 
 		cpu3: cpu@3 {
@@ -56,17 +76,27 @@
 			compatible = "mips,InterAptiv";
 			default-OS = "LINUX";
 			reg = <3>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 110 IRQ_TYPE_EDGE_RISING>;
+			vmb-fw-ipi = <85>;
+			operating-points-v2 = <&cpu_opp_table>;
 		};
 	};
 
-	cpu_intc: interrupt-controller {
-		#address-cells = <0>; 
-		#interrupt-cells = <1>;
-		interrupt-controller; 
-		compatible = "mti,cpu-interrupt-controller"; 
+	cpu_opp_table: opp_table {
+		compatible = "operating-points-v2";
+		opp-shared;
+		/* Define OPPs into a board DTS file */
 	};
 
-	ssx0@1E000000{ 
+	cpu_intc: interrupt-controller {
+		#address-cells = <0>;
+		#interrupt-cells = <1>;
+		interrupt-controller;
+		compatible = "mti,cpu-interrupt-controller";
+	};
+
+	ssx0@1E000000 {
 		#address-cells = <1>;
 		#size-cells = <1>;
 		compatible = "lantiq,ssx", "simple-bus";
@@ -103,6 +133,8 @@
 			lantiq,dma-desc-in-sram = <1>;
 			lantiq,dma-drb = <0>;
 			lantiq,dma-byte-en = <1>;
+			lantiq,dma-txendi =<3>;
+			lantiq,dma-rxendi =<3>;
 			lantiq,budget = <20>;
 			clocks = <&clkgate1 GATE_TOE_CLK>;
 		};
@@ -120,9 +152,11 @@
 			lantiq,dma-desc-fod = <0>;
 			lantiq,dma-desc-in-sram = <0>;
 			lantiq,dma-drb = <0>;
+			lantiq,dma-txendi =<3>;
+			lantiq,dma-rxendi =<3>;
 		};
 
-		cbm: cbm@700000{ 
+		cbm: cbm@700000 {
 			status = "ok";
 			compatible = "lantiq,cbm-xrx500";
 			reg = < 0x700000 0x1000   /*TMU*/
@@ -142,81 +176,117 @@
 				interrupts = <GIC_SHARED 174 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SHARED 178 IRQ_TYPE_LEVEL_HIGH>,
 					<GIC_SHARED 179 IRQ_TYPE_LEVEL_HIGH>,
-					<GIC_SHARED 180 IRQ_TYPE_LEVEL_HIGH>;
+					<GIC_SHARED 180 IRQ_TYPE_LEVEL_HIGH>,
+					<GIC_SHARED 181 IRQ_TYPE_LEVEL_HIGH>;
 				clocks = <&pll0aclk CBM_CLK>, <&clkgate1 GATE_CBM_CLK>;
 				clock-names = "freq", "cbm";
+				intel,highprio-lan = <1>;
 		};
 
-		mps@1107000 { 
-			compatible = "lantiq,mps-xrx500","lantiq,mps-xrx100" ; /* Extend compatible to xrx500*/
+		mps@1107000 {
+			compatible = "lantiq,xrx500-mps";
 			reg = <0x1107000 0x400>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SHARED 146 IRQ_TYPE_LEVEL_HIGH>, <GIC_SHARED 147 IRQ_TYPE_LEVEL_HIGH>;
 			lantiq,mbx = <&mpsmbx>;
+			pinctrl-names = "pcm";
+			pinctrl-0 = <&pinctrl_tdm>;
 		};
 
 		mpsmbx: mpsmbx@1200000 {
 			reg = <0x1200000 0x200>;
 		};
 
+		mps2@1107400 {
+			compatible = "lantiq,mps2-xrx500";
+			reg = <0x1107400 0x400>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 215 IRQ_TYPE_LEVEL_HIGH>, <GIC_SHARED 216 IRQ_TYPE_LEVEL_HIGH>;
+			lantiq,mbx = <&mps2mbx>;
+		};
+
+		mps2mbx: mps2mbx@1201000 {
+			reg = <0x1201000 0x400>;
+		};
+
 		eth:eth@a00000{
 			#address-cells = <1>;
 			#size-cells = <0>;
-			compatible = "lantiq,xrx500-net";
+			#cooling-cells = <2>;
+			compatible = "lantiq,xrx500-eth";
 			lantiq,eth-rx-csum-offload = <1>;
-		};
-
-		mdio@0 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			compatible = "lantiq,xrx500-mdio";
-
-			phy2: ethernet-phy@2 {
-				reg = <2>;
-				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
-			};
-
-			phy3: ethernet-phy@3 {
-				reg = <3>;
-				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
-			};
-
-			phy4: ethernet-phy@4 {
-				reg = <4>;
-				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
-			};
-
-			phy5: ethernet-phy@5 {
-				reg = <5>;
-				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
-			};
-		};
-
-		mdio@1 {
-			#address-cells = <1>;
-			#size-cells = <0>;
-			compatible = "lantiq,xrx500-mdio-pae";
-
-			phy1: ethernet-phy@1 {
-				reg = <1>;
-				compatible = "lantiq,phy11g", "ethernet-phy-ieee802.3-c22";
-			};
+			lantiq,eth-switch-mode = <2>;
 		};
 	};
 
 	ssx1@1c000000 {
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "lantiq,ssx", "simple-bus"; 
+		compatible = "lantiq,ssx", "simple-bus";
 		reg = <0x1c000000 0x2000000>;
 		ranges = <0x0 0x1c000000 0x02000000>;
 
 		gswl: gswitch@000000 {
-			compatible = "lantiq,xrx500-gswapi", "lantiq,xway-gswapi"; 
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "intel,gswdev";
+			intel,gsw-devid = <0>;
 			reg = <0x000000 0x3000>;
-			lantiq,gsw-devid = <0>;
-			clocks = <&pll0bclk GSWIP_CLK>, <&clkgate1 GATE_GSWIP_CLK>;
-			clock-names = "freq", "gate";
+			ranges = <0x0 0x00000000 0x00003000>;
+			pinctrl-names = "default";
+			gsw_core@0 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "intel,gswl-gswdev";
+				num_resources = <1>;
+				reg = <0x000000 0x3000>;
+				ranges = <0x0 0x00000000 0x00003000>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SHARED 48 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pll0bclk GSWIP_CLK>, <&clkgate1 GATE_GSWIP_CLK>;
+				clock-names = "freq", "gate";
+				intel,gsw-globalpce-rules = <512>;
+				intel,gsw-devid = <0>;
+				gswl_mdio: gsw_mdio {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					phy2: ethernet-phy@2 {
+						reg = <2>;
+						compatible = "ethernet-phy-idd565.a408",
+						             "ethernet-phy-ieee802.3-c22";
+					};
+					phy3: ethernet-phy@3 {
+						reg = <3>;
+						compatible = "ethernet-phy-idd565.a408",
+						             "ethernet-phy-ieee802.3-c22";
+					};
+					phy4: ethernet-phy@4 {
+						reg = <4>;
+						compatible = "ethernet-phy-idd565.a408",
+						             "ethernet-phy-ieee802.3-c22";
+					};
+					phy5: ethernet-phy@5 {
+						reg = <5>;
+						compatible = "ethernet-phy-idd565.a408",
+						             "ethernet-phy-ieee802.3-c22";
+					};
+					phy6: ethernet-phy@6 {
+						reg = <6>;
+						compatible = "ethernet-phy-idd565.a408",
+						             "ethernet-phy-ieee802.3-c22";
+					};
+				};
+			};
+		};
+
+		phy_fw: phy-xrx500@3c00 {
+			status = "disabled";
+			compatible = "lantiq,phy-xrx500";
+			reg = <0x3c00 0x400>;
+			resets = <&rcu0 0x10 29>, <&rcu0 0x10 28>,
+				 <&rcu0 0x10 26>, <&rcu0 0x10 25>,
+				 <&rcu0 0x10 31>;
+			reset-names = "phy0", "phy1", "phy2", "phy3", "phy4";
 		};
 
 		dma2tx: dma@100000 {
@@ -232,6 +302,8 @@
 			lantiq,dma-desc-in-sram = <0>;
 			lantiq,dma-drb = <0>;
 			lantiq,dma-byte-en = <1>;
+			lantiq,dma-txendi =<3>;
+			lantiq,dma-rxendi =<3>;
 			lantiq,budget = <20>;
 		};
 
@@ -248,6 +320,8 @@
 			lantiq,dma-desc-in-sram = <0>;
 			lantiq,dma-drb = <0>;
 			lantiq,dma-byte-en = <1>;
+			lantiq,dma-txendi =<3>;
+			lantiq,dma-rxendi =<3>;
 			lantiq,budget = <20>;
 		};
 	};
@@ -260,11 +334,54 @@
 		ranges = <0x0 0x1a000000 0x02000000>;
 
 		gswr: gswitch@000000 {
-			compatible =  "lantiq,xrx500-gswapi","lantiq,xway-gswapi"; 
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "intel,gswdev";
+			intel,gsw-devid = <1>;
 			reg = <0x000000 0x3000>;
-			lantiq,gsw-devid = <1>;
-			clocks = <&pll0bclk PAE_CLK>, <&clkgate1 GATE_PAE_CLK>;
-			clock-names = "freq", "gate";
+			ranges = <0x0 0x00000000 0x00003000>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_mdio_r>;
+			gsw_core@0 {
+				#address-cells = <1>;
+				#size-cells = <1>;
+				compatible = "intel,gswr-gswdev";
+				num_resources = <1>;
+				reg = <0x000000 0x3000>;
+				ranges = <0x0 0x00000000 0x00003000>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SHARED 45 IRQ_TYPE_LEVEL_HIGH>;
+				clocks = <&pll0bclk PAE_CLK>, <&clkgate1 GATE_PAE_CLK>;
+				clock-names = "freq", "gate";
+				intel,gsw-globalpce-rules = <512>;
+				intel,gsw-devid = <1>;
+				gswr_mdio: gsw_mdio {
+					#address-cells = <1>;
+					#size-cells = <0>;
+					phy1: ethernet-phy@1 {
+						reg = <1>;
+						compatible = "ethernet-phy-idd565.a408",
+						             "ethernet-phy-ieee802.3-c22";
+					};
+				};
+			};
+		};
+
+		gsw_f24s: gswitch_f24s@000000 {
+			compatible = "intel,gswdev";
+			intel,gsw-devid = <2>;
+			status = "disabled";
+			gsw_core@0 {
+				compatible = "intel,f24s-gswdev";
+				num_resources = <0>;
+				intel,gsw_ext-switch = <1>; /* <0> - MMIO SWITCH, <1> - EXTERNAL SWITCH */
+				master-mdio = <&gswr_mdio>;
+				intel,gsw_ext-phyid = <0x1f>;
+				intel,gsw_ext-baseaddr = <0xe000>;
+				intel,gsw_ext-sgmiibaseaddr = <0xD000>;
+				intel,gsw-globalpce-rules = <128>;
+				intel,gsw-devid = <2>;
+			};
 		};
 
 		dma1tx: dma@100000 {
@@ -274,14 +391,16 @@
 			interrupts = <GIC_SHARED 65 IRQ_TYPE_LEVEL_HIGH>;
 			lantiq,dma-pkt-arb = <2>; /* 0 - burst, 1 - mulitburst, 2 - pkt */
 			lantiq,dma-burst = <16>; /* 2, 4, 8, 16 */
-			lantiq,dma-polling-cnt = <24>;
+			lantiq,dma-polling-cnt = <108>;
 			lantiq,dma-chan-fc = <1>;
 			lantiq,dma-desc-fod = <1>;
-			lantiq,dma-desc-in-sram = <0>; /* A11 - 0, A21 - 1*/
+			lantiq,dma-desc-in-sram = <1>; /* A11 - 0, A21 - 1*/
 			lantiq,dma-drb = <0>;
 			lantiq,dma-byte-en = <1>;
 			lantiq,budget = <20>;
 			lantiq,dma-lab-cnt = <2>; /* 0, 1, 2, 3 */
+			lantiq,dma-txendi =<3>;
+			lantiq,dma-rxendi =<3>;
 		};
 
 		dma1rx: dma@200000 {
@@ -297,174 +416,270 @@
 			lantiq,dma-desc-in-sram = <0>;
 			lantiq,dma-drb = <0>;
 			lantiq,dma-byte-en = <0>;
+			lantiq,dma-txendi =<3>;
+			lantiq,dma-rxendi =<3>;
 			lantiq,budget = <20>;
 		};
 
-		usb0:usb@300000 {
-			compatible = "lantiq,dwc3-core";
-			reg = <0x300000 0x100000>;
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SHARED 54 IRQ_TYPE_LEVEL_HIGH>;
-			clocks = <&clkgate1 GATE_USB0_CLK>;
+		usb0:usb@0 {
+			compatible = "lantiq,dwc3-grx500";
+			reg = <0x18 0x4>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			intel,syscon = <&sysconf>;
+			ranges;
+			dwc3@300000 {
+				compatible = "snps,dwc3";
+				reg = <0x300000 0x10000>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SHARED 54 IRQ_TYPE_LEVEL_HIGH>;
+				snps,dis_rxdet_inp3_quirk;
+				dr_mode = "host";
+				phys = <&usb0_phy>;
+				phy-names = "usb3-phy";
+			};
 		};
 
-		usb1:usb@500000 {
-			
-			compatible = "lantiq,dwc3-xrx500","lantiq,dwc3-core";
-			reg = <0x500000 0x100000>;
+		usb0_phy:phy@400000 {
+			compatible ="lantiq,grx500-phy";
+			reg = <0x400000 0x10000>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SHARED 83 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SHARED 53 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&rcu0 0x48 4>;
+			reset-names = "phy";
+			clocks = <&clkgate1 GATE_USB0_CLK>;
+			#phy-cells = <0>;
+			pinctrl-names = "default","idle";
+			pinctrl-0 = <&pinctrl_usb0_default>;
+			pinctrl-1 = <&pinctrl_usb0_idle>;
+		};
+
+		usb1:usb@1 {
+			compatible = "lantiq,dwc3-grx500";
+			reg = <0x34 0x4>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+			intel,syscon = <&sysconf>;
+			ranges;
+			dwc3@500000 {
+				compatible = "snps,dwc3";
+				reg = <0x500000 0x10000>;
+				interrupt-parent = <&gic>;
+				interrupts = <GIC_SHARED 83 IRQ_TYPE_LEVEL_HIGH>;
+				snps,dis_rxdet_inp3_quirk;
+				dr_mode = "host";
+				phys = <&usb1_phy>;
+				phy-names = "usb3-phy";
+			};
+		};
+
+		usb1_phy:phy@600000 {
+			compatible ="lantiq,grx500-phy";
+			reg = <0x600000 0x10000>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 50 IRQ_TYPE_LEVEL_HIGH>;
+			resets = <&rcu0 0x48 5>;
+			reset-names = "phy";
 			clocks = <&clkgate1 GATE_USB1_CLK>;
+			#phy-cells = <0>;
+			pinctrl-names = "default","idle";
+			pinctrl-0 = <&pinctrl_usb1_default>;
+			pinctrl-1 = <&pinctrl_usb1_idle>;
 		};
 	};
 
-	ssx3@18000000 {
+	pcie_phy0: pciephy@18500000 {
+		status = "disabled";
+		compatible = "intel,grx500-pciephy";
 		#address-cells = <1>;
 		#size-cells = <1>;
-		compatible = "lantiq,ssx", "simple-bus";
-		reg = <0x18000000 0xa8000000>;
-		ranges = <0x0 0x18000000 0xa8000000>;
-		
-		pcie0:pcie@900000 {
-			status = "disabled";
-			compatible = "lantiq,pcie-xrx500";
-			device_type = "pci";
-			#address-cells = <3>;
-			#size-cells = <2>;
-			reg = < 
-				0x900000 0x100000 /* RC controller */
-				0xA3000000 0x800000 /* Cfg*/
-				0x800000 0x100000 /* App logic */
-				0x500000 0x100000 /* PCIe PHY Reg */
-				0x600000 0x100000 /* MSI addr space */
-				0x700000 0x100000 /* MSI PIC */
-			>;
-			reg-names = "csr", "cfg", "app", "phy", "msi", "pic";
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SHARED 128 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 129 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 130 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 131 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 132 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 133 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 134 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 135 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 152 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0 0 0 1 &gic  GIC_SHARED 136 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 2 &gic  GIC_SHARED 137 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 3 &gic  GIC_SHARED 138 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 4 &gic  GIC_SHARED 139 IRQ_TYPE_LEVEL_HIGH>;
-			ranges = <0x02000000 0 0xa0000000 0xa0000000 0 0x03000000    /* Non-pretechable memory 32bit */
-				  0x01000000 0 0xa3800000 0xa3800000 0 0x00100000     /* Downsream I/O */ 
-				 >;
+		#phy-cells = <0>;
+		reg = <
+			0x18500000 0x100000 /* PCIe PHY Reg */
+		>;
+		reg-names = "phy";
+		intel,ssc-syscon = <&cgu0>;
+		intel,ssc-enable = <0>;
+		intel,syscon =<&sysconf>;
+		resets = <&rcu0 0x10 12>;
+		reset-names = "phy";
+	};
 
-			resets = <&rcu0 12>; 
-			reset-names = "phy";
-			lantiq,pcie-syscon = <&sysconf>;
-			lantiq,ssc-syscon = <&cgu0>;
-			lantiq,inbound-shift = <5>;
-			lantiq,outbound-shift = <4>;
-			lantiq,clkout = <22>;
-			clocks = <&clkgate2 GATE_PCIE0_CLK>;
-			clock-names ="ctl";
-		};
+	pcie_phy1: pciephy@18000000 {
+		status = "disabled";
+		compatible = "intel,grx500-pciephy";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		#phy-cells = <0>;
+		reg = <
+			0x18000000 0x100000 /* PCIe PHY Reg */
+		>;
+		reg-names = "phy";
+		intel,ssc-syscon = <&cgu0>;
+		intel,ssc-enable = <0>;
+		intel,syscon =<&sysconf>;
+		resets = <&rcu0 0x10 13>;
+		reset-names = "phy";
+	};
 
-		pcie1:pcie@400000 {
-			status = "disabled";
-			compatible = "lantiq,pcie-xrx500";
-			device_type = "pci";
-			#address-cells = <3>;
-			#size-cells = <2>;
-			reg = <
-				0x400000 0x100000 /* RC controller */
-				0x9f000000 0x800000 /* Cfg*/
-				0x300000 0x100000 /* App logic */
-				0x000000 0x100000 /* PCIe PHY Reg */
-				0x100000 0x100000 /* MSI phy space */
-				0x200000 0x100000 /* MSI PIC */
-				
-			>;
-			reg-names = "csr", "cfg", "app", "phy", "msi", "pic";
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SHARED 37 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 38 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 39 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 40 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 41 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 42 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 43 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 44 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 49 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0 0 0 1 &gic  GIC_SHARED 9 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 2 &gic  GIC_SHARED 10 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 3 &gic  GIC_SHARED 11 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 4 &gic  GIC_SHARED 12 IRQ_TYPE_LEVEL_HIGH>;
-			ranges = < 0x02000000 0 0x9c000000 0x9c000000 0 0x03000000    /* Non-pretechable memory 32bit */
-				   0x01000000 0 0x9f800000 0x9f800000 0 0x00100000    /* Downsream I/O */ 
-				 >;
-						
-			resets = <&rcu0 13>; 
-			reset-names = "phy";
-			lantiq,pcie-syscon = <&sysconf>;
-			lantiq,ssc-syscon = <&cgu0>;
-			lantiq,inbound-shift = <9>;
-			lantiq,outbound-shift = <8>;
-			lantiq,clkout = <23>;
-			clocks = <&clkgate2 GATE_PCIE1_CLK>;
-			clock-names ="ctl";
-		};
+	pcie_phy2: pciephy@18a00000 {
+		status = "disabled";
+		compatible = "intel,grx500-pciephy";
+		#address-cells = <1>;
+		#size-cells = <1>;
+		#phy-cells = <0>;
+		reg = <
+			0x18a00000 0x100000 /* PCIe PHY Reg */
+		>;
+		reg-names = "phy";
+		intel,ssc-syscon = <&cgu0>;
+		intel,ssc-enable = <0>;
+		intel,syscon =<&sysconf>;
+		resets = <&rcu0 0x10 10>;
+		reset-names = "phy";
+	};
 
-		pcie2:pcie@E00000 {
-			status = "disabled";
-			compatible = "lantiq,pcie-xrx500";
-			#address-cells = <3>;
-			#size-cells = <2>;
-			device_type = "pci";
-			reg = <
-				0xe00000 0x100000 /* RC controller */
-				0xa7000000 0x800000 /* Cfg*/
-				0xd00000 0x100000 /* App logic */
-				0xa00000 0x100000 /* PCIe PHY Reg */
-				0xb00000 0x100000 /* MSI addr space */
-				0xc00000 0x100000 /* MSI PIC */
-			>;
-			reg-names = "csr", "cfg", "app", "phy", "msi", "pic";
-			interrupt-parent = <&gic>;
-			interrupts = <GIC_SHARED 24 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 25 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 26 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 27 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 28 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 29 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 30 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 31 IRQ_TYPE_EDGE_RISING>,
-				<GIC_SHARED 55 IRQ_TYPE_LEVEL_HIGH>;
-			interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
-			#interrupt-cells = <1>;
-			interrupt-map-mask = <0 0 0 0x7>;
-			interrupt-map = <0 0 0 1 &gic  GIC_SHARED 155 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 2 &gic  GIC_SHARED 156 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 3 &gic  GIC_SHARED 157 IRQ_TYPE_LEVEL_HIGH>,
-					<0 0 0 4 &gic  GIC_SHARED 158 IRQ_TYPE_LEVEL_HIGH>;
-			ranges = < 0x02000000 0 0xa4000000 0xa4000000 0 0x03000000    /* Non-pretechable memory 32bit */
-				   0x01000000 0 0xa7800000 0xa7800000 0 0x00100000    /* Downsream I/O */ 
-				 >;
-			resets = <&rcu0 10>; 
-			reset-names = "phy";
-			lantiq,pcie-syscon = <&sysconf>;
-			lantiq,ssc-syscon = <&cgu0>;
-			lantiq,inbound-shift = <13>;
-			lantiq,outbound-shift = <12>;
-			lantiq,clkout = <24>;
-			clocks = <&clkgate2 GATE_PCIE2_CLK>;
-			clock-names ="ctl";
-		};
+	pcie0:pcie@18900000 {
+		status = "disabled";
+		compatible = "intel,xrx500-pcie";
+		device_type = "pci";
+		#address-cells = <3>;
+		#size-cells = <2>;
+		reg = <
+			0x18900000 0x100000 /* RC controller */
+			0xbb000000 0x800000 /* Cfg */
+			0x18800000 0x100000 /* App logic */
+			0x18600000 0x100000 /* MSI addr space */
+			0x18700000 0x100000 /* MSI PIC */
+		>;
+		reg-names = "csr", "cfg", "app", "msi", "pic";
+		linux,pci-domain = <0>;
+		max-link-speed = <2>;
+		bus-range = <0x00 0x08>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 128 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 129 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 130 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 131 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 132 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 133 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 134 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 135 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 152 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0x7>;
+		interrupt-map = <0 0 0 1 &gic  GIC_SHARED 136 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 2 &gic  GIC_SHARED 137 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 3 &gic  GIC_SHARED 138 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 4 &gic  GIC_SHARED 139 IRQ_TYPE_LEVEL_HIGH>;
+		ranges = <0x02000000 0 0xb8000000 0xb8000000 0 0x03000000    /* Non-pretechable memory 32bit */
+			  0x01000000 0 0xbb800000 0xbb800000 0 0x00010000    /* Downsream I/O */
+			 >;
+
+		intel,syscon = <&sysconf>;
+		intel,inbound-shift = <5>;
+		intel,outbound-shift = <4>;
+		intel,iatu = <0>;
+		clocks = <&clkgate2 GATE_PCIE0_CLK>;
+		clock-names ="ctl";
+		phys = <&pcie_phy0>;
+		phy-names = "phy";
+	};
+
+	pcie1:pcie@18400000 {
+		status = "disabled";
+		compatible = "intel,xrx500-pcie";
+		device_type = "pci";
+		#address-cells = <3>;
+		#size-cells = <2>;
+		reg = <
+			0x18400000 0x100000 /* RC controller */
+			0xb7000000 0x800000 /* Cfg*/
+			0x18300000 0x100000 /* App logic */
+			0x18100000 0x100000 /* MSI phy space */
+			0x18200000 0x100000 /* MSI PIC */
+		>;
+		reg-names = "csr", "cfg", "app", "msi", "pic";
+		linux,pci-domain = <1>;
+		max-link-speed = <2>;
+		bus-range = <0x00 0x08>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 37 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 38 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 39 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 40 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 41 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 42 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 43 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 44 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 49 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0x7>;
+		interrupt-map = <0 0 0 1 &gic  GIC_SHARED 9 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 2 &gic  GIC_SHARED 10 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 3 &gic  GIC_SHARED 11 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 4 &gic  GIC_SHARED 12 IRQ_TYPE_LEVEL_HIGH>;
+		ranges = <0x02000000 0 0xb4000000 0xb4000000 0 0x03000000    /* Non-pretechable memory 32bit */
+			  0x01000000 0 0xb7800000 0xb7800000 0 0x00010000    /* Downsream I/O */
+			 >;
+
+		intel,syscon = <&sysconf>;
+		intel,inbound-shift = <9>;
+		intel,outbound-shift = <8>;
+		intel,iatu = <0>;
+		clocks = <&clkgate2 GATE_PCIE1_CLK>;
+		clock-names ="ctl";
+		phys = <&pcie_phy1>;
+		phy-names = "phy";
+	};
+
+	pcie2:pcie@18e00000 {
+		status = "disabled";
+		compatible = "intel,xrx500-pcie";
+		#address-cells = <3>;
+		#size-cells = <2>;
+		device_type = "pci";
+		reg = <
+			0x18e00000 0x100000 /* RC controller */
+			0xbf000000 0x800000 /* Cfg*/
+			0x18d00000 0x100000 /* App logic */
+			0x18b00000 0x100000 /* MSI addr space */
+			0x18c00000 0x100000 /* MSI PIC */
+		>;
+		reg-names = "csr", "cfg", "app", "msi", "pic";
+		linux,pci-domain = <2>;
+		max-link-speed = <2>;
+		bus-range = <0x00 0x08>;
+		interrupt-parent = <&gic>;
+		interrupts = <GIC_SHARED 24 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 25 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 26 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 27 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 28 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 29 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 30 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 31 IRQ_TYPE_EDGE_RISING>,
+			<GIC_SHARED 55 IRQ_TYPE_LEVEL_HIGH>;
+		interrupt-names = "msi0", "msi1", "msi2", "msi3", "msi4", "msi5", "msi6", "msi7", "ir";
+		#interrupt-cells = <1>;
+		interrupt-map-mask = <0 0 0 0x7>;
+		interrupt-map = <0 0 0 1 &gic  GIC_SHARED 155 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 2 &gic  GIC_SHARED 156 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 3 &gic  GIC_SHARED 157 IRQ_TYPE_LEVEL_HIGH>,
+				<0 0 0 4 &gic  GIC_SHARED 158 IRQ_TYPE_LEVEL_HIGH>;
+		ranges = <0x02000000 0 0xbc000000 0xbc000000 0 0x03000000    /* Non-pretechable memory 32bit */
+			  0x01000000 0 0xbf800000 0xbf800000 0 0x00010000    /* Downsream I/O */
+			 >;
+		intel,syscon = <&sysconf>;
+		intel,inbound-shift = <13>;
+		intel,outbound-shift = <12>;
+		intel,iatu = <0>;
+		clocks = <&clkgate2 GATE_PCIE2_CLK>;
+		clock-names ="ctl";
+		phys = <&pcie_phy2>;
+		phy-names = "phy";
 	};
 
 	ssx4@16000000 {
@@ -483,23 +698,34 @@
 		};
 
 		rcu0: reset-controller@00000000 {
-			compatible = "lantiq,rcu-grx500", "syscon"; 
+			compatible = "lantiq,rcu-grx500", "syscon";
 			reg = <0x000000 0x80000>;
-			#reset-cells = <1>; 
+			#reset-cells = <2>;
+			intel,global-reset = <&rcu0 0x10 30>;
 		};
 
 		sysconf: chiptop@00080000 {
-			compatible = "syscon", "simple-mfd"; 
+			compatible = "lantiq,chiptop-grx500", "syscon", "simple-mfd";
 			reg = <0x80000 0x1000>;
-			#reset-cells = <1>; 
+			#reset-cells = <1>;
 		};
 
 		ts: ts@080000 {
-			compatible = "lantiq,ts-grx500" , "lantiq,ts-xrx500"; 
-			reg = <0x080000 0x70000>;
+			#thermal-sensor-cells = <0>;
+			compatible = "lantiq,ts-xrx500";
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SHARED 19 IRQ_TYPE_LEVEL_HIGH>;
 			lantiq,numofsensors = <0x2>;
+			intel,syscon = <&sysconf>;
+		};
+
+		speedm: speedm@080110 {
+			compatible = "lantiq,speedm-grx500" , "lantiq,speedm-xrx500"; 
+			reg = <0x080110 0x0C>;
+			lantiq,thresholds_lvt = <1 10000 1 10000 1 10000>;
+			lantiq,thresholds_svt = <1000 3350 3351 4000 4001 8000>;
+			lantiq,sample_rate_svt = <255>;
+			lantiq,sample_rate_lvt = <255>;
 		};
 
 		cgu0: cgu@200000 {
@@ -535,7 +761,7 @@
 					clock-div = <1>;
 					clocks = <&osc0>;
 					clock-output-names = "pll0b";
-				};			
+				};
 
 				pll3: pll3 {
 					#clock-cells = <0>;
@@ -551,7 +777,7 @@
 					compatible = "lantiq, grx500-pll0a-output-clk";
 					clocks = <&pll0a>;
 					reg = <0x8>;
-					clock-output-names = "cbmclk", "ngiclk", "ssx4clk", "cpu0clk";  
+					clock-output-names = "cbmclk", "ngiclk", "ssx4clk", "cpu0clk";
 				};
 
 				pll0bclk: pll0bclk {
@@ -559,7 +785,7 @@
 					compatible = "lantiq, grx500-pll0b-output-clk";
 					clocks = <&pll0b>;
 					reg = <0x38>;
-					clock-output-names = "paeclk", "gswipclk", "ddrclk", "cpu1clk";  
+					clock-output-names = "paeclk", "gswipclk", "ddrclk", "cpu1clk";
 				};
 
 				pcieclk: pcieclk {
@@ -612,6 +838,13 @@
 					clock-output-names = "VOICE_CLK";
 				};
 
+				afeclk: afeclk {
+					#clock-cells = <0>;
+					compatible = "fixed-clock";
+					clock-frequency = <8000>;
+					clock-output-names = "afeclk";
+				};
+
 				i2cclk: i2cclk {
 					#clock-cells = <0>;
 					compatible = "lantiq, grx500-gate-dummy-clk";
@@ -621,9 +854,9 @@
 		};
 
 		ebu0: ebu@f00000 {
-			compatible = "lantiq,ebu-grx500", "lantiq,ebu-xrx500"; 
+			compatible = "lantiq,ebu-grx500", "lantiq,ebu-xrx500";
 			reg = <0xf00000 0x100000>,
-				<0x1000000 0x100000>; 
+				<0x1000000 0x100000>;
 			reg-names = "ebunand_reg", "hsnand_reg";
 			clocks = <&clkgate1 GATE_EBU_CLK>;
 		};
@@ -658,20 +891,32 @@
 			interrupts = <GIC_SHARED 14 IRQ_TYPE_EDGE_RISING>,
 				<GIC_SHARED 15 IRQ_TYPE_EDGE_RISING>,
 				<GIC_SHARED 16 IRQ_TYPE_EDGE_RISING>;
+			interrupt-names = "spi_rx", "spi_tx", "spi_err";
 			#address-cells = <1>;
 			#size-cells = <0>;
-			clocks = <&clkgate1 GATE_SPI0_CLK>;
-			sslic@5 {
-				compatible = "lantiq,sslic";
+			clocks = <&pll0aclk SSX4_CLK>, <&clkgate1 GATE_SPI0_CLK>;
+			clock-names = "freq", "spi";
+			vcodec@5 {
+				compatible = "lantiq,grx500-vcodec";
 				spi-max-frequency = <8000000>;
 				reg = <5>;
-				interrupt-parent = <&gic>;
+				resets = <&rcu0 0x48 0>;
+				reset-names = "vcodec";
 				interrupts = <GIC_SHARED 209 IRQ_TYPE_LEVEL_HIGH>;
+				interrupt-parent = <&gic>;
+				clocks = <&voiceclk>, <&clkgate1 GATE_V_CODEC_CLK>;
+				clock-names = "clkout0", "vcodec";
+				pinctrl-names = "default";
+				pinctrl-0 = <&pinctrl_vcodec &pinctrl_vcodec_ssi_rx &pinctrl_vcodec_clk>;
+				slic: slic@0 {
+					compatible = "lantiq,slic200";
+					dcdc_type = "IBB";
+				};
 			};
 		};
 
 		ssc1: spi@900000 {
-			compatible = "lantiq,spi-ssc";
+			compatible = "lantiq,spi-grx500","lantiq,spi-ssc";
 			reg = <0x900000 0x400>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SHARED 99 IRQ_TYPE_EDGE_RISING>,
@@ -680,23 +925,29 @@
 			#address-cells = <1>;
 			#size-cells = <1>;
 			lantiq,ssc-port = <1>;
-			clocks = <&clkgate1 GATE_SPI1_CLK>;
+			clocks = <&pll0aclk SSX4_CLK>, <&clkgate1 GATE_SPI1_CLK>;
+			clock-names = "freq", "spi";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_spi1 &pinctrl_spi1_cs0>;
 			status = "disabled";
 		};
 
 		i2c: i2c@a00000 {
 			#address-cells = <1>;
 			#size-cells = <0>;
-			status = "disabled";
+			status = "ok";
 			compatible = "lantiq,lantiq-i2c";
 			reg = <0xa00000 0x10000>;
 			interrupt-parent = <&gic>;
-			interrupts = <GIC_SHARED 23 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SHARED 32 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SHARED 33 IRQ_TYPE_LEVEL_HIGH>,
-				<GIC_SHARED 36 IRQ_TYPE_LEVEL_HIGH>;
+			interrupts = <GIC_SHARED 33 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 32 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 23 IRQ_TYPE_EDGE_RISING>,
+				<GIC_SHARED 36 IRQ_TYPE_EDGE_RISING>;
 			clock-frequency = <100000>;
-			clocks = <&i2cclk>;
+			clocks = <&pll0aclk SSX4_CLK>, <&i2cclk 0>;
+			clock-names = "freq", "i2c";
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_i2c0>;
 		};
 
 		clocksource: gptc-phandle {
@@ -711,9 +962,9 @@
 				<GIC_SHARED 120 IRQ_TYPE_EDGE_RISING>,
 				<GIC_SHARED 122 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "tc1a", "tc2a", "tc3a";
-			intel,clk = <&clocksource 1 0 1>, <&clocksource 0 2 0>;
+			intel,clk = <&clocksource 1 0 1>, <&clocksource 3 1 0>, <&clocksource 0 2 0>;
 			clocks = <&pll0aclk SSX4_CLK>, <&clkgate1 GATE_GPTC0_CLK>;
-			clock-names = "freq", "gptc"; 
+			clock-names = "freq", "gptc";
 		};
 
 		gptc1: gptc@300000 {
@@ -724,22 +975,9 @@
 				<GIC_SHARED 162 IRQ_TYPE_EDGE_RISING>,
 				<GIC_SHARED 164 IRQ_TYPE_EDGE_RISING>;
 			interrupt-names = "tc1a", "tc2a", "tc3a";
-			intel,clk = <&clocksource 1 0 0>, <&clocksource 1 1 2>, <&clocksource 1 2 3>;
+			intel,clk = <&clocksource 1 0 0>, <&clocksource 1 1 2>, <&clocksource 4 2 0>;
 			clocks =<&pll0aclk SSX4_CLK>, <&clkgate1 GATE_GPTC1_CLK>;
-			clock-names = "freq", "gptc"; 
-		};
-
-		pad@c80000{
-			compatible = "lantiq,pad-xrx500";
-			lantiq,bank = <0>;
-			reg = <0xc80000 0x100>;
-		};
-
-		pad@c80100{
-			compatible = "lantiq,pad-xrx500";
-			lantiq,bank = <1>;
-			reg = <0xc80100 0x100>;
-			lantiq,bbspi-en = <0>;
+			clock-names = "freq", "gptc";
 		};
 
 		dma0: dma@E00000 {
@@ -747,7 +985,7 @@
 			reg = <0xE00000 0x100000>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SHARED 64 IRQ_TYPE_LEVEL_HIGH>;
-			lantiq,desc-num = <16>;
+			lantiq,desc-num = <256>;
 			lantiq,dma-burst = <2>;
 			lantiq,dma-polling-cnt = <4>;
 			lantiq,dma-drb = <1>;
@@ -755,115 +993,216 @@
 			clocks = <&clkgate1 GATE_DMA0_CLK>;
 		};
 
-		pinctrl: pinctrl {	/*Change the label form gpio to pinctrl*/
-			compatible = "lantiq,pinctrl-xrx500";
-			pinctrl-names = "default";
-			pinctrl-0 = <&state_default>;
+		pinctrl: pinctrl@c80000 {
+			#address-cells = <1>;
+			#size-cells = <1>;
+			compatible = "intel,pinctrl-xrx500";
+			reg = <0xc80000 0x80000>;
 
-			/* default pinctrl setting*/
-			state_default: pinctrl {
-				pinctrl_ledc: ledc {
-					lantiq,groups = "ledc";
-					lantiq,function = "ledc";
-					status = "disabled";
+			pad {
+				#address-cells = <1>;
+				#size-cells = <0>;
+
+				pad0: pad@0 {
+					reg = <0x0>;
+					intel,pinbase = <0>;
+					intel,ngpios = <32>;
+					intel,pinbank = <0>;
+					intel,gpio = <&gpio0>;
 				};
 
-				pinctrl_i2c: i2c {
-					lantiq,groups = "i2c";
-					lantiq,function = "i2c";
-					status = "disabled";
+				pad1: pad@100 {
+					reg = <0x100>;
+					intel,pinbase = <32>;
+					intel,ngpios = <32>;
+					intel,pinbank = <1>;
+					intel,gpio = <&gpio1>;
 				};
+			};
 
-				pinctrl_spi0: spi0 {
-					lantiq,groups = "spi0", "spi0_cs1";
-					lantiq,function = "spi0";
-					status = "disabled";
-				};
+			/* pin configurations */
+			/* PINs for nand can not be configured again in xrx500 linux */
+			pinctrl_reserved: pinresv {
+				intel,pins =  <24>, /* nand cle */ <13>, /*nand ale */
+						<49>, /* nand rd */ <48>, /* nand rdy> */
+						<51>, /* nand d0 */ <50>, /* nand d1> */
+						<52>, /* nand d2 */ <57>, /* nand d3> */
+						<56>, /* nand d4 */ <55>, /* nand d5> */
+						<54>, /* nand d6 */ <53>, /* nand d7> */
+						<23>, /* nand cs1 */ <59>, /* nand wr> */
+						<60>, /* nand wp */ <61> /* nand se> */;
+				intel,groups = "resv_pins";
+				intel,function = "resv_pins";
+				intel,mux = <EQBR_MUX_0>;
+			};
 
-				pinctrl_spi1: spi1 {
-					lantiq,groups = "spi1", "spi1_cs0";
-					lantiq,function = "spi1";
-					status = "disabled";
-				};
+			pinctrl_25MHz: twentyfivemhz {
+				intel,pins =  <3>;
+				intel,function = "25Mhz";
+				intel,mux = <EQBR_MUX_2>;
+				intel,groups = "25Mhz";
+			};
 
-				pinctrl_nand: nand {
-					lantiq,groups = "nand cle", "nand ale", 
-						"nand rd", "nand rdy",
-						"nand d0", "nand d1",
-						"nand d2", "nand d3",
-						"nand d4", "nand d5",
-						"nand d6", "nand d7",
-						"nand cs1", "nand wr",
-						"nand wp", "nand se";
-					lantiq,function = "ebu";   
-					status = "disabled";   
-				};
+			pinctrl_vcodec: vcodec {
+				intel,pins =  <1>, /* SSI_RESET */
+					      <34>, /* SSI_TX */
+					      <36>; /* SSI_CLKI */
+				intel,function = "vcodec";
+				intel,mux = <EQBR_MUX_2>;
+				intel,groups = "vcodec";
+			};
 
-				pinctrl_mdio: mdio {
-					lantiq,groups = "mdio_l", "mdio_r";
-					lantiq,function = "mdio";
-					status = "disabled";   
-				};
+			pinctrl_vcodec_ssi_rx: vcodec_ssi_rx {
+				intel,pins = <35>; /* SSI_RX */
+				intel,function = "vcodec_ssi_rx";
+				intel,mux = <EQBR_MUX_2>;
+				intel,groups = "vcodec_ssi_rx";
+				intel,pullup = <1>;
+			};
 
-				pinctrl_vcodec: vcodec {
-					lantiq,groups = "vcodec", "clkout0";
-					lantiq,function = "vcodec";
-					status = "disabled";   
-				};
+			pinctrl_vcodec_clk: vcodec_clk {
+				intel,pins = <8>;
+				intel,function = "vcodec_clk";
+				intel,mux = <EQBR_MUX_1>;
+				intel,groups = "vcodec_clk";
+			};
 
-				conf {
-					lantiq,pins = "io32", "io33", "io42", "io43";
-					lantiq,open-drain = <1>;
-				};
+			pinctrl_tdm: tdm {
+				intel,pins =  <28>, /* TDM_FSC */
+					      <29>, /* TDM_DO */
+					      <30>, /* TDM_DI */
+					      <31>; /* TDM_DCL */
+				intel,function = "tdm";
+				intel,mux = <EQBR_MUX_3>;
+				intel,groups = "tdm";
+			};
 
-				conf_pull {
-					lantiq,pins = "io35";
-					lantiq,pull = <0>;
-				};
+			pinctrl_mdio_l: mdio_l {
+				intel,pins =  <42>, /* MDC0 */
+					      <43>; /* MDIO0 */
+				intel,function = "mdio_l";
+				intel,mux = <EQBR_MUX_1>;
+				intel,groups = "mdio_l";
+				intel,open-drain = <1>;
+			};
+
+			pinctrl_mdio_r: mdio_r {
+				intel,pins =  <32>, /* MDC1 */
+					      <33>; /* MDIO1 */
+				intel,function = "mdio_r";
+				intel,mux = <EQBR_MUX_1>;
+				intel,groups = "mdio_r";
+				intel,open-drain = <1>;
+			};
+
+			pinctrl_spi0: spi0 {
+				intel,pins =  <16>, /* SPI0_CLK */
+					      <17>, /* SPI0_TX */
+					      <18>; /* SPI0_RX */
+				intel,function = "spi0";
+				intel,mux = <EQBR_MUX_1>;
+				intel,groups = "spi0";
+			};
+
+			pinctrl_spi1: spi1 {
+				intel,pins =  <10>, /* SPI1_CLK */
+					      <11>, /* SPI1_TX */
+					      <19>; /* SPI1_RX */
+				intel,function = "spi1";
+				intel,mux = <EQBR_MUX_1>;
+				intel,groups = "spi1";
+			};
+
+			pinctrl_ledc: ledc {
+				intel,pins =  <4>, /* LED_SH */
+					      <5>, /* LED_ST */
+					      <6>; /* LED_D */
+				intel,function = "led";
+				intel,mux = <EQBR_MUX_1>;
+				intel,groups = "led";
+			};
+
+			pinctrl_i2c0: i2c0 {
+				intel,pins =  <21>, /* I2C0_SCL */
+					      <22>; /* I2C0_SDA */
+				intel,function = "i2c0";
+				intel,mux = <EQBR_MUX_1>;
+				intel,groups = "i2c0";
+				intel,open-drain = <1>;
+			};
+
+			pinctrl_usb0_default: usb0_default {
+				intel,pins = <7>;
+				intel,function = "usb0_default";
+				intel,mux = <EQBR_MUX_0>;
+				intel,groups = "usb0_default";
+			};
+
+			pinctrl_usb0_idle: usb0_idle {
+				intel,pins = <7>;
+				intel,function = "usb0_idle";
+				intel,mux = <EQBR_MUX_3>;
+				intel,groups = "usb0_idle";
+			};
+
+			pinctrl_usb1_default: usb1_default {
+				intel,pins = <2>;
+				intel,function = "usb1_default";
+				intel,mux = <EQBR_MUX_0>;
+				intel,groups = "usb1_default";
+			};
+
+			pinctrl_usb1_idle: usb1_idle {
+				intel,pins = <2>;
+				intel,function = "usb1_idle";
+				intel,mux = <EQBR_MUX_3>;
+				intel,groups = "usb1_idle";
 			};
 		};
 
 		gpio0: gpio@c00000 {
-			compatible = "lantiq,gpio-xrx500";
 			gpio-controller;
 			#gpio-cells = <2>;
 			reg = <0xc00000 0x80>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SHARED 172 IRQ_TYPE_LEVEL_HIGH>;
-			lantiq,bank = <0>;
-			sso_pins: sso_pins {
-				status = "disabled";
-				hog-as-output;
-				gpio = <4 5 6>;
-			};
-			nand_pins: nand_pins {
-				status = "disabled";
-				hog-as-output;
-				gpio = <24 13 49 50 51 52 53 54 55 56 57 23 59 60 61>;
-			};
-			
+			ngpios = <32>;
+			gpio-ranges = <&pinctrl 0 0 32>;
 		};
 
 		gpio1: gpio@c00100 {
-			compatible = "lantiq,gpio-xrx500";
 			gpio-controller;
 			#gpio-cells = <2>;
 			reg = <0xc00100 0x80>;
+			interrupt-controller;
+			#interrupt-cells = <2>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SHARED 173 IRQ_TYPE_LEVEL_HIGH>;
-			lantiq,bank = <1>;
-			mdio_pins: mdio_pins {
-				status = "disabled";
-				hog-as-output;
-				gpio = <32 33 42 43>;
-			};
+			ngpios = <30>;
+			gpio-ranges = <&pinctrl 0 32 30>;
 		};
 
-		sso: sso@D00000 {
-			compatible = "lantiq,gpio-sso-xrx500";
-			reg = <0xD00000 0x2CC>;
-			#gpio-cells = <2>;
+		ssogpio: ssogpio@d00000 {
+			compatible = "intel,sso-gpio", "syscon", "simple-mfd";
+			status = "disabled";
 			gpio-controller;
+			#gpio-cells = <2>;
+			reg = <0xd00000 0x2cc>;
+			ngpios = <16>;
+			pinctrl-names = "default";
+			pinctrl-0 = <&pinctrl_ledc>;
+			clocks = <&clkgate1 GATE_SSO_CLK>;
+			clock-names = "sso";
+
+			ssoled:ssoled {
+				compatible = "intel,sso-led";
+				status = "disabled";
+				clocks = <&afeclk>;
+				clock-names = "fpid";
+				intel,gptc-clkrate = <200000000>;
+			};
 		};
 	};
 
@@ -897,6 +1236,7 @@
 			 */
 			interrupt-parent = <&cpu_intc>;
 			mti,reserved-ipi-vectors = <56 8>;
+			mti,reserved-list = <20 21 85>;
 			timer {
 				compatible = "mti,gic-timer";
 				interrupts = <GIC_LOCAL 1 IRQ_TYPE_NONE>;
@@ -917,6 +1257,9 @@
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_LOCAL 0 IRQ_TYPE_NONE>;
 			timeout-sec = <5>;
+			lantiq,wdt-rcu = <&rcu0>;
+			clocks = <&cpuclk>;
+			clock-names = "freq";
 		};
 	};
 
@@ -933,13 +1276,16 @@
 			compatible = "lantiq,mpe-xrx500";
 			reg = <0x0 0x200000>;
 			dtlk_vpe_num = <1>;
+			interrupt-parent = <&gic>;
+			interrupts = <GIC_SHARED 246 IRQ_TYPE_EDGE_RISING>;
 		};
 
 		toe: toe@2000000 {
 			#address-cells = <1>;
 			#size-cells = <1>;
 			compatible = "lantiq,toe-xrx500";
-			reg = <0x2000000 0x800000>;
+			reg = <0x2000000 0x10000
+				   0x2013000 0x4000>;
 			interrupt-parent = <&gic>;
 			interrupts = <GIC_SHARED 71 IRQ_TYPE_LEVEL_HIGH>,
 				<GIC_SHARED 72 IRQ_TYPE_LEVEL_HIGH>,
@@ -992,34 +1338,41 @@
 			lantiq,umt1-dmacid = <8>;
 			lantiq,umt2-dmacid = <9>;
 			lantiq,umt3-dmacid = <10>;
+			clocks = <&pll0aclk NGI_CLK>;
+			clock-names = "freq";
 		};
 	};
 
-	cpuclocks {
-		compatible = "lantiq,scaling-frequencies";
+	thermal-zones {
+		cpu_thermal: cpu-thermal {
+			polling-delay-passive = <500>; /* milliseconds */
+			polling-delay = <1000>; /* milliseconds */
 
-		xrx350_cpuclocks: cpuclocks@0 {
-			status = "disabled";
-			lantiq,cpuclocks = <600000000 600000000 150000000 50000000>;
-			lantiq,ddrclocks = <333000000 333000000 166000000 166000000>;
-		};
+			thermal-sensors = <&ts>;
 
-		xrx350_800_cpuclocks: cpuclocks@1 {
-			status = "disabled";
-			lantiq,cpuclocks = <800000000 600000000 150000000 50000000>;
-			lantiq,ddrclocks = <333000000 333000000 166000000 166000000>;
-		};
+			trips {
+				cpu_alert0: cpu-alert0 {
+					temperature = <115000>; /* millicelsius */
+					hysteresis = <5000>; /* millicelsius */
+					type = "passive";
+				};
+				cpu_crit: cpu-crit {
+					temperature = <125000>; /* millicelsius */
+					hysteresis = <10000>; /* millicelsius */
+					type = "critical";
+				};
+			};
 
-		xrx500_cpuclocks: cpuclocks@2 {
-			status = "disabled";
-			lantiq,cpuclocks = <1200000000 800000000 150000000 50000000>;
-			lantiq,ddrclocks = <400000000 333000000 166000000 166000000>;
-		};
-
-		xrx500_800_cpuclocks: cpuclocks@3 {
-			status = "disabled";
-			lantiq,cpuclocks = <800000000 800000000 150000000 50000000>;
-			lantiq,ddrclocks = <333000000 333000000 166000000 166000000>;
+			cooling_maps: cooling-maps {
+				map0 {
+					trip = <&cpu_alert0>;
+					cooling-device = <&cpu0 2 2>;
+				};
+				map1 {
+					trip = <&cpu_alert0>;
+					cooling-device = <&eth 0 4>;
+				};
+			};
 		};
 	};
 };
