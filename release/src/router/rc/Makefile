@@ -495,10 +495,10 @@ endif
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += init-lantiq.o lantiq.o ate-lantiq.o lantiq-wave.o
-OBJS += $(if $(wildcard sysdeps/wps-lantiq.c),wps-lantiq.o,prebuild/wps-lantiq.o)
+OBJS += wps-lantiq.o
 ifeq ($(RTCONFIG_AMAS),y)
 OBJS += $(if $(wildcard sysdeps/lantiq/obd-lantiq.c),obd-lantiq.o,prebuild/obd-lantiq.o)
-endiflantiq
+endif
 endif
 
 OBJS += $(if $(wildcard private.c),private.o,prebuild/private.o)

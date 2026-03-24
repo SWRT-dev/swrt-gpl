@@ -89,3 +89,10 @@ switch_cli:
 	$(MAKE) -C $@ stage ; \
 	fi
 
+upgrade_utils:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+	$(MAKE) -C $@ ; \
+	$(MAKE) -C $@ stage ; \
+	fi
+
