@@ -1,0 +1,126 @@
+#
+# NOTE! Don't add files that are generated in specific
+# subdirectories here. Add them in the ".gitignore" file
+# in that subdirectory instead.
+#
+# NOTE! Please use 'git ls-files -i --exclude-standard'
+# command after changing this file, to see if there are
+# any tracked files which get ignored after the change.
+#
+# Normal rules
+#
+.libs
+.deps
+.dirstamp
+.gdbinit
+.version
+*.o
+*.o.*
+*.lo
+*.a
+*.la
+*.s
+*.ko
+*.so
+*.so.dbg
+*.mod.c
+*.i
+*.lst
+*.symtypes
+*.order
+modules.builtin
+Makefile
+Makefile.in
+*.pc
+*.elf
+*.bin
+*.gz
+*.bz2
+*.lzma
+*.xz
+*.lzo
+*.patch
+*.gcno
+*.gcda
+*.gcov
+cover_db
+
+#
+# Top-level generic files
+#
+tags
+TAGS
+/linux
+/vmlinux
+/vmlinuz
+/System.map
+/Module.markers
+/Module.symvers
+/config.log
+/config.status
+/configure
+/libtool
+/stamp-h1
+/aclocal.m4
+/autom4te.cache/
+
+# More generated files
+build-tools/ar-lib
+build-tools/test-driver
+tests/test-suite.log
+tests/test-suite*.log
+tests/test-fc.pl
+tests/test-norm.pl
+tests/test-upr.pl
+Doxyfile
+README.md
+doc/footer
+doc/html
+doc/man
+src/gcov.log
+tests/gcov.log
+
+#
+# Debian directory (make deb-pkg)
+#
+/debian/
+
+#
+# git files that we don't want to ignore even it they are dot-files
+#
+!.gitattributes
+!.gitignore
+!.mailmap
+
+#
+# Generated include files
+#
+/config.h*
+include/safe_config.h
+include/stamp-h2
+
+# stgit generated dirs
+patches-*
+
+# quilt's files
+patches
+series
+
+# cscope files
+cscope.*
+ncscope.*
+
+# gnu global files
+GPATH
+GRTAGS
+GSYMS
+GTAGS
+
+# Editor backup files
+*.orig
+*~
+\#*#
+doc/Doxyfile.bak
+
+# Should not be distributed
+doc/n3631.pdf

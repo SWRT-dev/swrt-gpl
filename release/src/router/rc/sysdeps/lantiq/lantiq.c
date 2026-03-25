@@ -1122,8 +1122,10 @@ void check_ubi_partition(void)
 	int dev, part, size;
 
 	fprintf(stderr, "... check_ubi_partition() ...\n");
+#if defined(K3C) || defined(BLUECAVE)
 	MKNOD("/dev/ubi1", S_IFCHR | 0666, makedev(248, 0));
 	MKNOD("/dev/ubi1_0", S_IFCHR | 0666, makedev(248, 1));
+
 	fprintf(stderr, "... start ubiattach ...\n");
 #if defined(K3C)
 	system("ubiattach /dev/ubi_ctrl -m 7");
@@ -1132,15 +1134,16 @@ void check_ubi_partition(void)
 #else
 #error fix me
 #endif
+#endif
 	while(pids("ubiattach"))
 	{
 		fprintf(stderr, "... waiting ubiattach finished ...\n");
 		sleep(1);
 	}
 	fprintf(stderr, "... ubiattach finished ...\n");
-
 	if((ubi_getinfo("jffs2", &dev, &part, &size)) != 0)
 	{
+#if defined(K3C) || defined(BLUECAVE)
 #if defined(K3C)
 		fprintf(stderr, "... detach mtd7 ...\n");
 		system("ubidetach -p /dev/mtd7");
@@ -1168,14 +1171,23 @@ void check_ubi_partition(void)
 #else
 #error fix me
 #endif
+
 		while(pids("ubiattach"))
 		{
 			fprintf(stderr, "... waiting ubiattach finished ...\n");
 			sleep(1);
 		}
 		fprintf(stderr, "... ubiattach finished ...\n");
-    	fprintf(stderr, "... start ubimkvol ...\n");
-    	system("ubimkvol /dev/ubi1 -N jffs2 -m");
+#endif
+		fprintf(stderr, "... start ubimkvol ...\n");
+#if defined(RAX40)
+		if((ubi_getinfo("data_vol", &dev, &part, &size)) == 0)
+			system("ubirmvol /dev/ubi0 -N data_vol");
+		system("ubimkvol /dev/ubi0 -N jffs2 -s 100MiB");
+		system("ubimkvol /dev/ubi0 -N nvram -s 1MiB");
+#else
+		system("ubimkvol /dev/ubi1 -N jffs2 -m");
+#endif
 		while(pids("ubimkvol"))
 		{
 			fprintf(stderr, "... waiting ubimkvol finished ...\n");
@@ -1217,7 +1229,7 @@ int get_usb_mode()
 
 void gen_config_sh(void)
 {
-	system("cp -f /rom/opt/lantiq/etc/rc.d/config.sh /etc/; cd /etc/rc.d; ln -s ../config.sh config.sh");
+//	system("cp -f /rom/opt/lantiq/etc/rc.d/config.sh /etc/; cd /etc/rc.d; ln -s ../config.sh config.sh");
 }
 
 void usb_pwr_ctl(int onoff)

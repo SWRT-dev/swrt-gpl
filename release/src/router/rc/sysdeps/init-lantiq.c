@@ -40,27 +40,27 @@ static void __load_wifi_driver(int testmode)
 
 int is_if_up(char *ifname)
 {
-    int s;
-    struct ifreq ifr;
+	int s;
+	struct ifreq ifr;
 
-    /* Open a raw socket to the kernel */
-    if ((s = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) return -1;
+	/* Open a raw socket to the kernel */
+	if ((s = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) return -1;
 
-    /* Set interface name */
-    strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
+	/* Set interface name */
+	strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
 
-    /* Get interface flags */
-    if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
-        fprintf(stderr, "SIOCGIFFLAGS error\n");
-    } else {
-        if (ifr.ifr_flags & IFF_UP) {
-            fprintf(stderr, "%s is up\n", ifname);
-            close(s);
-            return 1;
-        }
-    }
-    close(s);
-    return 0;
+	/* Get interface flags */
+	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
+		fprintf(stderr, "SIOCGIFFLAGS error\n");
+	} else {
+		if (ifr.ifr_flags & IFF_UP) {
+			fprintf(stderr, "%s is up\n", ifname);
+			close(s);
+			return 1;
+		}
+	}
+	close(s);
+	return 0;
 }
 
 void init_devs(void)
@@ -206,12 +206,12 @@ int write_default_cal(void)
 {
 #if defined(K3C)
 #elif defined(BLUECAVE)
-	system("cp -f /opt/lantiq/wave/images/backup/cal_wlan0.bin /tmp/cal_wlan0.bin");
-	system("cp -f /opt/lantiq/wave/images/backup/cal_wlan1.bin /tmp/cal_wlan1.bin");
-	system("rm -f /tmp/cal_eeprom.tar.gz");
-	system("cd /tmp; tar czf cal_eeprom.tar.gz cal_wlan0.bin cal_wlan1.bin");
-	system("upgrade /tmp/cal_eeprom.tar.gz wlanconfig 0 0");
-	system("rm -f /tmp/cal_eeprom.tar.gz");
+//	system("cp -f /opt/lantiq/wave/images/backup/cal_wlan0.bin /tmp/cal_wlan0.bin");
+//	system("cp -f /opt/lantiq/wave/images/backup/cal_wlan1.bin /tmp/cal_wlan1.bin");
+//	system("rm -f /tmp/cal_eeprom.tar.gz");
+//	system("cd /tmp; tar czf cal_eeprom.tar.gz cal_wlan0.bin cal_wlan1.bin");
+//	system("upgrade /tmp/cal_eeprom.tar.gz wlanconfig 0 0");
+//	system("rm -f /tmp/cal_eeprom.tar.gz");
 #elif defined(RAX40)
 #else
 #error fix me
@@ -229,53 +229,49 @@ void init_others(void)
 #if defined(BLUECAVE)
 	system("cp -R /lib/firmware/ar3k /tmp/");
 #endif
-	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ -----------\n");
-	system("cd /tmp/wireless; ln -s /rom/opt/beerocks beerocks");
-	system("cd /tmp/wireless; ln -s /rom/opt/errorhd.cfg errorhd.cfg");
-	system("cd /tmp/wireless; ln -s /rom/opt/lantiq lantiq");
-	_dprintf("--------- extract fapi database -----------\n");
-	system("cd /tmp/; rm -rf lantiq_wave; tar zxf /rom/opt/lantiq/wave.tgz; mv wave lantiq_wave");
-	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ done -----------\n");
-	system("cp /opt/lantiq/wave/scripts/fapi_wlan_wave_lib_common.sh /tmp/");
-	system("cp /opt/lantiq/wave/images/* /tmp/");
-	system("cp /rom/opt/lantiq/etc/wave_components.ver /etc/");
+//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ -----------\n");
+//	system("cd /tmp/wireless; ln -s /rom/opt/beerocks beerocks");
+//	system("cd /tmp/wireless; ln -s /rom/opt/errorhd.cfg errorhd.cfg");
+//	system("cd /tmp/wireless; ln -s /rom/opt/lantiq lantiq");
+//	_dprintf("--------- extract fapi database -----------\n");
+//	system("cd /tmp/; rm -rf lantiq_wave; tar zxf /rom/opt/lantiq/wave.tgz; mv wave lantiq_wave");
+//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ done -----------\n");
+//	system("cp /opt/lantiq/wave/scripts/fapi_wlan_wave_lib_common.sh /tmp/");
+//	system("cp /opt/lantiq/wave/images/* /tmp/");
+	system("cp /rom/opt/intel/etc/wave_components.ver /etc/");
 	system("read_img wlanconfig /tmp/cal_eeprom.tar.gz");
-	if(stat("/tmp/cal_eeprom.tar.gz", &cal_stat) || cal_stat.st_blocks < 801)
-		write_default_cal();
-	else
-	{
-#if defined(K3C)
-#elif defined(BLUECAVE)
+//	if(stat("/tmp/cal_eeprom.tar.gz", &cal_stat) || cal_stat.st_blocks < 801)
+//		write_default_cal();
+//	else
+//	{
 		system("rm -f /tmp/cal_wlan*.bin");
 		system("tar zxf /tmp/cal_eeprom.tar.gz -C /tmp/");
-#elif defined(RAX40)
-#else
-#error fix me
-#endif
-	}
+//	}
 	system("rm -f /tmp/cal_eeprom.tar.gz");
-	if(!stat("/tmp/cal_wlan1.bin", &cal_stat))
-		system("rm -f /tmp/cal_wlan2.bin; mv /tmp/cal_wlan1.bin /tmp/cal_wlan2.bin");
+//	if(!stat("/tmp/cal_wlan1.bin", &cal_stat))
+//		system("rm -f /tmp/cal_wlan2.bin; mv /tmp/cal_wlan1.bin /tmp/cal_wlan2.bin");
 	MKNOD("/dev/switch_api/0", S_IFCHR | 0640, makedev(81, 0));
 	MKNOD("/dev/switch_api/1", S_IFCHR | 0640, makedev(81, 1));
-	system("load_gphy_firmware_preinit.sh");
+//	system("load_gphy_firmware_preinit.sh");
 	MKNOD("/dev/ifx_mei", S_IFCHR | 0666, makedev(105, 0));
 	MKNOD("/dev/ifx_ppa", S_IFCHR | 0666, makedev(181, 0));
-	system("insmod drv_ifxos");
-	system("insmod drv_event_logger");
+//	system("insmod drv_ifxos");
+//	system("insmod drv_event_logger");
 	system("insmod directconnect_datapath");
-	system("insmod ltq_eth_drv_xrx500");
-	system("insmod dc_mode0-xrx500");
-	system("insmod mcast_helper");
+//	system("insmod ltq_eth_drv_xrx500");
+	system("insmod dc_mode-hw");
+//	system("insmod mcast_helper");
 	system("insmod macvlan");
 	system("insmod ltq_pae_hal");
 	system("insmod ltq_tmu_hal_drv");
-	system("insmod ltq_directpath_datapath");
+	system("insmod qos_mgr_drv");
 	system("insmod ppa_api");
-	system("insmod ppa_api_proc");
+//	system("insmod ppa_api_proc");
 	system("insmod ltq_mpe_hal_drv");
-	system("insmod ppa_api_tmplbuf");
+//	system("insmod ppa_api_tmplbuf");
 	system("insmod ppa_api_sw_accel_mod");
+	system("insmod hw_tcp_litepath");
+	system("insmod mac_violation_mirror");
 	system("insmod ltq_temp");
 	system("insmod ltq_pmcu");
 	//modprobe("tntfs");
@@ -296,15 +292,15 @@ void init_others(void)
 	system("ppacmd addlan -i br0");
 #if defined(RTCONFIG_AMAS)
 	if(!aimesh_re_mode())
-    	eval("iptables", "-t", "mangle", "-A", "INPUT", "-p", "tcp", "-m", "state", "--state", "ESTABLISHED", "-j", "EXTMARK", "--set-mark", "0x80000000/0x80000000");
+		eval("iptables", "-t", "mangle", "-A", "INPUT", "-p", "tcp", "-m", "state", "--state", "ESTABLISHED", "-j", "EXTMARK", "--set-mark", "0x80000000/0x80000000");
 #endif
 	nvram_set("wave_action", "1");
 
-	if (repeater_mode() || mediabridge_mode() || aimesh_re_node())
-	{
-		modprobe("l2nat");
-		f_write_string("/proc/sys/net/bridge/bridge-nf-call-iptables", "0", 0, 0);
-	}
+//	if (repeater_mode() || mediabridge_mode() || aimesh_re_node())
+//	{
+//		modprobe("l2nat");
+//		f_write_string("/proc/sys/net/bridge/bridge-nf-call-iptables", "0", 0, 0);
+//	}
 	if(nvram_get_int("ATEMODE") != 1)
 	{
 		_dprintf("poweroff usb\n");
@@ -339,7 +335,6 @@ void enable_jumbo_frame(void)
 
 void init_switch(void)
 {
-	_dprintf("init_switch: for now handle jumbo frame only\n");
 	enable_jumbo_frame();
 }
 
@@ -539,13 +534,17 @@ void init_syspara(void)
 			nvram_set("wifi_psk", buffer);
 	}
 #endif
-
+#if defined(BLUECAVE)
 	memset(buffer, 0, sizeof(buffer));
 	FRead(buffer, OFFSET_BOOT_VER, 4);
 	snprintf(blver, sizeof(blver), "%s-0%c-0%c-0%c-0%c", trim_r(productid), buffer[0],
 		buffer[1], buffer[2], buffer[3]);
 	nvram_set("blver", trim_r(blver));
+
 	system("nvram set blver=`uboot_env --get --name bl_ver`");
+#else
+	system("nvram set bl_ver=`uboot_env --get --name ver`");
+#endif
 	_dprintf("bootloader version: %s\n", nvram_safe_get("blver"));
 	_dprintf("firmware version: %s\n", nvram_safe_get("firmver"));
 

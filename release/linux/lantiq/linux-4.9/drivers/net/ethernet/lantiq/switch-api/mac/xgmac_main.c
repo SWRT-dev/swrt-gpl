@@ -172,9 +172,9 @@ void xgmac_init_pdata(struct mac_prv_data *pdata, int idx)
 	pdata->mac_en			= 1;
 	pdata->ipg			= 0;
 	pdata->enable_mac_int		= XGMAC_ALL_EVNT;
-	pdata->enable_mtl_int		= MASK(MTL_Q_IER, TXUIE) |
-					  MASK(MTL_Q_IER, ABPSIE) |
-					  MASK(MTL_Q_IER, RXOIE);
+	pdata->enable_mtl_int		= XGMAC_MASK(MTL_Q_IER, TXUIE) |
+					  XGMAC_MASK(MTL_Q_IER, ABPSIE) |
+					  XGMAC_MASK(MTL_Q_IER, RXOIE);
 	/* Calc as (2^32 * 250Mhz)/ 500Mhz */
 	pdata->def_addend		= 0x80000000;
 	pdata->sec			= 0;

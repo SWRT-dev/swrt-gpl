@@ -515,16 +515,20 @@ endif
 
 LANTIQ_LINUX_DIR=linux/linux-4.9.x
 
-define build_bluecave_image
-	mips-openwrt-linux-uclibc-objcopy -O binary -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux
-	mips-openwrt-linux-uclibc-objcopy -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.elf
+define build_lantiq_image
+	$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux
+	$(CROSS_COMPILE)objcopy -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.elf
 	cp -fpR $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.debug
-	cp ./vmlinux ./vmlinux-easy350_anywan_router_800m
-	tools/dtc -O dtb -o ./easy350_anywan_router_800m.dtb ./grx500/dts/easy350_anywan_router_800m.dts
-	tools/patch-dtb ./vmlinux-easy350_anywan_router_800m ./easy350_anywan_router_800m.dtb 32768
-	tools/lzma e ./vmlinux-easy350_anywan_router_800m ./vmlinux-easy350_anywan_router_800m.lzma
-	mv ./vmlinux-easy350_anywan_router_800m.lzma ./vmlinux.lzma
-	tools/mkimage -A mips -O linux -T kernel -a 0xa0020000 -C lzma -e 0xa0020000 -n 'MIPS OpenWrt $(LANTIQ_LINUX_DIR)' -d ./vmlinux.lzma ./uImage
+	cp ./vmlinux ./vmlinux-lantiq
+	#tools/dtc -O dtb -o ./lantiq.dtb $(LANTIQ_LINUX_DIR)/arch/mips/boot/dts/lantiq/netgear_rax40.dts
+	$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/$(DTB).tmp $(DTS_DIR)/$(BUILD_NAME).dts
+	$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR) -o $(DTS_DIR)/$(DTB) $(DTS_DIR)/$(DTB).tmp
+	rm $(DTS_DIR)/ralink/$(DTB).tmp
+	#tools/patch-dtb ./vmlinux-lantiq ./lantiq.dtb 32768
+	cat $(DTS_DIR)/$(DTB) >> ./vmlinux-lantiq
+	tools/lzma e ./vmlinux-lantiq ./vmlinux-lantiq.lzma
+	mv ./vmlinux-lantiq.lzma ./vmlinux.lzma
+	#tools/mkimage -A mips -O linux -T kernel -a 0xa0020000 -C lzma -e 0xa0020000 -n 'MIPS OpenWrt $(LANTIQ_LINUX_DIR)' -d ./vmlinux.lzma ./uImage
 	len2=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'` ; \
 	echo "Raymond: $$len2"
 	len=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'`; pad=`expr  131072 - $$len %  131072`; pad=`expr $$pad %  131072`; pad=`expr $$pad -  64`; [ $$pad -lt 0 ] && pad=0; echo pad is $$pad; echo len is $$len; cat ./vmlinux.lzma > ./vmlinux.lzma.padded; dd if=/dev/zero of=./vmlinux.lzma.padded bs=1 count=$$pad seek=$$len
@@ -570,12 +574,17 @@ define build_bluecave_image
 		"$$PLATFORM Fullimage" -d $$ONEIMAGE.tmp $$ONEIMAGE; \
 	rm -f $$ONEIMAGE.tmp; \
 	chmod 644 $$ONEIMAGE;
+ifneq ($(RAX40),y)
+	gcc tools/rax40sign.c -o tools/rax40sign
+	tools/rax40sign image/fullimage.img
+	mv image/fullimage.img.pega image/rax40.img
+endif
 	#cp grx500/gphy_firmware.img image/
 	#cp grx500/uImage_bootcore image/
 	#cp grx500/u-boot-nand.bin image/
 	rm -f vmlinux*
 	rm -f uImage*
-	rm -f easy350_anywan_router_800m.dtb
+	rm -f lantiq.dtb
 	dd if=/dev/zero count=1 bs=128 | tr "\000" "\145" > ./eof.txt
 	rm -f image/tmp-linux.trx; ctools/trx -o image/tmp-linux.trx image/fullimage.img ./eof.txt
 	ctools/trx_asus -i image/tmp-linux.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),image/$(IMGNAME).trx
@@ -1250,7 +1259,7 @@ else ifeq ($(LANTIQ),y)
 		asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
 			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "0" "0" "0" "0" "0" "0" "0" "0" \
 			-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx
-	$(call build_bluecave_image)
+	$(call build_lantiq_image)
 else
 # Broadcom ARM/MIPS platform
 	$(MAKE) -C ctools clean
@@ -1354,28 +1363,17 @@ ifeq ($(CONFIG_LANTIQ),y)
 endif
 
 prepare_toolchain:
-	if [ ! -d "${SRCBASE}/tools/${TOOLCHAIN_NAME}" ] ; then \
-		cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_NAME}.tgz ; \
-	fi
-	if [ ! -d "${SRCBASE}/tools/${TOOLCHAIN_HOST_NAME}" ] ; then \
-		if [ "`uname -m`" = "x86_64" ] ; then \
-			cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_HOST_NAME}_64bit.tgz ; \
-		else \
-			cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_HOST_NAME}.tgz ; \
-		fi \
-	fi
-#ifeq ($(CONFIG_LANTIQ),y)
-#	if [ ! -f "${SRCBASE}/tools/${TOOLCHAIN_NAME}/.patched" ] ; then \
-#		cd ${SRCBASE}/tools/${TOOLCHAIN_NAME}; patch -p1 < ${SRCBASE}/patches/toolchain/0001-rp-pppoe_if_pppox.patch ; \
+#	if [ ! -d "${SRCBASE}/../../toolchains/${TOOLCHAIN_NAME}" ] ; then \
+#		cd ${SRCBASE}/../../toolchains; tar zxf ${TOOLCHAIN_NAME}.tgz ; \
 #	fi
-#endif
-	if [ ! -f "${SRCBASE}/tools/${TOOLCHAIN_NAME}/.patched" ] ; then \
-		cd ${SRCBASE}/tools/${TOOLCHAIN_NAME}/lib; cp ${SRCBASE}/patches/toolchain/lib/libnsl-0.9.33.2.so .; cp ${SRCBASE}/patches/toolchain/lib/libresolv-0.9.33.2.so . ; ln -s libnsl-0.9.33.2.so libnsl.so.0; ln -s libnsl.so.0 libnsl.so ; ln -s libresolv-0.9.33.2.so libresolv.so.0 ; \
-		touch ${SRCBASE}/tools/${TOOLCHAIN_NAME}/.patched ; \
-	fi
-ifeq ($(CONFIG_LANTIQ),y)
-	rm -rf tools/${TOOLCHAIN_HOST_NAME}/include/linux/
-endif
+#	if [ ! -d "${SRCBASE}/../../toolchains/${TOOLCHAIN_HOST_NAME}" ] ; then \
+#		if [ "`uname -m`" = "x86_64" ] ; then \
+#			cd ${SRCBASE}/../../toolchains; tar zxf ${TOOLCHAIN_HOST_NAME}_64bit.tgz ; \
+#		else \
+#			cd ${SRCBASE}/../../toolchains; tar zxf ${TOOLCHAIN_HOST_NAME}.tgz ; \
+#		fi \
+#	fi
+
 
 rt-ac98u_kernel:
 	@echo ${SRCBASE}
@@ -1395,17 +1393,17 @@ rt-ac98u_kernel:
 bluecave_kernel:
 	@echo ${SRCBASE}
 	@echo ${TOOLCHAIN}
-	if [ ! -d "${SRCBASE}/tools/${TOOLCHAIN_NAME}" ] ; then \
-		cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_NAME}.tgz ; \
-	fi
-	if [ ! -d "${SRCBASE}/tools/${TOOLCHAIN_HOST_NAME}" ] ; then \
-		cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_HOST_NAME}.tgz ; \
-	fi
+#	if [ ! -d "${SRCBASE}/../../toolchains/${TOOLCHAIN_NAME}" ] ; then \
+#		cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_NAME}.tgz ; \
+#	fi
+#	if [ ! -d "${SRCBASE}/tools/${TOOLCHAIN_HOST_NAME}" ] ; then \
+#		cd ${SRCBASE}/tools; tar zxf ${TOOLCHAIN_HOST_NAME}.tgz ; \
+#	fi
 	# uImage (Host Linux)
-	@echo ${STAGING_DIR}/${TOOLCHAIN_NAME}/bin
-	make -j3 -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR}/user_headers headers_install
-	make -j3 -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR} modules
-	make -j3 -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR} all modules
+#	@echo ${STAGING_DIR}/${TOOLCHAIN_NAME}/bin
+#	make -j3 -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR}/user_headers headers_install
+#	make -j3 -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR} modules
+#	make -j3 -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR} all modules
 	# make -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${STAGING_DIR}/host/include -Wall -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_SHELL="/bin/bash" V='' modules
 
 
@@ -5916,6 +5914,10 @@ fi;
 			echo "# CONFIG_BT_HIDP is not set" >>$(1); \
 			sed -i "/CONFIG_BT_HCIBTUSB/d" $(1); \
 			echo "CONFIG_BT_HCIBTUSB=m" >>$(1); \
+			sed -i "/CONFIG_BT_HCIBTUSB_BCM/d" $(1); \
+			echo "# CONFIG_BT_HCIBTUSB_BCM is not set" >>$(1); \
+			sed -i "/CONFIG_BT_HCIBTUSB_RTL/d" $(1); \
+			echo "CONFIG_BT_HCIBTUSB_RTL=y" >>$(1); \
 			sed -i "/CONFIG_BT_HCIUART/d" $(1); \
 			echo "# CONFIG_BT_HCIUART is not set" >>$(1); \
 			sed -i "/CONFIG_BT_HCIBCM203X/d" $(1); \

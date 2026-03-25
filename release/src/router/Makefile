@@ -129,7 +129,7 @@ endif
 ifeq ($(RALINK_DBDC_MODE),y)
 export CFLAGS += -DRALINK_DBDC_MODE
 endif
-else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_REALTEK),$(RTCONFIG_RALINK)),y)
+else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_REALTEK),$(RTCONFIG_LANTIQ)),y)
 export CFLAGS += $(EXTRACFLAGS)
 ifeq ($(RTCONFIG_MUSL_LIBC),y)
 export CFLAGS += -DRTCONFIG_MUSL_LIBC -D_GNU_SOURCE
@@ -1828,26 +1828,16 @@ endif
 ifneq ($(RTCONFIG_BCMARM),y)
 kernel_header: $(LINUXDIR)/.config
 	$(MAKE) -C $(LINUXDIR) ARCH=$(ARCH) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) headers_install INSTALL_HDR_PATH=$(TOP)/$@
+	mkdir -p $@/include/uapi
+	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 ifeq ($(RTCONFIG_RALINK),y)
 ifeq ($(or $(MT798X),$(MT799X)),y)
-	mkdir -p $@/include/uapi
-	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 else
-	@if [ -e $(LINUX_ARCH_ASM_INCL_DIR)/rt2880/rt_mmap.h ] ; then \
-		mkdir -p $@/include/asm/rt2880 ; \
-		cp $(LINUX_ARCH_ASM_INCL_DIR)/rt2880/rt_mmap.h $@/include/asm/rt2880/ ; \
-	fi
-	mkdir -p $@/include/uapi
-	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 	mkdir -p $@/include/net
 	cp $(LINUXDIR)/include/uapi/linux/can/error.h $@/include/
 	cp $@/include/linux/if_ppp.h $@/include/net/
 	cp $@/include/linux/ppp_defs.h $@/include/net/
 endif
-endif
-ifeq ($(RTCONFIG_QCA),y)
-	mkdir -p $@/include/uapi
-	cp -fr $(LINUXDIR)/include/uapi/* $@/include/uapi/
 endif
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) prepare scripts
 	find $(LINUXDIR)/include -name autoconf.h -exec cp {} $@/include/linux/ \;
@@ -2055,10 +2045,11 @@ ifeq ($(KPATH_37_OR_ABOVE),y)
 	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) dtbs
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
-	# uImage (Host Linux)
-	make $(PARALLEL_BUILD) -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR}/user_headers headers_install
-	make $(PARALLEL_BUILD) -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR} modules
-	make $(PARALLEL_BUILD) -C ${LINUXDIR} HOSTCFLAGS="-O2 -I${SRCBASE}/tools/host/include -I${SRCBASE}/tools/host/usr/include -Wall -Wmissing-prototypes -Wmissing-prototypes -Wstrict-prototypes" KBUILD_HAVE_NLS=no CONFIG_DEBUG_SECTION_MISMATCH=y CONFIG_SHELL="/bin/bash" V='' INSTALL_HDR_PATH=${LINUXDIR} all modules
+	$(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) vmlinux CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) CC=$(KERNELCC) LD=$(KERNELLD)
+	if grep -q "CONFIG_MODULES=y" $(LINUXDIR)/.config ; then \
+	    $(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) modules CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) CC=$(KERNELCC) LD=$(KERNELLD); \
+	fi
+	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) dtbs
 else
 	# Broadcrom MIPS SoC
 	@if ! grep -q "CONFIG_EMBEDDED_RAMDISK=y" $(LINUXDIR)/.config ; then \
@@ -8123,28 +8114,6 @@ i2c-tools-3.1.2-install: i2c-tools-3.1.2
 ppacmd:
 	cd ppacmd; make
 
-libhelper-1.4.0.2:
-	cd libhelper-1.4.0.2; make
-
-libhelper-1.4.0.2-install:
-	mkdir -p $(TARGETDIR)/usr/lib
-	install -D libhelper-1.4.0.2/libhelper.so $(TARGETDIR)/usr/lib/
-
-libfapi-0.1: fapi_wlan_common-05.04.00.131
-	cd libfapi-0.1; make clean; make
-
-libfapi-0.1-install:
-	cd libfapi-0.1; make clean; make
-	install -D libfapi-0.1/libfapi.so $(TARGETDIR)/usr/lib/
-
-fapi_wlan_common-05.04.00.131: ncurses-6.3 readline-6.2 libhelper-1.4.0.2
-	cd fapi_wlan_common-05.04.00.131; make clean; make
-
-fapi_wlan_common-05.04.00.131-install:
-	mkdir -p $(TARGETDIR)/usr/lib
-	install -D fapi_wlan_common-05.04.00.131/libfapiwlancommon.so $(TARGETDIR)/usr/lib/
-	install -D fapi_wlan_common-05.04.00.131/fapi_wlan_beerock_cli $(TARGETDIR)/usr/lib/
-
 hostapd-2.6: libnl-bf openssl
 	cd hostapd-2.6/hostapd;	make clean; make hostapd; make hostapd_cli
 	cd hostapd-2.6/wpa_supplicant; make clean; make wpa_supplicant; make wpa_cli
@@ -10135,6 +10104,25 @@ htop-install:
 
 ksmbd: libnl
 	$(MAKE) -C ksmbd
+
+safec3/Makefile:
+	cd safec3 && autoreconf -i -f && $(CONFIGURE) \
+		--prefix=/usr \
+		--bindir=/usr/sbin \
+		--libdir=/usr/lib \
+		--disable-doc \
+		CFLAGS="$(CFLAGS) -D_POSIX_C_SOURCE=200809L"
+
+safec3:safec3/Makefile
+	$(MAKE) -C safec3
+
+safec3-install:
+	install -D safec3/libsafec-3.3.so* $(INSTALLDIR)/safec3/usr/lib/
+
+safec3-stage:
+	install -D safec3/include/*.h $(STAGEDIR)/usr/include/libsafec/
+	install -D safec3/libsafec-3.3.so* $(STAGEDIR)/usr/lib/
+	install -D safec3/pkgconfig/safec-3.3.pc $(STAGEDIR)/usr/lib/pkgconfig/
 
 #
 # Generic rules

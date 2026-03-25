@@ -8,7 +8,7 @@ export PLATFORM := mips-musl
 export PLATFORM_ROUTER := grx500
 export MODEL_EXT := _lantiq
 export TOOLCHAIN_NAME=toolchain-mips_24kc+nomips16_gcc-8.3.0_musl
-export TOOLS := $(SRCBASE)/tools/${TOOLCHAIN_NAME}
+export TOOLS := $(SRCBASE)/../../toolchains/${TOOLCHAIN_NAME}
 export STAGING_DIR := $(TOOLS)
 export CROSS_COMPILE := $(STAGING_DIR)/bin/mips-openwrt-linux-musl-
 export CROSS_COMPILER := $(CROSS_COMPILE)
@@ -32,6 +32,7 @@ export s_entry_addr := 0xa002df00
 export image_header := MIPS LTQCPE Linux-4.9.x
 export compression_type := lzma
 export ENTRYADDR := $(LOADADDR)
+export DTS_DIR := $(LINUXDIR)/arch/$(ARCH)/boot/dts/lantiq
 
 export CONFIG_LINUX26=y
 export CONFIG_LANTIQ=y

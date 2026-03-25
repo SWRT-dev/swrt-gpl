@@ -75,3 +75,5 @@ release/src-econet-*/bootloader/
 release/src-econet-*/econettools/
 release/src-econet-*/en756*/
 release/src-hisi-*/*
+release/src-lantiq/grx500/ltq_temp/source/*
+release/src-lantiq/grx500/upgrade_utils/source/*

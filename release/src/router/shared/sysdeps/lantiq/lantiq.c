@@ -11,6 +11,7 @@
 #include "utils.h"
 #include "shutils.h"
 #include "shared.h"
+#include "lantiq.h"
 
 #ifdef RTCONFIG_AMAS
 #include <net/ethernet.h>
@@ -21,61 +22,99 @@
 #define GPIO_IOCTL
 #endif
 
-void mac_allow_list_add(int 5g, unsigned char *mac)
+enum {
+	WAN_PORT=0,
+	LAN1_PORT,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+	MAX_WANLAN_PORT
+};
+#define NR_WANLAN_PORT	MAX_WANLAN_PORT
+
+/**
+ * The vport_to_iface array is used to get interface name of each virtual
+ * port.  If bled need to know TX/RX statistics of LAN1~2, WAN1, WAN2 (AQR107),
+ * and 10G SFP+, bled has to find this information from netdev.  So, define
+ * this array and implement vport_to_iface_name() function which is used by
+ * bled in update_swports_bled().
+ *
+ * array index:		virtual port mapping enumeration.
+ * 			e.g. LAN1_PORT, LAN2_PORT, etc.
+ * array element:	Interface name of specific virtual port.
+ */
+static const char *vport_to_iface[MAX_WANLAN_PORT] = {
+	"eth1",							/* WAN */
+	"eth0_1",							/* LAN1 */
+	"eth0_2",							/* LAN2 */
+	"eth0_3",							/* LAN3 */
+	"eth0_4",							/* LAN4 */
+};
+
+/* Model-specific LANx ==> Model-specific virtual PortX.
+ * array index:	Model-specific LANx (started from 0).
+ * array value:	Model-specific virtual port number.
+ */
+const int lan_id_to_vport[NR_WANLAN_PORT] = {
+	WAN_PORT,
+	LAN1_PORT,
+	LAN2_PORT,
+	LAN3_PORT,
+	LAN4_PORT,
+};
+
+/* Model-specific LANx (started from 0) ==> Model-specific virtual PortX */
+static inline int lan_id_to_vport_nr(int id)
 {
-  char *p;
-  char *ai_mac;
-  char *tmp;
-  char mac_buf[17];
+	return lan_id_to_vport[id];
+}
 
-  memcpy(mac_buf, "XX:XX:XX:XX:XX:XX", 17);
-  sprintf(mac_buf, "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
-  if ( 5g )
-    p = "aimesh_macacl_5g_mac";
-  else
-    p = "aimesh_macacl_2g_mac";
-  ai_mac = nvram_safe_get(p);
+void mac_allow_list_add(int band, unsigned char *mac)
+{
+	char *ai_mac;
+	char *tmp;
+	char mac_buf[17] = "XX:XX:XX:XX:XX:XX";
 
-  if ( !strstr(ai_mac, mac_buf) )
-  {
-    if ((tmp = calloc(1, strlen(ai_mac) + strlen(mac_buf) + 2)))
-    {
-      strcpy(tmp, ai_mac);
-      tmp[strlen(ai_mac)] = '<';
-      strcpy(&tmp[strlen(ai_mac) + 1], mac_buf);
-      if ( 5g )
-      	nvram_set("aimesh_macacl_5g_mac", tmp);
-      else
-      	nvram_set("aimesh_macacl_2g_mac", tmp);
+	snprintf(mac_buf, sizeof(mac_buf), "%02X:%02X:%02X:%02X:%02X:%02X", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+	if(band)
+		ai_mac = nvram_safe_get("aimesh_macacl_5g_mac");
+	else
+		ai_mac = nvram_safe_get("aimesh_macacl_2g_mac");
 
-      free(tmp);
-    }
-    else
-    {
-      _dprintf("malloc error\n");
-    }
-  }
+	if(!strstr(ai_mac, mac_buf)){
+		if((tmp = calloc(1, strlen(ai_mac) + strlen(mac_buf) + 2))){
+			strcpy(tmp, ai_mac);
+			tmp[strlen(ai_mac)] = '<';
+			strcpy(&tmp[strlen(ai_mac) + 1], mac_buf);
+			if(band)
+				nvram_set("aimesh_macacl_5g_mac", tmp);
+			else
+				nvram_set("aimesh_macacl_2g_mac", tmp);
+			free(tmp);
+		}else{
+			_dprintf("malloc error\n");
+		}
+	}
 }
 
 // --- move begin ---
 #ifdef GPIO_IOCTL
 
 #include <sys/ioctl.h>
-#include <linux_gpio.h>
 
 static int _gpio_ioctl(int f, int gpioreg, unsigned int mask, unsigned int val)
 {
-
+	return 0;
 }
 
 static int _gpio_open()
 {
-
+	return 0;
 }
 
 int gpio_open(uint32_t mask)
 {
-
+	return 0;
 }
 
 void gpio_write(uint32_t bitvalue, int en)
@@ -85,19 +124,19 @@ void gpio_write(uint32_t bitvalue, int en)
 
 uint32_t _gpio_read(int f)
 {
-
+	return 0;
 }
 
 uint32_t gpio_read(void)
 {
-
+	return 0;
 }
 
 #else
 
 int gpio_open(uint32_t mask)
 {
-
+	return 0;
 }
 
 void gpio_write(uint32_t bitvalue, int en)
@@ -107,12 +146,12 @@ void gpio_write(uint32_t bitvalue, int en)
 
 uint32_t _gpio_read(int f)
 {
-
+	return 0;
 }
 
 uint32_t gpio_read(void)
 {
-
+	return 0;
 }
 
 #endif
@@ -675,7 +714,224 @@ err:
 
 #endif
 
+/**
+ * @link:
+ * 	0:	no-link
+ * 	1:	link-up
+ * @speed:
+ * 	0,10:		10Mbps		==> 'M'
+ * 	1,100:		100Mbps		==> 'M'
+ * 	2,1000:		1000Mbps	==> 'G'
+ * 	3,10000:	10Gbps		==> 'T'
+ * 	4,2500:		2.5Gbps		==> 'Q'
+ * 	5,5000:		5Gbps		==> 'F'
+ */
+static char conv_speed(unsigned int link, unsigned int speed)
+{
+	char ret = 'X';
 
+	if (link != 1)
+		return ret;
 
+	if (speed == 2 || speed == 1000)
+		ret = 'G';
+	else if (speed == 3 || speed == 10000)
+		ret = 'T';
+	else if (speed == 4 || speed == 2500)
+		ret = 'Q';
+	else if (speed == 5 || speed == 5000)
+		ret = 'F';
+	else
+		ret = 'M';
 
+	return ret;
+}
+
+/**
+ * Get link status and/or phy speed of a port. (by sysfs)
+ * use /sys/class/net/NIC/speed to retrieve information
+ * @link:	pointer to unsigned integer.
+ * 		If link != NULL,
+ * 			*link = 0 means link-down
+ * 			*link = 1 means link-up.
+ * @speed:	pointer to unsigned integer.
+ * 		If speed != NULL,
+ * 			*speed = 10/100/1000/2500 Mbps
+ * @return:
+ * 	0:	success
+ *     -1:	invalid parameter
+ *  otherwise:	fail
+ */
+static void get_phy_info_by_sysfs(unsigned int vport, unsigned int *link, unsigned int *speed, phy_info *info)
+{
+	unsigned int l = 0, s = 0;
+	char path[256];
+	char sp_str[10]; // -1, 10, 100, 1000, 2500, 10000
+
+	snprintf(path, sizeof(path), "/sys/class/net/%s/operstate", vport_to_iface[vport]);
+	if (f_read_string(path, sp_str, sizeof(sp_str)) > 0) {
+		if(!strncmp(sp_str, "up", 2)){
+			if(info)
+				snprintf(info->state, sizeof(info->state), "up");
+
+			snprintf(path, sizeof(path), "/sys/class/net/%s/speed", vport_to_iface[vport]);
+			if (f_read_string(path, sp_str, sizeof(sp_str)) > 0) {
+				int sp_val = atoi(sp_str);
+				if (sp_val > 0) {
+					l = 1;
+					s = sp_val;
+				}
+				if(info)
+					info->link_rate = s;
+			}
+		}else
+			snprintf(info->state, sizeof(info->state), "down");
+	}else
+		snprintf(info->state, sizeof(info->state), "down");
+
+	if(link)
+		*link = l;
+	if(speed)
+		*speed = s;
+}
+
+/**
+ * Get link status and/or phy speed of a virtual port.
+ * @vport:	virtual port number
+ * @link:	pointer to unsigned integer.
+ * 		If link != NULL,
+ * 			*link = 0 means link-down
+ * 			*link = 1 means link-up.
+ * @speed:	pointer to unsigned integer.
+ * 		If speed != NULL,
+ * 			*speed = 1 means 100Mbps
+ * 			*speed = 2 means 1000Mbps
+ * @return:
+ * 	0:	success
+ *     -1:	invalid parameter
+ *  otherwise:	fail
+ */
+int get_vport_info(unsigned int vport, unsigned int *link, unsigned int *speed, phy_info *info)
+{
+	if (vport >= MAX_WANLAN_PORT || (!link && !speed))
+		return -1;
+
+	if (link)
+		*link = 0;
+	if (speed)
+		*speed = 0;
+
+	get_phy_info_by_sysfs(vport, link, speed, info);
+
+	return 0;
+}
+
+#ifdef RTCONFIG_NEW_PHYMAP
+void get_phy_port_mapping(phy_port_mapping *port_mapping)
+{
+	int i, id;
+	static phy_port_mapping port_mapping_static = {
+#if defined(BLUECAVE) || defined(RAX40)
+		.count = NR_WANLAN_PORT,
+		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[4] = { .phy_port_id = LAN4_PORT, .ext_port_id = -1, .label_name = "L4", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+#elif defined(K3C)
+		.count = NR_WANLAN_PORT - 1,
+		.port[0] = { .phy_port_id = WAN_PORT,  .ext_port_id = -1, .label_name = "W0", .cap = PHY_PORT_CAP_WAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[1] = { .phy_port_id = LAN1_PORT, .ext_port_id = -1, .label_name = "L1", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[2] = { .phy_port_id = LAN2_PORT, .ext_port_id = -1, .label_name = "L2", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+		.port[3] = { .phy_port_id = LAN3_PORT, .ext_port_id = -1, .label_name = "L3", .cap = PHY_PORT_CAP_LAN, .max_rate = 1000, .ifname = NULL, .flag = 0, .seq_no = -1, .ui_display = NULL },
+#else
+		#error "port_mapping is not defined."
+#endif
+	};
+	if (!port_mapping)
+		return;
+
+///////////////// copy all Ethernet port here ////////////////////////
+	memcpy(port_mapping, &port_mapping_static, sizeof(phy_port_mapping));
+
+///////////////// Assign Ethernet NIC name here ////////////////////////
+	for (i = 0; i < port_mapping->count; i++) {
+		id = port_mapping->port[i].phy_port_id;
+		if (id != -1)
+			port_mapping->port[i].ifname = (char *)vport_to_iface[id];
+	}
+
+///////////////// Add USB port define here ////////////////////////
+#if defined(BLUECAVE) || defined(K3C) || defined(RAX40)
+////  1 USB3 port device
+	i = port_mapping->count++;
+	port_mapping->port[i].phy_port_id = -1;
+	port_mapping->port[i].label_name = "U1";
+	port_mapping->port[i].cap = PHY_PORT_CAP_USB;
+	port_mapping->port[i].max_rate = 5000;
+	port_mapping->port[i].ifname = NULL;
+#endif
+
+	add_sw_cap(port_mapping);
+	swap_wanlan(port_mapping);
+	return;
+}
+#endif // end of RTCONFIG_NEW_PHYMAP
+
+void ATE_port_status(int verbose, phy_info_list *list)
+{
+	int i, len;
+	char buf[64];
+#ifdef RTCONFIG_NEW_PHYMAP
+	char cap_buf[64] = {0};
+#endif
+	phyState pS;
+
+#ifdef RTCONFIG_NEW_PHYMAP
+	phy_port_mapping port_mapping;
+	get_phy_port_mapping(&port_mapping);
+	if (list)
+		list->count = 0;
+
+	len = 0;
+	for (i = 0; i < port_mapping.count; i++) {
+		// Only handle WAN/LAN ports
+		if (((port_mapping.port[i].cap & PHY_PORT_CAP_WAN) == 0) && ((port_mapping.port[i].cap & PHY_PORT_CAP_LAN) == 0))
+			continue;
+		pS.link[i] = 0;
+		pS.speed[i] = 0;
+		get_vport_info(port_mapping.port[i].phy_port_id, &pS.link[i], &pS.speed[i], list ? &list->phy_info[i] : NULL);
+		if (list) {
+			list->phy_info[i].phy_port_id = port_mapping.port[i].phy_port_id;
+			snprintf(list->phy_info[i].label_name, sizeof(list->phy_info[i].label_name), "%s", 
+				port_mapping.port[i].label_name);
+			list->phy_info[i].cap = port_mapping.port[i].cap;
+			snprintf(list->phy_info[i].cap_name, sizeof(list->phy_info[i].cap_name), "%s", 
+				get_phy_port_cap_name(port_mapping.port[i].cap, cap_buf, sizeof(cap_buf)));
+			if (pS.link[i] == 1 && !list->status_and_speed_only) {
+				// TODO not complete
+				//get_port_mib(port_mapping.port[i].phy_port_id, &list->phy_info[i]);
+			}
+
+			list->count++;
+		}
+		len += sprintf(buf+len, "%s=%C;", port_mapping.port[i].label_name,
+			conv_speed(pS.link[i], pS.speed[i]));
+	}
+
+#else
+	for (i = 0; i < NR_WANLAN_PORT; i++) {
+		get_vport_info(lan_id_to_vport_nr(i), &pS.link[i], &pS.speed[i], NULL);
+	}
+
+	len = 0;
+	len += sprintf(buf+len, "W0=%C;", conv_speed(pS.link[WAN_PORT], pS.speed[WAN_PORT]));
+	for (i = LAN1_PORT; i < NR_WANLAN_PORT; i++) {
+		len += sprintf(buf+len, "L%d=%C;", i, conv_speed(pS.link[i], pS.speed[i]));
+	}
+#endif
+
+	if (verbose)
+		puts(buf);
+}
 

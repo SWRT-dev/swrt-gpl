@@ -161,15 +161,15 @@ int xgmac_set_mtl_int(void *pdev, u32 val)
 	mtl_q_isr = XGMAC_RGRD(pdata, MTL_Q_IER);
 
 	/* Tx Q Overflow Interrupt Enable */
-	if (val & MASK(MTL_Q_IER, TXUIE))
+	if (val & XGMAC_MASK(MTL_Q_IER, TXUIE))
 		MAC_SET_VAL(mtl_q_isr, MTL_Q_IER, TXUIE, val);
 
 	/* Average bits per slot interrupt enable */
-	if (val & MASK(MTL_Q_IER, ABPSIE))
+	if (val & XGMAC_MASK(MTL_Q_IER, ABPSIE))
 		MAC_SET_VAL(mtl_q_isr, MTL_Q_IER, ABPSIE, val);
 
 	/* Rx Q Overflow Interrupt Enable */
-	if (val & MASK(MTL_Q_IER, RXOIE))
+	if (val & XGMAC_MASK(MTL_Q_IER, RXOIE))
 		MAC_SET_VAL(mtl_q_isr, MTL_Q_IER, RXOIE, val);
 
 	XGMAC_RGWR(pdata, MTL_Q_IER, mtl_q_isr);

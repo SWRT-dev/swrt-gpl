@@ -22,7 +22,7 @@ int GetPhyStatus(int verbose, phy_info_list *list)
 #elif defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 	ATE_mt7621_esw_port_status();
 #endif
-#elif defined(RTCONFIG_QCA)
+#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 	ATE_port_status(verbose, list);
 #elif defined(RTCONFIG_BCMARM)
 #ifdef RTCONFIG_NEW_PHYMAP

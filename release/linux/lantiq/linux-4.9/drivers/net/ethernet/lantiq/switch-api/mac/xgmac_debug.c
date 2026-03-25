@@ -928,23 +928,23 @@ int xgmac_dbg_int_sts(void *pdev)
 		   val ? "ENABLED" : "DISABLED", val);
 
 	/* Enable Timestamp interrupt */
-	if (val & MASK(MAC_IER, TSIE))
+	if (val & XGMAC_MASK(MAC_IER, TSIE))
 		mac_printf("\t\tTimestamp Interrupt Enabled\n");
 
 	/* Enable LPI interrupt (EEE) */
-	if (val & MASK(MAC_IER, LPIIE))
+	if (val & XGMAC_MASK(MAC_IER, LPIIE))
 		mac_printf("\t\tLPI interrupt (EEE) Enabled\n");
 
 	/* Enable transmit error status interrupt */
-	if (val & MASK(MAC_IER, TXESIE))
+	if (val & XGMAC_MASK(MAC_IER, TXESIE))
 		mac_printf("\t\tTransmit error status interrupt Enabled\n");
 
 	/* Enable Receive error status interrupt */
-	if (val & MASK(MAC_IER, RXESIE))
+	if (val & XGMAC_MASK(MAC_IER, RXESIE))
 		mac_printf("\t\tReceive error status interrupt Enabled\n");
 
 	/* Enable power management interrupt */
-	if (val & MASK(MAC_IER, PMTIE))
+	if (val & XGMAC_MASK(MAC_IER, PMTIE))
 		mac_printf("\tPower Management interrupt Enabled\n");
 
 	if (!mac_isr) {
@@ -1114,15 +1114,15 @@ int xgmac_get_mtl_int_sts(void *pdev)
 		   val ? "ENABLED" : "DISABLED", val);
 
 	/* Tx Q Overflow Interrupt Enable */
-	if (val & MASK(MTL_Q_IER, TXUIE))
+	if (val & XGMAC_MASK(MTL_Q_IER, TXUIE))
 		mac_printf("\t\tTx Q Overflow Interrupt Enabled\n");
 
 	/* Average bits per slot interrupt enable */
-	if (val & MASK(MTL_Q_IER, ABPSIE))
+	if (val & XGMAC_MASK(MTL_Q_IER, ABPSIE))
 		mac_printf("\t\tAverage bits per slot interrupt Enabled\n");
 
 	/* Rx Q Overflow Interrupt Enable */
-	if (val & MASK(MTL_Q_IER, RXOIE))
+	if (val & XGMAC_MASK(MTL_Q_IER, RXOIE))
 		mac_printf("\t\tRx Q Overflow Interrupt Enabled\n");
 
 	if (!mtl_q_isr) {

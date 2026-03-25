@@ -42,7 +42,8 @@ extern const char VPHY_5G[];
 #define BW_40			1
 #define BW_BOTH			2
 #define BW_80			2
-#define BW_10			3
+#define BW_160			3
+#define BW_10			4
 
 #define INIC_VLAN_ID_START	4 //first vlan id used for RT3352 iNIC MII
 #define INIC_VLAN_IDX_START	2 //first available index to set vlan id and its group.
@@ -274,7 +275,11 @@ enum ASUS_IOCTL_SUBCMD {
 #error Define MAC address offset.
 #endif
 
+#if defined(RAX40)
+#define MTD_FACTORY_BASE_ADDRESS	0xff60000 /*vendor + 0x6a0000*/
+#else
 #define MTD_FACTORY_BASE_ADDRESS	0x7ec0000
+#endif
 
 #define OFFSET_RFCA_COPIED		(MTD_FACTORY_BASE_ADDRESS + 0x0D00A)	/* 4 bytes */
 #define OFFSET_FORCE_USB3		(MTD_FACTORY_BASE_ADDRESS + 0x0D010)	/* 1 bytes */

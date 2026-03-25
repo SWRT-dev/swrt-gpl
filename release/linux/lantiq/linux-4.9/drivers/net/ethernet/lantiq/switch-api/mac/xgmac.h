@@ -754,7 +754,7 @@ enum  {
 	XGMAC_SPEEDS,
 };
 
-#define MASK(reg, field)		(1 << reg##_##field##_POS)
+#define XGMAC_MASK(reg, field)		(1 << reg##_##field##_POS)
 #define MASK_N_BITS(reg, field)		((1 << (reg##_##field##_WIDTH)) - 1)
 
 

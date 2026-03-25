@@ -13,7 +13,11 @@
 #define NVRAM_MTD_NAME		"nvram"
 #endif
 #if defined(RTCONFIG_LANTIQ)
+#if defined(RAX40)
+#define FACTORY_MTD_NAME	"vendor"
+#else
 #define FACTORY_MTD_NAME	"data2"
+#endif
 #elif defined(RTCONFIG_ALPINE)
 #define FACTORY_MTD_NAME	"data0"
 #else

@@ -3,6 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
+#include <limits.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -26,7 +27,7 @@
 #ifndef MAP_FAILED
 #define MAP_FAILED (-1)
 #endif
-#include <linux_gpio.h>
+
 
 typedef uint32_t __u32;
 
@@ -253,7 +254,7 @@ int check_imageheader(char *buf, long *filelen)
 	if (strncmp(buf, IMAGE_HEADER, sizeof(IMAGE_HEADER) - 1) == 0)
 	{
 		memcpy(&aligned, buf + sizeof(IMAGE_HEADER) - 1, sizeof(aligned));
-		*filelen = __bswap_32(aligned);
+		*filelen = __bswap32(aligned);
 
 		_dprintf("image len: %x[%08X]\n", aligned, aligned);
 		return 1;
@@ -272,18 +273,7 @@ int check_imageheader(char *buf, long *filelen)
 int check_imagefile(char *fname)
 {
 	FILE *fp;
-	struct tail_t {
-		version_t kernel;		/* Kernel version */
-		version_t fs;			/* Filsystem version */
-		uint8_t pid[MAX_PID_LEN];	/* Product Id */
-		uint8_t hw[MAX_HW_COUNT][4];	/* Compatible hw list lo maj.min, hi maj.min */
-#ifdef TRX_NEW
-		uint16_t sn;
-		uint16_t en;
-		uint8_t key;
-#endif
-		uint8_t	pad[27];		/* Padding up to MAX_TAIL_LEN */
-	} tail;
+	TAIL tail;
 	int i, model = get_model();
 
 	fp = fopen(fname, "r");
@@ -294,31 +284,26 @@ int check_imagefile(char *fname)
 	fread(&tail, 1, MAX_TAIL_LEN, fp);
 	fclose(fp);
 
-	_dprintf("productid field in image: %.12s\n", tail.pid);
+	_dprintf("productid field in image: %.12s\n", tail.productid);
 
 	for (i = 0; i < sizeof(tail); i++)
 		_dprintf("%02x ", ((uint8_t *)&tail)[i]);
 	_dprintf("\n");
 
 	/* safe strip trailing spaces */
-	for (i = 0; i < MAX_PID_LEN && tail.pid[i] != '\0'; i++);
-	for (i--; i >= 0 && tail.pid[i] == '\x20'; i--)
-		tail.pid[i] = '\0';
+	for (i = 0; i < MAX_PID_LEN && tail.productid[i] != '\0'; i++);
+	for (i--; i >= 0 && tail.productid[i] == '\x20'; i--)
+		tail.productid[i] = '\0';
 
 	if (!checkcrc(fname)) {
 		_dprintf("check crc error!!!\n");
 		return 1;
 	}
 
-#ifdef TRX_NEW
-	if (!check_trx(fname, tail.key))
-		return 2;
-#endif
-
 	/* compare up to the first \0 or MAX_PID_LEN
 	 * nvram productid or hw model's original productid */
-	if (strncmp(nvram_safe_get("productid"), (char *) tail.pid, MAX_PID_LEN) == 0
-	 || strncmp(get_modelid(model), (char *) tail.pid, MAX_PID_LEN) == 0)
+	if (strncmp(nvram_safe_get("productid"), (char *) tail.productid, MAX_PID_LEN) == 0
+	 || strncmp(get_modelid(model), (char *) tail.productid, MAX_PID_LEN) == 0)
 	{
 		_dprintf("correct model name\n");
 		return 0;
@@ -431,7 +416,7 @@ unsigned int get_radio_status(char *ifname)
 
 int get_radio(int unit, int subunit)
 {
-	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
+	char prefix[] = "wlXXXXXXXXXXXXXX";
 
 	if (subunit > 0)
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
@@ -448,7 +433,7 @@ char *wif_to_vif(char *wif)
 {
 	static char vif[32];
 	int unit = 0, subunit = 0;
-	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
+	char prefix[] = "wlXXXXXXXXXXXXXX";
 
 	vif[0] = '\0';
 
@@ -1024,14 +1009,15 @@ char *get_wan_mac_name(void)
 	int model = get_model();
 	char *mac_name = "et0macaddr";
 	char *hwaddr = nvram_safe_get("wan_hwaddr_x");
-	unsigned char mac_binary[6];
+	unsigned char mac_binary[6], mac2_binary[6];
 
 	/* Check below configuration in convert_wan_nvram() too. */
 	switch (model) {
 	case MODEL_BLUECAVE:	/* fall-through */
 	case MODEL_RAX40:	/* fall-through */
 		/* Use 2G MAC address as LAN MAC address. */
-		if (!ether_atoe(hwaddr, mac_binary) || !memcmp(mac_binary, 0xFFFFFFFFFFFF, 6))
+		memset(mac2_binary, 0xff, sizeof(mac2_binary));
+		if (!ether_atoe(hwaddr, mac_binary) || !memcmp(mac_binary, mac2_binary, 6))
 			mac_name = "et0macaddr";
 		else
 			mac_name = "wan_hwaddr_x";
@@ -1112,7 +1098,7 @@ int check_wave_ready(int action)
 	return 0;
 }
 
-int trigger_wave_monitor_and_wait(char *func, int line, int action, int time)
+int trigger_wave_monitor_and_wait(const char *func, int line, int action, int time)
 {
 	int result;
 
@@ -1129,7 +1115,7 @@ int trigger_wave_monitor_and_wait(char *func, int line, int action, int time)
 	return result;
 }
 
-int trigger_wave_monitor(char *func, int line, int action)
+int trigger_wave_monitor(const char *func, int line, int action)
 {
 	return trigger_wave_monitor_and_wait(func, line, action, 5);
 }
@@ -1166,7 +1152,7 @@ void set_radio(int on, int unit, int subunit)
 				else
 					trigger_wave_monitor(__func__, __LINE__, WAVE_ACTION_RE_AP5G_OFF);
 			}
-
+		}
 		/* Reconnect to peer WDS AP */
 		sprintf(path, NAWDS_SH_FMT, get_wififname(unit));
 		if (!subunit && !nvram_match(strcat_r(prefix, "mode_x", tmp), "0") && f_exists(path))

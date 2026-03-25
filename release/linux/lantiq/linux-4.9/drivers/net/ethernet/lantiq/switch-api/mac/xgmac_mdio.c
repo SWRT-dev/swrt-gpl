@@ -272,46 +272,46 @@ int mdio_set_interrupt(void *pdev, u32 val)
 	struct mac_prv_data *pdata = GET_MAC_PDATA(pdev);
 	u32 mdio_ier = 0;
 
-	if (val & MASK(MDIO_IER, CWCOMPIE))
+	if (val & XGMAC_MASK(MDIO_IER, CWCOMPIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, CWCOMPIE, val);
 
-	if (val & MASK(MDIO_IER, SNGLCOMPIE))
+	if (val & XGMAC_MASK(MDIO_IER, SNGLCOMPIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, SNGLCOMPIE, val);
 
-	if (val & MASK(MDIO_IER, PRT3ALIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT3ALIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT3ALIE, val);
 
-	if (val & MASK(MDIO_IER, PRT2ALIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT2ALIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT2ALIE, val);
 
-	if (val & MASK(MDIO_IER, PRT1ALIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT1ALIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT1ALIE, val);
 
-	if (val & MASK(MDIO_IER, PRT0ALIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT0ALIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT0ALIE, val);
 
-	if (val & MASK(MDIO_IER, PRT3LSIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT3LSIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT3LSIE, val);
 
-	if (val & MASK(MDIO_IER, PRT2LSIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT2LSIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT2LSIE, val);
 
-	if (val & MASK(MDIO_IER, PRT1LSIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT1LSIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT1LSIE, val);
 
-	if (val & MASK(MDIO_IER, PRT0LSIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT0LSIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT0LSIE, val);
 
-	if (val & MASK(MDIO_IER, PRT3CONIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT3CONIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT3CONIE, val);
 
-	if (val & MASK(MDIO_IER, PRT2CONIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT2CONIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT2CONIE, val);
 
-	if (val & MASK(MDIO_IER, PRT1CONIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT1CONIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT1CONIE, val);
 
-	if (val & MASK(MDIO_IER, PRT0CONIE))
+	if (val & XGMAC_MASK(MDIO_IER, PRT0CONIE))
 		MAC_SET_VAL(mdio_ier, MDIO_IER, PRT0CONIE, val);
 
 	XGMAC_RGWR(pdata, MDIO_IER, mdio_ier);
@@ -329,46 +329,46 @@ int xgmac_mdio_get_int_sts(void *pdev)
 	mac_printf("\tMDIO_IER interrupts  %s %08x\n",
 		   mdio_ier ? "ENABLED" : "DISABLED", mdio_ier);
 
-	if (mdio_ier & MASK(MDIO_IER, CWCOMPIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, CWCOMPIE))
 		mac_printf("Continuous Write Completion Interrupt Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, SNGLCOMPIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, SNGLCOMPIE))
 		mac_printf("Single Command Completion Interrupt Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT3ALIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT3ALIE))
 		mac_printf("Dev Present Sts Change Interrupt P3 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT2ALIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT2ALIE))
 		mac_printf("Dev Present Sts Change Interrupt P2 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT1ALIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT1ALIE))
 		mac_printf("Dev Present Sts Change Interrupt P1 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT0ALIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT0ALIE))
 		mac_printf("Dev Present Sts Change Interrupt P0 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT3LSIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT3LSIE))
 		mac_printf("Link Status Change Interrupt P3 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT2LSIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT2LSIE))
 		mac_printf("Link Status Change Interrupt P2 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT1LSIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT1LSIE))
 		mac_printf("Link Status Change Interrupt P1 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT0LSIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT0LSIE))
 		mac_printf("Link Status Change Interrupt P0 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT3CONIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT3CONIE))
 		mac_printf("Connect/Disconnect Event Interrupt P3 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT2CONIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT2CONIE))
 		mac_printf("Connect/Disconnect Event Interrupt P2 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT1CONIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT1CONIE))
 		mac_printf("Connect/Disconnect Event Interrupt P1 Enabled\n");
 
-	if (mdio_ier & MASK(MDIO_IER, PRT0CONIE))
+	if (mdio_ier & XGMAC_MASK(MDIO_IER, PRT0CONIE))
 		mac_printf("Connect/Disconnect Event Interrupt P0 Enabled\n");
 
 	if (!mdio_isr) {
@@ -378,46 +378,46 @@ int xgmac_mdio_get_int_sts(void *pdev)
 		mac_printf("\tMDIO interrupt status available %08x\n",
 			   mdio_isr);
 
-		if (mdio_isr & MASK(MDIO_ISR, CWCOMPINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, CWCOMPINT))
 			mac_printf("Continuous WR Completion Int Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, SNGLCOMPINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, SNGLCOMPINT))
 			mac_printf("Single Cmd Completion Int Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT3ALINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT3ALINT))
 			mac_printf("Dev Present Sts Change Int P3 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT2ALINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT2ALINT))
 			mac_printf("Dev Present Sts Change Int P2 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT1ALINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT1ALINT))
 			mac_printf("Dev Present Sts Change Int P1 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT0ALINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT0ALINT))
 			mac_printf("Dev Present Sts Change Int P0 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT3LSINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT3LSINT))
 			mac_printf("Link Sts Change Int P3 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT2LSINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT2LSINT))
 			mac_printf("Link Sts Change Int P2 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT1LSINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT1LSINT))
 			mac_printf("Link Sts Change Int P1 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT0LSINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT0LSINT))
 			mac_printf("Link Sts Change Int P0 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT3CONINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT3CONINT))
 			mac_printf("Connect/Disconnect Event Int P3 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT2CONINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT2CONINT))
 			mac_printf("Connect/Disconnect Event Int P2 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT1CONINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT1CONINT))
 			mac_printf("Connect/Disconnect Event Int P1 Set\n");
 
-		if (mdio_isr & MASK(MDIO_ISR, PRT0CONINT))
+		if (mdio_isr & XGMAC_MASK(MDIO_ISR, PRT0CONINT))
 			mac_printf("Connect/Disconnect Event Int P0 Set\n");
 	}
 

@@ -2868,7 +2868,7 @@ static int ifx_validate_params(IFX_SSC_HANDLE handler, char *txbuf, int txsize,
 	}
 
 	if (!rxbuf && rxsize == 0 && !txbuf && txsize == 0) {
-		LOGF_KLOG_ERROR("%s: invalid data\n");
+		LOGF_KLOG_ERROR("%s: invalid data\n", __func__);
 		goto out;
 	}
 

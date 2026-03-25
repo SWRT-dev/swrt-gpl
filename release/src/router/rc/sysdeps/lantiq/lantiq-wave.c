@@ -253,6 +253,16 @@ void clean_wave_db(void)
 	system("rm -rf /jffs/db");
 }
 
+void lantiq_wlan_init(void)
+{
+	char *argv[50] = {"modprobe", "-s", "mtlk", "fastpath=1,1,1", "ahb_off=1", "loggersid=255,255", "dual_pci=1,1", NULL};
+	modprobe("compat");
+	modprobe("mac80211");
+	modprobe("cfg80211");
+	modprobe("mtlkroot");
+	_eval(argv, NULL, 0, NULL);
+}
+
 void unload_mtlk(void)
 {
 	while(pidof("hostapd_wlan0") > 0)
@@ -1941,7 +1951,7 @@ int wave_monitor_core(void)
 					_dprintf("cd /opt/lantiq/wave/; rm -rf db/default; rm -rf db/instance; rm -rf confs; tar zxf /jffs/db_instance_20260323.tgz; rm -f confs/wlan_notification_*");
 					_dprintf("--------- fapi_wlan_cli init . -----------\n");
 				}
-				wlan_init();
+				lantiq_wlan_init();
 				set_wps_enable(wps_band);
 				_dprintf("--------- fapi_wlan_cli init End. -----------\n");
 				if(nvram_get_int("x_Setting") == 1){

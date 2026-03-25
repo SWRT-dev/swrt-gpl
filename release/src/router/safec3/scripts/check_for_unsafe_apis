@@ -1,0 +1,548 @@
+#!/usr/bin/perl
+
+=head1 NAME
+
+  check_for_unsafe_apis - Finds unsafe APIs
+
+=head1 SYNOPSIS
+
+  check_for_unsafe_apis [OPTIONS] File [files...]
+
+  Options:
+    -h              full documentation
+
+  File - may be a file or directory.
+
+=head1 OPTIONS
+
+=over 8
+
+=item B<-h>, B<--help>, B<--usage>
+
+Prints out this manual page.
+
+=item B<-r>, B<-R>, B<--recursive>
+
+Follows child directories.
+
+=item B<-v>, B<--verbose>
+
+Prints out additional information when searching files.
+
+=item B<-p>, B<--perfile>
+
+Tells the program to keep per file statistics.
+
+=item B<-f> I<output_format>, B<--format> I<output_format>
+
+Request the program to output the results in a different format.
+
+=back
+
+=head1 EXAMPLE
+
+=over 4
+
+=item B<prompt$ check_for_unsafe_apis file.c srcdir>
+
+This will cause the program to check I<file.c> and all *.c sources files
+under I<srcdir> for unsafe API calls.
+
+=item B<prompt$ check_for_unsafe_apis -R file.c srcdir>
+
+This will find all unsafe API calls in I<file.c> and any *.c files found under the
+I<srcdir> directory tree.
+
+=back
+
+=head1 DESCRIPTION
+
+  Traverses specified directory trees and/or files (cwd by default)
+  searching for C source files (*.c), rooting out unsafe API calls.
+
+=head1 AUTHOR
+
+  Created: October 2008, Bo Berry
+  Last Modified: August 2017, Reini Urban
+
+=head1 COPYRIGHT
+
+  Copyright (c) 2008, 2009 by Cisco Systems, Inc.
+  Copyright (c) 2017 Reini Urban
+  All rights reserved.
+
+=cut
+
+#no lib "/opt/perl/packages/5.004_04/lib/site_perl/";
+
+use strict;
+use FileHandle;
+use DirHandle;
+use Getopt::Long;
+use Pod::Usage;
+
+# Global Variables:
+my $gFileNamesToCheck = qr/\.((c)|(h))$/;
+
+my $gVerbose         = 0;
+my $gRecursive       = 0;
+my $gOptPerFileStats = 0;
+my $gOptOutputFormat = "std";
+my $gNumFilesChecked = 0;
+
+my %gPerFileStats   = ();  # "func_name" => number_encountered
+my %gFuncNumMap;
+my %gFuncConvertMap = (
+    # C11 std APIs (Character Handling)
+    #    - Case Mapping
+    #"tolower"  => "??",
+    #"toupper"  => "??",
+
+    # C11 std APIs (String handling)
+    #    - Copying
+    "memcpy"   => "memcpy_s",
+    "memmove"  => "memmove_s",
+    "strcpy"   => "strcpy_s",
+    "strncpy"  => "strncpy_s",
+    "wcscpy"   => "wcscpy_s",
+    "wcsncpy"  => "wcsncpy_s",
+    "wmemcpy"  => "wmemcpy_s",
+    "wmemmove" => "wmemmove_s",
+
+    #    - Concatenation
+    "strcat"   => "strcat_s",
+    "strncat"  => "strncat_s",
+    "wcscat"   => "wcscat_s",
+    "wcsncat"  => "wcsncat_s",
+
+    #    - Comparison
+    "memcmp"   => "memcmp_s",
+    "strcmp"   => "strcmp_s",
+    "strncmp"  => "strcmp_s",
+    "strcoll"  => "??",
+    "strxfrm"  => "??",
+    "wcsncmp"  => "wcsncmp_s",
+
+    #    - Search
+    "memchr"    => "??",
+    "strchr"    => "??",
+    "strcspn"   => "strcspn_s",
+    "strpbrk"   => "strpbrk_s",
+    "strrchr"   => "??",
+    "strspn"    => "strspn_s",
+    "strstr"    => "strstr_s",
+    "wcsstr"    => "wcsstr_s",
+    "strtok"    => "strtok_s",
+    "wstrtok"   => "wstrtok_s",
+
+    #    - Miscellaneous
+    "memset"   => "memset_s",
+    "strerror" => "strerror_s",
+    "strerrorlen" => "strerrorlen_s",
+    "strlen"   => "strnlen_s",
+    "wcsnlen"  => "wcsnlen_s",
+
+    #    - Conversion
+    "mbstowcs"   => "mbstowcs_s",
+    "mbsrtowcs"  => "mbsrtowcs_s",
+    "wcrtomb"    => "wcrtomb_s",
+    "wcsrtombs"  => "wcsrtombs_s",
+    "wcstombs"   => "wcstombs_s",
+    "wctomb"     => "wctomb_s",
+
+    # C11 std APIs (Input/Output)
+    "sprintf"   => "sprintf_s",
+    "snprintf"  => "sprintf_s",
+    "vsprintf"  => "vsprintf_s",
+    "vsnprintf" => "vsprintf_s",
+    "fprintf"   => "fprintf_s",
+    "fwprintf"  => "fwprintf_s",
+    "printf"    => "printf_s",
+    "vfprintf"  => "vfprintf_s",
+    "vprintf"   => "vprintf_s",
+    "wprintf"   => "wprintf_s",
+    "snwprintf" => "snwprintf_s",
+    "swprintf"  => "swprintf_s",
+    "vfwprintf" => "vfwprintf_s",
+    "vsnwprintf"=> "vsnwprintf_s",
+    "vswprintf" => "vswprintf_s",
+    "vwprintf"  => "vwprintf_s",
+    "fscanf"    => "fscanf_s",
+    "fwscanf"   => "fwscanf_s",
+    "scanf"     => "scanf_s",
+    "sscanf"    => "sscanf_s",
+    "vfscanf"   => "vfscanf_s",
+    "vsscanf"   => "vsscanf_s",
+    "swscanf"   => "swscanf_s",
+    "vfwscanf"  => "vfwscanf_s",
+    "vswscanf"  => "vswscanf_s",
+    "vwscanf"   => "vwscanf_s",
+    "wscanf"    => "wscanf_s",
+    "fopen"     => "fopen_s",
+    "freopen"   => "freopen_s",
+    "gets"      => "gets_s", # not fgets
+    
+    # C11 std APIs (OS)
+    "asctime" => "asctime_s",
+    "ctime"   => "ctime_s",
+    "gmtime"  => "gmtime_s",
+    "localtime" => "localtime_s",
+    "getenv"  => "getenv_s",
+    "tmpnam"  => "mkstemp", #"tmpnam_s",
+    "tempnam" => "mkstemp", #"tmpnam_s",
+    "tmpfile" => "tmpfile_s",
+    
+    # C11 std APIs (Misc)
+    "bsearch" => "bsearch_s",
+    "qsort"   => "qsort_s",
+
+    # Extensions
+    #    - GNU extensions
+    "memcmp"      => "memcmp_s",
+    "wmemcmp"     => "wmemcmp_s",
+    
+    #    - Posix extensions
+    "strnlen"     => "strnlen_s",
+    "strcasecmp"  => "strcasecmp_s",
+    "strncasecmp" => "strcasecmp_s",
+
+    #    - Other (Our) extensions
+    "memzero"        => "memzero_s",
+    "strcmpfld"      => "strcmpfld_s",
+    "strcasecmp"     => "strcasecmp_s",
+    "strcasestr"     => "strcasestr_s",
+    "strcmpfld"      => "strcmpfld_s",
+    "strcpyfld"      => "strcpyfld_s",
+    "strcpyfldin"    => "strcpyfldin_s",
+    "strcpyfldout"   => "strcpyfldout_s",
+    "strfirstchar"   => "strfirstchar_s",
+    "strfirstdiff"   => "strfirstdiff_s",
+    "strfirstsame"   => "strfirstsame_s",
+    "strisalphanumeric" => "strisalphanumeric_s",
+    "strisascii"     => "strisascii_s",
+    "strisdigit"     => "strisdigit_s",
+    "strishex"       => "strishex_s",
+    "strislowercase" => "strislowercase_s",
+    "strismixedcase" => "strismixedcase_s",
+    "strispassword"  => "strispassword_s",
+    "strisuppercase" => "strisuppercase_s",
+    "strlastchar"    => "strlastchar_s",
+    "strlastdiff"    => "strlastdiff_s",
+    "strlastsame"    => "strlastsame_s",
+    "strljustify"    => "strljustify_s",
+    "strnterminate"  => "strnterminate_s",
+    "strprefix"      => "strprefix_s",
+    "strremovews"    => "strremovews_s",
+    "strtolowercase" => "strtolowercase_s",
+    "strtouppercase" => "strtouppercase_s",
+    "strzero"        => "strzero_s",
+    
+    #    - BSD extensions
+    #"strnstr"  => "strnlen_s", # broken in newlib
+    "strlcat"  => "strcat_s",
+    "strlcpy"  => "strcpy_s",
+    "strsep"   => "??",
+    "bcopy"    => "memcpy_s",
+    "bzero"    => "memset_s",
+    # TODO More OpenBSD
+
+    # Kernel Specific APIs
+    #    Linux specific APIs
+    "strnicmp"       => "??",
+    "strnchr"        => "??",
+    "memscan"        => "??",
+    "skip_spaces"    => "??",
+    "strim"          => "??",
+    "memchr_inv"     => "??",
+    "kstrdup"        => "??",
+    "kstrndup"       => "??",
+    "kmemdup"        => "??",
+    "argv_split"     => "??",
+    "argv_free"      => "??",
+    "sysfs_streq"    => "??",
+    "strtobool"      => "??",
+    "vbin_printf"    => "??",
+    "bstr_printf"    => "??",
+    "bprintf"        => "??",
+    "memory_read_from_buffer"    => "??",
+    "strstarts"      => "??",
+
+    #    IOS specific APIs
+    "strdiff"  => "??",
+    "memsetl"  => "??",
+    "memchk"   => "??",
+    "memrchk"  => "??",
+    "memchkl"  => "??",
+    "memdiff"  => "??",
+    "sstrncat" => "strncat_s",
+    "sstrncpy" => "strncpy_s",
+);
+my $funcRegexpStr = join("|", sort keys %gFuncConvertMap);
+my $gFuncRegexp = qr/[^_]($funcRegexpStr)[^_a-z]/;
+
+main();
+
+
+sub main
+{
+    Getopts();
+
+    if (@ARGV) {
+        CheckFilesOnCommandLine();
+    } else {
+        # check the current working directory
+        Log($gVerbose, "Checking source files in . ");
+        if ($gRecursive) {
+            Log($gVerbose, "(recursively) ");
+        }
+        Log($gVerbose, "\n");
+        CheckDirectory(".", $gRecursive);
+    }
+
+    # Print out the summary results
+    PrintResults();
+    Exit(0);
+}
+
+# prototype: void Getopts(void)
+sub Getopts ()
+{
+    my (%optsVector) = ( "usage"       => \&SetOptionFlag,
+                         "recurse"     => \&SetOptionFlag,
+                         "verbose"     => \&SetOptionFlag,
+                         "perfile"     => \&SetOptionFlag,
+                         "format"      => \&SetOutputFormat);
+    my (%opts) = ( "usage"      => 0,
+                   "recurse"    => 0,
+                   "verbose"    => 0,
+                   "perfile"    => 0,
+                   "format"     => "");
+    my (%allowedFlags) = ( "h|help|usage"   => \$opts{"usage"},
+                           "r|R|recursive"  => \$opts{"recurse"},
+                           "v|verbose"      => \$opts{"verbose"},
+                           "p|perfile"      => \$opts{"perfile"},
+                           "f|format=s"     => \$opts{"format"});
+    my ($key);
+
+    # Configure GetOptions
+    Getopt::Long::Configure('posix_default');
+    Getopt::Long::Configure('bundling');
+
+    GetOptions(%allowedFlags) || pod2usage(2);
+
+    foreach $key (keys %opts) {
+        $optsVector{$key}->($key, $opts{$key});
+    }
+}
+
+# prototype: void SetOptionFlag(string, int)
+sub SetOptionFlag ($$)
+{
+    my ($flag, $val) = @_;
+
+    if ($val != 1) { return; }
+    SWITCH: for ($flag) {
+        /^verbose$/     && do { $gVerbose      = 1; last; };
+        /^recurse$/     && do { $gRecursive    = 1; last; };
+        /^perfile$/     && do { $gOptPerFileStats = 1; last; };
+        /^usage$/       && do { pod2usage(-verbose => 2); last; };
+        pod2usage("$0: Invalid option flag \"$flag\"\n");
+    }
+}
+
+
+sub SetOutputFormat ($$)
+{
+    my ($flag, $val) = @_;
+
+    if ($val eq "") { return; }
+    SWITCH: for ($val) {
+        /^std$/     && do { $gOptOutputFormat = $val; last; };
+#        /^csv$/     && do { $gOptOutputFormat = $val; last; };
+#        /^xml$/     && do { $gOptOutputFormat = $val; last; };
+        pod2usage("$0: Invalid output format \"$val\"\n");
+    }
+}
+
+# prototype: void Log(int, ...)
+sub Log
+{
+    my ($v, @args) = @_;
+    my ($arg);
+
+    if (! defined($v)) { return; }
+
+    if (scalar(@args)) {
+        for $arg (@args) {
+            if ($v) {
+                print "$arg";
+            }
+        }
+    }
+}
+
+# prototype: void Exit(int, ...)
+sub Exit
+{
+    my ($code, @reason) = @_;
+    if (scalar(@reason)) {
+        Log(1, @reason);
+    }
+
+    exit($code);
+}
+
+
+sub CheckFilesOnCommandLine
+{
+    foreach my $specifiedFiles (@ARGV) {
+        my @files = glob($specifiedFiles);
+
+        foreach my $file (@files) {
+            if ( -d $file ) {
+                CheckDirectory($file, $gRecursive);
+            } else {
+                CheckFile($file);
+            }
+        }
+    }
+}
+
+
+sub CheckDirectory
+{
+    my ($dirName, $recursive) = @_;
+    my $dirHandle = new DirHandle($dirName);
+
+    if (not defined $dirHandle) {
+        Exit(1, "ERROR: Unable to open directory $dirName ($!)");
+    }
+
+    while (defined ($_ = $dirHandle->read)) {
+        my $path = $dirName . "/" . $_;
+
+        if ($recursive and (-d $path) and ($_ !~ /^\.[\.]?$/)) {
+            if ($recursive) {
+                Log($gVerbose, "Recursive $path  \n");
+            }
+            CheckDirectory($path, $recursive);
+        } elsif (-f $path) {
+            # TODO: check this match, I don't think it really does what is
+            # intended.
+            if ($path =~ m/\w+[\.]c$/ ) {
+                CheckFile($path);
+            }
+        }
+    }
+}
+
+
+sub CheckFile
+{
+    my $fileName = shift;
+    my $line     = 0;
+    my $fh       = 0;
+    my $lineNumber = 0;
+    my $foundfunc = 0;
+    my %rec = ();
+
+
+    return 0 unless ($fileName =~ $gFileNamesToCheck);
+
+    $fh = new FileHandle;
+    if (not open ($fh, $fileName)) {
+        Log($gVerbose, "Unable to open file $fileName \n");
+        return;
+    }
+
+    $gNumFilesChecked++;
+    Log($gVerbose, "$fileName \n");
+
+    if ($gOptPerFileStats) {
+        foreach my $func (keys %gFuncConvertMap) {
+            $rec{$func} = 0;
+        }
+    }
+
+    # TODO: skip #if 0 and comments
+    while ($line = <$fh>) {
+        $lineNumber++;
+        if ($line =~ $gFuncRegexp) { # 7x faster
+            foreach my $func (keys %gFuncConvertMap) {
+                my $matchline = "[^_]$func";
+
+                if ($line =~ m/$matchline/) {
+                    $foundfunc = 1;
+                    Log($gVerbose, " [$lineNumber] $line ");
+                    $gFuncNumMap{$func}++;
+                    if ($gOptPerFileStats) {
+                        $rec{$func}++;
+                    }
+                }
+            }
+        }
+    }
+
+    if ($gOptPerFileStats and $foundfunc) {
+        $gPerFileStats{$fileName} = {%rec};
+    }
+    close($fh);
+}
+
+sub PrintResults
+{
+    if ($gOptPerFileStats) {
+        PrintFileData();
+    }
+    PrintSummary();
+}
+
+sub PrintFileData
+{
+    foreach my $file (sort keys %gPerFileStats) {
+        if ($gOptOutputFormat =~ m/^std$/) {
+            print "\n";
+            print "------------------------------------------------ \n";
+            print "File: \n";
+            print "  ", $file, "\n";
+            print "------------------------------------------------ \n";
+
+            foreach my $func (sort keys %{$gPerFileStats{$file}}) {
+                if ($gPerFileStats{$file}{$func}) {
+                    printf "%20s:\tcount = %2d\n",
+                      $func, $gPerFileStats{$file}{$func};
+                }
+            }
+        } elsif ($gOptOutputFormat =~ m/^csv$/) {
+            Exit(1, "Problem!\n");
+        } else {
+            Exit(1, "Problem!\n");
+        }
+    }
+}
+
+sub PrintSummary
+{
+    if ($gOptOutputFormat =~ m/^std$/) {
+        print "\n";
+        print "------------------------------------------------ \n";
+        print "Summary: \n";
+        print "  Files checked  = $gNumFilesChecked files\n";
+        if ($gOptPerFileStats) {
+            print "  Files affected = " . keys(%gPerFileStats) . " files\n";
+        }
+        print "------------------------------------------------ \n";
+
+        foreach my $func (sort keys %gFuncConvertMap) {
+            if ($gFuncNumMap{$func}) {
+                printf "%20s:\t count = %2d, Replace with %s\n",
+                  $func, $gFuncNumMap{$func},
+                  $gFuncConvertMap{$func};
+          }
+        }
+    } elsif ($gOptOutputFormat =~ m/^csv$/) {
+        Exit(1, "Problem!\n");
+    } else {
+        Exit(1, "Problem!\n");
+    }
+}
