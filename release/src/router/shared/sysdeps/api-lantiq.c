@@ -79,8 +79,26 @@ ieee80211_mhz2ieee(u_int freq)
 /////////////
 
 #if defined(RTCONFIG_LANTIQ)
+const char WIF_5G[] = "wifi2";
+const char WIF_2G[] = "wifi0";
+const char STA_5G[] = "wifi3";
+const char STA_2G[] = "wifi1";
 const char VPHY_5G[] = "wifi2_0";
 const char VPHY_2G[] = "wifi0_0";
+
+const char *max_2g_ax_mode = "11GHE";	/* B,G,N,AX */
+const char *max_5g_ax_mode = "11AHE";	/* A,N,AC,AX */
+const char *max_2g_n_mode = "11NG";	/* B,G,N */
+const char *max_5g_ac_mode = "11ACV";	/* A,N,AC */
+
+/* [0]: 11AC
+ * [1]: 11AX, 11BE
+ */
+const char *bw20[2] = { "HT20", "20" };
+const char *bw40[2] = { "HT40", "40" };
+const char *bw80[2] = { "HT80", "80" };
+const char *bw80_80_tbl[2] = { "HT80_80", "80_80" };
+const char *bw160_tbl[2] = { "HT160", "160" };
 
 /* enum to decide configuration in 2.4G or 5G band */
 typedef enum {
@@ -102,6 +120,9 @@ char *wlan_name[4] = {
 #endif
 
 #define GPIOLIB_DIR	"/sys/class/gpio"
+#ifdef RTCONFIG_LEDS_CLASS
+#define LEDSLIB_DIR	"/sys/class/leds"
+#endif
 
 /* Export specified GPIO
  * @return:
@@ -457,7 +478,7 @@ int get_channel_list_via_driver(int unit, char *buffer, int len)
 {
 	struct ieee80211req_chaninfo chans;
 	struct iwreq wrq;
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_", *ifname;
+	char prefix[] = "wlXXXXXXXXXX_", *ifname;
 	int i;
 	char *p;
 
@@ -466,7 +487,7 @@ int get_channel_list_via_driver(int unit, char *buffer, int len)
 
 	memset(buffer, 0, len);
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	ifname = nvram_safe_get(strcat_r(prefix, "ifname", tmp));
+	ifname = nvram_pf_safe_get(prefix, "ifname");
 
 	memset(&wrq, 0, sizeof(wrq));
 	wrq.u.data.pointer = (void *)&chans;
@@ -1234,3 +1255,158 @@ void del_obd_probe_req_vsie(char *hexdata)
 #endif /* RTCONFIG_AMAS */
 #endif
 
+char * get_wpa_ctrl_sk(int band, char ctrl_sk[], int size)
+{
+	char *sta;
+	if(band < 0 || band >= MAX_NR_WL_IF || ctrl_sk == NULL)
+		return NULL;
+	sta = get_staifname(band);
+	snprintf(ctrl_sk, size, "/var/run/wpa_supplicant-%s", sta);
+	return ctrl_sk;
+}
+
+#define WPA_CLI_REPLY_SIZE		32
+#define QUERY_WPA_CLI_REPLY_TIMEOUT	10
+#define QUERY_WPA_STATE_TIMEOUT		25
+char *wpa_cli_reply(const char *fcmd, char *reply)
+{
+	FILE *fp;
+	int rlen;
+
+	fp = popen(fcmd, "r");
+	if (fp) {
+		rlen = fread(reply, 1, WPA_CLI_REPLY_SIZE, fp);
+		pclose(fp);
+		if (rlen > 1) {
+			reply[rlen-1] = '\0';
+			return reply;
+		}
+	}
+
+	return "";
+}
+
+void set_wpa_cli_cmd(int band, const char *cmd, int chk_reply)
+{
+	char ctrl_sk[32];
+	char *sta;
+	char fcmd[128];
+	char reply[WPA_CLI_REPLY_SIZE];
+	int timeout = QUERY_WPA_CLI_REPLY_TIMEOUT;
+	int scan_and_with_scan_events = 0;
+
+	if(band < 0 || band >= MAX_NR_WL_IF || cmd == NULL || cmd[0] == '\0')
+		return;
+
+	get_wpa_ctrl_sk(band, ctrl_sk, sizeof(ctrl_sk));
+	sta = get_staifname(band);
+	if (chk_reply) {
+#if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
+		if (strcmp(cmd, "scan") == 0) { // check if scan_events is supported
+			char *rpt;
+			snprintf(fcmd, sizeof(fcmd), "/usr/bin/wpa_cli -p %s -i %s scan_events", ctrl_sk, sta);
+			rpt = wpa_cli_reply(fcmd, reply);
+			if ((strcmp(rpt, "YES")==0) || (strcmp(rpt, "NO")==0))
+				scan_and_with_scan_events = 1;
+		}
+#endif
+		if (scan_and_with_scan_events) {
+			eval("/usr/bin/wpa_cli", "-p", ctrl_sk, "-i", sta, (char*) cmd); // just issue scan command & wait scan_events
+			snprintf(fcmd, sizeof(fcmd), "/usr/bin/wpa_cli -p %s -i %s scan_events", ctrl_sk, sta);
+			timeout = QUERY_WPA_STATE_TIMEOUT;
+			while (strcmp(wpa_cli_reply(fcmd, reply), "YES") && timeout--) {
+				//dbg("%s(%d): reply [%s] ...(%d/%d)\n", __func__, band, reply, timeout, QUERY_WPA_STATE_TIMEOUT);
+				sleep(1);
+			};
+		} else { // non-scan cmd or no scan_events supported
+			snprintf(fcmd, sizeof(fcmd), "/usr/bin/wpa_cli -p %s -i %s %s", ctrl_sk, sta, cmd);
+			while (strcmp(wpa_cli_reply(fcmd, reply), "OK") && timeout--) {
+				//dbg("%s(%d): reply [%s] ...(%d/%d)\n", __func__, band, reply, timeout, QUERY_WPA_CLI_REPLY_TIMEOUT);
+				sleep(1);
+			};
+
+			if (strcmp(cmd, "scan") == 0) {
+				snprintf(fcmd, sizeof(fcmd), "/usr/bin/wpa_cli -p %s -i %s status | grep wpa_state=", ctrl_sk, sta);
+				timeout = QUERY_WPA_STATE_TIMEOUT;
+				while (!strcmp(wpa_cli_reply(fcmd, reply), "wpa_state=SCANNING") && timeout--) {
+					//dbg("%s(%d): reply [%s] ...(%d/%d)\n", __func__, band, reply, timeout, QUERY_WPA_STATE_TIMEOUT);
+					sleep(1);
+				};
+			}
+		}
+	}
+	else
+		eval("/usr/bin/wpa_cli", "-p", ctrl_sk, "-i", sta, (char*) cmd);
+}
+
+/**
+ * Get PHY name of a cfg80211 based VAP interface.
+ * @unit:	wl_unit
+ * @iwphy:	buffer that is used to store PHY name.
+ * @size:	sizeof @iwphy
+ * @return:
+ * 	0:	success
+ *     -1:	invalid parameter
+ *  otherwise:	error
+ */
+int get_iwphy_name(int unit, char *iwphy, size_t size)
+{
+	int r;
+	char *p, path[sizeof("/sys/class/net/wifiX/phy80211/nameXXXXXX")];
+
+	if (unit < 0 || unit >= MAX_NR_WL_IF || !iwphy || !size)
+		return -1;
+
+	snprintf(path, sizeof(path), "%s/%s/phy80211/name", SYS_CLASS_NET, get_vphyifname(unit));
+	r = f_read_string(path, iwphy, size);
+	for (p = iwphy + strlen(iwphy) - 1; p >= iwphy; --p) {
+		if (isalnum(*p))
+			break;
+		if (*p == '\r' || *p == '\n')
+			*p = 0;
+	}
+
+	return (r <= 0)? -2 : 0;
+}
+
+/**
+ * Input @band and @ifname and return Y of wlX.Y.
+ * Last digit of VAP interface name of guest is NOT always equal to Y of wlX.Y,
+ * if guest network is not enabled continuously.
+ * @band:
+ * @ifname:	ath0, ath1, ath001, ath002, ath103, etc
+ * @return:	index of guest network configuration. (wlX.Y: X = @band, Y = @return)
+ * 		If both main 2G/5G, 1st/3rd 2G guest network, and 2-nd 5G guest network are enabled,
+ * 		return value should as below:
+ * 		ath0:	0
+ * 		ath001:	1
+ * 		ath002: 3
+ * 		ath1:	0
+ * 		ath101: 2
+ */
+int get_wlsubnet(int band, const char *ifname)
+{
+	int subnet, sidx;
+	char buf[32];
+
+	for (subnet = 0, sidx = 0; subnet < MAX_NO_MSSID; subnet++)
+	{
+#ifdef RTCONFIG_AMAS
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			if(subnet == 1)
+				subnet++;
+		}
+#endif	/* RTCONFIG_AMAS */
+		if(!nvram_match(wl_nvname("bss_enabled", band, subnet), "1")) {
+			if (!subnet)
+				sidx++;
+			continue;
+		}
+
+		if(strcmp(ifname, get_wlxy_ifname(band, sidx, buf)) == 0)
+			return subnet;
+
+		sidx++;
+	}
+	return -1;
+}

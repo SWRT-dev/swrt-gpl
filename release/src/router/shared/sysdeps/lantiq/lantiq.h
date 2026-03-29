@@ -23,9 +23,21 @@
 #define NAWDS_SH_FMT	"/etc/Wireless/sh/nawds_%s.sh"
 
 extern char *wlan_name[4];
+extern const char WIF_2G[];
+extern const char WIF_5G[];
+extern const char STA_2G[];
+extern const char STA_5G[];
 extern const char VPHY_2G[];
 extern const char VPHY_5G[];
-#define URE	"apcli0"
+
+extern const char *max_2g_n_mode, *max_2g_ax_mode;
+extern const char *max_5g_ac_mode, *max_5g_ax_mode;
+extern const char *bw20[2], *bw40[2], *bw80[2];
+extern const char *bw80_80_tbl[2], *bw160_tbl[2];
+
+#define QWPA_CLI		"/usr/bin/wpa_cli"		/* wpa_cli, installed by qca-hostap */
+#define QHOSTAPD_CTRL_IFACE	"/var/run/hostapd/global"	/* ctrl_interface of hostapd_athX.conf must be directory and can't use this directive. */
+#define QHOSTAPD_PID_PATH	"/var/run/hostapd_global.pid"	/* for RTCONFIG_SINGLE_HOSTAPD */
 
 #ifndef ETHER_ADDR_LEN
 #define ETHER_ADDR_LEN		6
@@ -361,6 +373,7 @@ extern void switch_fini(void);
 extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
 extern int qc98xx_verify_checksum(void *eeprom);
 extern int calc_qca_eeprom_csum(void *ptr, unsigned int eeprom_size);
+extern int trigger_wave_monitor(const char *func, int line, int action);
 /* for ATE Get_WanLanStatus command */
 typedef struct {
 	unsigned int link[5];

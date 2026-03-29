@@ -53,7 +53,7 @@ endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
 CFLAGS += -I./sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -DWE_NOLIBM
-CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/fapi_wlan_common-05.04.02.65/include -I$(TOP)/libhelper-2.3.0.16/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
+CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
 CFLAGS += -I$(TOP)/wlc_nt
 endif
 
@@ -264,6 +264,10 @@ OBJS += rtl8370mb.o mdio.o
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += flash_mtd.o
+OBJS += $(STAGEDIR)/usr/lib/libnl-3.a
+OBJS += $(STAGEDIR)/usr/lib/libnl-genl-3.a
+OBJS += $(STAGEDIR)/usr/lib/libnl-route-3.a
+CFLAGS += -I$(STAGEDIR)/usr/include/libnl3
 else
 # Broadcom
 OBJS += wl.o wl_linux.o
@@ -601,7 +605,7 @@ endif
 %.prep: %.c
 	@$(CC) $(CFLAGS) -E $< > $@
 
-ifneq ($(RT4GAC86U),y)
+ifneq ($(or $(RT4GAC86U),$(RTCONFIG_NL80211),$(RTCONFIG_LANTIQ)),y)
 -include $(OBJS:%.o=.%.depend)
 endif
 

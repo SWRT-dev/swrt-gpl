@@ -17,10 +17,19 @@
 #include <net/ethernet.h>
 #include <amas_path.h>
 #endif
+#include <net/if.h>
+#include <netlink/errno.h>
+#include <netlink/netlink.h>
+#include <netlink/genl/genl.h>
+#include <netlink/genl/ctrl.h>
+#include <netlink/msg.h>
+#include "nl80211_copy.h"
+#include <linux/nl80211.h>
 
 #ifdef LINUX26
 #define GPIO_IOCTL
 #endif
+
 
 enum {
 	WAN_PORT=0,
@@ -31,6 +40,22 @@ enum {
 	MAX_WANLAN_PORT
 };
 #define NR_WANLAN_PORT	MAX_WANLAN_PORT
+
+struct cmd_respdata {
+	uint32_t attr;
+	int len;
+	void *data;
+};
+
+struct nlwifi_ctx {
+	enum nl80211_commands cmd;
+	int flags;
+
+	/* cmd callback and data */
+	int (*cb)(struct nl_msg *msg, void *data);
+	void *data;
+};
+
 
 /**
  * The vport_to_iface array is used to get interface name of each virtual
@@ -246,17 +271,6 @@ void del_beacon_vsie(char *hexdata)
 }
 #endif
 
-int wl_get_bw(int unit)
-{
-	if (unit)
-	{
-		if (unit < 1)
-			return 0;
-		return 80;
-	}
-	return 40;
-}
-
 #ifdef RTCONFIG_CFGSYNC
 void update_macfilter_relist()
 {
@@ -319,13 +333,13 @@ void update_macfilter_relist()
 #endif
 				snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
-			strlcpy(wlif_name, nvram_safe_get(strcat_r(prefix, "ifname", tmp)), sizeof(wlif_name));
+			strlcpy(wlif_name, nvram_pf_safe_get(prefix, "ifname"), sizeof(wlif_name));
 			maclist = (struct maclist *)maclist_buf;
 			memset(maclist_buf, 0, sizeof(maclist_buf));
 			ea = &(maclist->ea[0]);
 
-			if (nvram_match(strcat_r(prefix, "macmode", tmp), "allow")) {
-				nv = nvp = strdup(nvram_safe_get(strcat_r(prefix, "maclist_x", tmp)));
+			if (nvram_pf_match(prefix, "macmode", "allow")) {
+				nv = nvp = strdup(nvram_pf_safe_get(prefix, "maclist_x"));
 				if (nv) {
 					while ((b = strsep(&nvp, "<")) != NULL) {
 						if (strlen(b) == 0) continue;
@@ -714,6 +728,270 @@ err:
 
 #endif
 
+struct nl_sock *nl80211_socket(void)
+{
+	struct nl_sock *nl;
+
+	nl = nl_socket_alloc();
+	if (nl == NULL)
+		return NULL;
+
+	genl_connect(nl);
+
+	return nl;
+}
+
+void *nl80211_alloc_msg(struct nl_sock *sk, int cmd, int flags, size_t priv)
+{
+	struct nl_msg *msg;
+	int id;
+
+	msg = nlmsg_alloc();
+	if (!msg)
+		return NULL;
+
+	id = genl_ctrl_resolve(sk, "nl80211");
+	if (id < 0) {
+		nlmsg_free(msg);
+		return NULL;
+	}
+
+	genlmsg_put(msg, NL_AUTO_PORT, NL_AUTO_SEQ, id, priv, flags, (uint8_t)cmd, 0);
+
+	return msg;
+}
+
+static int nl80211_ack_handler(struct nl_msg *msg, void *arg)
+{
+	int *ret = arg;
+
+	*ret = 0;
+	return NL_STOP;
+}
+
+static int nl80211_finish_handler(struct nl_msg *msg, void *arg)
+{
+	int *ret = arg;
+
+	*ret = 0;
+	return NL_SKIP;
+}
+
+static int nl80211_err_handler(struct sockaddr_nl *nla, struct nlmsgerr *err,
+								void *arg)
+{
+	int *ret = arg;
+
+	*ret = err->error;
+	return NL_STOP;
+}
+
+static int nl80211_no_seq_check(struct nl_msg *msg, void *arg)
+{
+	return NL_OK;
+}
+
+int nl80211_send_msg(struct nl_sock *nl, struct nl_msg *msg,
+			int (*cmd_resp_handler)(struct nl_msg *, void *),
+			void *cmd_resp_data)
+{
+	struct nl_cb *cb;
+	int err = 1;
+
+	if (!msg)
+		return -1;
+
+	cb = nl_cb_alloc(NL_CB_DEFAULT);
+	if (!cb)
+		return -1;
+
+	nl_socket_set_cb(nl, cb);
+
+	nl_cb_err(cb, NL_CB_CUSTOM, nl80211_err_handler, &err);
+	nl_cb_set(cb, NL_CB_FINISH, NL_CB_CUSTOM, nl80211_finish_handler, &err);
+	nl_cb_set(cb, NL_CB_ACK, NL_CB_CUSTOM, nl80211_ack_handler, &err);
+	nl_cb_set(cb, NL_CB_SEQ_CHECK, NL_CB_CUSTOM, nl80211_no_seq_check, NULL);
+
+	if (cmd_resp_handler)
+		nl_cb_set(cb, NL_CB_VALID, NL_CB_CUSTOM, cmd_resp_handler, cmd_resp_data);
+
+
+	err = nl_send_auto(nl, msg);
+	if (err < 0)
+		goto out;
+
+	while(err > 0) {
+		if (nl_recvmsgs(nl, cb) < 0) {
+			break;
+		}
+	}
+out:
+	nl_cb_put(cb);
+	return err;
+}
+
+static int nl80211_get_iface_cb(struct nl_msg *msg, void *data)
+{
+	struct nlattr *tb[NL80211_ATTR_MAX + 1];
+	struct genlmsghdr *gnlh = nlmsg_data(nlmsg_hdr(msg));
+	struct cmd_respdata *res = data;
+
+	nla_parse(tb, NL80211_ATTR_MAX, genlmsg_attrdata(gnlh, 0),
+			genlmsg_attrlen(gnlh, 0), NULL);
+
+	if (!tb[NL80211_ATTR_IFNAME])
+		return NL_SKIP;
+
+	if (!tb[res->attr])
+		return NL_SKIP;
+
+	switch (res->attr) {
+	case NL80211_ATTR_CHANNEL_WIDTH:
+		{
+			uint32_t bw;
+
+			bw = nla_get_u32(tb[NL80211_ATTR_CHANNEL_WIDTH]);
+			*((uint32_t *)res->data) = bw;
+		}
+		break;
+	case NL80211_ATTR_WIPHY_FREQ:
+		{
+			uint32_t freq;
+
+			freq = nla_get_u32(tb[NL80211_ATTR_WIPHY_FREQ]);
+			*((uint32_t *)res->data) = freq;
+		}
+		break;
+	case NL80211_ATTR_IFTYPE:
+		{
+			uint32_t iftype;
+
+			iftype = nla_get_u32(tb[NL80211_ATTR_IFTYPE]);
+			*((uint32_t *)res->data) = iftype;
+		}
+		break;
+	case NL80211_ATTR_CENTER_FREQ1:
+		{
+			uint32_t center1;
+
+			center1 = nla_get_u32(tb[NL80211_ATTR_CENTER_FREQ1]);
+			*((uint32_t *)res->data) = center1;
+		}
+		break;
+	default:
+		/* libwifi_dbg("res->attr = default\n"); */
+		res->len = nla_len(tb[res->attr]);
+		memcpy(res->data, nla_data(tb[res->attr]), res->len);
+		break;
+	}
+
+	return NL_SKIP;
+}
+
+static int phy_nametoindex(const char *name)
+{
+	char buf[200];
+	int fd, pos;
+
+	snprintf(buf, sizeof(buf), "/sys/class/ieee80211/%s/index", name);
+
+	fd = open(buf, O_RDONLY);
+	if (fd < 0)
+		return -1;
+	pos = read(fd, buf, sizeof(buf) - 1);
+	if (pos < 0) {
+		close(fd);
+		return -1;
+	}
+	buf[pos] = '\0';
+	close(fd);
+	return atoi(buf);
+}
+
+static int nl80211_cmd(const char *name, struct nlwifi_ctx *ctx)
+{
+	struct nl_sock *nl;
+	struct nl_msg *msg;
+	int devidx;
+	int ret = -1;
+
+	if (strstr(name, "phy")) {
+		devidx = phy_nametoindex(name);
+		if (devidx < 0)
+			goto out;
+	} else {
+		devidx = if_nametoindex(name);
+		if (devidx == 0) {
+			ret = -errno;
+			goto out;
+		}
+	}
+
+	nl = nl80211_socket();
+	if (!nl)
+		goto out;
+
+	msg = nl80211_alloc_msg(nl, ctx->cmd, ctx->flags, 0);
+	if (!msg)
+		goto out_msg_failure;
+
+	if (ctx->flags == NLM_F_DUMP && ctx->cmd == NL80211_CMD_GET_WIPHY) {
+		nla_put_flag(msg, NL80211_ATTR_SPLIT_WIPHY_DUMP);
+		nlmsg_hdr(msg)->nlmsg_flags |= NLM_F_DUMP;
+	}
+
+	if (strstr(name, "phy"))
+		NLA_PUT_U32(msg, NL80211_ATTR_WIPHY, devidx);
+	else
+		NLA_PUT_U32(msg, NL80211_ATTR_IFINDEX, devidx);
+
+	ret = nl80211_send_msg(nl, msg, ctx->cb, ctx->data);
+
+nla_put_failure:
+	nlmsg_free(msg);
+out_msg_failure:
+	nl_socket_free(nl);
+out:
+	return ret;
+}
+
+int wl_get_bw(int unit)
+{
+	int ret = -1;
+	char ifname[16];
+	uint32_t bw = NL80211_CHAN_WIDTH_20_NOHT;
+	struct cmd_respdata res = {
+		.attr = NL80211_ATTR_CHANNEL_WIDTH,
+		.len = sizeof(bw),
+		.data = &bw,
+	};
+
+	struct nlwifi_ctx ctx = {
+		.cmd = NL80211_CMD_GET_INTERFACE,
+		.cb = nl80211_get_iface_cb,
+		.data = &res,
+	};
+	strlcpy(ifname, get_wififname(unit), sizeof(ifname));
+	ret = nl80211_cmd(ifname, &ctx);
+	if(ret == 0){
+		switch (bw) {
+			case NL80211_CHAN_WIDTH_20_NOHT:
+			case NL80211_CHAN_WIDTH_20:
+				return 20;
+			case NL80211_CHAN_WIDTH_40:
+				return 40;
+			case NL80211_CHAN_WIDTH_80:
+				return 80;
+			case NL80211_CHAN_WIDTH_80P80:
+			case NL80211_CHAN_WIDTH_160:
+				return 160;
+			default:
+				break;
+		}
+	}
+	return 20;
+}
+
 /**
  * @link:
  * 	0:	no-link
@@ -935,3 +1213,77 @@ void ATE_port_status(int verbose, phy_info_list *list)
 		puts(buf);
 }
 
+/*
+ * int get_wlan_service_status(int bssidx, int vifidx)
+ *
+ * Get the status of interface that indicate by bssidx and vifidx.
+ *
+ * return
+ * 	-1: invalid
+ * 	 0: inactive
+ * 	 1: active
+ */
+int get_wlan_service_status(int bssidx, int vifidx)
+{
+	int ret;
+	char athfix[8],ifname[20];
+	char wl_radio[] = "wlXXXX_radio";
+
+	if (nvram_get_int(WLREADY) == 0)
+		return -1;
+
+	snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+	if (nvram_get_int(wl_radio) == 0)
+		return -2;
+
+	if(bssidx < 0 || bssidx >= MAX_NR_WL_IF || vifidx < 0 || vifidx >= MAX_NO_MSSID)
+		return -1;
+
+	/* CAP: main ap
+	 * RE:  sta
+	 */
+	if (vifidx == 0) {
+		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
+			strcpy(athfix, get_staifname(bssidx));
+		}
+		else
+			get_wlxy_ifname(bssidx, 0, athfix);
+	}
+	/* CAP: guest network/vif
+	 * RE:  main ap/guest network/vif
+	 */
+	else {
+		snprintf(ifname, sizeof(ifname), "wl%d.%d_ifname", bssidx, vifidx);
+		if (strlen(nvram_safe_get(ifname)))
+			strcpy(athfix, nvram_get(ifname));
+		else
+			return -1;
+	}
+	//_dprintf("%s: bssidx=%d, vifidx=%d, ifname=%s\n", __func__, bssidx, vifidx, athfix);
+
+	ret = is_intf_up(athfix);
+	return ret;
+}
+
+void set_wlan_service_status(int bssidx, int vifidx, int enabled)
+{
+	int r;
+	char *ifname = NULL;
+	char prefix[] = "wlXXXXXXXXXX_";
+	char wl_radio[] = "wlXXXX_radio";
+	if (nvram_get_int(WLREADY) == 0)
+		return;
+	snprintf(wl_radio, sizeof(wl_radio), "wl%d_radio", bssidx);
+	if (nvram_get_int(wl_radio) == 0)
+		return;
+
+	if (vifidx > 0){
+		r = snprintf(prefix, sizeof(prefix), "wl%d.%d_", bssidx, vifidx);
+	}else{
+		r = snprintf(prefix, sizeof(prefix), "wl%d_", bssidx);
+	}
+	if(unlikely(r < 0))
+		dbg("snprintf failed\n");
+	ifname = nvram_pf_safe_get(prefix, "ifname");
+	eval("ifconfig", ifname, enabled? "up":"down");
+}

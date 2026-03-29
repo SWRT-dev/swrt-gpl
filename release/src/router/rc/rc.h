@@ -647,7 +647,8 @@ static inline int setWlOffLed(void) { return 0; }
 #elif defined(RTCONFIG_LANTIQ)
 extern void platform_start_ate_mode(void);
 extern void set_uuid(void);
-static inline int setWlOffLed(void) { return 0; }
+static inline int setWlOffLed(void) { return 0; };
+extern void gen_lantiq_wifi_cfgs(void);
 #elif defined(CONFIG_BCMWL5)
 static inline void platform_start_ate_mode(void) { };
 extern int setWlOffLed(void);
@@ -919,7 +920,7 @@ extern int start_nvram_txt(void);
 #endif
 
 /* board API under shared/sysdeps/alpine/private.c  */
-#if defined(RTCONFIG_ALPINE)
+#if defined(RTCONFIG_ALPINE) || defined(RTCONFIG_LANTIQ)
 extern int update_trx(char *imagefile);
 #endif
 
@@ -947,21 +948,13 @@ extern u_int ieee80211_mhz2ieee(u_int freq);
 
 /* board API under sysdeps/lantiq/lantiq.c */
 #if defined(RTCONFIG_LANTIQ)
-
-extern int get_wlan_service_status(int bssidx, int vifidx);
-extern void set_wlan_service_status(int bssidx, int vifidx, int enabled);
-
-extern char *wav_get_security_str(const char *auth, const char *crypto, int weptype);
-extern char *wav_get_beacon_type(const char *crypto);
-extern char *wav_get_encrypt(const char *crypto);
-extern int start_repeater(void);
 extern int set_wps_enable(int unit);
 extern int set_all_wps_config(int configured);
 extern void wps_oob(void);
 extern void stop_wsc(void);
 extern int FWRITE(const char *da, const char* str_hex);
 extern int FREAD(unsigned int addr_sa, int len);
-extern int gen_ath_config(int band, int is_iNIC,int subnet);
+extern int gen_lantiq_config(int band,int subnet);
 extern int __need_to_start_wps_band(char *prefix);
 extern int need_to_start_wps_band(int wps_band);
 extern int getWscStatusStr(int unit, char *buf, int buf_size);
@@ -2151,10 +2144,9 @@ extern int qtn_monitor_main(int argc, char *argv[]);
 #endif
 
 #ifdef RTCONFIG_LANTIQ
-extern int wave_monitor_main(int argc, char *argv[]);
-extern int start_wave_monitor(void);
 extern void start_mcast_proxy(void);
 extern void stop_mcast_proxy(void);
+extern int vap_evhandler_main(int argc, char *argv[]);
 #endif
 
 #ifdef RTCONFIG_QSR10G
@@ -2757,7 +2749,7 @@ extern void stop_check_watchdog(void);
 extern void stop_watchdog02(void);
 extern int restart_dualwan(void);
 extern int start_watchdog(void);
-extern int start_check_watchdog(void);
+extern void start_check_watchdog(void);
 extern int start_alt_watchdog(void);
 extern int start_fwupg_flashing(void);
 extern int start_watchdog02(void);

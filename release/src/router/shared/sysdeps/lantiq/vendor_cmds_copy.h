@@ -1,0 +1,1 @@
+../../../../../src-lantiq/grx500/iwlwav-hostap/source/src/common/vendor_cmds_copy.h

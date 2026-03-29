@@ -4916,6 +4916,13 @@ define RouterOptions
 		echo "# RTCONFIG_OPENSSL11 is not set" >>$(1); \
 		echo "RTCONFIG_OPENSSL3=y" >>$(1); \
 	fi;
+	if [ "$(LANTIQ)" = "y" ]; then \
+		sed -i "/RTCONFIG_PTHSAFE_POPEN/d" $(1); \
+		echo "RTCONFIG_PTHSAFE_POPEN=y" >>$(1); \
+		sed -i "/RTCONFIG_OPENSSL11/d" $(1); \
+		echo "# RTCONFIG_OPENSSL11 is not set" >>$(1); \
+		echo "RTCONFIG_OPENSSL3=y" >>$(1); \
+	fi;
 	if [ "$(SFE)" = "y" ]; then \
 		sed -i "/RTCONFIG_SFE/d" $(1); \
 		echo "RTCONFIG_SFE=y" >>$(1); \
@@ -6812,7 +6819,7 @@ fi;
 		echo "# CONFIG_BRIDGE_EBT_LOG is not set" >>$(1); \
 		sed -i "/CONFIG_BRIDGE_EBT_NFLOG/d" $(1); \
 		echo "# CONFIG_BRIDGE_EBT_NFLOG is not set" >>$(1); \
-		if [ "$(MT7621)" = "y" ] || [ "$(IPQ40XX)" = "y" ]; then \
+		if [ "$(MT7621)" = "y" ] || [ "$(IPQ40XX)" = "y" ] || [ "$(LANTIQ)" = "y" ]; then \
 			echo "# CONFIG_NFT_EXTHDR is not set" >>$(1); \
 			echo "# CONFIG_NFT_META is not set" >>$(1); \
 			echo "# CONFIG_NFT_RBTREE is not set" >>$(1); \
@@ -6824,6 +6831,10 @@ fi;
 			echo "CONFIG_NFT_CHAIN_NAT_IPV6=y" >>$(1); \
 			echo "CONFIG_NFT_MASQ_IPV6=y" >>$(1); \
 			echo "CONFIG_NFT_REDIR_IPV6=y" >>$(1); \
+		fi;\
+		if [ "$(LANTIQ)" = "y" ]; then \
+			echo "# CONFIG_NFT_SET_RBTREE is not set" >>$(1); \
+			echo "# CONFIG_NFT_SET_HASH is not set" >>$(1); \
 		fi;\
 	fi;
 	if [ "$(SWRT_I2CLED)" = "y" ]; then \

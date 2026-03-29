@@ -2,7 +2,7 @@
 #include <syslog.h>
 #include <time.h>
 #include <linux/limits.h>
-
+#include <shared.h>
 #if defined(RTCONFIG_RALINK)
 #include <bcmnvram.h>
 #include <ralink.h>
@@ -12,7 +12,7 @@
 #ifdef RTCONFIG_WIRELESSREPEATER
 #include <ap_priv.h>
 #endif
-#elif defined(RTCONFIG_QCA)
+#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 #include <bcmnvram.h>
 #include <net/ethernet.h>
 #include <netinet/ether.h>
@@ -26,7 +26,7 @@
 #endif
 #include <wlutils.h>
 
-#include <shared.h>
+
 
 #define MAX_DATA 8192
 #define JSON_DATA_BUF 512

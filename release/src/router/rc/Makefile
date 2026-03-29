@@ -84,7 +84,7 @@ CFLAGS += -I$(TOP)/shared/sysdeps/alpine -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) 
 endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
-CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX) -I$(TOP)/fapi_wlan_common-05.04.02.65/include -I$(TOP)/libhelper-2.3.0.16/include -DPACKAGE_ID=\"fapi_wlan_common\" -DLOGGING_ID="fapi_wlan_common"
+CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
 CFLAGS  += -I$(TOP)/wlc_nt
 endif
 
@@ -175,11 +175,6 @@ endif
 ifeq ($(RTCONFIG_QSR10G),y)
 CFLAGS += -I$(TOP)/libqcsapi_client_10g
 LDFLAGS += -L$(TOP)/libqcsapi_client_10g -lqcsapi_client
-endif
-
-ifeq ($(RTCONFIG_LANTIQ),y)
-LDFLAGS += -L$(TOP)/fapi_wlan_common-05.04.02.65 -lfapiwlancommon -ldl -L$(TOP)/libhelper-2.3.0.16 -lhelper #-L$(TOP)/libfapi-0.1 -lfapi
-LDFLAGS += -L$(TOP)/wlc_nt -lwlc_nt_client
 endif
 
 ifeq ($(RTCONFIG_HTTPS),y)
@@ -494,7 +489,7 @@ OBJS += amas-ssd-alpine.o
 endif
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
-OBJS += init-lantiq.o lantiq.o ate-lantiq.o lantiq-wave.o
+OBJS += init-lantiq.o lantiq.o ate-lantiq.o #lantiq-wave.o
 OBJS += wps-lantiq.o
 ifeq ($(RTCONFIG_AMAS),y)
 OBJS += $(if $(wildcard sysdeps/lantiq/obd-lantiq.c),obd-lantiq.o,prebuild/obd-lantiq.o)
@@ -937,7 +932,7 @@ OBJS += natnl_api.o
 CFLAGS += -I$(TOP)/aaews
 endif
 
-ifneq ($(RTCONFIG_RALINK)$(RTCONFIG_QCA)$(RTCONFIG_REALTEK),y)
+ifneq ($(RTCONFIG_LANTIQ)$(RTCONFIG_RALINK)$(RTCONFIG_QCA)$(RTCONFIG_REALTEK),y)
 OBJS += erp_monitor.o
 endif
 OBJS += $(if $(RTCONFIG_SOC_IPQ8074),erp_monitor.o)
@@ -1275,13 +1270,11 @@ endif
 ifeq ($(RTCONFIG_CONNTRACK),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc pctime
 endif
-	@cd $(INSTALLDIR)/sbin && ln -sf rc wave_monitor
 ifeq ($(RTCONFIG_LANTIQ),y)
 ifeq ($(BLUECAVE),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc restart_bluetoothd
 	@cd $(INSTALLDIR)/sbin && ln -sf rc set_usb3_to_usb2
 	@cd $(INSTALLDIR)/sbin && ln -sf rc set_usb2_to_usb3
-	@cd $(INSTALLDIR)/sbin && ln -sf rc start_repeater
 endif
 endif
 ifneq ($(RTCONFIG_QCA)$(RTCONFIG_RALINK)$(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ),y)
@@ -1679,7 +1672,7 @@ ifeq ($(RTCONFIG_RALINK),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc air_monitor
 endif
 
-ifneq ($(RTCONFIG_RALINK)$(RTCONFIG_REALTEK),y)
+ifneq ($(RTCONFIG_LANTIQ)$(RTCONFIG_RALINK)$(RTCONFIG_REALTEK),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc erp_monitor
 endif
 

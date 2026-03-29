@@ -46,16 +46,16 @@ struct tcode_location_s {
 	char *prefix_fmt;
 	int idx_base;
 #if defined(RTCONFIG_RALINK)
-	char *wl0_ccode;
+	char *ccode_2g;
 	char *reg_spec;//fcc/cn/ec
-	char *wl1_ccode;
+	char *ccode_5g;
 	char *regrev1;//null
 	char *regrev2;//null
 	char *regrev3;//null
 #elif defined(RTCONFIG_QCA)
-	char *wl0_ccode;
+	char *ccode_2g;
 	char *ctl_ccode;
-	char *wl1_ccode;
+	char *ccode_5g;
 	char *regrev1;
 	char *regrev2;
 	char *regrev3;

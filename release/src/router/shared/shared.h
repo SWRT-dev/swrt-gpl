@@ -2775,6 +2775,16 @@ extern int chk_mlo_enable_by_sdn_wif(char* wif);
 extern int rep_ssid_match(void);
 #endif
 #endif // end of RTCONFIG_QCA
+#if defined(RTCONFIG_LANTIQ)
+extern char *get_wpa_ctrl_sk(int band, char ctrl_sk[], int size);
+extern void set_wpa_cli_cmd(int band, const char *cmd, int chk_reply);
+extern char *get_vphyifname(int band);
+extern int ppa_support(int wan_unit);
+extern int disable_ppa_wan(char *wan_ifname);
+extern int enable_ppa_wan(char *wan_ifname);
+extern int get_wlsubnet(int band, const char *ifname);
+extern int get_iwphy_name(int unit, char *iwphy, size_t size);
+#endif
 #if defined(RTCONFIG_RALINK) && (defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X))
 extern uint32_t is_pwm_exported(uint8_t channel);
 extern uint32_t pwm_export(uint8_t channel, uint32_t period, uint32_t duty_cycle);

@@ -7,7 +7,6 @@
 #include <arpa/inet.h>
 
 #include <bcmnvram.h>
-#include <netconf.h>
 #include <shutils.h>
 
 #include <rc.h>
@@ -54,6 +53,7 @@ start_wpa_supplicant(int unit, int restart)
 	/* Get driver, wired default */
 #ifdef RTCONFIG_RALINK
 #elif defined(RTCONFIG_QCA)
+#elif defined(RTCONFIG_LANTIQ)
 #else	/* Both BCM 5.x and 6.x */
 	if (get_switch() == SWITCH_BCM5325)
 		wpa_argv[6] = "roboswitch";

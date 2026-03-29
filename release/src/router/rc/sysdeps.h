@@ -26,6 +26,7 @@ extern char *get_staifname(int band);
 extern char *get_vphyifname(int band);
 #endif
 #if defined(RTCONFIG_LANTIQ)
+extern void deinit_all_vaps(const int remove_vap);
 extern void load_wifi_driver(void);
 extern void load_testmode_wifi_driver(void);
 #endif

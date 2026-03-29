@@ -508,13 +508,6 @@ void start_wl(void)
 		qtn_monitor_main();
 	}
 #endif
-#ifdef RTCONFIG_LANTIQBAK
-	_dprintf("[%s][%d] call wave_monitor()-01\n", __func__, __LINE__);
-	nvram_set("wave_action", "1");
-	kill_pidfile_s("/var/run/wave_monitor.pid", SIGUSR1);
-	_dprintf("[%s][%d] call wave_monitor()-02\n", __func__, __LINE__);
-#endif
-
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7629) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	setup_smp(0);	/* for adjust smp_affinity of cpu */
 #endif
@@ -2197,6 +2190,8 @@ void start_lan(void)
 #if defined(RTCONFIG_SOC_IPQ40XX)
 	enable_jumbo_frame();
 #endif
+#elif defined(RTCONFIG_LANTIQ)
+	gen_lantiq_wifi_cfgs();
 #endif
 #if defined(RTCONFIG_SWRTMESH) && defined(RTCONFIG_RALINK)
 	ralink_hostapd_start();
@@ -5622,6 +5617,8 @@ gmac3_no_swbr:
 #if defined(RTCONFIG_SOC_IPQ40XX)
 	enable_jumbo_frame();
 #endif
+#elif defined(RTCONFIG_LANTIQ)
+	gen_lantiq_wifi_cfgs();
 #endif /* RTCONFIG_QCA */
 
 #ifdef RTCONFIG_LACP
@@ -6344,9 +6341,6 @@ void restart_wireless(void)
 		bandstr_sync_wl_settings();
 	}
 #endif
-	_dprintf("[%s][%d] call wave_monitor()-04\n", __func__, __LINE__);
-	trigger_wave_monitor(__func__, __LINE__, WAVE_ACTION_WEB);
-	_dprintf("[%s][%d] call wave_monitor()-05\n", __func__, __LINE__);
 #endif
 #if defined(RTCONFIG_RALINK_BSD)
 	if (nvram_get_int("smart_connect_x") == 1) {

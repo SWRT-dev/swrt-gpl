@@ -1,0 +1,1 @@
+../../../../../src-lantiq/grx500/iwlwav-hostap/source/src/drivers/nl80211_copy.h

@@ -1475,7 +1475,6 @@ setup_timezone(void)
 	time_zone_x_mapping();
 #ifndef RTCONFIG_AVOID_TZ_ENV
 	setenv("TZ", nvram_get("time_zone_x"), 1);
-	tzset();
 #endif
 
 	/* Update kernel timezone */
@@ -1738,7 +1737,7 @@ void conntrack_check(int action)
 #endif //RTCONFIG_CONNTRACK
 //Andrew end
 
-#if defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 char *get_wpa_supplicant_pidfile(const char *ifname, char *buf, int size)
 {
 	if(ifname == NULL || buf == NULL || size < 24)

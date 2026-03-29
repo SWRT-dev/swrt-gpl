@@ -18,12 +18,18 @@
 #include <sys/wait.h>
 #include <sys/reboot.h>
 #include <sys/klog.h>
+#include <fcntl.h>
+#include <unistd.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <sys/sysinfo.h>
 #include <wlutils.h>
 #include <bcmdevs.h>
+#include <string.h>
+#include <stdint.h>
+#include <sys/sysmacros.h>
 #include <shared.h>
+#include <swrt.h>
 #include <lantiq.h>
 #include <flash_mtd.h>
 
@@ -31,41 +37,73 @@
 
 extern void check_ubi_partition(void);
 extern void gen_config_sh(void);
+extern int init_gpio_again(void);
 
 static void __load_wifi_driver(int testmode)
 {
-//deprecated function
-	;
-}
+	char country[FACTORY_COUNTRY_CODE_LEN + 1], prefix[sizeof("wlXXXXX_")], index[2];
+	int unit;
+	pid_t pid;
+	FILE *fp_wifi;
+	char vphy[IFNAMSIZ] = { 0 }, path_wifi[sizeof("/tmp/wifiXXXX.sh")];
+	char *handler_argv[]= { "/opt/intel/bin/dump_handler", "-i", index, "-f", "/opt/intel/wave/", NULL };
+	char *dwpald_argv[]= { "dwpald", NULL };
+	setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/opt/intel/sbin:/opt/intel/usr/sbin:/opt/intel/bin", 1);
+	setenv("LD_LIBRARY_PATH", "/opt/intel/lib:/opt/intel/usr/lib", 1);
+	_eval(dwpald_argv, NULL, 0, &pid);
+	///proc/net/mtlk/card*
+	strlcpy(index, "0", sizeof(index));
+	_eval(handler_argv, NULL, 0, &pid);
+	strlcpy(index, "1", sizeof(index));
+	_eval(handler_argv, NULL, 0, &pid);
+	modprobe("compat");
+	modprobe("mac80211");
+	modprobe("cfg80211");
+	modprobe("mtlkroot");
+	modprobe_r("mtlk");
+	eval("modprobe", "-s", "mtlk", "ap=1,1", "fastpath=1,1", "ahb_off=1", "loggersid=255,255");
+//	eval("ifconfig", "wlan0", "hw", "ether", macbuf);
+//	eval("ifconfig", "wlan2", "hw", "ether", macbuf);
+	eval("mkdir", "-p", "/etc/Wireless/sh");
+	for (unit = WL_2G_BAND; unit < MAX_NR_WL_IF; ++unit) {
+		SKIP_ABSENT_BAND(unit);
 
-int is_if_up(char *ifname)
-{
-	int s;
-	struct ifreq ifr;
-
-	/* Open a raw socket to the kernel */
-	if ((s = socket(AF_INET, SOCK_RAW, IPPROTO_RAW)) < 0) return -1;
-
-	/* Set interface name */
-	strlcpy(ifr.ifr_name, ifname, IFNAMSIZ);
-
-	/* Get interface flags */
-	if (ioctl(s, SIOCGIFFLAGS, &ifr) < 0) {
-		fprintf(stderr, "SIOCGIFFLAGS error\n");
-	} else {
-		if (ifr.ifr_flags & IFF_UP) {
-			fprintf(stderr, "%s is up\n", ifname);
-			close(s);
-			return 1;
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		strlcpy(vphy, get_vphyifname(unit), sizeof(vphy));
+		snprintf(path_wifi, sizeof(path_wifi), "/tmp/%s.sh", vphy);
+		if (!(fp_wifi = fopen(path_wifi, "w"))) {
+			dbg("%s: Can't open %s for writing!\n", __func__, path_wifi);
+			continue;
 		}
+
+		fprintf(fp_wifi, "#!/bin/sh\n");
+		switch (unit) {
+		default:
+			/* Wireless Extension or cfg80211 + nl80211 based band. */
+
+			/* Country */
+			strlcpy(country, nvram_pf_safe_get(prefix, "country_code"), sizeof(country));
+			fprintf(fp_wifi, "iw reg set %s\n", country);
+
+			/* TX power adjustment. */
+			if (find_word(nvram_safe_get("rc_support"), "pwrctrl")) {
+				if(nvram_pf_get_int(prefix, "txpower") > 100 || nvram_pf_get_int(prefix, "txpower") <= 0)
+					fprintf(fp_wifi, "iw phy %s set txpower auto\n", vphy);
+				else
+					fprintf(fp_wifi, "iw phy %s set txpower fixed %d\n",
+						vphy, nvram_pf_get_int(prefix, "txpower") * 30);//0-3000mBm
+			}
+		}
+
+		fclose(fp_wifi);
+		chmod(path_wifi, 0777);
 	}
-	close(s);
-	return 0;
 }
 
 void init_devs(void)
 {
-	;
+	if(patch_Factory)
+		patch_Factory();
 }
 
 int init_devs_defer(void)
@@ -141,6 +179,108 @@ int init_devs_defer(void)
 	start_ubifs();
 	_dprintf("start_jffs2() end\n");
 	return 0;
+}
+
+void init_others(void)
+{
+//	struct stat cal_stat;
+	pid_t pid;
+
+	gen_config_sh();
+	init_gpio_again();
+#if defined(BLUECAVE)
+	system("cp -R /lib/firmware/ar3k /tmp/");
+#endif
+//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ -----------\n");
+//	system("cd /tmp/wireless; ln -s /rom/opt/beerocks beerocks");
+//	system("cd /tmp/wireless; ln -s /rom/opt/errorhd.cfg errorhd.cfg");
+//	system("cd /tmp/wireless; ln -s /rom/opt/lantiq lantiq");
+//	_dprintf("--------- extract fapi database -----------\n");
+//	system("cd /tmp/; rm -rf lantiq_wave; tar zxf /rom/opt/lantiq/wave.tgz; mv wave lantiq_wave");
+//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ done -----------\n");
+//	system("cp /opt/lantiq/wave/scripts/fapi_wlan_wave_lib_common.sh /tmp/");
+//	system("cp /opt/lantiq/wave/images/* /tmp/");
+	system("cp /rom/opt/intel/etc/wave_components.ver /etc/");
+	system("read_img wlanconfig /tmp/cal_eeprom.tar.gz");
+//	if(stat("/tmp/cal_eeprom.tar.gz", &cal_stat) || cal_stat.st_blocks < 801)
+//		write_default_cal();
+//	else
+//	{
+		system("rm -f /tmp/cal_wlan*.bin");
+		system("tar zxf /tmp/cal_eeprom.tar.gz -C /tmp/");
+//	}
+	system("rm -f /tmp/cal_eeprom.tar.gz");
+//	if(!stat("/tmp/cal_wlan1.bin", &cal_stat))
+//		system("rm -f /tmp/cal_wlan2.bin; mv /tmp/cal_wlan1.bin /tmp/cal_wlan2.bin");
+	if(!f_exists("/dev/switch_api/0"))
+		MKNOD("/dev/switch_api/0", S_IFCHR | 0640, makedev(81, 0));
+	if(!f_exists("/dev/switch_api/1"))
+		MKNOD("/dev/switch_api/1", S_IFCHR | 0640, makedev(81, 1));
+//	system("load_gphy_firmware_preinit.sh");
+	MKNOD("/dev/ifx_mei", S_IFCHR | 0666, makedev(105, 0));
+	MKNOD("/dev/ifx_ppa", S_IFCHR | 0666, makedev(181, 0));
+//	system("insmod drv_ifxos");
+//	system("insmod drv_event_logger");
+	system("insmod directconnect_datapath");
+//	system("insmod ltq_eth_drv_xrx500");
+	system("insmod dc_mode-hw");
+//	system("insmod mcast_helper");
+	system("insmod macvlan");
+	system("insmod ltq_pae_hal");
+	system("insmod ltq_tmu_hal_drv");
+	system("insmod qos_mgr_drv");
+	system("insmod ppa_api");
+//	system("insmod ppa_api_proc");
+	system("insmod ltq_mpe_hal_drv");
+//	system("insmod ppa_api_tmplbuf");
+	system("insmod ppa_api_sw_accel_mod");
+	system("insmod hw_tcp_litepath");
+	system("insmod mac_violation_mirror");
+	system("insmod ltq_temp");
+	system("insmod ltq_pmcu");
+	//modprobe("tntfs");
+	if(!pids("udevd"))
+	{
+		char *udevd_argv[] = {"udevd", "--daemon", NULL};
+		_eval(udevd_argv, NULL, 0, &pid);
+		logmessage("udevd", "daemon is started");
+	}
+	nvram_set("ctf_disable", nvram_safe_get("ctf_disable_force"));
+	system("ppacmd init -n 30");
+	system("ppacmd addlan -i eth0_1");
+	system("ppacmd addlan -i eth0_2");
+	system("ppacmd addlan -i eth0_3");
+#if !defined(K3C)
+	system("ppacmd addlan -i eth0_4");
+#endif
+	system("ppacmd addlan -i br0");
+#if defined(RTCONFIG_AMAS)
+	if(!aimesh_re_mode())
+		eval("iptables", "-t", "mangle", "-A", "INPUT", "-p", "tcp", "-m", "state", "--state", "ESTABLISHED", "-j", "EXTMARK", "--set-mark", "0x80000000/0x80000000");
+#endif
+	nvram_set("wave_action", "1");
+
+//	if (repeater_mode() || mediabridge_mode() || aimesh_re_node())
+//	{
+//		modprobe("l2nat");
+//		f_write_string("/proc/sys/net/bridge/bridge-nf-call-iptables", "0", 0, 0);
+//	}
+	if(nvram_get_int("ATEMODE") != 1)
+	{
+		_dprintf("poweroff usb\n");
+		usb_pwr_ctl(0);
+	}
+	fprintf(stderr, "init_others() End.\n");
+}
+
+void init_others_defer(void)
+{
+	;
+}
+
+int is_if_up(char *ifname)
+{
+	return is_intf_up(ifname) == 1 ? 1 : 0;
 }
 
 int init_gpio_again(void)
@@ -219,100 +359,7 @@ int write_default_cal(void)
 	return 0;
 }
 
-void init_others(void)
-{
-	struct stat cal_stat;
-	pid_t pid;
 
-	gen_config_sh();
-	init_gpio_again();
-#if defined(BLUECAVE)
-	system("cp -R /lib/firmware/ar3k /tmp/");
-#endif
-//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ -----------\n");
-//	system("cd /tmp/wireless; ln -s /rom/opt/beerocks beerocks");
-//	system("cd /tmp/wireless; ln -s /rom/opt/errorhd.cfg errorhd.cfg");
-//	system("cd /tmp/wireless; ln -s /rom/opt/lantiq lantiq");
-//	_dprintf("--------- extract fapi database -----------\n");
-//	system("cd /tmp/; rm -rf lantiq_wave; tar zxf /rom/opt/lantiq/wave.tgz; mv wave lantiq_wave");
-//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ done -----------\n");
-//	system("cp /opt/lantiq/wave/scripts/fapi_wlan_wave_lib_common.sh /tmp/");
-//	system("cp /opt/lantiq/wave/images/* /tmp/");
-	system("cp /rom/opt/intel/etc/wave_components.ver /etc/");
-	system("read_img wlanconfig /tmp/cal_eeprom.tar.gz");
-//	if(stat("/tmp/cal_eeprom.tar.gz", &cal_stat) || cal_stat.st_blocks < 801)
-//		write_default_cal();
-//	else
-//	{
-		system("rm -f /tmp/cal_wlan*.bin");
-		system("tar zxf /tmp/cal_eeprom.tar.gz -C /tmp/");
-//	}
-	system("rm -f /tmp/cal_eeprom.tar.gz");
-//	if(!stat("/tmp/cal_wlan1.bin", &cal_stat))
-//		system("rm -f /tmp/cal_wlan2.bin; mv /tmp/cal_wlan1.bin /tmp/cal_wlan2.bin");
-	MKNOD("/dev/switch_api/0", S_IFCHR | 0640, makedev(81, 0));
-	MKNOD("/dev/switch_api/1", S_IFCHR | 0640, makedev(81, 1));
-//	system("load_gphy_firmware_preinit.sh");
-	MKNOD("/dev/ifx_mei", S_IFCHR | 0666, makedev(105, 0));
-	MKNOD("/dev/ifx_ppa", S_IFCHR | 0666, makedev(181, 0));
-//	system("insmod drv_ifxos");
-//	system("insmod drv_event_logger");
-	system("insmod directconnect_datapath");
-//	system("insmod ltq_eth_drv_xrx500");
-	system("insmod dc_mode-hw");
-//	system("insmod mcast_helper");
-	system("insmod macvlan");
-	system("insmod ltq_pae_hal");
-	system("insmod ltq_tmu_hal_drv");
-	system("insmod qos_mgr_drv");
-	system("insmod ppa_api");
-//	system("insmod ppa_api_proc");
-	system("insmod ltq_mpe_hal_drv");
-//	system("insmod ppa_api_tmplbuf");
-	system("insmod ppa_api_sw_accel_mod");
-	system("insmod hw_tcp_litepath");
-	system("insmod mac_violation_mirror");
-	system("insmod ltq_temp");
-	system("insmod ltq_pmcu");
-	//modprobe("tntfs");
-	if(!pids("udevd"))
-	{
-		char *udevd_argv[] = {"udevd", "--daemon", NULL};
-		_eval(udevd_argv, NULL, 0, &pid);
-		logmessage("udevd", "daemon is started");
-	}
-	nvram_set("ctf_disable", nvram_safe_get("ctf_disable_force"));
-	system("ppacmd init -n 30");
-	system("ppacmd addlan -i eth0_1");
-	system("ppacmd addlan -i eth0_2");
-	system("ppacmd addlan -i eth0_3");
-#if !defined(K3C)
-	system("ppacmd addlan -i eth0_4");
-#endif
-	system("ppacmd addlan -i br0");
-#if defined(RTCONFIG_AMAS)
-	if(!aimesh_re_mode())
-		eval("iptables", "-t", "mangle", "-A", "INPUT", "-p", "tcp", "-m", "state", "--state", "ESTABLISHED", "-j", "EXTMARK", "--set-mark", "0x80000000/0x80000000");
-#endif
-	nvram_set("wave_action", "1");
-
-//	if (repeater_mode() || mediabridge_mode() || aimesh_re_node())
-//	{
-//		modprobe("l2nat");
-//		f_write_string("/proc/sys/net/bridge/bridge-nf-call-iptables", "0", 0, 0);
-//	}
-	if(nvram_get_int("ATEMODE") != 1)
-	{
-		_dprintf("poweroff usb\n");
-		usb_pwr_ctl(0);
-	}
-	fprintf(stderr, "init_others() End.\n");
-}
-
-void init_others_defer(void)
-{
-	;
-}
 
 void enable_jumbo_frame(void)
 {
@@ -342,13 +389,13 @@ int switch_exist(void)
 {
 	int i, n;
 #if defined(K3C)
-	const char *eth[] = {"eth1", "eth0_1", "eth0_2", "eth0_3"};
+	char *eth[] = {"eth1", "eth0_1", "eth0_2", "eth0_3"};
 #else
-	const char *eth[] = {"eth1", "eth0_1", "eth0_2", "eth0_3", "eth0_4"};
+	char *eth[] = {"eth1", "eth0_1", "eth0_2", "eth0_3", "eth0_4"};
 #endif
 	n = sizeof(eth) / sizeof(eth[0]);
 	for(i = 0; i < n; i++){
-		if(!is_if_up(eth[i]));
+		if(!is_if_up(eth[i]))
 			break;
 	}
 	if(i == n)	
@@ -369,7 +416,7 @@ void load_testmode_wifi_driver(void)
 void set_uuid(void)
 {
 	FILE *fp;
-	int len, i;
+	int len;
 	char buf[60], *p;
 	if((fp = popen("cat /proc/sys/kernel/random/uuid", "r")))
 	{
@@ -388,14 +435,111 @@ void set_uuid(void)
 	}
 }
 
+/**
+ * Down all VAP interfaces, kill all related hostapd instance and
+ * delete VAP interface if @unregister_vap is true.
+ * @unregister_vap:	Unregister VAP interface if true, except WiGig interface.
+ */
+void deinit_all_vaps(const int unregister_vap)
+{
+	int unit, sunit, max_sunit;
+	char wif[IFNAMSIZ], prefix[sizeof("wlX_YYY")];
+	char hconf_path[sizeof("/etc/Wireless/conf/hostapd_X.confXXX") + IFNAMSIZ];
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+	char sock_path[sizeof("/var/run/hostapd/XXXXXX") + IFNAMSIZ];
+#else
+	char pid_path[sizeof("/var/run/hostapd_athXXX.pidYYYYYY")];
+#endif
+
+	for (unit = 0; unit < MAX_NR_WL_IF; ++unit) {
+		SKIP_ABSENT_BAND(unit);
+		max_sunit = num_of_mssid_support(unit);
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		for (sunit = 0; sunit <= max_sunit; ++sunit) {
+			get_wlxy_ifname(unit, sunit, wif);
+			snprintf(hconf_path, sizeof(hconf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+			snprintf(sock_path, sizeof(sock_path), "/var/run/hostapd/%s", wif);
+			if (f_exists(sock_path))
+				eval(QWPA_CLI, "-g", QHOSTAPD_CTRL_IFACE, "raw", "REMOVE", wif);
+#else
+			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
+			if (f_exists(pid_path))
+				kill_pidfile_tk(pid_path);
+#endif
+			if (unregister_vap && f_exists(hconf_path))
+				unlink(hconf_path);
+			if (!iface_exist(wif))
+				continue;
+			ifconfig(wif, 0, NULL, NULL);
+		}
+	}
+
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
+	kill_pidfile_tk(QHOSTAPD_PID_PATH);
+#endif
+
+	/* in case of pid file is gone...*/
+	eval("killall", "hostapd");
+}
+
+static int create_node=0;
 void init_wl(void)
 {
-	_dprintf("[%s][%d] skip\n", __func__, __LINE__);
+	int unit;
+	char path_wifi[sizeof("/tmp/wifiXXXX.sh")];
+	handle_location_code_for_wl();
+	if(!create_node)
+	{ 
+		load_wifi_driver();
+		sleep(2);
+		for (unit = WL_2G_BAND; unit < MAX_NR_WL_IF; ++unit) {
+			SKIP_ABSENT_BAND(unit);
+
+			snprintf(path_wifi, sizeof(path_wifi), "/tmp/%s.sh", get_vphyifname(unit));
+			eval(path_wifi);
+			unlink(path_wifi);
+		}
+		create_node=1;
+	}
 }
 
 void fini_wl(void)
 {
-	_dprintf("[%s][%d] skip\n", __func__, __LINE__);
+	int i;
+	char ifname[IFNAMSIZ];
+	char path_pid[sizeof("/var/run/hostapd_cli-athX.pid") + IFNAMSIZ];
+
+#if defined(RTCONFIG_WISP)
+	if (wisp_mode())
+		ifconfig(get_staifname(nvram_get_int("wlc_band")), 0, NULL, NULL);
+#endif
+
+	dbG("fini_wl:destroy wi node\n");
+	for (i = WL_2G_BAND; i < MAX_NR_WL_IF; ++i) {
+		SKIP_ABSENT_BAND(i);
+
+		get_wlxy_ifname(i, 0, ifname);
+		snprintf(path_pid, sizeof(path_pid), "/var/run/hostapd_cli-%s.pid", ifname);
+		if (f_exists(path_pid))
+			kill_pidfile(path_pid);
+	}
+
+	deinit_all_vaps(1);
+
+	/* Delete all STA interfaces. */
+	kill_wifi_wpa_supplicant(-1);
+	for (i = 0; i < MAX_NR_WL_IF; ++i) {
+		SKIP_ABSENT_BAND(i);
+
+		strlcpy(ifname, get_staifname(i), sizeof(ifname));
+		if (!iface_exist(ifname))
+			continue;
+
+		ifconfig(ifname, 0, NULL, NULL);
+	}
+
+	create_node=0;
 }
 
 void init_syspara(void)
@@ -418,7 +562,6 @@ void init_syspara(void)
 #endif
 #endif
 	char ipaddr_lan[16];
-	unsigned char factory_var_buf[256];
 
 	set_basic_fw_name();
 	/* /dev/mtd/2, RF parameters, starts from 0x40000 */
@@ -542,7 +685,9 @@ void init_syspara(void)
 	nvram_set("blver", trim_r(blver));
 
 	system("nvram set blver=`uboot_env --get --name bl_ver`");
+	system("nvram set bl_ver=`uboot_env --get --name ver`");
 #else
+	system("nvram set blver=`uboot_env --get --name ver`");
 	system("nvram set bl_ver=`uboot_env --get --name ver`");
 #endif
 	_dprintf("bootloader version: %s\n", nvram_safe_get("blver"));
@@ -586,10 +731,11 @@ void post_syspara(void)
 
 void generate_wl_para(int unit, int subunit)
 {
+#if 0
 	char prefix[] = "wlXXXXXXX_", prefix_wlc[] = "wlXXXXXXX_";
 	char tmp[128];
 
-	if(aimesh_re_mode())
+	if(aimesh_re_node())
 	{
 		wl_nvprefix(prefix, sizeof(prefix), unit, subunit);
 		nvram_pf_set(prefix, "bss_enabled", "1");
@@ -615,6 +761,7 @@ void generate_wl_para(int unit, int subunit)
 			nvram_pf_set(prefix, "radius_port", nvram_pf_safe_get(prefix_wlc, "radius_port"));
 		}
 	}
+#endif
 }
 
 int wl_exist(char *ifname, int band)

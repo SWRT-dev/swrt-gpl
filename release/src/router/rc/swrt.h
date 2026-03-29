@@ -84,7 +84,7 @@ extern void ac1900p_patch_cfe(void);
 extern void ac3200p_patch_cfe(void);
 #elif defined(R7000P)
 extern void r7000p_nvram_patch(void);
-#elif defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
+#elif defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 extern void patch_Factory(void) __attribute__((weak));
 #else
 extern void swrt_patch_nvram(void);

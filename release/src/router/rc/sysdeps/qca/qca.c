@@ -219,7 +219,7 @@ char *get_vap_bridge()
 	return br_if;
 }
 
-int get_wpa_key_mgmt(int band, char *auth_mode, int mfp, char *wpa_key_mgmt)
+int get_wpa_key_mgmt(int band, char *auth_mode, int mfp, char *wpa_key_mgmt, size_t len)
 {
 	int t_mfp = mfp;
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
@@ -227,7 +227,7 @@ int get_wpa_key_mgmt(int band, char *auth_mode, int mfp, char *wpa_key_mgmt)
 #endif
 	char prefix[7];
 	if(!auth_mode || !*auth_mode){
-		dbg("%s: Invalid parameter. (auth_mode [%s] km [%p] km_size %zu)\n", __func__, auth_mode, wpa_key_mgmt, 0x82);
+		dbg("%s: Invalid parameter. (auth_mode [%s] km [%p] km_size %zu)\n", __func__, auth_mode, wpa_key_mgmt, len);
 		return -1;
 	}
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
@@ -246,59 +246,59 @@ int get_wpa_key_mgmt(int band, char *auth_mode, int mfp, char *wpa_key_mgmt)
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
 	if(nvram_contains_word("rc_support", "wpa3")){
 		if(!strcmp(auth_mode, "sae")){
-			snprintf(wpa_key_mgmt, 128, "SAE %s %s", "", isbe ? "SAE-EXT-KEY" : "");
+			snprintf(wpa_key_mgmt, len, "SAE %s %s", "", isbe ? "SAE-EXT-KEY" : "");
 		}else if(!strcmp(auth_mode, "psk2sae")){
 			if(t_mfp == 2)
-				snprintf(wpa_key_mgmt, 128, "%s SAE %s %s", "WPA-PSK-SHA256", "", isbe ? "SAE-EXT-KEY" : "");
+				snprintf(wpa_key_mgmt, len, "%s SAE %s %s", "WPA-PSK-SHA256", "", isbe ? "SAE-EXT-KEY" : "");
 			else if(t_mfp == 1)
-				snprintf(wpa_key_mgmt, 128, "%s SAE %s %s", "WPA-PSK WPA-PSK-SHA256", "", isbe ? "SAE-EXT-KEY" : "");
+				snprintf(wpa_key_mgmt, len, "%s SAE %s %s", "WPA-PSK WPA-PSK-SHA256", "", isbe ? "SAE-EXT-KEY" : "");
 			else
-				snprintf(wpa_key_mgmt, 128, "%s SAE %s %s", "WPA-PSK", "", isbe ? "SAE-EXT-KEY" : "");
+				snprintf(wpa_key_mgmt, len, "%s SAE %s %s", "WPA-PSK", "", isbe ? "SAE-EXT-KEY" : "");
 		}else if(!strcmp(auth_mode, "owe"))
-			strlcpy(wpa_key_mgmt, "OWE", 128);
+			strlcpy(wpa_key_mgmt, "OWE", len);
 	}
 #endif
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
 	if(!*wpa_key_mgmt && strcmp(auth_mode, "open") && strcmp(auth_mode, "shared")){
 		if(!strcmp(auth_mode, "suite-b"))
-			strlcpy(wpa_key_mgmt, "WPA-EAP-SUITE-B-192", 128);
+			strlcpy(wpa_key_mgmt, "WPA-EAP-SUITE-B-192", len);
 		else if(!strcmp(auth_mode, "wpa3"))
-			snprintf(wpa_key_mgmt, 128, "WPA-EAP-SHA256 %s", "");
+			snprintf(wpa_key_mgmt, len, "WPA-EAP-SHA256 %s", "");
 		else if(!strcmp(auth_mode, "wpa2wpa3")){
 			if(t_mfp == 2)
-				snprintf(wpa_key_mgmt, 128, "%s %s %s", "WPA-EAP-SHA256", "", "");
+				snprintf(wpa_key_mgmt, len, "%s %s %s", "WPA-EAP-SHA256", "", "");
 			else if(t_mfp == 1)
-				snprintf(wpa_key_mgmt, 128, "%s %s %s", "WPA-EAP WPA-EAP-SHA256", "", "");
+				snprintf(wpa_key_mgmt, len, "%s %s %s", "WPA-EAP WPA-EAP-SHA256", "", "");
 			else
-				snprintf(wpa_key_mgmt, 128, "%s %s %s", "WPA-EAP", "", "");
+				snprintf(wpa_key_mgmt, len, "%s %s %s", "WPA-EAP", "", "");
 		}
 	}
 #endif
 	if(!*wpa_key_mgmt){
 		if(!strcmp(auth_mode, "psk2") || !strcmp(auth_mode, "pskpsk2")){
 			if(t_mfp == 2)
-				snprintf(wpa_key_mgmt, 128, "%s %s", "WPA-PSK-SHA256", "");
+				snprintf(wpa_key_mgmt, len, "%s %s", "WPA-PSK-SHA256", "");
 			else if(t_mfp == 1)
-				snprintf(wpa_key_mgmt, 128, "%s %s", "WPA-PSK WPA-PSK-SHA256", "");
+				snprintf(wpa_key_mgmt, len, "%s %s", "WPA-PSK WPA-PSK-SHA256", "");
 			else
-				snprintf(wpa_key_mgmt, 128, "%s %s", "WPA-PSK", "");
+				snprintf(wpa_key_mgmt, len, "%s %s", "WPA-PSK", "");
 		}else if(!strcmp(auth_mode, "wpa2") || !strcmp(auth_mode, "wpawpa2") || !strcmp(auth_mode, "wpa")){
 			if(t_mfp == 2)
-				snprintf(wpa_key_mgmt, 128, "%s %s %s", "WPA-EAP-SHA256", "", "");
+				snprintf(wpa_key_mgmt, len, "%s %s %s", "WPA-EAP-SHA256", "", "");
 			else if(t_mfp == 1)
-				snprintf(wpa_key_mgmt, 128, "%s %s %s", "WPA-EAP WPA-EAP-SHA256", "", "");
+				snprintf(wpa_key_mgmt, len, "%s %s %s", "WPA-EAP WPA-EAP-SHA256", "", "");
 			else
-				snprintf(wpa_key_mgmt, 128, "%s %s %s", "WPA-EAP", "", "");
+				snprintf(wpa_key_mgmt, len, "%s %s %s", "WPA-EAP", "", "");
 		}
 		if(!*wpa_key_mgmt){
 			if(strcmp(auth_mode, "open") && strcmp(auth_mode, "shared"))
 				dbg("%s: Unknown auth_mode [%s]!\n", __func__, auth_mode);
 			if(t_mfp == 2)
-				snprintf(wpa_key_mgmt, 128, "%s %s", "WPA-PSK-SHA256", "");
+				snprintf(wpa_key_mgmt, len, "%s %s", "WPA-PSK-SHA256", "");
 			else if(t_mfp == 1)
-				snprintf(wpa_key_mgmt, 128, "%s %s", "WPA-PSK WPA-PSK-SHA256", "");
+				snprintf(wpa_key_mgmt, len, "%s %s", "WPA-PSK WPA-PSK-SHA256", "");
 			else
-				snprintf(wpa_key_mgmt, 128, "%s %s", "WPA-PSK", "");
+				snprintf(wpa_key_mgmt, len, "%s %s", "WPA-PSK", "");
 		}
 	}
 	return 0;
@@ -995,7 +995,7 @@ void write_wpa_supplicant_network(FILE *fp, int band, const char *prefix, int di
 	if(disabled)
 		fprintf(fp,"\tdisabled=1\n");
 	fprintf(fp,"\tscan_ssid=1\n");
-	get_wpa_key_mgmt(band, auth_mode, mfp, wpa_key);
+	get_wpa_key_mgmt(band, auth_mode, mfp, wpa_key, sizeof(wpa_key));
 	if(!auth_mode[0] || (!strcmp(auth_mode, "open") && nvram_pf_match(prefix, "wep", "0"))){
 		fprintf(fp,"\tkey_mgmt=NONE\n");//open/none
 	}else if (!strcmp(auth_mode, "open")){
@@ -2586,10 +2586,6 @@ int gen_ath_config(int band, int subnet)
 	fprintf(fp, "ctrl_interface_group=0\n");
 	fprintf(fp, "max_num_sta=255\n");
 	fprintf(fp, "macaddr_acl=0\n");
-#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
-#else
-	fprintf(fp, "ignore_broadcast_ssid=0\n");
-#endif
 	fprintf(fp, "eapol_key_index_workaround=0\n");
 	flag_8021x=0;
 
@@ -2788,8 +2784,8 @@ int gen_ath_config(int band, int subnet)
 			ofdma = nvram_pf_get_int(main_prefix, "ofdma");
 			if(ofdma == 3 && vhtmubfer){
 				if(vhtsubfer){
-					if(wldefval->he_mubfer != vhtsubfer)
-						fprintf(fp2, "%s %s he_mubfer %d\n", IWPRIV, wif, vhtsubfer);
+					if(wldefval->he_mubfer != vhtmubfer)
+						fprintf(fp2, "%s %s he_mubfer %d\n", IWPRIV, wif, vhtmubfer);
 					if(wldefval->he_subfer != vhtsubfer)
 						fprintf(fp2, "%s %s he_subfer %d\n", IWPRIV, wif, vhtsubfer);
 				}else{
@@ -3214,7 +3210,7 @@ int gen_ath_config(int band, int subnet)
 		fprintf(fp, "wpa_group_rekey=%d\n", safe_atoi(str));
 
 	snprintf(prefix_mssid, sizeof(prefix_mssid), "%s", prefix);
-	get_wpa_key_mgmt(band, nvram_pf_safe_get(prefix_mssid, "auth_mode_x"), nvram_pf_get_int(prefix, "mfp"), wpa_key_mgmt);
+	get_wpa_key_mgmt(band, nvram_pf_safe_get(prefix_mssid, "auth_mode_x"), nvram_pf_get_int(prefix, "mfp"), wpa_key_mgmt, sizeof(wpa_key_mgmt));
 	if(nvram_pf_match(prefix_mssid, "auth_mode_x", "open") && nvram_pf_match(prefix_mssid, "wep_x", "0"))
 		fprintf(fp, "#wpa_pairwise=\n");
 	else if((nvram_pf_match(prefix_mssid, "auth_mode_x", "open") && nvram_pf_invmatch(prefix_mssid, "wep_x", "0"))
@@ -4354,6 +4350,7 @@ int gen_ath_config(int band, int subnet)
 	}
 #endif
 #if defined(RTCONFIG_SOC_IPQ40XX)
+	fprintf(fp, "ignore_broadcast_ssid=%d\n", nvram_pf_get_int(prefix, "closed") != 0);
 	i = nvram_pf_get_int(tmpfix, "mrate_x");
 next_mrate:
 	switch (i++) {
@@ -7233,10 +7230,10 @@ unsigned int getPapState(int unit)
 #endif
 
 #if defined(RTCONFIG_CONCURRENTREPEATER)	
-	if (!nvram_get_int("wlready") && !mediabridge_mode()) return 0;
+	if (!nvram_get_int(WLREADY) && !mediabridge_mode()) return 0;
 #endif
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
-	if(!nvram_get_int("wlready")) return 0;
+	if(!nvram_get_int(WLREADY)) return 0;
 #endif
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
 	get_wpa_ctrl_sk(unit, ctrl_sk, sizeof(ctrl_sk));

@@ -6235,10 +6235,7 @@ mcast_conf(void)
 void
 start_mcast_proxy(void)
 {
-	char *lan_ifname = nvram_safe_get("lan_ifname");
-
 	stop_mcast_proxy();
-
 	/* Create mcast.conf */
 	mcast_conf();
 
@@ -6329,10 +6326,6 @@ stop_misc(void)
 #ifdef RTCONFIG_SMALL_FW_UPDATE
 	if (pids("watchdog02"))
 		killall_tk("watchdog02");
-#endif
-#ifdef RTCONFIG_LANTIQ
-	if (pids("wave_monitor"))
-		killall_tk("wave_monitor");
 #endif
 #ifdef SW_DEVLED
 	if (pids("sw_devled"))
@@ -6452,7 +6445,7 @@ stop_misc(void)
 #ifdef RTCONFIG_MDNS
 	stop_mdns();
 #endif
-#if !(defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
+#if !(defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
  ||  (defined(RTCONFIG_SOC_IPQ8074))
 	stop_erp_monitor();
 #endif
@@ -12412,9 +12405,6 @@ start_services(void)
 #ifdef RTCONFIG_ASD
 	start_asd();
 #endif
-#ifdef RTCONFIG_LANTIQ
-	start_wave_monitor();
-#endif
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_MT7629) || defined(RTCONFIG_RALINK_MT7622) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 	setup_smp(0);	/* for adjust smp_affinity of cpu */
 #endif
@@ -12750,7 +12740,7 @@ start_services(void)
 	start_conn_diag();
 #endif
 
-#if !(defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
+#if !(defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
  ||  (defined(RTCONFIG_SOC_IPQ8074))
 	start_erp_monitor();
 #endif
@@ -12902,7 +12892,7 @@ stop_services(void)
 #ifdef RTCONFIG_ADTBW
 	stop_adtbw();
 #endif
-#if !(defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
+#if !(defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
  ||  (defined(RTCONFIG_SOC_IPQ8074))
 	stop_erp_monitor();
 #endif
@@ -13447,7 +13437,7 @@ stop_services_mfg(void)
 #ifdef RTCONFIG_PROTECTION_SERVER
 	stop_ptcsrv();
 #endif
-#if !(defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
+#if !(defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
  ||  (defined(RTCONFIG_SOC_IPQ8074))
 	stop_erp_monitor();
 #endif
@@ -13758,18 +13748,15 @@ start_watchdog(void)
 	return _eval(watchdog_argv, NULL, 0, &whpid);
 }
 
-int
+void
 start_check_watchdog(void)
 {
-	return 0;
-/*
-	char *check_watchdog_argv[] = {"check_watchdog", NULL};
+	char *watchdog_argv[] = {"watchdog", NULL};
 	pid_t pid;
 
 	if(nvram_match("stop_watchdog", "1"))  return 0;
 
-	return _eval(check_watchdog_argv, NULL, 0, &pid);
-*/
+	_eval(watchdog_argv, NULL, 0, &pid);
 }
 
 // added by Andrew
@@ -13806,18 +13793,6 @@ start_watchdog02(void)
 }
 #endif
 
-#ifdef RTCONFIG_LANTIQ
-int
-start_wave_monitor(void)
-{
-	char *wave_monitor_argv[] = {"wave_monitor", NULL};
-	pid_t wavepid;
-
-	if (pidof("wave_monitor") > 0) return -1;
-
-	return _eval(wave_monitor_argv, NULL, 0, &wavepid);
-}
-#endif
 #ifdef SW_DEVLED
 int
 start_sw_devled(void)
@@ -14631,7 +14606,7 @@ void check_services(void)
 #ifdef RTCONFIG_CROND
 	_check(pids("crond"), "crond", start_cron);
 #endif
-	_check(no_need_watchdog(), "watchdog", start_watchdog);
+	_check(no_need_watchdog(), "watchdog", start_check_watchdog);
 
 #ifdef RTCONFIG_AMAS
 #if defined(RTCONFIG_BCMWL6) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_REALTEK) || defined(RTCONFIG_RALINK)

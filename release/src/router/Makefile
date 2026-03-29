@@ -1068,6 +1068,7 @@ else ifeq ($(RTCONFIG_LANTIQ),y)
 obj-$(RTCONFIG_BT_CONN) += btconfig
 # obj-y += ppacmd
 obj-y += libnl-bf
+obj-y += libnl
 obj-y += taskset
 else
 obj-y += libbcmcrypto
@@ -4213,7 +4214,7 @@ aupnpc-clean:
 
 # !!TB
 #shared:
-shared: openssl $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth) $(if $(BCM_502L07P2),ethctl_lib)
+shared: openssl $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth) $(if $(BCM_502L07P2),ethctl_lib)$(if $(RTCONFIG_LANTIQ),libnl)
 # Dig into our collection of prebuilt objects based on model.
 	@-rm -f shared/prebuild/*.o || true
 	@-cp -f shared/prebuild/$(BUILD_NAME)/* shared/prebuild/

@@ -2693,9 +2693,6 @@ static const applets_t applets[] = {
 #ifdef RTCONFIG_QTN
 	{ "qtn_monitor",		qtn_monitor_main		},
 #endif
-#ifdef RTCONFIG_LANTIQ
-	{ "wave_monitor",		wave_monitor_main		},
-#endif
 #if defined(RTCONFIG_USB) && !defined(RTCONFIG_NO_USBPORT)
 	{ "usbled",			usbled_main			},
 #endif
@@ -2731,6 +2728,8 @@ static const applets_t applets[] = {
 #if defined(RTCONFIG_CFG80211)
 	{ "vap_evhandler",		vap_evhandler_main		},
 #endif
+#elif defined(RTCONFIG_LANTIQ)
+	{ "vap_evhandler",		vap_evhandler_main		},
 #endif
 #endif
 	{ "halt",			reboothalt_main			},
@@ -2881,7 +2880,7 @@ static const applets_t applets[] = {
 #ifdef RTCONFIG_LETSENCRYPT
 	{ "le_acme",				le_acme_main			},
 #endif
-#if !(defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
+#if !(defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_REALTEK)) \
  ||  (defined(RTCONFIG_SOC_IPQ8074))
 	{ "erp_monitor",		erp_monitor_main		},
 #endif
@@ -4131,10 +4130,6 @@ int main(int argc, char **argv)
 	else if(!strcmp(base, "set_usb2_to_usb3")) {
 		set_usb2_to_usb3();
 		puts("1");
-		return 0;
-	}
-	else if (!strcmp(base, "start_repeater")) {
-		start_repeater();
 		return 0;
 	}
 #endif

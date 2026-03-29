@@ -6394,6 +6394,7 @@ int disable_ppa_wan(char *wan_ifname)
 	_dprintf("[%s][%d] %s\n", __func__, __LINE__, ppa_cmd);
 	system(ppa_cmd);
 	nvram_set("ctf_disable", "1");
+	return 0;
 }
 
 int enable_ppa_wan(char *wan_ifname)
@@ -6404,6 +6405,7 @@ int enable_ppa_wan(char *wan_ifname)
 	system(ppa_cmd);
 	system("ppacmd setppefp -f 1");
 	nvram_set("ctf_disable", "0");
+	return 0;
 }
 #endif
 

@@ -16,7 +16,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
-#include <proto/ethernet.h>
+//#include <proto/ethernet.h>
 #include <time.h>
 #include <sys/time.h>
 #include <errno.h>

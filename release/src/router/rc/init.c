@@ -24516,8 +24516,8 @@ def_boot_reinit:
 #ifdef RPAX56
 	reset_abmac();
 #endif
-#if defined(RTAX89U)
-	pre_syspara_swrt();
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
+	pre_syspara();
 #endif
 
 	init_syspara();// for system dependent part (befor first get_model())

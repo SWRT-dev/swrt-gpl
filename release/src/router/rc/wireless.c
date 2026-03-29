@@ -306,7 +306,7 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 
 	_dprintf("%s: Start to run...\n", __FUNCTION__);
 	signal(SIGTERM, wlcconnect_safeleave);
-#if (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)) \
+#if (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)) \
  && !defined(RTCONFIG_CONCURRENTREPEATER)
 	signal(SIGTSTP, wlcconnect_sig_handle);
 	signal(SIGCONT, wlcconnect_sig_handle);
@@ -315,10 +315,6 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 	nvram_set_int("wlc_state", WLC_STATE_INITIALIZING);
 	nvram_set_int("wlc_sbstate", WLC_STOPPED_REASON_NONE);
 	nvram_set_int("wlc_state", WLC_STATE_CONNECTING);
-
-#ifdef RTCONFIG_LANTIQ
-	start_repeater();
-#endif
 
 #if defined(RPAC51)
 	sleep_us = 500;
@@ -329,6 +325,8 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 		sleep_s = 20;
 	else
 		sleep_s = 5;
+#elif defined(RTCONFIG_LANTIQ)
+	sleep_s = 10;
 #endif
 
 	while (1) {
