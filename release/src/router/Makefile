@@ -3052,7 +3052,7 @@ infosvr: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX)
 infosvr-install:
 	$(MAKE) -C infosvr INSTALLDIR=$(INSTALLDIR)/infosvr install
 
-httpd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX) rc libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_BWDPI),bwdpi_source) json-c $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG)) libpasswd libwebapi $(if $(RTCONFIG_DNSQUERY_INTERCEPT), dnsqd) $(if $(RTCONFIG_NOTIFICATION_CENTER),nt_center) $(if $(RTCONFIG_MULTILAN_CFG),libswrt)
+httpd: shared $(if $(BCM_502L07P2),ethctl_lib) nvram$(BCMEX) rc libdisk $(if $(RTCONFIG_HTTPS),mssl) $(if $(RTCONFIG_BWDPI),bwdpi_source) json-c $(if $(RTCONFIG_CFGSYNC), $(CFGSYNC_PKG)) libpasswd libwebapi $(if $(RTCONFIG_DNSQUERY_INTERCEPT), dnsqd) $(if $(RTCONFIG_NOTIFICATION_CENTER),nt_center) $(if $(RTCONFIG_MULTILAN_CFG),libswrt) $(if $(RTCONFIG_LANTIQ),wireless_tools$(WTOOL_SUFFIX))
 	@$(SEP)
 ifeq ($(HND_ROUTER),y)
 ifeq ($(HND_ROUTER_AX),y)

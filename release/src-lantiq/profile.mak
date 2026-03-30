@@ -6,7 +6,7 @@ EXTRACFLAGS += -DCONFIG_NVSIZE_128
 endif
 
 ifeq ($(RTCONFIG_LANTIQ),y)
-EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -mips32r2 -mno-branch-likely -mtune=24kc -fno-caller-saves -fno-plt
+EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -mips32r2 -mno-branch-likely -mtune=24kc -fno-caller-saves -fno-plt -fPIC
 endif
 
 EXTRACFLAGS += -DLINUX30

@@ -341,7 +341,7 @@ CFLAGS += -I$(TOP)/libpasswd
 LIBS += -L$(TOP)/libpasswd -lpasswd
 
 ifeq ($(RTCONFIG_LANTIQ),y)
-LIBS += -L$(TOP)/fapi_wlan_common-05.04.02.65 -lfapiwlancommon -ldl -L$(TOP)/libhelper-2.3.0.16 -lhelper -L$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -liw #-L$(TOP)/libfapi-0.1 -lfapi
+LIBS += -L$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -liw
 endif
 
 ifeq ($(RTCONFIG_SWRTMESH),y)

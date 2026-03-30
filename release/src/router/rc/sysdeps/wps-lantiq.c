@@ -33,7 +33,6 @@
 int 
 start_wps_method(void)
 {
-	int w_setting = 1;
 	if(getpid()!=1) {
 		notify_rc("start_wps_method");
 		return 0;
@@ -85,9 +84,10 @@ void runtime_onoff_wps(int onoff)
 		 && !nvram_pf_match(prefix, "auth_mode_x", "owe")
 #endif
 		 && !nvram_pf_match(prefix, "auth_mode_x", "wpa3")) {
-			//dbg("%s: %s WPS IE of Beacon/Probe resp for %s\n", __func__, onoff ? "unhide" : "hide", wif);
-			doSystem(IWPRIV " %s hide_wpsie %d\n", wif, onoff ? 0 : 1);
-			doSystem("hostapd_cli -i%s update_beacon", wif);
+			doSystem("sed -i '/wps_state/d' /etc/Wireless/conf/hostapd_%s.conf\n", wif);
+			doSystem("echo wps_state=%d >> /etc/Wireless/conf/hostapd_%s.conf\n", onoff ? 2 : 0, wif);
+			doSystem("hostapd_cli -i %s reload", wif);
+			doSystem("hostapd_cli -i %s update_beacon", wif);
 		}
 
 		unit++;
@@ -225,143 +225,13 @@ int is_wps_success(void)
 void nvram_set_wlX(char* nv, char* value)
 {
 	int i;
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
+	char prefix[] = "wlXXXXXXXXXX_";
 
 	for (i = WL_2G_BAND; i < MAX_NR_WL_IF; ++i) {
 		SKIP_ABSENT_BAND(i);
 		snprintf(prefix, sizeof(prefix), "wl%d_", i);
-		nvram_set(strcat_r(prefix, nv, tmp), value);
+		nvram_pf_set(prefix, nv, value);
 	}
-}
-
-
-#define WPS_CONFIG_FILE "/tmp/wps_config.xml"
-
-int write_wps_config(int configured){
-	FILE *fp = fopen(WPS_CONFIG_FILE, "w+");
-
-	if(!fp){
-		_dprintf("%s: cannot open the WPS config file.\n", __func__);
-		return -1;
-	}
-
-	fprintf(fp, "Object_0=Device.WiFi.Radio.X_LANTIQ_COM_Vendor.WPS\n");
-	fprintf(fp, "ConfigState_0=%s\n", (configured == 1)?"Configured":"Unconfigured");
-	fprintf(fp, "Status_0=Idle\n");
-	if(configured == 0)
-		fprintf(fp, "WPSAction_0=ResetWPS\n");
-
-	fclose(fp);
-
-	return 0;
-}
-
-int set_wps_idle(int unit)
-{
-	char cmd[256];
-	FILE *fp = fopen(WPS_CONFIG_FILE, "w+");
-
-	if(!fp){
-		_dprintf("[%s][%d]: cannot open the WPS config file.\n",
-			__func__, __LINE__);
-		return -1;
-	}
-	fprintf(fp, "Object_0=Device.WiFi.Radio.X_LANTIQ_COM_Vendor.WPS\n");
-	fprintf(fp, "Status_0=Idle\n");
-	fclose(fp);
-
-	_dprintf("[%s][%d]: set_wps_idle:[%d]\n",
-			__func__, __LINE__, unit);
-
-	snprintf(cmd, sizeof(cmd),
-		"/usr/sbin/fapi_wlan_cli setWpsTR181 -i%d -f%s",
-		wl_wave_unit(unit), WPS_CONFIG_FILE);
-
-	system(cmd);
-
-	return 0;
-}
-int set_wps_config(int unit, int configured){
-	int retVal;
-	char cmd[256];
-	FILE *fp;
-	char *pt1, *pt2, *pt3;
-	int orig_config = 0;
-
-	_dprintf("%s(%d): configured=%d.\n", __func__, unit, configured);
-
-#if 0  // Don't check wether change occur. Always set WPS as configured.
-#ifdef NOT_SHELL_FAPI
-	retVal = wlan_getWpsConfigurationState(wl_wave_unit(unit), buf);
-	_dprintf("%s(%d): buf=%s.\n", __func__, unit, buf);
-	if((!strcmp(buf, "Configured") && configured == 1)
-			|| (!strcmp(buf, "Unconfigured") && configured == 0)
-			){
-		_dprintf("%s(%d): config state was not changed.\n", __func__, unit);
-		return retVal;
-	}
-
-	dbObjPtr = HELP_CREATE_OBJ(SOPT_OBJVALUE);
-#else
-	snprintf(cmd, sizeof(cmd), "/usr/sbin/fapi_wlan_cli getWpsConfigurationState -i%d", wl_wave_unit(unit));
-	fp = popen(cmd, "r");
-	if(fp){
-		memset(cmd, 0, sizeof(cmd));
-		while(fgets(cmd, sizeof(cmd), fp)){
-			pt1 = strstr(cmd, "ConfigState= '");
-			if(pt1){
-				pt2 = pt1+strlen("ConfigState= '");
-				pt3 = strchr(pt2, '\'');
-				pt3[0] = '\0';
-
-				if(!strcmp(pt2, "Configured"))
-					orig_config = 1;
-				else
-					orig_config = 0;
-
-				if(orig_config == configured){
-					_dprintf("%s(%d): config state was not changed.\n", __func__, unit);
-					pclose(fp);
-					return 0;
-				}
-			}
-		}
-		pclose(fp);
-	}
-#endif
-#endif
-
-	write_wps_config(configured);
-
-	snprintf(cmd, sizeof(cmd), "/usr/sbin/fapi_wlan_cli setWpsTR181 -i%d -f%s", wl_wave_unit(unit), WPS_CONFIG_FILE);
-	system(cmd);
-
-	_dprintf("%s(%d): done.\n", __func__, unit);
-
-	return retVal;
-}
-
-int set_all_wps_config(int configured){
-	int i;
-	char word[256], *next;
-	char ifnames[128];
-
-	if(nvram_match("lan_ipaddr", ""))
-		return -1;
-
-	i = 0;
-	strcpy(ifnames, nvram_safe_get("wl_ifnames"));
-	foreach(word, ifnames, next){
-		if(i >= MAX_NR_WL_IF)
-			break;
-
-		_dprintf("%s: %s %s...\n", __func__, (configured == 1)?"Configure":"Unconfigure", word);
-		set_wps_config(i, configured);
-
-		++i;
-	}
-
-	return 0;
 }
 
 void wps_oob(void){
@@ -492,11 +362,12 @@ int getWscStatusStr(int unit, char *ret_buf, int buf_size){
 				else
 				{
 					strncpy(ret_buf,pt2,buf_size);
-					return 0;					
+					return 0;
 				}
 			}
 		}
 	}
+	return 0;
 }
 #if defined(RTCONFIG_AMAS)
 void amas_save_wifi_para()
@@ -642,38 +513,6 @@ void amas_save_wifi_para()
 	nvram_set("obd_Setting", "1");
 }
 #endif
-
-
-int set_wps_enable(int unit){
-	int retVal = 0;
-	bool orig_enable = 0;
-	int enable = nvram_get_int("wps_enable");
-	int band = nvram_get_int("wps_band_x");
-
-	_dprintf("%s(%d): enable=%d, band=%d.\n", __func__, unit, enable, band);
-
-	if(unit != band){
-		_dprintf("%s(%d): skip.\n", __func__, unit);
-		return 0;
-	}
-
-	set_wps_idle(unit);
-
-	if(enable != 0 && enable != 1)
-		enable = 0;
-
-	retVal = wlan_getWpsEnable(wl_wave_unit(unit), &orig_enable);
-	_dprintf("%s(%d): orig_enable=%d.\n", __func__, unit, orig_enable);
-	if(orig_enable == enable){
-		_dprintf("%s(%d): enable state was not changed.\n", __func__, unit);
-		return retVal;
-	}
-
-	retVal = wlan_setWpsEnable(wl_wave_unit(unit), enable);
-	_dprintf("%s(%d): done. %d.\n", __func__, unit, retVal);
-
-	return retVal;
-}
 
 /**
  * Helper of WPS-OOB. Should be call by hostapd_cli.

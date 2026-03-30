@@ -962,6 +962,9 @@ extern int getEEPROM(unsigned char *outbuf, unsigned short *lenpt, char *area);
 extern void hexdump(unsigned char *pt, unsigned short len);
 extern void setCTL(const char *);
 extern int verify_ctl_table(void);
+#if !defined(RTCONFIG_CONCURRENTREPEATER)
+extern void wlcconnect_sig_handle(int sig);
+#endif
 #ifdef RTCONFIG_ATEUSB3_FORCE
 extern int getForceU3(void);
 extern int setForceU3(const char *val);
@@ -1767,6 +1770,7 @@ extern int pc_main(int argc, char *argv[]);
 extern int pc_block_main(int argc, char *argv[]);
 extern void config_blocking_redirect(FILE *fp, char *lan_if);
 #ifdef RTCONFIG_PC_REWARD
+extern void config_pc_reward_redirect(FILE *fp, char *lan_if);
 #ifdef RTCONFIG_MULTILAN_CFG
 extern void handle_sdn_config_pc_reward_redirect(FILE *fp);
 #endif

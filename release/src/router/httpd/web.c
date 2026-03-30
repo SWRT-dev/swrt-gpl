@@ -49,7 +49,9 @@
 #if !defined(__GLIBC__) && !defined(__UCLIBC__) && !defined(MUSL_LIBC)/* musl */
 #include <netinet/if_ether.h>		//have to in front of <linux/ethtool.h> and <linux/mii.h> to avoid redefinition of 'struct ethhdr'
 #endif
+#if defined(RTCONFIG_BCMARM)
 #include <proto/ethernet.h>   //add by Viz 2010.08
+#endif
 #include <net/route.h>
 #include <sys/ioctl.h>
 #ifndef MUSL_LIBC
@@ -292,7 +294,7 @@ extern int ej_wl_channel_list_6g_2(int eid, webs_t wp, int argc, char_t **argv);
 #elif defined(RTCONFIG_WIFI7) && !defined(RTCONFIG_WIFI7_NO_6G)
 extern int ej_wl_channel_list_6g(int eid, webs_t wp, int argc, char_t **argv);
 #endif
-#if defined(CONFIG_BCMWL5) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#if defined(CONFIG_BCMWL5) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 extern int ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit);
 extern int ej_wl_chanspecs_2g(int eid, webs_t wp, int argc, char_t **argv);
 extern int ej_wl_chanspecs_5g(int eid, webs_t wp, int argc, char_t **argv);
@@ -2469,7 +2471,7 @@ websWriteCh(webs_t wp, char *ch, int count)
    return (ret);
 }
 
-#if !defined(RTCONFIG_QCA) && !defined(RTCONFIG_LANTIQ) && !defined(HND_ROUTER)
+#if !defined(RTCONFIG_QCA) && !defined(HND_ROUTER)
 const char *syslog_msg_filter[] = {
 	"net_ratelimit",
 	"exist in UDB, can't", "is used by someone else, can't use it", "not mesh client, can't update it", "not mesh client, can't delete it",
@@ -22249,7 +22251,7 @@ login_cgi(webs_t wp, char_t *url, int auth_version)
 		HTTPD_DBG("authfail: login_error_status = %d\n", login_error_status);
 		if(fromapp_flag != 0){
 			if(login_error_status == LOGINLOCK)
-				websWrite(wp, "{\n\"error_status\":\"%d\",\"remaining_lock_time\":\"%ld\",\"lock_version\":\"%d\"\n}\n", login_error_status, max_lock_time, HTTPD_LOCK_VERSION);
+				websWrite(wp, "{\n\"error_status\":\"%d\",\"remaining_lock_time\":\"%d\",\"lock_version\":\"%d\"\n}\n", login_error_status, max_lock_time, HTTPD_LOCK_VERSION);
 			else
 				websWrite(wp, "{\n\"error_status\":\"%d\", \"captcha_on\":\"%d\", \"last_time_lock_warning\":\"%d\"\n}\n", login_error_status, captcha_on(), last_time_lock_warning());
 		}else{
@@ -31364,7 +31366,7 @@ static int ej_netdev(int eid, webs_t wp, int argc, char_t **argv)
 					if ((p = strchr(buf, ':')) == NULL) continue;
 					sscanf(p + 1, "%llu", &tx);
 					printf("%s, rx: %llu, tx: %llu\n", ifname_buf, rx, tx);
-					ifname = &ifname_buf;
+					ifname = &ifname_buf[0];
 				}
 #endif
 #ifdef RTCONFIG_BCM5301X_TRAFFIC_MONITOR

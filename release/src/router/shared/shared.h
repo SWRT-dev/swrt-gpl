@@ -1770,7 +1770,7 @@ static inline int is_5g_bw(int bw)
 	return (bw == 20 || bw == 40 || bw == 80 || bw == 160 || bw == 240 || bw == 320)? 1 : 0;
 }
 
-#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 enum wl_bandwidth_id {
 	WL_BW_20 = 0,
 	WL_BW_AUTO = 1,		/* 2G: 20/40MHz, 5G: 20/40/80/(80+80)/(160)/(240) */
@@ -3145,6 +3145,9 @@ extern unsigned int rtkswitch_wanPort_phyStatus(int wan_unit);
 extern unsigned int rtkswitch_lanPorts_phyStatus(void);
 extern unsigned int rtkswitch_WanPort_phySpeed(void);
 extern void ATE_qca8337_port_status(void);
+extern int get_channel_list_via_driver(int unit, char *buffer, int len);
+extern int get_channel_list_via_country(int unit, const char *country_code, char *buffer, int len);
+extern void ATE_port_status(int verbose, phy_info_list *list);
 #else
 #define wif_to_vif(wif) (wif)
 extern int config_rtkswitch(int argc, char *argv[]);

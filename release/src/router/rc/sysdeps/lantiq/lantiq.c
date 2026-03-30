@@ -496,7 +496,7 @@ void gen_lantiq_wifi_cfgs(void)
 #ifdef RTCONFIG_WIRELESSREPEATER
 	int wlc_band = nvram_get_int("wlc_band");
 #endif
-#if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
+#if defined(RTCONFIG_SINGLE_HOSTAPD)
 	int wsup_dbg = nvram_get_int("wsup_dbg");
 #endif
 
@@ -841,7 +841,7 @@ next_mrate:
 #endif
 	){
 		for (i = 0; i < MAX_NR_WL_IF; ++i) {
-			int nmode, shortgi;
+			int nmode;
 			char lan_if[16];
 			char *sta = get_staifname(i);
 			char pid_file[sizeof("/var/run/wifi-staX.pidXXXXXX")];
@@ -865,7 +865,6 @@ next_mrate:
 
 			snprintf(prefix, sizeof(prefix), "wl%d_", i);
 			nmode = nvram_pf_get_int(prefix, "nmode_x");
-			shortgi = (nmode != 2) ? !!nvram_pf_get_int(prefix, "HT_GI") : 0;
 
 			get_wpa_supplicant_pidfile(sta, pid_file, sizeof(pid_file));
 			if(kill_pidfile(pid_file) == 0)
@@ -3594,7 +3593,7 @@ void set_usb2_to_usb3()
 	_dprintf("[wait] usb2 to usb3 end\n");
 }
 
-void apply_config_to_driver()
+void apply_config_to_driver(int band)
 {
 	char prefix[16] = {0}, wlc_prefix[16] = {0};
 	snprintf(wlc_prefix, sizeof(wlc_prefix), "wlc%d_", band);

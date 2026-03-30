@@ -264,9 +264,9 @@ OBJS += rtl8370mb.o mdio.o
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += flash_mtd.o
-OBJS += $(STAGEDIR)/usr/lib/libnl-3.a
-OBJS += $(STAGEDIR)/usr/lib/libnl-genl-3.a
-OBJS += $(STAGEDIR)/usr/lib/libnl-route-3.a
+LDFLAGS += -L$(STAGEDIR)/usr/lib
+LDFLAGS += -Wl,--whole-archive $(STAGEDIR)/usr/lib/libnl-3.a $(STAGEDIR)/usr/lib/libnl-genl-3.a \
+			 $(STAGEDIR)/usr/lib/libnl-route-3.a -Wl,--no-whole-archive
 CFLAGS += -I$(STAGEDIR)/usr/include/libnl3
 else
 # Broadcom
@@ -513,6 +513,8 @@ libshared.so: $(OBJS)
 	@echo " [shared] LD $@"
 ifeq ($(HND_ROUTER),y)
 	@$(CC) $(LDFLAGS) $(EXTRA_LD_FLAGS) -shared -o $@ $^
+else ifeq ($(RTCONFIG_LANTIQ),y)
+	@$(CC) $(LDFLAGS) -shared -o $@ $^
 else
 	@$(LD) $(LDFLAGS) -shared -o $@ $^
 endif

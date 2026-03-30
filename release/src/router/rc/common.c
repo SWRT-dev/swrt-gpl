@@ -1475,6 +1475,7 @@ setup_timezone(void)
 	time_zone_x_mapping();
 #ifndef RTCONFIG_AVOID_TZ_ENV
 	setenv("TZ", nvram_get("time_zone_x"), 1);
+	tzset();
 #endif
 
 	/* Update kernel timezone */

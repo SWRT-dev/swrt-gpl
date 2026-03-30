@@ -57,10 +57,6 @@
 //#include <stapriv.h>
 #include <shared.h>
 #include <sys/mman.h>
-#include <fapi_wlan_private.h>
-#include <fapi_wlan.h>
-#include <help_objlist.h>
-#include <wlan_config_api.h>
 #ifndef O_BINARY
 #define O_BINARY 	0
 #endif
@@ -109,6 +105,81 @@ static const struct mode_s {
 	{ 0, NULL },
 };
 
+typedef struct _WPS_CONFIGURED_VALUE {
+	unsigned short 	Configured;	// 1:un-configured/2:configured
+	char		BSSID[18];
+	char 		SSID[32 + 1];
+	char		AuthMode[16];	// Open System/Shared Key/WPA-Personal/WPA2-Personal/WPA-Enterprise/WPA2-Enterprise
+	char 		Encryp[8];	// None/WEP/TKIP/AES
+	char 		DefaultKeyIdx;
+	char 		WPAKey[64 + 1];
+} WPS_CONFIGURED_VALUE;
+
+static void getWPSConfig(int unit, WPS_CONFIGURED_VALUE *result)
+{
+	char buf[128];
+	FILE *fp;
+
+	memset(result, 0, sizeof(*result));
+
+	snprintf(buf, sizeof(buf), "hostapd_cli -i%s get_config", get_wififname(unit));
+	fp = popen(buf, "r");
+	if (fp) {
+		while (fgets(buf, sizeof(buf), fp) != NULL) {
+			char *pt1, *pt2;
+
+			chomp(buf);
+			//BSSID
+			if ((pt1 = strstr(buf, "bssid="))) {
+				pt2 = pt1 + safe_strlen("bssid=");
+				strlcpy(result->BSSID, pt2, sizeof(result->BSSID));
+			}
+			//SSID
+			if ((pt1 = strstr(buf, "ssid="))) {
+				pt2 = pt1 + safe_strlen("ssid=");
+				strlcpy(result->SSID, pt2, sizeof(result->SSID));
+			}
+			//Configured
+			else if ((pt1 = strstr(buf, "wps_state="))) {
+				pt2 = pt1 + safe_strlen("wps_state=");
+				if (!strcmp(pt2, "configured") ||
+				    (!strcmp(pt2, "disabled") && nvram_get_int("w_Setting"))
+				   )
+					result->Configured = 2;
+				else
+					result->Configured = 1;
+			}
+			//WPAKey
+			else if ((pt1 = strstr(buf, "passphrase="))) {
+				pt2 = pt1 + safe_strlen("passphrase=");
+				strlcpy(result->WPAKey, pt2, sizeof(result->WPAKey));
+			}
+			//AuthMode
+			else if ((pt1 = strstr(buf, "key_mgmt="))) {
+				pt2 = pt1 + safe_strlen("key_mgmt=");
+				strlcpy(result->AuthMode, pt2, sizeof(result->AuthMode));/* FIXME: NEED TRANSFORM CONTENT */
+			}
+			//Encryp
+			else if ((pt1 = strstr(buf, "rsn_pairwise_cipher="))) {
+				pt2 = pt1 + safe_strlen("rsn_pairwise_cipher=");
+				if (!strcmp(pt2, "NONE"))
+					strlcpy(result->Encryp, "None", sizeof(result->Encryp));
+				else if (!strncmp(pt2, "WEP", 3))
+					strlcpy(result->Encryp, "WEP", sizeof(result->Encryp));
+				else if (!strcmp(pt2, "TKIP"))
+					strlcpy(result->Encryp, "TKIP", sizeof(result->Encryp));
+				else if (!strncmp(pt2, "CCMP", 4))
+					strlcpy(result->Encryp, "AES", sizeof(result->Encryp));
+				else if (unit == WL_60G_BAND && !strncmp(pt2, "GCMP", 4))
+					strlcpy(result->Encryp, "AES", sizeof(result->Encryp));
+			}
+		}
+		pclose(fp);
+	}
+	//dbg("%s: SSID[%s], Configured[%d], WPAKey[%s], AuthMode[%s], Encryp[%s]\n", __FUNCTION__, result->SSID, result->Configured, result->WPAKey, result->AuthMode, result->Encryp);
+}
+
+
 /* protect bit rate error code */
 int isnumber(const char*s, float *fRate) {
 	char* e = NULL;
@@ -140,26 +211,6 @@ int is_if_up(char *ifname)
     }
     close(s);
     return 0;
-}
-
-static int get_wlsubnet(int band, const char *ifname)
-{
-	int subnet, sidx;
-
-	for (subnet = 0, sidx = 0; subnet < MAX_NO_MSSID; subnet++)
-	{
-		if(!nvram_match(wl_nvname("bss_enabled", band, subnet), "1")) {
-			if (!subnet)
-				sidx++;
-			continue;
-		}
-
-		if(strcmp(ifname, wl_vifname_wave(band, sidx)) == 0)
-			return subnet;
-
-		sidx++;
-	}
-	return -1;
 }
 
 unsigned int getAPChannelbyIface(const char *ifname)
@@ -746,12 +797,6 @@ int ej_wl_sta_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 	return 0;
 }
 
-int
-ej_wl_stainfo_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
-{
-	return wl_stainfo_list(2, wp);
-}
-
 int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
 {
 	// TODO
@@ -819,168 +864,196 @@ ej_wl_stainfo_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 {
 	return wl_stainfo_list(1, wp);
 }
+
+int
+ej_wl_stainfo_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return wl_stainfo_list(2, wp);
+}
 #endif	/* RTCONFIG_STAINFO */
 
-int getWscStatusStr(int unit, char *buf, int buf_size){
-	memset(buf, 0, buf_size);
-	if(wlan_getWpsStatus(unit, buf))
-		return -1;
-	return 0;
+char *getWscStatus(int unit)
+{
+	char buf[512];
+	FILE *fp;
+	int len;
+	char *pt1,*pt2;
+
+	snprintf(buf, sizeof(buf), "hostapd_cli -i%s wps_get_status", get_wififname(unit));
+	fp = popen(buf, "r");
+	if (fp) {
+		memset(buf, 0, sizeof(buf));
+		len = fread(buf, 1, sizeof(buf), fp);
+		pclose(fp);
+		if (len > 1) {
+			buf[len-1] = '\0';
+			pt1 = strstr(buf, "Last WPS result: ");
+			if (pt1) {
+				pt2 = pt1 + safe_strlen("Last WPS result: ");
+				pt1 = strstr(pt2, "Peer Address: ");
+				if (pt1) {
+					*pt1 = '\0';
+					chomp(pt2);
+				}
+				return pt2;
+			}
+		}
+	}
+	return "";
 }
 
-void getWPSAuthMode(int unit, char *ret_str, size_t len){
-	char tmp[128], prefix[]="wlXXXXXXX_";
+char *getAPPIN(int unit)
+{
+	static char buffer[128];
+#if 0
+	char cmd[64];
+	FILE *fp;
+	int len;
 
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	snprintf(tmp, sizeof(tmp), "%s", nvram_pf_safe_get(prefix, "auth_mode_x"));
-
-	if(!strcmp(tmp, "shared"))
-		strlcpy(ret_str, "Shared Key", len);
-	else if(!strcmp(tmp, "sae"))
-		strlcpy(ret_str, "WPA3-Personal", len);
-	else if(!strcmp(tmp, "psk2sae"))
-		strlcpy(ret_str, "WPA2/WPA3-Personal", len);
-	else if(!strcmp(tmp, "psk"))
-		strlcpy(ret_str, "WPA-Personal", len);
-	else if(!strcmp(tmp, "psk2"))
-		strlcpy(ret_str, "WPA2-Personal", len);
-	else if(!strcmp(tmp, "pskpsk2"))
-		strlcpy(ret_str, "WPA-Auto-Personal", len);
-	else if(!strcmp(tmp, "wpa"))
-		strlcpy(ret_str, "WPA-Enterprise", len);
-	else if(!strcmp(tmp, "wpa2"))
-		strlcpy(ret_str, "WPA2-Enterprise", len);
-	else if(!strcmp(tmp, "wpa3"))
-		strlcpy(ret_str, "WPA3-Enterprise", len);
-	else if(!strcmp(tmp, "wpawpa2"))
-		strlcpy(ret_str, "WPA-Auto-Enterprise", len);
-	else if(!strcmp(tmp, "wpa2wpa3"))
-		strlcpy(ret_str, "WPA2/WPA3-Enterprise", len);
-	else if(!strcmp(tmp, "radius"))
-		strlcpy(ret_str, "802.1X", len);
-	else
-		strlcpy(ret_str, "Open System", len);
-}
-
-void getWPSEncrypType(int unit, char *ret_str, size_t len){
-	char tmp[128], prefix[]="wlXXXXXXX_";
-
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-
-	if(nvram_pf_match(prefix, "auth_mode_x", "open") && nvram_pf_match(prefix, "wep_x", "0"))
-		strlcpy(ret_str, "None", len);
-	else if((nvram_pf_match(prefix, "auth_mode_x", "open") && !nvram_pf_match(prefix, "wep_x", "0"))
-			|| nvram_match("wl_auth_mode", "shared") || nvram_match("wl_auth_mode", "radius"))
-		strlcpy(ret_str, "WEP", len);
-
-	if(nvram_pf_match(prefix, "crypto", "tkip"))
-		strlcpy(ret_str, "TKIP", len);
-	else if(nvram_pf_match(prefix, "crypto", "aes"))
-		strlcpy(ret_str, "AES", len);
-	else if(nvram_pf_match(prefix, "crypto", "tkip+aes"))
-		strlcpy(ret_str, "TKIP+AES", len);
+	buffer[0] = '\0';
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s wps_ap_pin get", get_wifname(unit));
+	fp = popen(cmd, "r");
+	if (fp) {
+		len = fread(buffer, 1, sizeof(buffer), fp);
+		pclose(fp);
+		if (len > 1) {
+			buffer[len] = '\0';
+			//dbg("%s: AP PIN[%s]\n", __FUNCTION__, buffer);
+			if(!strncmp(buffer,"FAIL",4))
+			   strlcpy(buffer,nvram_get("secret_code"), sizeof(buffer));
+			return buffer;
+		}
+	}
+	return "";
+#else
+	snprintf(buffer, sizeof(buffer), "%s", nvram_safe_get("secret_code"));
+	return buffer;
+#endif
 }
 
 int wl_wps_info(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
-	char tmpstr[256];
-	int retval = 0;
-	char tmp[128], prefix[]="wlXXXXXXX_";
+	int j = -1, u = unit;
+	char tmpstr[128];
+	WPS_CONFIGURED_VALUE result;
+	int retval=0;
+	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
 	char *wps_sta_pin;
+	char tag1[] = "<wps_infoXXXXXX>", tag2[] = "</wps_infoXXXXXX>";
 
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+#if defined(RTCONFIG_WPSMULTIBAND)
+	for (j = -1; j < MAX_NR_WL_IF; ++j) {
+#endif
+		switch (j) {
+		case WL_2G_BAND:	/* fall through */
+		case WL_5G_BAND:	/* fall through */
+		case WL_5G_2_BAND:	/* fall through */
+			u = j;
+			snprintf(tag1, sizeof(tag1), "<wps_info%d>", j);
+			snprintf(tag2, sizeof(tag2), "</wps_info%d>", j);
+			break;
+		case -1: /* fall through */
+		default:
+			u = unit;
+			strlcpy(tag1, "<wps_info>", sizeof(tag1));
+			strlcpy(tag2, "</wps_info>", sizeof(tag2));
+		}
 
-	retval += websWrite(wp, "<wps>\n");
+		snprintf(prefix, sizeof(prefix), "wl%d_", u);
 
-	//0. WSC Status
-	if(nvram_get_int("wps_enable") != 0){
-		getWscStatusStr(unit, tmpstr, sizeof(tmpstr));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
-	else
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "Not used");
-
-	//1. WPSConfigured
-#if 0
-	// TODO: temporarily cannot reset to OOB.
-	if (!wps_is_oob())
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "Yes");
-	else
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "No");
-#else
-	memset(tmpstr, 0, sizeof(tmpstr));
-	retval += wlan_getWpsConfigurationState(unit, tmpstr);
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", (!strcmp(tmpstr, "Configured")?"Yes":"No"));
+#if defined(RTCONFIG_WPSMULTIBAND)
+		SKIP_ABSENT_BAND(u);
+		if (!nvram_pf_get(prefix, "ifname"))
+			continue;
 #endif
 
-	//2. WPSSSID
-	memset(tmpstr, 0, sizeof(tmpstr));
-	char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "ssid"));
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
+		memset(&result, 0, sizeof(result));
+		getWPSConfig(u, &result);
 
-	//3. WPSAuthMode
-	memset(tmpstr, 0, sizeof(tmpstr));
-	getWPSAuthMode(unit, tmpstr, sizeof(tmpstr));
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
+		if (j == -1)
+			retval += websWrite(wp, "<wps>\n");
 
-	//4. EncrypType
-	memset(tmpstr, 0, sizeof(tmpstr));
-	getWPSEncrypType(unit, tmpstr, sizeof(tmpstr));
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-
-	//5. DefaultKeyIdx
-	snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_pf_safe_get(prefix, "key"));
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-
-	//6. WPAKey
-#if 0	//hide for security
-	if (!strlen(nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp))))
-		retval += websWrite(wp, "<wps_info>None</wps_info>\n");
-	else
-	{
+		//0. WSC Status
 		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
-#else
-	retval += websWrite(wp, "<wps_info></wps_info>\n");
-#endif
+		strlcpy(tmpstr, getWscStatus(u), sizeof(tmpstr));
+		retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
 
-	//7. AP PIN Code
-	snprintf(tmpstr, sizeof(tmpstr), "%s", nvram_safe_get("secret_code"));
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
+		//1. WPS Configured
+		if (result.Configured==2)
+			retval += websWrite(wp, "%s%s%s\n", tag1, "Yes", tag2);
+		else
+			retval += websWrite(wp, "%s%s%s\n", tag1, "No", tag2);
 
-	//8. Saved WPAKey
-#if 0	//hide for security
-	if (!strlen(nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp))))
-	{
-		retval += websWrite(wp, "<wps_info>None</wps_info>\n");
-	}
-	else
-	{
+		//2. WPS SSID
 		memset(tmpstr, 0, sizeof(tmpstr));
-		char_to_ascii(tmpstr, nvram_safe_get(strcat_r(prefix, "wpa_psk", tmp)));
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", tmpstr);
-	}
+		char_to_ascii(tmpstr, result.SSID);
+		retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
+
+		//3. WPS AuthMode
+		retval += websWrite(wp, "%s%s%s\n", tag1, result.AuthMode, tag2);
+
+		//4. WPS Encryp
+		retval += websWrite(wp, "%s%s%s\n", tag1, result.Encryp, tag2);
+
+		//5. WPS DefaultKeyIdx
+		memset(tmpstr, 0, sizeof(tmpstr));
+		snprintf(tmpstr, sizeof(tmpstr), "%d", result.DefaultKeyIdx);/* FIXME: TBD */
+		retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
+
+		//6. WPS WPAKey
+#if 0	//hide for security
+		if (!safe_strlen(result.WPAKey))
+			retval += websWrite(wp, "%sNone%s\n", tag1, tag2);
+		else
+		{
+			memset(tmpstr, 0, sizeof(tmpstr));
+			char_to_ascii(tmpstr, result.WPAKey);
+			retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
+		}
 #else
-	retval += websWrite(wp, "<wps_info></wps_info>\n");
+		retval += websWrite(wp, "%s%s\n", tag1, tag2);
 #endif
+		//7. AP PIN Code
+		memset(tmpstr, 0, sizeof(tmpstr));
+		strlcpy(tmpstr, getAPPIN(u), sizeof(tmpstr));
+		retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
 
-	//9. WPS enable?
-	retval += websWrite(wp, "<wps_info>%d</wps_info>\n", nvram_get_int("wps_enable"));
+		//8. Saved WPAKey
+#if 0	//hide for security
+		if (!safe_strlen(nvram_pf_safe_get(prefix, "wpa_psk")))
+			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
+		else
+		{
+			char_to_ascii(tmpstr, nvram_pf_safe_get(prefix, "wpa_psk"));
+			retval += websWrite(wp, "%s%s%s\n", tag1, tmpstr, tag2);
+		}
+#else
+		retval += websWrite(wp, "%s%s\n", tag1, tag2);
+#endif
+		//9. WPS enable?
+		if (nvram_pf_match(prefix, "wps_mode", "enabled"))
+			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
+		else
+			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_safe_get("wps_enable"), tag2);
 
-	//A. WPS mode
-	wps_sta_pin = nvram_safe_get("wps_sta_pin");
-	if (strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "1");
-	else
-		retval += websWrite(wp, "<wps_info>%s</wps_info>\n", "2");
+		//A. WPS mode
+		wps_sta_pin = nvram_safe_get("wps_sta_pin");
+		if (safe_strlen(wps_sta_pin) && strcmp(wps_sta_pin, "00000000"))
+			retval += websWrite(wp, "%s%s%s\n", tag1, "1", tag2);
+		else
+			retval += websWrite(wp, "%s%s%s\n", tag1, "2", tag2);
 
-	//B. current auth mode
-	retval += websWrite(wp, "<wps_info>%s</wps_info>\n", nvram_pf_safe_get(prefix, "auth_mode_x"));
+		//B. current auth mode
+		if (!safe_strlen(nvram_pf_safe_get(prefix, "auth_mode_x")))
+			retval += websWrite(wp, "%s%s%s\n", tag1, "None", tag2);
+		else
+			retval += websWrite(wp, "%s%s%s\n", tag1, nvram_pf_safe_get(prefix, "auth_mode_x"), tag2);
 
-	//C. WPS band
-	retval += websWrite(wp, "<wps_info>%d</wps_info>\n", nvram_get_int("wps_band_x"));
+		//C. WPS band
+		retval += websWrite(wp, "%s%d%s\n", tag1, u, tag2);
+#if defined(RTCONFIG_WPSMULTIBAND)
+	}
+#endif
 
 	retval += websWrite(wp, "</wps>");
 
@@ -1665,6 +1738,265 @@ int
 ej_wl_channel_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
 	return ej_wl_channel_list(eid, wp, argc, argv, WL_5G_2_BAND);
+}
+
+static const struct g_bw40chanspec_s {
+	uint64_t ch_mask;
+	uint64_t bw_mask;
+	char *tag;
+} g_5gbw40chanspec_tbl[] = {
+	{  CH40_M,  CH36_M |  CH40_M, "u" },
+	{  CH48_M,  CH44_M |  CH48_M, "u" },
+	{  CH56_M,  CH52_M |  CH56_M, "u" },
+	{  CH64_M,  CH60_M |  CH64_M, "u" },
+	{ CH104_M, CH100_M | CH104_M, "u" },
+	{ CH112_M, CH108_M | CH112_M, "u" },
+	{ CH120_M, CH116_M | CH120_M, "u" },
+	{ CH128_M, CH124_M | CH128_M, "u" },
+	{ CH136_M, CH132_M | CH136_M, "u" },
+	{ CH144_M, CH140_M | CH144_M, "u" },
+	{ CH153_M, CH149_M | CH153_M, "u" },
+	{ CH161_M, CH157_M | CH161_M, "u" },
+	{ CH169_M, CH165_M | CH169_M, "u" },
+	{ CH177_M, CH173_M | CH177_M, "u" },
+
+	{  CH36_M,  CH36_M |  CH40_M, "l" },
+	{  CH44_M,  CH44_M |  CH48_M, "l" },
+	{  CH52_M,  CH52_M |  CH56_M, "l" },
+	{  CH60_M,  CH60_M |  CH64_M, "l" },
+	{ CH100_M, CH100_M | CH104_M, "l" },
+	{ CH108_M, CH108_M | CH112_M, "l" },
+	{ CH116_M, CH116_M | CH120_M, "l" },
+	{ CH124_M, CH124_M | CH128_M, "l" },
+	{ CH132_M, CH132_M | CH136_M, "l" },
+	{ CH140_M, CH140_M | CH144_M, "l" },
+	{ CH149_M, CH149_M | CH153_M, "l" },
+	{ CH157_M, CH157_M | CH161_M, "l" },
+	{ CH165_M, CH165_M | CH169_M, "l" },
+	{ CH173_M, CH173_M | CH177_M, "l" },
+
+	{ 0, 0, NULL }
+};
+
+static const struct g_bw80pchanspec_s {
+	uint64_t bw_mask;
+	char *tag;
+} g_5gbw80pchanspec_tbl[] = {
+	{  CH36_M |  CH40_M |  CH44_M |  CH48_M, "/80" },
+	{  CH52_M |  CH56_M |  CH60_M |  CH64_M, "/80" },
+	{ CH100_M | CH104_M | CH108_M | CH112_M, "/80" },
+	{ CH116_M | CH120_M | CH124_M | CH128_M, "/80" },
+	{ CH132_M | CH136_M | CH140_M | CH144_M, "/80" },
+	{ CH149_M | CH153_M | CH157_M | CH161_M, "/80" },
+	{ CH165_M | CH169_M | CH173_M | CH177_M, "/80" },
+#if defined(RTCONFIG_BW160M)
+	{  CH36_M |  CH40_M |  CH44_M |  CH48_M |  CH52_M |  CH56_M |  CH60_M |  CH64_M, "/160" },
+	{ CH100_M | CH104_M | CH108_M | CH112_M | CH116_M | CH120_M | CH124_M | CH128_M, "/160" },
+	{ CH149_M | CH153_M | CH157_M | CH161_M | CH165_M | CH169_M | CH173_M | CH177_M, "/160" },
+#endif
+#if defined(RTCONFIG_BW240M)
+	{ CH100_M | CH104_M | CH108_M | CH112_M | CH116_M | CH120_M | CH124_M | CH128_M | CH132_M | CH136_M | CH140_M | CH144_M, "/240" },
+#endif
+
+	{ 0, NULL },
+#if defined(RTCONFIG_HAS_6G)
+}, g_6gbw40pchanspec_tbl[] = {
+	{   B6GCH1_M |   B6GCH5_M, "/40" },
+	{   B6GCH9_M |  B6GCH13_M, "/40" },
+	{  B6GCH17_M |  B6GCH21_M, "/40" },
+	{  B6GCH25_M |  B6GCH29_M, "/40" },
+	{  B6GCH33_M |  B6GCH37_M, "/40" },
+	{  B6GCH41_M |  B6GCH45_M, "/40" },
+	{  B6GCH49_M |  B6GCH53_M, "/40" },
+	{  B6GCH57_M |  B6GCH61_M, "/40" },
+	{  B6GCH65_M |  B6GCH69_M, "/40" },
+	{  B6GCH73_M |  B6GCH77_M, "/40" },
+	{  B6GCH81_M |  B6GCH85_M, "/40" },
+	{  B6GCH89_M |  B6GCH93_M, "/40" },
+	{  B6GCH97_M | B6GCH101_M, "/40" },
+	{ B6GCH105_M | B6GCH109_M, "/40" },
+	{ B6GCH113_M | B6GCH117_M, "/40" },
+	{ B6GCH121_M | B6GCH125_M, "/40" },
+	{ B6GCH129_M | B6GCH133_M, "/40" },
+	{ B6GCH137_M | B6GCH141_M, "/40" },
+	{ B6GCH145_M | B6GCH149_M, "/40" },
+	{ B6GCH153_M | B6GCH157_M, "/40" },
+	{ B6GCH161_M | B6GCH165_M, "/40" },
+	{ B6GCH169_M | B6GCH173_M, "/40" },
+	{ B6GCH177_M | B6GCH181_M, "/40" },
+	{ B6GCH185_M | B6GCH189_M, "/40" },
+	{ B6GCH193_M | B6GCH197_M, "/40" },
+	{ B6GCH201_M | B6GCH205_M, "/40" },
+	{ B6GCH209_M | B6GCH213_M, "/40" },
+	{ B6GCH217_M | B6GCH221_M, "/40" },
+	{ B6GCH225_M | B6GCH229_M, "/40" },
+
+	{   B6GCH1_M |   B6GCH5_M |   B6GCH9_M |  B6GCH13_M, "/80" },
+	{  B6GCH17_M |  B6GCH21_M |  B6GCH25_M |  B6GCH29_M, "/80" },
+	{  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M, "/80" },
+	{  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M, "/80" },
+	{  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M, "/80" },
+	{  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M, "/80" },
+	{  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M, "/80" },
+	{ B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M, "/80" },
+	{ B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M, "/80" },
+	{ B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M, "/80" },
+	{ B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M, "/80" },
+	{ B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M, "/80" },
+	{ B6GCH193_M | B6GCH197_M | B6GCH201_M | B6GCH205_M, "/80" },
+	{ B6GCH209_M | B6GCH213_M | B6GCH217_M | B6GCH221_M, "/80" },
+
+#if defined(RTCONFIG_BW160M)
+	{   B6GCH1_M |   B6GCH5_M |   B6GCH9_M |  B6GCH13_M |  B6GCH17_M |  B6GCH21_M |  B6GCH25_M |  B6GCH29_M, "/160" },
+	{  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M |  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M, "/160" },
+	{  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M |  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M, "/160" },
+	{  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M | B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M, "/160" },
+	{ B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M | B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M, "/160" },
+	{ B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M | B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M, "/160" },
+	{ B6GCH193_M | B6GCH197_M | B6GCH201_M | B6GCH205_M | B6GCH209_M | B6GCH213_M | B6GCH217_M | B6GCH221_M, "/160" },
+#endif
+
+	{   B6GCH1_M |   B6GCH5_M |   B6GCH9_M |  B6GCH13_M |  B6GCH17_M |  B6GCH21_M |  B6GCH25_M |  B6GCH29_M |  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M |  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M, "/320-1" },
+	{  B6GCH33_M |  B6GCH37_M |  B6GCH41_M |  B6GCH45_M |  B6GCH49_M |  B6GCH53_M |  B6GCH57_M |  B6GCH61_M |  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M |  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M, "/320-2" },
+	{  B6GCH65_M |  B6GCH69_M |  B6GCH73_M |  B6GCH77_M |  B6GCH81_M |  B6GCH85_M |  B6GCH89_M |  B6GCH93_M |  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M | B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M, "/320-1" },
+	{  B6GCH97_M | B6GCH101_M | B6GCH105_M | B6GCH109_M | B6GCH113_M | B6GCH117_M | B6GCH121_M | B6GCH125_M | B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M | B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M, "/320-2" },
+	{ B6GCH129_M | B6GCH133_M | B6GCH137_M | B6GCH141_M | B6GCH145_M | B6GCH149_M | B6GCH153_M | B6GCH157_M | B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M | B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M, "/320-1" },
+	{ B6GCH161_M | B6GCH165_M | B6GCH169_M | B6GCH173_M | B6GCH177_M | B6GCH181_M | B6GCH185_M | B6GCH189_M | B6GCH193_M | B6GCH197_M | B6GCH201_M | B6GCH205_M | B6GCH209_M | B6GCH213_M | B6GCH217_M | B6GCH221_M, "/320-2" },
+
+	{ 0, NULL },
+#endif
+};
+
+int ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit)
+{
+	int retval = 0;
+	char *ch_prefix = "";
+	char ch_list[2 * 4 + 3 * 22 + 4 * 34 + 8] = "";
+	char tmp_ch_list[sizeof("6gXXX\", \"") * 59] = "";
+	uint64_t m, c_m, bw_m, chlist_mask = 0;
+	const struct g_bw40chanspec_s *p = NULL;
+	const struct g_bw80pchanspec_s *q = NULL;
+
+	if (unit < 0 || unit >= WL_NR_BANDS)
+		goto exit_ej_wl_chanspecs;
+
+	if (get_channel_list_via_driver(unit, ch_list, sizeof(ch_list)) <= 0)
+		goto exit_ej_wl_chanspecs;
+
+	if (!(chlist_mask = chlist2bitmask(unit, ch_list, ",")))
+		goto exit_ej_wl_chanspecs;
+
+	/* Generate 20MHz channelspecslist. */
+	__bitmask2chlist(unit, chlist_mask, "\", \"", tmp_ch_list, sizeof(tmp_ch_list));
+	retval += websWrite(wp, "[ \"%s%s", ch_prefix, tmp_ch_list);
+
+	/* Generate 40MHz,u 40MHz,l 80MHz, 160MHz channelspecs. */
+	if (unit == WL_2G_BAND) {
+		/* If ch-4 exist, print ch and append "u".
+		 * If ch+4 exist, print ch and append "l".
+		 */
+		for (m = (1 << 4), c_m = chlist_mask; c_m && m; m <<= 1) {
+			if (!(chlist_mask & m) || !(chlist_mask & (m >> 4)))
+				continue;
+
+			retval += websWrite(wp, "\", \"%su", bitmask2chlist(unit, m, ""));
+			c_m &= ~m;
+		}
+		for (m = 1, c_m = chlist_mask; c_m && m; m <<= 1) {
+			if (!(chlist_mask & m) || !(chlist_mask & (m << 4)))
+				continue;
+
+			retval += websWrite(wp, "\", \"%sl", bitmask2chlist(unit, m, ""));
+			c_m &= ~m;
+		}
+	} else if (unit == WL_5G_BAND
+#if defined(RTCONFIG_HAS_5G_2)
+		|| unit == WL_5G_2_BAND
+#endif
+	) {
+		p = g_5gbw40chanspec_tbl;
+	} else {
+		_dprintf("%s: 40MHz chanspec of unit %d hasn't been defined!\n", __func__, unit);
+	}
+
+	for (; p && p->ch_mask && p->bw_mask && p->tag; ++p) {
+		if (!(p->ch_mask & chlist_mask))
+			continue;
+		if ((p->bw_mask & chlist_mask) != p->bw_mask)
+			continue;
+
+		retval += websWrite(wp, "\", \"%s%s%s", ch_prefix, bitmask2chlist(unit, p->ch_mask, ""), p->tag);
+	}
+
+	/* Generate 80MHz, 160MHz, 240MHz, 320MHz chanspecs. */
+	if (unit == WL_2G_BAND)
+		q = NULL;
+	else if (unit == WL_5G_BAND
+#if defined(RTCONFIG_HAS_5G_2)
+	      || unit == WL_5G_2_BAND
+#endif
+	) {
+		q = g_5gbw80pchanspec_tbl;
+	} else {
+		_dprintf("%s: 80+MHz chanspec of unit %d hasn't been defined!\n", __func__, unit);
+	}
+
+	for (; q && q->bw_mask && q->tag; ++q) {
+		if ((chlist_mask & q->bw_mask) != q->bw_mask)
+			continue;
+
+		for (m = 1, bw_m = q->bw_mask; bw_m && m; m <<= 1) {
+			if (!(bw_m & m))
+				continue;
+			retval += websWrite(wp, "\", \"%s%s%s", ch_prefix, bitmask2chlist(unit, m, ""), q->tag);
+			bw_m &= ~m;
+		}
+	}
+
+exit_ej_wl_chanspecs:
+	if (!retval)
+		retval += websWrite(wp, "[ \"0\" ]");
+	else
+		retval += websWrite(wp, "\" ]");
+
+	return retval;
+}
+
+int ej_wl_chanspecs_2g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_2G_BAND);
+}
+
+int ej_wl_chanspecs_5g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_5G_BAND);
+}
+
+int ej_wl_chanspecs_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_5G_2)
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_5G_2_BAND);
+#else
+	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
+#endif
+}
+
+int ej_wl_chanspecs_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_6G)
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_6G_BAND);
+#else
+	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
+#endif
+}
+
+int ej_wl_chanspecs_6g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+#if defined(RTCONFIG_HAS_6G_2)
+	return ej_wl_chanspecs(eid, wp, argc, argv, WL_6G_2_BAND);
+#else
+	return ej_wl_chanspecs(eid, wp, argc, argv, -1);
+#endif
 }
 
 static int ej_wl_rate(int eid, webs_t wp, int argc, char_t **argv, int unit)

@@ -2150,6 +2150,7 @@ int setRogRGBLedSetTest(int SET)
 }
 #endif
 
+extern char *ATE_QCA_FACTORY_MODE_STR();
 void asus_ate_StartATEMode(void)
 {
 	nvram_set("asus_mfg", "1");

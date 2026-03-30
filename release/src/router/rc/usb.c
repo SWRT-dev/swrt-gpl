@@ -16,7 +16,9 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
-//#include <proto/ethernet.h>
+#if defined(RTCONFIG_BCMARM)
+#include <proto/ethernet.h>
+#endif
 #include <time.h>
 #include <sys/time.h>
 #include <errno.h>
