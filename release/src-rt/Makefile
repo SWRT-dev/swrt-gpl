@@ -520,28 +520,25 @@ define build_lantiq_image
 	$(CROSS_COMPILE)objcopy -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.elf
 	cp -fpR $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.debug
 	cp ./vmlinux ./vmlinux-lantiq
-	#tools/dtc -O dtb -o ./lantiq.dtb $(LANTIQ_LINUX_DIR)/arch/mips/boot/dts/lantiq/netgear_rax40.dts
-	$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(DTS_DIR)/include -undef -D__DTS__ -o $(DTS_DIR)/$(DTB).tmp $(DTS_DIR)/$(BUILD_NAME).dts
+	$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(LINUXDIR)/include -undef -D__DTS__ -o $(DTS_DIR)/$(DTB).tmp $(DTS_DIR)/$(BUILD_NAME).dts
 	$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR) -o $(DTS_DIR)/$(DTB) $(DTS_DIR)/$(DTB).tmp
-	rm $(DTS_DIR)/ralink/$(DTB).tmp
-	#tools/patch-dtb ./vmlinux-lantiq ./lantiq.dtb 32768
+	rm $(DTS_DIR)/$(DTB).tmp
 	cat $(DTS_DIR)/$(DTB) >> ./vmlinux-lantiq
 	tools/lzma e ./vmlinux-lantiq ./vmlinux-lantiq.lzma
 	mv ./vmlinux-lantiq.lzma ./vmlinux.lzma
-	#tools/mkimage -A mips -O linux -T kernel -a 0xa0020000 -C lzma -e 0xa0020000 -n 'MIPS OpenWrt $(LANTIQ_LINUX_DIR)' -d ./vmlinux.lzma ./uImage
 	len2=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'` ; \
 	echo "Raymond: $$len2"
 	len=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'`; pad=`expr  131072 - $$len %  131072`; pad=`expr $$pad %  131072`; pad=`expr $$pad -  64`; [ $$pad -lt 0 ] && pad=0; echo pad is $$pad; echo len is $$len; cat ./vmlinux.lzma > ./vmlinux.lzma.padded; dd if=/dev/zero of=./vmlinux.lzma.padded bs=1 count=$$pad seek=$$len
 	load_addr=0x$(shell grep -w _text $(LANTIQ_LINUX_DIR)/System.map 2>/dev/null| awk '{ printf "%s", $$1 }'); \
 	entry_addr=0x$(shell grep -w kernel_entry $(LANTIQ_LINUX_DIR)/System.map 2>/dev/null| awk '{ printf "%s", $$1 }'); \
-	tools/mkimage -A mips -O linux -T kernel \
+	asustools/mkimage -A mips -O linux -T kernel \
 		-a $(s_load_addr) -C $(compression_type) -e $(s_entry_addr) \
 	-n '$(image_header)' $(call bluecave_mkimage_extra_checks) \
 	-d ./vmlinux.lzma.padded ./uImage.padded
 	cp -f ./uImage.padded $(PLATFORMDIR)/uImage
 	# ------ rootfs --------
-	tools/mksquashfs4 $(PLATFORMDIR)/target $(PLATFORMDIR)/root.squashfs -noappend -root-owned -comp xz -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2 -processors 1
-	tools/mkimage -A MIPS -O Linux -C lzma -T filesystem -e 0x00 -a 0x00 -n "LTQCPE RootFS" \
+	tools/mksquashfs4 $(PLATFORMDIR)/target $(PLATFORMDIR)/root.squashfs -noappend -root-owned -comp xz -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2
+	asustools/mkimage -A MIPS -O Linux -C lzma -T filesystem -e 0x00 -a 0x00 -n "LTQCPE RootFS" \
 	-d $(PLATFORMDIR)/root.squashfs $(PLATFORMDIR)/rootfs.img.padded
 	cp -f $(PLATFORMDIR)/rootfs.img.padded $(PLATFORMDIR)/rootfs.img
 	IMAGE_LIST="$(PLATFORMDIR)/rootfs.img \
@@ -573,15 +570,12 @@ define build_lantiq_image
 		-n  \
 		"$$PLATFORM Fullimage" -d $$ONEIMAGE.tmp $$ONEIMAGE; \
 	rm -f $$ONEIMAGE.tmp; \
-	chmod 644 $$ONEIMAGE;
-ifneq ($(RAX40),y)
-	gcc tools/rax40sign.c -o tools/rax40sign
-	tools/rax40sign image/fullimage.img
-	mv image/fullimage.img.pega image/rax40.img
-endif
-	#cp grx500/gphy_firmware.img image/
-	#cp grx500/uImage_bootcore image/
-	#cp grx500/u-boot-nand.bin image/
+	chmod 644 $$ONEIMAGE; \
+	if [ "$(RAX40)" = "y" ]; then \
+		gcc tools/rax40sign.c -o tools/rax40sign; \
+		tools/rax40sign image/fullimage.img; \
+		mv image/fullimage.img.pega image/rax40.img; \
+	fi
 	rm -f vmlinux*
 	rm -f uImage*
 	rm -f lantiq.dtb
@@ -3065,7 +3059,7 @@ define RouterOptions
 		sed -i "/RTCONFIG_FBT/d" $(1); \
 		echo "RTCONFIG_FBT=y" >>$(1); \
 	fi;
-	if [ "$(HAPDEVENT)" = "y" ] || [ "$(CONFIG_LANTIQ)" = "y" ]; then \
+	if [ "$(HAPDEVENT)" = "y" ]; then \
 		sed -i "/RTCONFIG_HAPDEVENT/d" $(1); \
 		echo "RTCONFIG_HAPDEVENT=y" >>$(1); \
 	fi;

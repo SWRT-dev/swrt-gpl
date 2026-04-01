@@ -3,7 +3,9 @@
 
 #include <time.h>
 #include <errno.h>
+#if !defined(LANTIQ)
 #include <error.h>
+#endif
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>

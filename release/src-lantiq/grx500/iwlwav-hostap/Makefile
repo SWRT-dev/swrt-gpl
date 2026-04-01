@@ -11,7 +11,7 @@ ifeq ($(DEBUG),y)
 TARGET_CFLAGS += -DCONFIG_WAVE_DEBUG #-DCONFIG_NO_HOSTAPD_LOGGER
 CONFIG_SUFFIX:=debug
 endif
-TARGET_LDFLAGS += -lnl-3 -lnl-genl-3 -lm -lssl -lcrypto -lpthread -ldl -pie -lssl -lcrypto-lrt -lsafec-3.3
+TARGET_LDFLAGS += -lnl-3 -lnl-genl-3 -lm -lssl -lcrypto -lpthread -ldl -latomic -pie -lrt -lsafec-3.3
 TARGET_LDFLAGS += -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,relro -pie
 IFX_CFLAGS:=$(TARGET_CFLAGS)
 IFX_LDFLAGS=$(TARGET_LDFLAGS)
@@ -26,7 +26,8 @@ all:
 	$(MAKE) -C $(PKG_BUILD_DIR)/src clean
 	$(CP) $(PKG_BUILD_DIR)/wpa_supplicant/defconfig-$(CONFIG_SUFFIX) $(PKG_BUILD_DIR)/wpa_supplicant/.config
 	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR)/wpa_supplicant $(TARGET_CONFIGURE_OPTS) \
-		LIBS="$(TARGET_LDFLAGS)" EXTRA_CFLAGS="$(IFX_CFLAGS)" IFX_LDFLAGS="$(IFX_LDFLAGS)" wpa_supplicant wpa_cli
+		LIBS="$(TARGET_LDFLAGS)" EXTRA_CFLAGS="$(IFX_CFLAGS)" IFX_LDFLAGS="$(IFX_LDFLAGS)" \
+		wpa_supplicant wpa_cli wpa_passphrase
 	touch stamp-h1
 
 

@@ -4,7 +4,8 @@ PKG_NAME := dwpal
 #IWLWAV_HOSTAP_DIR := ../iwlwav-hostap-2.6
 
 #opt_no_flags := -Werror -Wcast-qual
-opt_flags := -O2 -Wall -Werror
+#opt_flags := -O2 -Wall -Werror
+opt_flags := -O2 -Wall
 
 LOG_CFLAGS := -DPACKAGE_ID=\"DWPALWLAN\" -DLOGGING_ID="dwpal_6x" -DLOG_LEVEL=7 -DLOG_TYPE=1
 

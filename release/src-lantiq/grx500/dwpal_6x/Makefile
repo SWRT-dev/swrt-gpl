@@ -15,7 +15,7 @@ TARGET_CFLAGS += -I$(PLATFORM_ROUTER_SRCBASE)/iwlwav-iw/source/
 TARGET_CFLAGS += -I$(PLATFORM_ROUTER_SRCBASE)/iwlwav-hostap/source/src/common/
 TARGET_CFLAGS += -I$(PLATFORM_ROUTER_SRCBASE)/iwlwav-hostap/source/src/utils/ -DHAVE_C99=1
 TARGET_CFLAGS += -fstack-protector-strong -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security
-TARGET_CFLAGS += -Werror=format-security -Wall -fPIC -Wl,-strip-debug
+TARGET_CFLAGS += -Werror=format-security -Wall -fPIC -Wl,-strip-debug -DSWRT_PATCH
 TARGET_LDFLAGS += -lnl-3 -lsafec-3.3
 TARGET_LDFLAGS += -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,relro
 ifeq ($(BUILD_VARIANT),debug)
@@ -60,5 +60,12 @@ endif
 clean:
 
 stage:
+	@install -D $(PKG_BUILD_DIR)/libdwpal.so $(STAGEDIR)/usr/lib
+	@install -D $(PKG_BUILD_DIR)/libwv_core.so $(STAGEDIR)/usr/lib
+	@install -D $(PKG_BUILD_DIR)/libdwpald_client.so $(STAGEDIR)/usr/lib
+	@install -D $(PKG_BUILD_DIR)/include/*.h $(STAGEDIR)/usr/include/
+	@install -D $(PKG_BUILD_DIR)/daemon/dwpald_client.h $(STAGEDIR)/usr/include/
+	@install -D $(PKG_BUILD_DIR)/daemon/dwpald_hostap_parse.h $(STAGEDIR)/usr/include/
+	#@install -D $(PKG_BUILD_DIR)/*.h $(STAGINGDIR)/usr/include/
 
 

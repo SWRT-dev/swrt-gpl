@@ -4,7 +4,9 @@
 #define _BSD_SOURCE	/* struct ip_mreq */
 
 #include <errno.h>
+#if !defined(LANTIQ)
 #include <error.h>
+#endif
 #include <stdio.h>
 #include <netdb.h>
 #include <stdlib.h>

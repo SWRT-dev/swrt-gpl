@@ -46,7 +46,7 @@ install:
 clean:
 
 stage:
-	@[ -d $(STAGINGDIR)/include/net/ ] || install -d $(STAGINGDIR)/include/net/
-	$(CP) $(PKG_BUILD_DIR)/include/*.h $(STAGINGDIR)/include/net/
+	@[ -d $(STAGINGDIR)/include/net/ ] || install -d $(STAGEDIR)/include/net/
+	$(CP) $(PKG_BUILD_DIR)/include/*.h $(STAGEDIR)/include/net/
 
 

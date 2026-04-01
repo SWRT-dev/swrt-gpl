@@ -11,7 +11,7 @@ ifeq ($(DEBUG),y)
 TARGET_CFLAGS += -DCONFIG_WAVE_DEBUG #-DCONFIG_NO_HOSTAPD_LOGGER
 CONFIG_SUFFIX:=debug
 endif
-TARGET_LDFLAGS += -lnl-3 -lnl-genl-3 -lm -lssl -lcrypto -lpthread -ldl -pie -lssl -lcrypto-lrt -lsafec-3.3
+TARGET_LDFLAGS += -lnl-3 -lnl-genl-3 -lm -lssl -lcrypto -lpthread -ldl -latomic -pie -lrt -lsafec-3.3
 TARGET_LDFLAGS += -Wl,-z,noexecstack -Wl,-z,now -Wl,-z,relro
 IFX_CFLAGS:=$(TARGET_CFLAGS)
 IFX_LDFLAGS=$(TARGET_LDFLAGS)

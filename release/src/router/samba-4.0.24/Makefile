@@ -36,7 +36,7 @@ TARGET_CFLAGS += -Wl,-z,relro,-z,now -Wno-error=unused-but-set-variable
 MAKE_FLAGS = DYNEXP= PICFLAG= MODULES=
 endif
 
-ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_REALTEK)),y)
+ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_REALTEK),$(RTCONFIG_LANTIQ)),y)
 CONFIG_PACKAGE_SAMBA_MAX_DEBUG_LEVEL=-1
 TARGET_CFLAGS += -DMAX_DEBUG_LEVEL=$(CONFIG_PACKAGE_SAMBA_MAX_DEBUG_LEVEL)
 TARGET_CFLAGS += -Wl,-z,relro,-z,now #-Wno-error=unused-but-set-variable	// msdk-linux-gcc: No option -Wunused-but-set-variable

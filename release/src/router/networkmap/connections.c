@@ -15,11 +15,12 @@
  * MA 02111-1307 USA
  *
  * Copyright 2019, ASUSTeK Inc.
- * Copyright 2023-2024, SWRTdev.
- * Copyright 2023-2024, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2026, SWRTdev.
+ * Copyright 2023-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  *
  */
+#include <rtconfig.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <linux/if_packet.h>
@@ -79,6 +80,8 @@ STA_INFO_TABLE *g_sta_info_tab = NULL;
 #include "mtk.c"
 #elif defined(RTCONFIG_QCA)
 #include "qca.c"
+#elif defined(RTCONFIG_LANTIQ)
+#include "lantiq.c"
 #elif defined(RTCONFIG_HND_ROUTER)
 #include "hnd.c"
 #elif defined(RTCONFIG_BCMARM)

@@ -7,12 +7,14 @@ libnl/Makefile: libnl/configure
 		--prefix=/usr --bindir=/usr/sbin --libdir=/usr/lib
 
 libnl: libdaemon libnl/Makefile
-	$(MAKE) -j 8 -C $@ && $(MAKE) $@-stage && \
-	(	cd $(STAGEDIR)/usr/lib && \
-		for f in libnl*-3.la ; do \
-			sed 's,/usr/lib,$(STAGEDIR)/usr/lib,g' -i $$f ; \
-		done ; \
-	)
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -j 8 -C $@ && $(MAKE) $@-stage && touch $@/stamp-h1 && \
+			(	cd $(STAGEDIR)/usr/lib && \
+				for f in libnl*-3.la ; do \
+					sed 's,/usr/lib,$(STAGEDIR)/usr/lib,g' -i $$f ; \
+				done ; \
+			) ; \
+	fi
 
 libnl-install: libnl
 	( cd $(STAGEDIR) && \
@@ -25,3 +27,4 @@ libnl-clean:
 	[ ! -f libnl/Makefile ] || $(MAKE) -C libnl distclean
 	@rm -f libnl/Makefile
 endif
+

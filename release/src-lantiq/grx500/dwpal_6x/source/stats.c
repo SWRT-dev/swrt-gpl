@@ -10,7 +10,9 @@
 
 #include <stdio.h>
 #include <string.h>
+#if !defined(SWRT_PATCH)
 #include <uci.h>
+#endif
 #include <stdlib.h>
 #include "dwpal.h"
 #include "dwpal_ext.h"

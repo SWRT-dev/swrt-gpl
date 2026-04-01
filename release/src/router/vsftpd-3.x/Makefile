@@ -25,11 +25,7 @@ LINK	=
 
 CFLAGS	+=	-I../shared
 ifeq ($(RTCONFIG_FTP_SSL),y)
-ifneq ($(MUSL32)$(MUSL64),)
 LIBS	=	-pthread
-else
-LIBS	=	-lnsl -pthread
-endif
 OPENSSLDIR = ../openssl
 OPENSSLINC = $(OPENSSLDIR)/include
 LIBS	+=	-L$(OPENSSLDIR)/ -lssl -lcrypto -latomic

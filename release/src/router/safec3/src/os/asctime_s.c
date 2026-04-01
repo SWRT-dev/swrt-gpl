@@ -141,7 +141,7 @@ _asctime_s_chk(char *dest, rsize_t dmax, const struct tm *tm, const size_t destb
         tm->tm_min  < 0 ||
         tm->tm_sec  < 0 ||
         tm->tm_isdst < 0
-#ifdef HAVE_TM_GMTOFF
+#if defined(HAVE_TM_GMTOFF) && !defined(SWRT_PATCH)
         || tm->tm_gmtoff < -1036800 /* 12*86400 */
 #endif
         )
@@ -160,7 +160,7 @@ _asctime_s_chk(char *dest, rsize_t dmax, const struct tm *tm, const size_t destb
         tm->tm_min  > 59   ||
         tm->tm_sec  > 60   ||
         tm->tm_isdst > 1
-#ifdef HAVE_TM_GMTOFF
+#if defined(HAVE_TM_GMTOFF) && !defined(SWRT_PATCH)
         || tm->tm_gmtoff > 1036800 /* 12*86400 */
 #endif
         )

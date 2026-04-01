@@ -15,19 +15,21 @@
  * MA 02111-1307 USA
  *
  * Copyright 2019, ASUSTeK Inc.
- * Copyright 2023, SWRTdev.
- * Copyright 2023, paldier <paldier@hotmail.com>.
+ * Copyright 2026, SWRTdev.
+ * Copyright 2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  *
  */
+#include <rtconfig.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <linux/if_packet.h>
 #include <stdio.h>
 //#include <linux/in.h>
-#if !defined(RTCONFIG_MUSL_LIBC) && !defined(MUSL_LIBC) || defined(CONFIG_BCMWL5)
+#if !defined(RTCONFIG_MUSL_LIBC) || defined(CONFIG_BCMWL5) || defined(RTCONFIG_LANTIQ)
 #include <linux/if_ether.h>
 #endif
+#include <arpa/inet.h>
 #include <net/if.h>
 #include <string.h>
 #include <errno.h>
@@ -37,7 +39,7 @@
 #include <stdlib.h>
 #include <asm/byteorder.h>
 #include "networkmap.h"
-#include <rtconfig.h>
+
 
 unsigned char my_hwaddr[6];
 unsigned char my_ipaddr[4];

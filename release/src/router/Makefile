@@ -193,7 +193,7 @@ KPATH_2636X_OR_3X = $(if $(or $(findstring linux-2.6.36.x,$(LINUXDIR)),$(findstr
 # New Ralink/MTK/QCA/RTK platform.
 KPATH_3X = $(if $(or $(findstring linux-3.x,$(LINUXDIR)),$(findstring linux-3.3.x,$(LINUXDIR)),$(findstring linux-3.3.8,$(LINUXDIR)),$(findstring linux-3.4.x,$(LINUXDIR)),$(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14.x,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-4.9.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
-KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
+KPATH_37_OR_ABOVE = $(if $(or $(findstring linux-3.10,$(LINUXDIR)),$(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-4.9.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 KPATH_314_OR_ABOVE = $(if $(or $(findstring linux-3.14,$(LINUXDIR)),$(findstring linux-4.4.x,$(LINUXDIR)),$(findstring linux-4.4.198,$(LINUXDIR)),$(findstring linux-4.9.x,$(LINUXDIR)),$(findstring linux-5.4.x,$(LINUXDIR))),y)
 
 export KPATH_37_OR_ABOVE KPATH_314_OR_ABOVE
@@ -813,7 +813,7 @@ endif
 IPTC_LIBDIR := $(TOP)/$(IPTABLES)/libiptc/.libs
 IPTC_LIBS := -lip4tc $(if $(RTCONFIG_IPV6),-lip6tc,) -liptc
 ifeq ($(RTCONFIG_LANTIQ),y)
-obj-y += iproute2-3.15.0
+obj-y += iproute2-5.18.0
 else ifeq ($(or $(RTCONFIG_QCA),$(RTCONFIG_RALINK)),y)
 obj-y += iproute2-5.18.0
 else
@@ -2676,82 +2676,6 @@ ifeq ($(RTCONFIG_ROMATECCODEFIX),y)
 	-cp $(SRCBASE)/router/rom/cfe/`echo $(BUILD_NAME)|tr A-Z a-z`_fixlist.txt $(TARGETDIR)/rom/mac_chklist.txt
 endif
 ifeq ($(RTCONFIG_LANTIQ),y)
-	cp -R rom_lantiq/opt/ $(TARGETDIR)/rom/opt/
-	cd $(TARGETDIR)/rom/opt/lantiq/; tar zcf wave.tgz wave; rm -rf wave; ln -sf /tmp/lantiq_wave ./wave
-	cp rom_lantiq/etc/wave_components.ver $(TARGETDIR)/rom/opt/lantiq/etc/
-	cp rom_lantiq/etc/rc.d/config.sh $(TARGETDIR)/rom/opt/lantiq/etc/rc.d/
-	cp rom_lantiq/etc/preinit.d/load_gphy_firmware_preinit.sh $(TARGETDIR)/sbin/
-	rm -rf $(TARGETDIR)/rom/opt/lantiq/www
-	install -D rom_lantiq/opt/lantiq/bin/dutserver $(TARGETDIR)/bin/
-	# install -D rom_lantiq/bin/wave_wlan_dut_drvctrl.sh $(TARGETDIR)/bin/
-	# install -D rom_lantiq/bin/wave_wlan_dut_file_saver.sh $(TARGETDIR)/bin/
-	# install -D rom_lantiq/opt/lantiq/bin/hostapd $(TARGETDIR)/bin/
-	# install -D rom_lantiq/opt/lantiq/bin/hostapd_cli $(TARGETDIR)/bin/
-	# Dean : use hostapd-2.6
-	install -D hostapd-2.6/hostapd/hostapd $(TARGETDIR)/rom/opt/lantiq/bin/
-	install -D hostapd-2.6/hostapd/hostapd_cli $(TARGETDIR)/rom/opt/lantiq/bin/
-	install -D hostapd-2.6/wpa_supplicant/wpa_supplicant $(TARGETDIR)/rom/opt/lantiq/bin/
-	install -D hostapd-2.6/wpa_supplicant/wpa_cli $(TARGETDIR)/rom/opt/lantiq/bin/
-	install -D rom_lantiq/opt/lantiq/bin/hostapd.eap_user $(TARGETDIR)/bin/
-	install -D rom_lantiq/usr/bin/unlzma $(TARGETDIR)/usr/bin/
-	install -D rom_lantiq/opt/lantiq/usr/sbin/qosd $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/opt/lantiq/usr/sbin/qos_cli $(TARGETDIR)/usr/sbin/
-	cd $(TARGETDIR)/usr/sbin && ln -sf qos_cli ./qoscfg
-	cd $(TARGETDIR)/usr/sbin && ln -sf qos_cli ./ifcfg
-	cd $(TARGETDIR)/usr/sbin && ln -sf qos_cli ./qcfg
-	cd $(TARGETDIR)/usr/sbin && ln -sf qos_cli ./classcfg
-	cp $(SRCBASE)/proprietary/sdk_7.2.4.4_05.04.00.131/usr/lib/libncurses.so.5.9 $(TARGETDIR)/usr/lib/libncurses.so.5.9
-	cd $(TARGETDIR)/usr/lib && ln -sf libncurses.so.5.9 ./libncurses.so.5
-	# install -D rom_lantiq/opt/lantiq/lib/modules/3.10.104/directconnect_datapath.ko $(TARGETDIR)/lib/modules/3.10.104/
-	cd $(TARGETDIR)/lib/modules/3.10.104/; ln -sf ../../../rom/opt/lantiq/lib/modules/3.10.104/directconnect_datapath.ko ./directconnect_datapath.ko
-	cd $(TARGETDIR)/lib/modules/3.10.104/; ln -sf ../../../rom/opt/lantiq/lib/modules/3.10.104/drv_ifxos.ko ./drv_ifxos.ko
-	cd $(TARGETDIR)/lib/modules/3.10.104/; ln -sf ../../../rom/opt/lantiq/lib/modules/3.10.104/drv_event_logger.ko ./drv_event_logger.ko
-	cd $(TARGETDIR)/lib/modules/3.10.104/; ln -sf ../../../rom/opt/lantiq/lib/modules/3.10.104/ltq_pmcu.ko ./ltq_pmcu.ko
-	cd $(TARGETDIR)/lib/modules/3.10.104/; ln -sf ../../../rom/opt/lantiq/lib/modules/3.10.104/ltq_temp.ko ./ltq_temp.ko
-	cd $(TARGETDIR)/lib/modules/3.10.104/; ln -sf ../../../rom/opt/lantiq/lib/modules/3.10.104/dc_mode0-xrx500.ko ./dc_mode0-xrx500.ko
-	mkdir -p $(TARGETDIR)/lib/firmware/
-	install -D rom_lantiq/lib/firmware/mpe_fw_be.img $(TARGETDIR)/lib/firmware/
-	install -D rom_lantiq/lib/firmware/ppe_fw.bin $(TARGETDIR)/lib/firmware/
-	install -D rom_lantiq/usr/sbin/upgrade $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/vol_mgmt $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/ethtool $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/read_img $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/nandwrite $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/nanddump $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/uboot_env $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/mem $(TARGETDIR)/usr/sbin/
-	cd $(TARGETDIR)/usr/sbin && ln -sf ../../rom/opt/lantiq/bin/mtdump ./mtdump
-	install -D rom_lantiq/usr/sbin/fapi_wlan_dbXml $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/usr/sbin/fapi_wlan_cli $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/sbin/udevd $(TARGETDIR)/sbin/
-	install -D rom_lantiq/sbin/crda $(TARGETDIR)/sbin/
-	install -D rom_lantiq/usr/sbin/iw $(TARGETDIR)/usr/sbin/
-	install -D rom_lantiq/lib/librt-0.9.33.2.so $(TARGETDIR)/lib/
-	install -D rom_lantiq/lib/librt.so.0 $(TARGETDIR)/lib/
-ifeq ($(RTCONFIG_AMAS),y)
-	install -D rom_lantiq/lib/libssp.so $(TARGETDIR)/lib/
-	install -D rom_lantiq/lib/libssp.so.0 $(TARGETDIR)/lib/
-endif
-	install -D rom_lantiq/usr/lib/libnl-tiny.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/lib/librpc.so $(TARGETDIR)/lib/
-	install -D rom_lantiq/usr/bin/switch_cli $(TARGETDIR)/usr/bin/
-	install -D rom_lantiq/opt/lantiq/sbin/ppacmd $(TARGETDIR)/sbin/
-	install -D rom_lantiq/opt/lantiq/usr/lib/libwwanfapi.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/opt/lantiq/usr/lib/libqosipc.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/opt/lantiq/usr/lib/libqosfapi.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/usr/lib/libezxml.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/usr/lib/libscapi.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/usr/lib/libnl-3.so.200.20.0 $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/usr/lib/libnl-3.so.200 $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/usr/lib/libnl-genl-3.so.200.20.0 $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/usr/lib/libnl-genl-3.so.200 $(TARGETDIR)/usr/lib/
-	mkdir -p $(TARGETDIR)/usr/lib/crda/
-	install -D rom_lantiq/usr/lib/crda/regulatory.bin $(TARGETDIR)/usr/lib/crda/
-	# install -D rom_lantiq/usr/lib/libfapiwlancommon.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/opt/lantiq/usr/lib/libhelper.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/opt/lantiq/lib/libfapiwave.so $(TARGETDIR)/usr/lib/
-	install -D rom_lantiq/etc/rc.d/wlan_discover $(TARGETDIR)/sbin/wlan_discover
-	mkdir $(TARGETDIR)/rom/etc/; cp -Rf rom_lantiq/etc/udev $(TARGETDIR)/rom/etc/
 endif
 ifeq ($(RTCONFIG_ALPINE),y)
 	install -D qsr10g_image/qsr10g-pcie.ko $(TARGETDIR)/lib/firmware/qsr10g-pcie.ko
@@ -3402,7 +3326,9 @@ openssl-3.0.11/Makefile:
 	@touch $@
 
 openssl-3.0.11: openssl-3.0.11/Makefile
-	$(MAKE) $(PARALLEL_BUILD) -C openssl-3.0.11 && $(MAKE) $@-stage
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) $(PARALLEL_BUILD) -C openssl-3.0.11 && $(MAKE) $@-stage && touch $@/stamp-h1 ; \
+	fi
 
 openssl-3.0.11-clean:
 	[ ! -f openssl-3.0.11/Makefile ] || $(MAKE) -C openssl-3.0.11 clean
@@ -4221,7 +4147,9 @@ shared: openssl $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth) $(if $(BCM_502L07P2),eth
 ifeq ($(RTCONFIG_RALINK)$(RTCONFIG_QCA)$(RTCONFIG_LANTIQ),y)
 	make -C wireless_tools$(WTOOL_SUFFIX) wireless.h
 endif
-	$(MAKE) -C shared
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -C shared && touch $@/stamp-h1 ; \
+	fi
 
 shared-install:
 	$(MAKE) -C shared INSTALLDIR=$(INSTALLDIR)/shared install
@@ -4526,8 +4454,8 @@ libdaemon-clean:
 
 mtd-utils: e2fsprogs lzo zlib
 ifeq ($(ALPINE)$(LANTIQ)$(RTACRH18)$(RT4GAC86U),y)
-	$(MAKE) CPPFLAGS="-I$(STAGEDIR)/usr/include -DWITHOUT_XATTR" \
-		CFLAGS="-I$(TOP)/mtd-utils/include -I$(TOP)/mtd-utils/ubi-utils/include" \
+	$(MAKE) CPPFLAGS="-I$(STAGEDIR)/usr/include -DWITHOUT_XATTR -DLANTIQ" \
+		CFLAGS="-I$(TOP)/mtd-utils/include -I$(TOP)/mtd-utils/ubi-utils/include $(MUSL_CFLAGS)" \
 		LDFLAGS="-L$(STAGEDIR)/usr/lib" \
 		WITHOUT_XATTR=1 -C $@
 else
@@ -5280,12 +5208,11 @@ pstree-clean:
 	@$(MAKE) -C pstree clean
 	rm -rf pstree/stamp-h1
 
-libcodb/stamp-h1:
-	touch $@
-
-libcodb: libcodb/stamp-h1 sqlite3
+libcodb: sqlite
 	@$(SEP)
-	@$(MAKE) -C libcodb CC=$(CC)
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -C libcodb CC=$(CC) && touch $@/stamp-h1 ; \
+	fi
 
 libcodb-install: libcodb
 	@echo INSTALLDIR=$(INSTALLDIR)
@@ -5710,7 +5637,9 @@ sqlite/Makefile:
 	touch $@
 
 sqlite: sqlite/Makefile
-	@$(MAKE) -C sqlite all
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -C sqlite all && touch $@/stamp-h1 ; \
+	fi
 
 sqlite-clean:
 	[ ! -f sqlite/Makefile ] || $(MAKE) -C sqlite distclean
@@ -5770,8 +5699,10 @@ FFMPEG_CONFIGURE_PROTOCOLS:=$(call FFMPEG_FILTER_CONFIG,enable-protocol,$(FFMPEG
 FFMPEG_DISABLED_DEMUXERS:=aa acm act adf adp ads adx afc aix amr amrnb amrwb apc ape apng aptx aptx_hd aqtitle asf_o ass ast avr bethsoftvid bfi bfstm bit bmv boa brstm c93 cdxl cine codec2 codec2raw concat data daud dcstr dfa dirac dnxhd dsf dsicin dss dtshd dvbsub dvbtxt dxa epaf ffmetadata fits frm fsb g722 g723_1 g726 g726le g729 gdv genh gif gsm gxf hevc hls hnm ico idcin idf iff ilbc image2 image2pipe image_bmp_pipe image_dds_pipe image_dpx_pipe image_exr_pipe image_j2k_pipe image_jpeg_pipe image_jpegls_pipe image_pam_pipe image_pbm_pipe image_pcx_pipe image_pgm_pipe image_pgmyuv_pipe image_pictor_pipe image_png_pipe image_ppm_pipe image_psd_pipe image_qdraw_pipe image_sgi_pipe image_sunrast_pipe image_svg_pipe image_tiff_pipe image_webp_pipe image_xpm_pipe ingenient ipmovie ircam ivf ivr jacosub jv live_flv lmlm4 loas lrc lvf lxf mgsts microdvd mjpeg_2000 mlv mm mmf mpjpeg mpl2 mpsub msf msnwc_tcp mtaf mtv musx mv mxf mxg nistsphere nsp nsv nut oma paf pjs pmp pva pvf rawvideo realtext redspark rl2 roq rpl rsd rso s337m sami sbc sbg scc sdr2 sds sdx segafilm shorten siff sln smacker smjpeg smush sol spdif srt stl str subviewer subviewer1 sup svag tak tedcaptions thp threedostr tiertexseq tta tty txd ty v210 v210x vag vivo vmd vobsub voc vpk vplayer wc3 webm_dash_manifest webvtt wsaud wsd wsvqa wtv wve xa xbin xmv xvag xwma yuv4mpegpipe
 FFMPEG_CONFIGURE_DEMUXERS:=$(call FFMPEG_FILTER_CONFIG,disable-demuxer,$(FFMPEG_DISABLED_DEMUXERS))
 
-ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561),$(RTCONFIG_LANTIQ)),y)
+ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561)),y)
 REAL_CPU_TYPE:=mips32
+else ifeq ($(RTCONFIG_LANTIQ),y)
+REAL_CPU_TYPE:=mips32r2
 endif
 
 ffmpeg/stamp-h1: $(if $(FFMPEG_ZLIB_REQD),zlib,)
@@ -6146,7 +6077,7 @@ snooper-clean:
 
 udpxy:
 	$(MAKE) -C $@ release NO_UDPXREC=yes \
-	CDEFS="-O2 -ffunction-sections -fdata-sections $(EXTRACFLAGS)" \
+	CDEFS="-O2 -ffunction-sections -fdata-sections $(EXTRACFLAGS) $(if $(RTCONFIG_LANTIQ),-Wno-format-truncation)" \
 	LDFLAGS="-Wl,--gc-sections"
 
 udpxy-install:
@@ -6225,8 +6156,10 @@ ahs-install:
 
 libasc: openssl curl
 	@$(SEP)
-	echo "build libasc"
-	$(MAKE) -C libasc
+	if [ ! -f $@/stamp-h1 ];then \
+		echo "build libasc" ; \
+		$(MAKE) -C libasc && touch $@/stamp-h1 ; \
+	fi
 
 libasc-clean:
 	echo "clean libasc"
@@ -6238,8 +6171,10 @@ libasc-install:
 
 libswrt: shared openssl libcodb json-c $(if $(RTCONFIG_USB),libdisk)
 	@$(SEP)
-	echo "build libswrt"
-	$(MAKE) -C libswrt
+	if [ ! -f $@/stamp-h1 ];then \
+		echo "build libswrt" ; \
+		$(MAKE) -C libswrt && touch $@/stamp-h1 ; \
+	fi
 
 libswrt-clean:
 	echo "clean libswrt"
@@ -7359,7 +7294,9 @@ curl: openssl $(if $(RTCONFIG_TR069),libssh2,) $(if $(RTCONFIG_MBEDTLS),mbedtls,
 	@$(SEP)
 # temporary curl-7.21.7 path compatibility
 	[ "$(notdir $(realpath $curl-7.21.7))" = "$@" ] || (rm -f curl-7.21.7 && ln -s $@ curl-7.21.7)
-	$(MAKE) $(PARALLEL_BUILD) -C $@ && $(MAKE) $@-stage && sed 's|/usr/lib|$(STAGEDIR)/usr/lib|g' -i $(STAGEDIR)/usr/lib/libcurl.la
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) $(PARALLEL_BUILD) -C $@ && $(MAKE) $@-stage && touch $@/stamp-h1 && sed 's|/usr/lib|$(STAGEDIR)/usr/lib|g' -i $(STAGEDIR)/usr/lib/libcurl.la ; \
+	fi
 
 curl-install:
 	@$(SEP)
@@ -8833,7 +8770,9 @@ json-c/Makefile:
 		-DCMAKE_SKIP_RPATH=FALSE -DCMAKE_MACOSX_RPATH=1 -DCMAKE_INSTALL_RPATH=$(STAGEDIR)/usr/lib
 
 json-c: json-c/Makefile
-	$(MAKE) -C $@ && $(MAKE) $@-stage
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -C $@ && $(MAKE) $@-stage && touch $@/stamp-h1 ; \
+	fi
 
 json-c-install: json-c
 	install -D json-c/libjson-c.so.5.1.0 $(INSTALLDIR)/json-c/usr/lib/libjson-c.so.5.1.0
@@ -10112,18 +10051,24 @@ safec3/Makefile:
 		--bindir=/usr/sbin \
 		--libdir=/usr/lib \
 		--disable-doc \
-		CFLAGS="$(CFLAGS) -D_POSIX_C_SOURCE=200809L"
+		--disable-nullslack \
+		CFLAGS="$(CFLAGS) -D_POSIX_C_SOURCE=200809L -DSWRT_PATCH"
 
 safec3:safec3/Makefile
-	$(MAKE) -C safec3
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -C safec3 && $(MAKE) safec3-stage && touch $@/stamp-h1; \
+	fi
 
 safec3-install:
-	install -D safec3/libsafec-3.3.so* $(INSTALLDIR)/safec3/usr/lib/
+	install -d $(INSTALLDIR)/safec3/usr/lib
+	install -D safec3/src/.libs/libsafec-3.3.so* $(INSTALLDIR)/safec3/usr/lib/
 
 safec3-stage:
+	mkdir -p $(STAGEDIR)/usr/include/libsafec/
 	install -D safec3/include/*.h $(STAGEDIR)/usr/include/libsafec/
-	install -D safec3/libsafec-3.3.so* $(STAGEDIR)/usr/lib/
-	install -D safec3/pkgconfig/safec-3.3.pc $(STAGEDIR)/usr/lib/pkgconfig/
+	install -D safec3/src/.libs/libsafec-3.3.so* $(STAGEDIR)/usr/lib/
+	install -D safec3/src/.libs/libsafec-3.3.a $(STAGEDIR)/usr/lib/
+	install -D safec3/safec-3.3.pc $(STAGEDIR)/usr/lib/pkgconfig/
 
 #
 # Generic rules

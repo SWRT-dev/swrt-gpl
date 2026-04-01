@@ -15,20 +15,21 @@
  * MA 02111-1307 USA
  *
  * Copyright 2019, ASUSTeK Inc.
- * Copyright 2023-2024, SWRTdev.
- * Copyright 2023-2024, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2026, SWRTdev.
+ * Copyright 2023-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  *
  */
 #ifndef _GNU_SOURCE
 #define _GNU_SOURCE
 #endif
+#include <rtconfig.h>
 #include <sys/socket.h>
 #include <sys/ioctl.h>
 #include <linux/if_packet.h>
 #include <stdio.h>
 #include <netinet/in.h>
-#if !defined(RTCONFIG_MUSL_LIBC) && !defined(MUSL_LIBC) || defined(CONFIG_BCMWL5)
+#if !defined(RTCONFIG_MUSL_LIBC) || defined(CONFIG_BCMWL5) || defined(RTCONFIG_LANTIQ)
 #include <linux/if_ether.h>
 #endif
 #include <arpa/inet.h>
@@ -48,7 +49,6 @@
 //2011.02 Yau add shard memory
 #include <sys/ipc.h>
 #include <sys/shm.h>
-#include <rtconfig.h>
 //#include "asusdiscovery.h"
 #ifdef RTCONFIG_BWDPI
 #include <bwdpi.h>

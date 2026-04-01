@@ -295,7 +295,7 @@ ej_wl_control_channel(int eid, webs_t wp, int argc, char_t **argv)
 	return ret;
 }
 
-typedef struct _WLANCONFIG_LIST {
+typedef struct _LANTIQ_WLANCONFIG_LIST {
 	char addr[18];
 	unsigned int aid;
 	unsigned int chan;
@@ -321,13 +321,13 @@ typedef struct _WLANCONFIG_LIST {
 	unsigned int u_state_maxrate;
 	unsigned int u_psmode;
 	int subunit;
-} WLANCONFIG_LIST;
+} LANTIQ_WLANCONFIG_LIST;
 
 #define MAX_STA_NUM 256
-typedef struct _WIFI_STA_TABLE {
+typedef struct _LANTIQ_WIFI_STA_TABLE {
 	int Num;
-	WLANCONFIG_LIST Entry[ MAX_STA_NUM ];
-} WIFI_STA_TABLE;
+	LANTIQ_WLANCONFIG_LIST Entry[ MAX_STA_NUM ];
+} LANTIQ_WIFI_STA_TABLE;
 
 void
 convert_mac_string(char *mac)
@@ -350,7 +350,7 @@ convert_mac_string(char *mac)
 	strlcpy(mac, mac_str, safe_strlen(mac_str) + 1);
 }
 
-static int getSTAInfo(int unit, WIFI_STA_TABLE *sta_info)
+static int getSTAInfo(int unit, LANTIQ_WIFI_STA_TABLE *sta_info)
 {
 	#define STA_INFO_PATH "/tmp/iw_wlanX_list"
 	FILE *fp;
@@ -398,7 +398,7 @@ static int getSTAInfo(int unit, WIFI_STA_TABLE *sta_info)
 */
 			while ( fgets(line_buf, sizeof(line_buf), fp) ) {
 				if(strstr(line_buf, "Station")) {
-					WLANCONFIG_LIST *r = &sta_info->Entry[sta_info->Num++];
+					LANTIQ_WLANCONFIG_LIST *r = &sta_info->Entry[sta_info->Num++];
 					sscanf(line_buf, "%*s%s", r->addr);
 					r->subunit = subunit;
 					while ( fgets(line_buf, sizeof(line_buf), fp) ) {
@@ -462,73 +462,6 @@ char* GetBW(int BW)
 			return "N/A";
 	}
 }
-
-int MCSMappingRateTable[] =
-	{2,  4,   11,  22, // CCK
-	12, 18,   24,  36, 48, 72, 96, 108, // OFDM
-	13, 26,   39,  52,  78, 104, 117, 130, 26,  52,  78, 104, 156, 208, 234, 260, // 20MHz, 800ns GI, MCS: 0 ~ 15
-	39, 78,  117, 156, 234, 312, 351, 390,										  // 20MHz, 800ns GI, MCS: 16 ~ 23
-	27, 54,   81, 108, 162, 216, 243, 270, 54, 108, 162, 216, 324, 432, 486, 540, // 40MHz, 800ns GI, MCS: 0 ~ 15
-	81, 162, 243, 324, 486, 648, 729, 810,										  // 40MHz, 800ns GI, MCS: 16 ~ 23
-	14, 29,   43,  57,  87, 115, 130, 144, 29, 59,   87, 115, 173, 230, 260, 288, // 20MHz, 400ns GI, MCS: 0 ~ 15
-	43, 87,  130, 173, 260, 317, 390, 433,										  // 20MHz, 400ns GI, MCS: 16 ~ 23
-	30, 60,   90, 120, 180, 240, 270, 300, 60, 120, 180, 240, 360, 480, 540, 600, // 40MHz, 400ns GI, MCS: 0 ~ 15
-	90, 180, 270, 360, 540, 720, 810, 900,
-	13, 26,   39,  52,  78, 104, 117, 130, 156, /* 11ac: 20Mhz, 800ns GI, MCS: 0~8 */
-	27, 54,   81, 108, 162, 216, 243, 270, 324, 360, /*11ac: 40Mhz, 800ns GI, MCS: 0~9 */
-	59, 117, 176, 234, 351, 468, 527, 585, 702, 780, /*11ac: 80Mhz, 800ns GI, MCS: 0~9 */
-	14, 29,   43,  57,  87, 115, 130, 144, 173, /* 11ac: 20Mhz, 400ns GI, MCS: 0~8 */
-	30, 60,   90, 120, 180, 240, 270, 300, 360, 400, /*11ac: 40Mhz, 400ns GI, MCS: 0~9 */
-	65, 130, 195, 260, 390, 520, 585, 650, 780, 867 /*11ac: 80Mhz, 400ns GI, MCS: 0~9 */
-	};
-
-
-#define FN_GETRATE(_fn_, _st_)						\
-_fn_(_st_ HTSetting)							\
-{									\
-	int rate_count = sizeof(MCSMappingRateTable)/sizeof(int);	\
-	int rate_index = 0;						\
-									\
-	if (HTSetting.field.MODE >= MODE_VHT)				\
-	{								\
-		if (HTSetting.field.BW == BW_20) {			\
-			rate_index = 108 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_40) {			\
-			rate_index = 117 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-		else if (HTSetting.field.BW == BW_80) {			\
-			rate_index = 127 +				\
-			((unsigned char)HTSetting.field.ShortGI * 29) +	\
-			((unsigned char)HTSetting.field.MCS);		\
-		}							\
-	}								\
-	else								\
-	if (HTSetting.field.MODE >= MODE_HTMIX)				\
-	{								\
-		rate_index = 12 + ((unsigned char)HTSetting.field.BW *24) + ((unsigned char)HTSetting.field.ShortGI *48) + ((unsigned char)HTSetting.field.MCS);	\
-	}								\
-	else								\
-	if (HTSetting.field.MODE == MODE_OFDM)				\
-		rate_index = (unsigned char)(HTSetting.field.MCS) + 4;	\
-	else if (HTSetting.field.MODE == MODE_CCK)			\
-		rate_index = (unsigned char)(HTSetting.field.MCS);	\
-									\
-	if (rate_index < 0)						\
-		rate_index = 0;						\
-									\
-	if (rate_index >= rate_count)					\
-		rate_index = rate_count-1;				\
-									\
-	return (MCSMappingRateTable[rate_index] * 5)/10;		\
-}
-
-int FN_GETRATE(getRate,      MACHTTRANSMIT_SETTING)		//getRate(MACHTTRANSMIT_SETTING)
-int FN_GETRATE(getRate_2g,   MACHTTRANSMIT_SETTING_2G)		//getRate_2g(MACHTTRANSMIT_SETTING_2G)
 
 int
 ej_wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
@@ -626,7 +559,7 @@ static int
 wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
 	int ret = 0, wl_mode_x, i;
-	WIFI_STA_TABLE *sta_info;
+	LANTIQ_WIFI_STA_TABLE *sta_info;
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_", *ifname, *op_mode;
 	char subunit_str[8];
 
@@ -722,7 +655,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 static int ej_wl_sta_list(int unit, webs_t wp)
 {
-	WIFI_STA_TABLE *sta_info;
+	LANTIQ_WIFI_STA_TABLE *sta_info;
 	char *value;
 	int firstRow = 1;
 	int i;
@@ -811,8 +744,8 @@ int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
  */
 static int wl_stainfo_list(int unit, webs_t wp)
 {
-	WIFI_STA_TABLE *sta_info;
-	WLANCONFIG_LIST *r;
+	LANTIQ_WIFI_STA_TABLE *sta_info;
+	LANTIQ_WLANCONFIG_LIST *r;
 	char idx_str[8];
 	int i, s, firstRow = 1;
 
@@ -1109,8 +1042,7 @@ ej_wps_info_6g_2(int eid, webs_t wp, int argc, char_t **argv)
 
 int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv)
 {
-//only for ath0 & ath1
-	WLANCONFIG_LIST *result;
+	LANTIQ_WLANCONFIG_LIST *result;
 	#define AUTH_INFO_PATH "/tmp/auth_athX_list"
 	FILE *fp;
 	int ret = 0;
@@ -1119,8 +1051,8 @@ int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv)
 	char line_buf[300]; // max 14x
 	char *value;
 	int firstRow;
-	result = (WLANCONFIG_LIST *)malloc(sizeof(WLANCONFIG_LIST));
-	memset(result, 0, sizeof(WLANCONFIG_LIST));
+	result = (LANTIQ_WLANCONFIG_LIST *)malloc(sizeof(LANTIQ_WLANCONFIG_LIST));
+	memset(result, 0, sizeof(LANTIQ_WLANCONFIG_LIST));
 
 	wl_ifnames = strdup(nvram_safe_get("wl_ifnames"));
 	if (!wl_ifnames) 
@@ -1132,44 +1064,27 @@ int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv)
 	while ((ifname = strsep(&p, " ")) != NULL) {
 		while (*ifname == ' ') ++ifname;
 		if (*ifname == 0) break;
-		doSystem("wlanconfig %s list > %s", ifname, AUTH_INFO_PATH);
+		doSystem("iw dev %s station dump > %s", ifname, AUTH_INFO_PATH);
 		fp = fopen(AUTH_INFO_PATH, "r");
 		if (fp) {
-			//fseek(fp, 131, SEEK_SET);	// ignore header
-			fgets(line_buf, sizeof(line_buf), fp); // ignore header
 			while ( fgets(line_buf, sizeof(line_buf), fp) ) {
-				sscanf(line_buf, "%s%u%u%s%s%u%u%u%u%s%s%s%s%s%s%s%s", 
-							result->addr, 
-							&result->aid, 
-							&result->chan, 
-							result->txrate, 
-							result->rxrate, 
-							&result->rssi, 
-							&result->idle, 
-							&result->txseq, 
-							&result->rxseq,
-							result->caps, 
-							result->acaps, 
-							result->erp, 
-							result->state_maxrate, 
-							result->wps, 
-							result->rsn, 
-							result->wme,
-							result->mode);
-				
-				if (firstRow == 1)
-					firstRow = 0;
-				else
-					websWrite(wp, ", ");
-				websWrite(wp, "[");
+				if(strstr(line_buf, "Station")) {
+					sscanf(line_buf, "%*s%s", result->addr);
+					convert_mac_string(result->addr);
 
-				websWrite(wp, "\"%s\"", result->addr);
-				value = "YES";
-				websWrite(wp, ", \"%s\"", value);
-				value = "";
-				websWrite(wp, ", \"%s\"", value);
-				websWrite(wp, "]");
-			
+					if (firstRow == 1)
+						firstRow = 0;
+					else
+						websWrite(wp, ", ");
+					websWrite(wp, "[");
+
+					websWrite(wp, "\"%s\"", result->addr);
+					value = "YES";
+					websWrite(wp, ", \"%s\"", value);
+					value = "";
+					websWrite(wp, ", \"%s\"", value);
+					websWrite(wp, "]");
+				}
 			}
 
 			fclose(fp);

@@ -60,166 +60,29 @@ extern const char *bw80_80_tbl[2], *bw160_tbl[2];
 #define INIC_VLAN_ID_START	4 //first vlan id used for RT3352 iNIC MII
 #define INIC_VLAN_IDX_START	2 //first available index to set vlan id and its group.
 
-// MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!!
-typedef union  _MACHTTRANSMIT_SETTING {
-	struct  {
-	unsigned short	MCS:7;	// MCS
-	unsigned short	BW:1;	//channel bandwidth 20MHz or 40 MHz
-	unsigned short	ShortGI:1;
-	unsigned short	STBC:2;	//SPACE
-	unsigned short  eTxBF:1;
-	unsigned short  rsv:1;
-	unsigned short  iTxBF:1;
-	unsigned short  MODE:2;	// Use definition MODE_xxx.
-	} field;
-	unsigned short	word;
- } MACHTTRANSMIT_SETTING, *PMACHTTRANSMIT_SETTING;
+typedef struct _WLANCONFIG_LIST {
+	char addr[18];
+	unsigned int aid;
+	unsigned int chan;
+	char txrate[10];
+	char rxrate[10];
+	int rssi;
+	char htcaps[12];
+	char vhtcaps[12];
+	char conn_time[12];
+	char mode[32];
+	char subunit_id;	/* '0': main 2G/5G network, '1' ~ '7': Guest network (MAX_NO_MSSID = 8), 'B': Facebook Wi-Fi, 'F': Free Wi-Fi, 'C': Captive Portal */
+	unsigned int txnss;
+	unsigned int rxnss;
+	unsigned int psm;	/* power-save mode */
+} WLANCONFIG_LIST;
 
-// MIMO Tx parameter, ShortGI, MCS, STBC, etc.  these are fields in TXWI. Don't change this definition!!!
-typedef union  _MACHTTRANSMIT_SETTING_2G {
-	struct  {
-	unsigned short	MCS:7;	// MCS
-	unsigned short	BW:1;	//channel bandwidth 20MHz or 40 MHz
-	unsigned short	ShortGI:1;
-	unsigned short	STBC:2;	//SPACE
-	unsigned short	rsv:3;
-	unsigned short	MODE:2;	// Use definition MODE_xxx.
-	} field;
-	unsigned short	word;
- } MACHTTRANSMIT_SETTING_2G, *PMACHTTRANSMIT_SETTING_2G;
+#define MAX_STA_NUM 256
 
-typedef union  _MACHTTRANSMIT_SETTING_11AC {
-	struct  {
-	unsigned short	MCS:7;	// MCS
-	unsigned short	BW:2;	//channel bandwidth 20MHz or 40 MHz
-	unsigned short	ShortGI:1;
-	unsigned short	STBC:1;	//SPACE
-	unsigned short	eTxBF:1;
-	unsigned short	iTxBF:1;
-	unsigned short	MODE:3;	// Use definition MODE_xxx.
-	} field;
-	unsigned short	word;
- } MACHTTRANSMIT_SETTING_11AC, *PMACHTTRANSMIT_SETTING_11AC;
-
-typedef struct _RT_802_11_MAC_ENTRY_RT3352_iNIC {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;	// 0:PWR_ACTIVE, 1:PWR_SAVE
-    unsigned char	MimoPs;	// 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_2G	TxRate;
-    MACHTTRANSMIT_SETTING_2G	MaxTxRate;
-} RT_802_11_MAC_ENTRY_RT3352_iNIC, *PRT_802_11_MAC_ENTRY_RT3352_iNIC;
-
-typedef struct _RT_802_11_MAC_ENTRY_RT3883 {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;     // 0:PWR_ACTIVE, 1:PWR_SAVE
-    unsigned char	MimoPs;  // 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_2G       TxRate;
-    unsigned int	LastRxRate;
-    short		StreamSnr[3];
-    short		SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY_RT3883, *PRT_802_11_MAC_ENTRY_RT3883;
-
-typedef struct _RT_802_11_MAC_ENTRY {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;     // 0:PWR_ACTIVE, 1:PWR_SAVE
-    unsigned char	MimoPs;  // 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING       TxRate;
-    unsigned int	LastRxRate;
-    int			StreamSnr[3];
-    int			SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY, *PRT_802_11_MAC_ENTRY;
-
-typedef struct _RT_802_11_MAC_ENTRY_2G {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;	/* 0:PWR_ACTIVE, 1:PWR_SAVE */
-    unsigned char	MimoPs;	/* 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled */
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_2G	TxRate;
-    unsigned int	LastRxRate;
-    short		StreamSnr[3];	/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
-    short		SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY_2G, *PRT_802_11_MAC_ENTRY_2G;
-
-typedef struct _RT_802_11_MAC_ENTRY_11AC {
-    unsigned char	ApIdx;
-    unsigned char	Addr[ETHER_ADDR_LEN];
-    unsigned char	Aid;
-    unsigned char	Psm;	/* 0:PWR_ACTIVE, 1:PWR_SAVE */
-    unsigned char	MimoPs;	/* 0:MMPS_STATIC, 1:MMPS_DYNAMIC, 3:MMPS_Enabled */
-    char		AvgRssi0;
-    char		AvgRssi1;
-    char		AvgRssi2;
-    unsigned int	ConnectedTime;
-    MACHTTRANSMIT_SETTING_11AC	TxRate;
-    unsigned int	LastRxRate;
-    short		StreamSnr[3];	/* BF SNR from RXWI. Units=0.25 dB. 22 dB offset removed */
-    short		SoundingRespSnr[3];
-} RT_802_11_MAC_ENTRY_11AC, *PRT_802_11_MAC_ENTRY_11AC;
-
-typedef struct _RT_802_11_MAC_TABLE {
-    unsigned long	Num;
-    RT_802_11_MAC_ENTRY Entry[MAX_NUMBER_OF_MAC];
-} RT_802_11_MAC_TABLE, *PRT_802_11_MAC_TABLE;
-
-typedef struct _RT_802_11_MAC_TABLE_2G {
-    unsigned long	Num;
-    RT_802_11_MAC_ENTRY_2G Entry[MAX_NUMBER_OF_MAC];
-} RT_802_11_MAC_TABLE_2G, *PRT_802_11_MAC_TABLE_2G;
-
-typedef struct _SITE_SURVEY_RT3352_iNIC
-{
-	char channel[4];
-	unsigned char ssid[33];
-	char bssid[20];
-	char authmode[15];	//security part1
-	char encryption[8];	//security part2 and need to shift data
-	char signal[9];
-	char wmode[8];
-	char extch[7];
-	char nt[3];
-	char wps[4];
-	char dpid[4];
-	char newline;
-} SITE_SURVEY_RT3352_iNIC;
-
-typedef struct _SITE_SURVEY 
-{ 
-	char channel[4];
-	unsigned char ssid[33]; 
-	char bssid[18];
-	char encryption[9];
-	char authmode[16];
-	char signal[9];
-	char wmode[8];
-} SITE_SURVEY;
-
-typedef struct _SITE_SURVEY_ARRAY
-{ 
-	SITE_SURVEY SiteSurvey[64];
-} SSA;
+typedef struct _WIFI_STA_TABLE {
+	int Num;
+	WLANCONFIG_LIST Entry[ MAX_STA_NUM ];
+} WIFI_STA_TABLE;
 
 #define SITE_SURVEY_APS_MAX	(16*1024)
 
@@ -374,6 +237,8 @@ extern int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq);
 extern int qc98xx_verify_checksum(void *eeprom);
 extern int calc_qca_eeprom_csum(void *ptr, unsigned int eeprom_size);
 extern int trigger_wave_monitor(const char *func, int line, int action);
+extern int __get_qca_sta_info_by_ifname(const char *ifname, char subunit_id, int (*handler)(const WLANCONFIG_LIST *rptr, void *arg), void *arg);
+extern int get_lantiq_sta_info_by_ifname(const char *ifname, char subunit_id, WIFI_STA_TABLE *sta_info);
 /* for ATE Get_WanLanStatus command */
 typedef struct {
 	unsigned int link[5];

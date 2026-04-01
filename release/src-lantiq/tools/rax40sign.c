@@ -198,7 +198,7 @@ main(int argc, char **argv)
 	int len;
 
 	if (argc != 2) {
-		fprintf(stderr, "Usage: %s imagefile\n");
+		fprintf(stderr, "Usage: %s imagefile\n", argv[0]);
 		return -1;
 	}
 
@@ -223,8 +223,8 @@ main(int argc, char **argv)
 
 	write_tlv(out, 1, 32, sha256);
 	write_tlv(out, 0, 0, NULL);
-	write_tlv_string(out, 2, "V1.0.2.46_1.0.1");
-	write_tlv_string(out, 3, "V1.20");
+	write_tlv_string(out, 2, "V1.0.6.106_1.0.1");
+	write_tlv_string(out, 3, "V3.29");
 	write_tlv(out, 1, 0, NULL);
 	fwrite(mem, len, 1, out);
 	free(mem);

@@ -15,8 +15,9 @@ pobj-y:=
 
 pobj-y += directconnect_dp eip97 ltq_fw_phy_ip ppa_drv switch_cli upgrade_utils
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += ltq-wlan-wave_6x iwlwav-driver iwlwav-firmware
-pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += dwpal_6x iwlwav-tools #swpal_6x
+pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += dwpal_6x iwlwav-tool
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += iwlwav-hostap iwlwav-iw
+#pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += swpal_6x
 pobj-$(RTCONFIG_WLMODULE_WAV5XX_AP) += wav5xx_drv wav5xx_hostapd wav5xx_crda wav5xx_iw ltq-wlan-wave_5x
 
 

@@ -47,10 +47,6 @@ endif
 LDFLAGS += -L$(TOP)/curl/lib/.libs -lcurl -L$(TOP)/
 LDFLAGS += -L$(TOP)/libasc -lasc
 
-ifeq ($(RTCONFIG_LANTIQ),y)
-LDFLAGS += -L$(TOP)/fapi_wlan_common-05.04.00.131 -lfapiwlancommon -ldl -L$(TOP)/libhelper-1.4.0.2 -lhelper -L$(TOP)/libfapi-0.1 -lfapi
-endif
-
 ifeq ($(HND_ROUTER_AX), y)
 CFLAGS += -I$(SRCBASE)/../components/proto/include -I$(SRCBASE)/../components/wlioctl/include -I$(SRCBASE)/wl -I$(SRCBASE)/wl/sys
 endif

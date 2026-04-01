@@ -58,7 +58,7 @@ PKG_EXTRA_CFLAGS += -Wno-uninitialized -Wno-switch-unreachable
 endif
 
 TARGET_CFLAGS += $(PKG_EXTRA_CFLAGS) -DCONFIG_PPA \
-	-I$(LINUX_DIR)/include/ -I$(TOP)/kernel_header/include
+	-I$(LINUXDIR)/include/ -I$(TOP)/kernel_header/include
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 

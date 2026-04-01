@@ -4,7 +4,7 @@ include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
 
 all:
-	@#Nothing to do
+	touch stamp-h1
 
 install:
 	install -d $(INSTALLDIR)/lib/firmware/

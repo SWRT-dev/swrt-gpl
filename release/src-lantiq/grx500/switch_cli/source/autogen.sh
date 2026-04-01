@@ -1,7 +1,7 @@
-#!/bin/sh			  
+#!/bin/sh
 # Run this to generate all the initial makefiles, etc.
 
-srcdir=`dirname $0`/
+srcdir=`dirname $0`
 PKG_NAME="the package."
 
 DIE=0
@@ -146,3 +146,4 @@ if test x$NOCONFIGURE = x; then
 else
   echo Skipping configure process.
 fi
+
