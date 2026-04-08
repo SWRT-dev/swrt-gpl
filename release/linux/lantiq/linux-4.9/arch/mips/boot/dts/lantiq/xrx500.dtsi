@@ -1042,7 +1042,7 @@
 				intel,mux = <EQBR_MUX_2>;
 				intel,groups = "25Mhz";
 			};
-
+#if !defined(RAX40)
 			pinctrl_vcodec: vcodec {
 				intel,pins =  <1>, /* SSI_RESET */
 					      <34>, /* SSI_TX */
@@ -1059,6 +1059,7 @@
 				intel,groups = "vcodec_ssi_rx";
 				intel,pullup = <1>;
 			};
+#endif
 
 			pinctrl_vcodec_clk: vcodec_clk {
 				intel,pins = <8>;
@@ -1067,6 +1068,7 @@
 				intel,groups = "vcodec_clk";
 			};
 
+#if !defined(RAX40)
 			pinctrl_tdm: tdm {
 				intel,pins =  <28>, /* TDM_FSC */
 					      <29>, /* TDM_DO */
@@ -1085,6 +1087,7 @@
 				intel,groups = "mdio_l";
 				intel,open-drain = <1>;
 			};
+#endif
 
 			pinctrl_mdio_r: mdio_r {
 				intel,pins =  <32>, /* MDC1 */
@@ -1104,6 +1107,7 @@
 				intel,groups = "spi0";
 			};
 
+#if !defined(RAX40)
 			pinctrl_spi1: spi1 {
 				intel,pins =  <10>, /* SPI1_CLK */
 					      <11>, /* SPI1_TX */
@@ -1112,6 +1116,7 @@
 				intel,mux = <EQBR_MUX_1>;
 				intel,groups = "spi1";
 			};
+#endif
 
 			pinctrl_ledc: ledc {
 				intel,pins =  <4>, /* LED_SH */
@@ -1122,6 +1127,7 @@
 				intel,groups = "led";
 			};
 
+#if !defined(RAX40)
 			pinctrl_i2c0: i2c0 {
 				intel,pins =  <21>, /* I2C0_SCL */
 					      <22>; /* I2C0_SDA */
@@ -1130,6 +1136,7 @@
 				intel,groups = "i2c0";
 				intel,open-drain = <1>;
 			};
+#endif
 
 			pinctrl_usb0_default: usb0_default {
 				intel,pins = <7>;

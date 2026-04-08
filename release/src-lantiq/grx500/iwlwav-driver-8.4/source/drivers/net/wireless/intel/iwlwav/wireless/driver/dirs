@@ -1,0 +1,11 @@
+#
+# $Id$
+#
+
+OPTIONAL_DIRS= \
+               wce  \
+               wlh  \
+               wnet \
+               wxp
+
+DIRS=utshared

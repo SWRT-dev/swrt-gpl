@@ -1,0 +1,67 @@
+# if kernel version is 2.6.25 or 2.6.26
+# detect fedora kernel stablerev and release.
+#
+# the list of kernels containing the change in question:
+#
+# f8    2.6.25 => kernel-2_6_25_9-42_fc8
+#       2.6.26 - all
+#
+# f9    2.6.25 => kernel-2_6_25_9-79_fc9 
+#       2.6.26 - all
+
+# does it really look like Fedora?
+KVER_GREP = $(shell echo $(KERNELVERSION) |\
+                    grep '^2\.6\.[0-9]\+.\?[0-9]*-[0-9]\+\.fc[0-9]\+')
+ifneq (, $(strip $(KVER_GREP)))
+
+  # get Fedora release version   2.6.25.10-86.fcXXX.i686
+  FEDORA_VERSION = $(strip $(shell echo $(KVER_GREP) |\
+                                   sed -n 's/.*\.fc\([0-9]\+\)\..*/\1/p'))
+  ifeq (,$(FEDORA_VERSION))
+    FEDORA_VERSION = 0
+  endif
+
+  # get the optional kernel stable revision 2.6.25.XXX-86.fc9.i686
+  STAB_REV = $(strip $(shell echo $(KVER_GREP) |\
+                             sed -n 's/^2\.6\.[0-9]\+\.\([0-9]\+\)-[0-9]\+.*/\1/p'))
+  ifeq (,$(STAB_REV))
+    STAB_REV = 0
+  endif
+
+  # get Fedora kernel release number  2.6.25.10-XXX.fc9.i686
+  FK_REL = $(strip $(shell echo $(KVER_GREP) |\
+                           sed -n 's/^2\.6\.[0-9]\+\.\?[0-9]*-\([0-9]\+\).*/\1/p'))
+  ifeq (,$(FK_REL))
+    FK_REL = 0
+  endif
+
+  # the main reason of using "awk" is simplicity of comparative and
+  # logical operators usage. the same thing written in make conditions
+  # and shell "test" command calls was like 3 times bigger and quite
+  # incomprehensible
+
+  FEDORA_FIX_NEEDED = $(strip $(shell \
+    awk  -v FV=$(FEDORA_VERSION) -v SL=$(SUBLEVEL) -v SR=$(STAB_REV)  \
+         -v FKR=$(FK_REL) '                                           \
+    BEGIN {                                                           \
+       if (FV == 8)                                                   \
+         if( (SL == 25 && (SR > 9 || SR == 9 && FKR >= 42)) ||        \
+             (SL == 26) )                                             \
+         {                                                            \
+           print "1";                                                 \
+           exit;                                                      \
+         }                                                            \
+       if (FV == 9)                                                   \
+         if( (SL == 25 && (SR > 9 || SR == 9 && FKR >= 79)) ||        \
+             (SL == 26) )                                             \
+         {                                                            \
+           print "1";                                                 \
+           exit;                                                      \
+         }                                                            \
+    }' ))
+
+  ifneq (,$(FEDORA_FIX_NEEDED))
+    EXTRA_CFLAGS += -DFEDORA_IWE_STREAM_ADD
+  endif
+
+endif     # KERNELVERSION matches Fedora pattern

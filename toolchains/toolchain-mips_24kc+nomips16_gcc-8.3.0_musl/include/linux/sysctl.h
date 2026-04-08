@@ -769,13 +769,6 @@ enum {
 	NET_SCTP_RCVBUF_POLICY		 = 17,
 };
 
-#ifdef CONFIG_MCAST_SNOOPING
-enum {
-	NET_BRIDGE_IGMP_SNOOPING = 1,
-	NET_BRIDGE_MLD_SNOOPING = 2,
-};
-#endif
-
 /* /proc/sys/net/bridge */
 enum {
 	NET_BRIDGE_NF_CALL_ARPTABLES = 1,

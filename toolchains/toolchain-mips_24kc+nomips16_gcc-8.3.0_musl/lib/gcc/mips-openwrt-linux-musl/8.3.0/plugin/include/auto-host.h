@@ -92,7 +92,7 @@
 
 /* Define if your target supports default PIE and it is enabled. */
 #ifndef USED_FOR_TARGET
-/* #undef ENABLE_DEFAULT_PIE */
+#define ENABLE_DEFAULT_PIE 1
 #endif
 
 

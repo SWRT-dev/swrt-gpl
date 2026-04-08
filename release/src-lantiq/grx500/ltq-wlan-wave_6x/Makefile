@@ -15,9 +15,9 @@ install:
 	install -m 755 $(PKG_BUILD_DIR)/psd/bin/* $(INSTALLDIR)/lib/firmware/
 	install -m 755 $(PKG_BUILD_DIR)/regulatory/bin/* $(INSTALLDIR)/lib/firmware/
 	install -m 755 $(PKG_BUILD_DIR)/wave_components.ver $(INSTALLDIR)/opt/intel/etc/
-	cd $(INSTALLDIR)/lib/firmware && ln -sf ../../tmp/wlanconfig/cal_wlan0.bin
-	cd $(INSTALLDIR)/lib/firmware && ln -sf ../../tmp/wlanconfig/cal_wlan2.bin
-	cd $(INSTALLDIR)/lib/firmware && ln -sf ../../tmp/wlanconfig/cal_wlan4.bin
+	cd $(INSTALLDIR)/lib/firmware && ln -sf ../../tmp/cal_wlan0.bin
+	cd $(INSTALLDIR)/lib/firmware && ln -sf ../../tmp/cal_wlan2.bin
+	cd $(INSTALLDIR)/lib/firmware && ln -sf ../../tmp/cal_wlan4.bin
 
 clean:
 	@#Nothing to do

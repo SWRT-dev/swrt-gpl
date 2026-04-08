@@ -83,8 +83,8 @@ const char WIF_5G[] = "wifi2";
 const char WIF_2G[] = "wifi0";
 const char STA_5G[] = "wifi3";
 const char STA_2G[] = "wifi1";
-const char VPHY_5G[] = "wifi2_0";
-const char VPHY_2G[] = "wifi0_0";
+const char VPHY_5G[] = "phy1";
+const char VPHY_2G[] = "phy0";
 
 const char *max_2g_ax_mode = "11GHE";	/* B,G,N,AX */
 const char *max_5g_ax_mode = "11AHE";	/* A,N,AC,AX */
@@ -158,6 +158,10 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
 		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
 		if (f_read_string(path, v, sizeof(v)) > 0 && safe_atoi(v) == 1)
 			dir_str = "high";	/* output, high voltage */
+	} else if (dir == GPIO_DIR_OUT_LOW) {
+		dir_str = "low";
+	} else if (dir == GPIO_DIR_OUT_HIGH) {
+		dir_str = "high";
 	}
 
 	__export_gpio(gpio);
@@ -171,7 +175,11 @@ uint32_t get_gpio(uint32_t gpio)
 {
 	char path[PATH_MAX], value[10];
 
+#ifdef RTCONFIG_LEDS_CLASS
+	snprintf(path, sizeof(path), "%s/led%d/brightness", LEDSLIB_DIR, gpio);
+#else
 	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+#endif
 	f_read_string(path, value, sizeof(value));
 
 	return safe_atoi(value);
@@ -182,7 +190,11 @@ uint32_t set_gpio(uint32_t gpio, uint32_t value)
 	char path[PATH_MAX], val_str[10];
 
 	snprintf(val_str, sizeof(val_str), "%d", !!value);
+#ifdef RTCONFIG_LEDS_CLASS
+	snprintf(path, sizeof(path), "%s/led%d/brightness", LEDSLIB_DIR, gpio);
+#else
 	snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
+#endif
 	f_write_string(path, val_str, 0, 0);
 
 	return 0;
@@ -389,18 +401,14 @@ char *get_staifname(int unit){
 		return wlan_name[LTQ_WIFI_BAND_2G_EP_IF];	/* 2G */
 }
 
-char *get_vphyifname(int unit)
+char *get_vphyifname(int band)
 {
-	int wave_unit;
-	char *phy_name[2]={"wlan0", "wlan2"};
-
-	wave_unit = unit;
-	if ( wave_unit >= 2 )
-	{
-		dbg("%s: Invalid wl%d band!\n", "get_vphyifname", unit);
-		wave_unit = 0;
+	const char *vphy[] = { VPHY_2G, VPHY_5G };
+	if (band < 0 || band >= ARRAY_SIZE(vphy)) {
+		dbg("%s: Invalid wl%d band!\n", __func__, band);
+		band = 0;
 	}
-	return phy_name[wave_unit];
+	return (char *) vphy[band];
 }
 
 int get_wifname_band(char *name){
@@ -1367,6 +1375,75 @@ int get_iwphy_name(int unit, char *iwphy, size_t size)
 	}
 
 	return (r <= 0)? -2 : 0;
+}
+
+/**
+ * Return true if @ifname is main/guest VAP interface name and the band is supported.
+ * @return:
+ * 	0:	@ifname is not VAP interface name
+ * 	1:	@ifname is VAP interface name.
+ *  otherwise:	not defined.
+ */
+int is_vap_ifname(const char *ifname)
+{
+	int band;
+	const char *wif[] = { WIF_2G, WIF_5G };
+
+	if (!ifname)
+		return 0;
+	for (band = 0; band < min(MAX_NR_WL_IF, ARRAY_SIZE(wif)); ++band) {
+		SKIP_ABSENT_BAND(band);
+
+		if (!strncmp(ifname, wif[band], strlen(wif[band])))
+			return 1;
+	}
+	return 0;
+}
+
+/**
+ * Return true if @ifname is STA interface name and the band is supported.
+ * @return:
+ * 	0:	@ifname is not STA interface name
+ * 	1:	@ifname is STA interface name.
+ *  otherwise:	not defined.
+ */
+int is_sta_ifname(const char *ifname)
+{
+	int band;
+	const char *sta[] = { STA_2G, STA_5G };
+
+	if (!ifname)
+		return 0;
+	for (band = 0; band < min(MAX_NR_WL_IF, ARRAY_SIZE(sta)); ++band) {
+		SKIP_ABSENT_BAND(band);
+
+		if (!strncmp(ifname, sta[band], strlen(sta[band])))
+			return 1;
+	}
+	return 0;
+}
+
+/**
+ * Return true if @ifname is main/guest VPHY interface name and the band is supported.
+ * @return:
+ * 	0:	@ifname is not VPHY interface name
+ * 	1:	@ifname is VPHY interface name.
+ *  otherwise:	not defined.
+ */
+int is_vphy_ifname(const char *ifname)
+{
+	int band;
+	const char *vphy[] = { VPHY_2G, VPHY_5G };
+
+	if (!ifname)
+		return 0;
+	for (band = 0; band < min(MAX_NR_WL_IF, ARRAY_SIZE(vphy)); ++band) {
+		SKIP_ABSENT_BAND(band);
+
+		if (!strcmp(ifname, vphy[band]))
+			return 1;
+	}
+	return 0;
 }
 
 /**

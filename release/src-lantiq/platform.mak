@@ -3,12 +3,13 @@ export LINUXDIR := $(SRCBASE)/linux/linux-4.9.x
 ifeq ($(EXTRACFLAGS),)
 EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -DLINUX30 -mno-branch-likely -march=mips32r2 -mtune=24kc -fPIC -mabicalls
 endif
+export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
 export PLATFORM := mips-musl
 export PLATFORM_ROUTER := grx500
 export MODEL_EXT := _lantiq
 export TOOLCHAIN_NAME=toolchain-mips_24kc+nomips16_gcc-8.3.0_musl
-export TOOLS := $(SRCBASE)/../../toolchains/${TOOLCHAIN_NAME}
+export TOOLS := $(SRCBASE)/tools/${TOOLCHAIN_NAME}
 export STAGING_DIR := $(TOOLS)
 export CROSS_COMPILE := $(STAGING_DIR)/bin/mips-openwrt-linux-musl-
 export CROSS_COMPILER := $(CROSS_COMPILE)
@@ -25,10 +26,10 @@ export RTVER := 0.9.30.1
 export RTVER := 0.9.30.1
 
 # Kernel load address and entry address
-export LOADADDR := 0x80002000
+export LOADADDR := 0xa0020000
 export ENTRYADDR := $(LOADADDR)
 export s_load_addr := 0xa0020000
-export s_entry_addr := 0xa002df00
+export s_entry_addr := 0xa0020000
 export image_header := MIPS LTQCPE Linux-4.9.x
 export compression_type := lzma
 export ENTRYADDR := $(LOADADDR)
@@ -68,6 +69,10 @@ define platformKernelConfig
 	if [ "$(RAX40)" = "y" ]; then \
 		sed -i "/CONFIG_RAX40\>/d" $(1); \
 		echo "CONFIG_RAX40=y" >>$(1); \
+		sed -i "/CONFIG_GPIO_INTEL_SSO\>/d" $(1); \
+		echo "# CONFIG_GPIO_INTEL_SSO is not set" >>$(1); \
+		sed -i "/CONFIG_LEDS_INTEL_SSO\>/d" $(1); \
+		echo "# CONFIG_LEDS_INTEL_SSO is not set" >>$(1); \
 	fi; \
 	)
 endef

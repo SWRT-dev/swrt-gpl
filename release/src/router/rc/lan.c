@@ -1373,7 +1373,7 @@ void start_lan(void)
 
 	convert_routes();
 
-#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_REALTEK)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_REALTEK) || defined(RTCONFIG_LANTIQ)
 	init_wl();
 #endif
 
@@ -5030,7 +5030,7 @@ void start_lan_wl(void)
 #endif    
 #endif    
 
-#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_QSR10G)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_QSR10G) || defined(RTCONFIG_LANTIQ)
 	init_wl();
 #endif
 

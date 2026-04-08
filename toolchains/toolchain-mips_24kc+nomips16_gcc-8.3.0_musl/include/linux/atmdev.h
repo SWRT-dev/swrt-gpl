@@ -106,8 +106,6 @@ struct atm_dev_stats {
 #endif
 #define ATM_DROPPARTY 	_IOW('a', ATMIOC_SPECIAL+5,int)
 					/* drop party from p2mp call */
-#define ATM_DELBACKENDIF _IOW('a',ATMIOC_SPECIAL+6,atm_backend_t)
-                                       /* set backend to remove if */
 
 /*
  * These are backend handkers that can be set via the ATM_SETBACKEND call

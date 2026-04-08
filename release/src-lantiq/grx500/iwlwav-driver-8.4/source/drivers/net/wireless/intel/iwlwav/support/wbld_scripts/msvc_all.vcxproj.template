@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="xconfig|Win32">
+      <Configuration>xconfig</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="oldconfig|Win32">
+      <Configuration>oldconfig</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+[!!!CONFIGURATIONS_LIST!!!]	
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A0273C6E-B460-4A0C-8E2C-20D089AB325A}</ProjectGuid>
+    <Keyword>MakeFileProj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='xconfig|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+	<IntDir>$(ProjectDir)msvcbld</IntDir>
+    <OutDir>$(ProjectDir)msvcbld</OutDir>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='oldconfig|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+	<IntDir>$(ProjectDir)msvcbld</IntDir>
+    <OutDir>$(ProjectDir)msvcbld</OutDir>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='xconfig|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='oldconfig|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='xconfig|Win32'">
+    <NMakeBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make xconfig"</NMakeBuildCommandLine>
+    <NMakeOutput></NMakeOutput>
+    <NMakeCleanCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make clean"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make clean xconfig"</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeForcedIncludes>$(ProjectDir)\.config.h</NMakeForcedIncludes>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='oldconfig|Win32'">
+    <NMakeBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make all"</NMakeBuildCommandLine>
+    <NMakeOutput></NMakeOutput>
+    <NMakeCleanCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make clean"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make clean all"</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;NDEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeForcedIncludes>$(ProjectDir)\.config.h</NMakeForcedIncludes>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='xconfig|Win32'">
+    <BuildLog>
+      <Path>$(OutDir)\$(ConfigurationName)_BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='oldconfig|Win32'">
+    <BuildLog>
+      <Path>$(OutDir)\$(ConfigurationName)_BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>
+[!!!CONFIGURATIONS!!!]
+  <ItemGroup>
+[!!!FILES2010!!!]
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

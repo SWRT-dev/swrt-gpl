@@ -339,6 +339,11 @@ typedef struct { unsigned __attr[2]; } pthread_rwlockattr_t;
 #endif
 
 
+#if defined(__NEED_struct__IO_FILE) && !defined(__DEFINED_struct__IO_FILE)
+struct _IO_FILE { char __x; };
+#define __DEFINED_struct__IO_FILE
+#endif
+
 #if defined(__NEED_FILE) && !defined(__DEFINED_FILE)
 typedef struct _IO_FILE FILE;
 #define __DEFINED_FILE

@@ -43,7 +43,7 @@ install:
 	@install -D $(PKG_BUILD_DIR)/dwpal_daemon $(INSTALLDIR)/usr/sbin/
 	@install -D $(PKG_BUILD_DIR)/libdwpal.so $(INSTALLDIR)/usr/lib/
 	@install -D $(PKG_BUILD_DIR)/libwv_core.so $(INSTALLDIR)/usr/lib/
-	@install -D $(PKG_BUILD_DIR)/libdwpald_client.so $(INSTALLDIR)/usr/share/acl.d/
+	@install -D $(PKG_BUILD_DIR)/libdwpald_client.so $(INSTALLDIR)/usr/lib/
 	@install -D dwpald_acl.json $(INSTALLDIR)/usr/share/acl.d/
 	@install -D dwpal_daemon_cap.json $(INSTALLDIR)/usr/share/capabilities/
 	#@install -D dwpal $(INSTALLDIR)/etc/init.d

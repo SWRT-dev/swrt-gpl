@@ -1,0 +1,70 @@
+This file contains any messages produced by compilers while
+running configure, to aid debugging if configure makes a mistake.
+
+configure:582: checking whether make sets ${MAKE}
+configure:611: checking for gcc
+configure:724: checking whether the C compiler (gcc  ) works
+configure:740: gcc -o conftest    conftest.c  1>&5
+configure:766: checking whether the C compiler (gcc  ) is a cross-compiler
+configure:771: checking whether we are using GNU C
+configure:799: checking whether gcc accepts -g
+configure:831: checking how to run the C preprocessor
+configure:941: checking for a BSD compatible install
+configure:996: checking for ranlib
+configure:1024: checking whether ln -s works
+configure:1047: checking for ANSI C header files
+configure:1154: checking for unistd.h
+configure:1154: checking for stdint.h
+configure:1154: checking for fcntl.h
+configure:1194: checking for elf.h
+configure:1194: checking for sys/elf.h
+configure:1194: checking for link.h
+configure:1194: checking for sys/link.h
+configure:1231: checking if gcc can compile elf.h
+configure:1282: checking for ar.h
+configure:1282: checking for libelf.h
+configure:1282: checking for nlist.h
+configure:1282: checking for gelf.h
+configure:1319: checking whether to install <libelf.h>, <nlist.h> and <gelf.h>
+configure:1335: checking for working const
+configure:1410: checking for off_t
+configure:1443: checking for size_t
+configure:1477: checking size of short
+configure:1516: checking size of int
+configure:1555: checking size of long
+configure:1594: checking size of long long
+configure:1634: checking size of __int64
+configure:1679: checking for struct Elf32_Dyn
+configure:1755: checking for struct nlist in elf.h
+configure:1790: checking for struct Elf64_Ehdr
+configure:1818: checking for Elf64_Addr
+configure:1846: checking for struct Elf64_Rel
+configure:1912: checking for Elf32_Verdef
+configure:1947: checking for Elf64_Verdef
+configure:1982: checking for SHT_SUNW_verdef
+configure:2009: checking for SHT_GNU_verdef
+configure:2046: checking for 64-bit integer
+configure:2077: checking for 32-bit integer
+configure:2106: checking for 16-bit integer
+configure:2138: checking for unistd.h
+configure:2177: checking for getpagesize
+configure:2230: checking for working mmap
+configure:2403: checking for ftruncate
+configure:2403: checking for memcmp
+configure:2403: checking for memcpy
+configure:2403: checking for memmove
+configure:2458: checking for memset
+configure:2520: checking whether overlapping arrays are copied correctly
+configure:2568: checking the coffee machine
+configure:2578: checking whether 64-bit ELF support is sufficient
+configure:2581: checking whether to include 64-bit support
+configure:2603: checking whether versioning support is sufficient
+configure:2623: checking whether to include versioning support
+configure:2661: checking whether NLS is requested
+configure:2678: checking for dgettext
+configure:2969: checking for catgets
+configure:3146: checking for gettext in -lintl
+configure:3194: checking host system type
+configure:3224: checking whether to build a shared library
+configure:3236: checking whether GNU naming conventions are requested
+configure:3251: checking for ld

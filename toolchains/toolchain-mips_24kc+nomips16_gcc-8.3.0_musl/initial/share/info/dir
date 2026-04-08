@@ -54,6 +54,7 @@ Software development
 * Ld: (ld).                     The GNU linker.
 * g++: (gcc).                   The GNU C++ compiler.
 * gcc: (gcc).                   The GNU Compiler Collection.
+* gccinstall: (gccinstall).     Installing the GNU Compiler Collection.
 * gccint: (gccint).             Internals of the GNU Compiler Collection.
 * gcov: (gcc) Gcov.             'gcov'--a test coverage program.
 * gcov-dump: (gcc) Gcov-dump.   'gcov-dump'--an offline gcda and gcno profile 

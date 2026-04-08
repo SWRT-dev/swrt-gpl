@@ -23,6 +23,7 @@ install:
 	@install -m 755 $(PKG_BUILD_DIR)/uboot_env $(INSTALLDIR)/usr/sbin/
 	@install -m 755 $(PKG_BUILD_DIR)/upgrade $(INSTALLDIR)/usr/sbin/
 	@install -m 755 vol_mgmt $(INSTALLDIR)/usr/sbin/
+	@install -m 755 upgrade_done $(INSTALLDIR)/usr/sbin/
 	$(STRIP) $(INSTALLDIR)/usr/sbin/read_img
 	$(STRIP) $(INSTALLDIR)/usr/sbin/uboot_env
 	$(STRIP) $(INSTALLDIR)/usr/sbin/upgrade

@@ -1,0 +1,2 @@
+TARGET_PLATFORMS="ugw7.4-axepoint ugw7.4-grx550"
+KLOCWORK_TARGET="ugw7.4-axepoint"

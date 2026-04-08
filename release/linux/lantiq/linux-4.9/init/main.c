@@ -322,7 +322,11 @@ static int __init init_setup(char *str)
 {
 	unsigned int i;
 
+#if defined(RAX40)
+	execute_command = "/sbin/init";
+#else
 	execute_command = str;
+#endif
 	/*
 	 * In case LILO is going to boot us with default command line,
 	 * it prepends "auto" before the whole cmdline which makes

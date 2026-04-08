@@ -1,0 +1,25 @@
+#
+# $Id: $
+#
+
+!include ..\BCLSockServerConfig.inc
+
+#
+# Libraries list
+#
+TARGETLIBS = \
+             $(SDK_LIB_PATH)\odbc32.lib \
+             $(SDK_LIB_PATH)\odbccp32.lib \
+             $(SDK_LIB_PATH)\Ws2_32.lib \
+             $(CRT_LIB_PATH)\oldnames.lib \
+             $(DRIVER_ROOT)\$(MTLK_LIB_PATH)\*\BCL_LIB.lib
+                        
+LINKLIBS   = $(DRIVER_ROOT)\$(MTLK_TOOLS_BIN_PATH)\*\BCLHyp.lib
+
+#
+# Setup VisualC++ source browsing
+#
+BSCMAKE_FLAGS=$(BSCMAKE_FLAGS) -n
+
+INCLUDES = $(INCLUDES);       \
+           $(SDK_INC_PATH);

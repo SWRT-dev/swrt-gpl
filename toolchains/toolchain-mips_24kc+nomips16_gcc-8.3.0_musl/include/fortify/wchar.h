@@ -111,17 +111,16 @@ _FORTIFY_FN(mbstowcs) size_t mbstowcs(wchar_t *__ws, const char *__s, size_t __w
 
 _FORTIFY_FN(wcrtomb) size_t wcrtomb(char *__s, wchar_t __w, mbstate_t *__st)
 {
-	char __buf[MB_LEN_MAX];
-	size_t __b = __builtin_object_size(__s, 0);
-	size_t __r;
+	if (__s && MB_LEN_MAX > __builtin_object_size(__s, 2)) {
+		char __buf[MB_LEN_MAX];
+		size_t __r;
 
-	if (__s) {
 		__r = __orig_wcrtomb(__buf, __w, __st);
 		if (__r == (size_t)-1)
 			return __r;
-		if (__r > __b)
+		if (__r > __builtin_object_size(__s, 0))
 			__builtin_trap();
-		memcpy(__s, __buf, __r);
+		__builtin_memcpy(__s, __buf, __r);
 		return __r;
 	}
 	return __orig_wcrtomb(__s, __w, __st);
@@ -218,7 +217,7 @@ _FORTIFY_FN(wctomb) int wctomb(char *__s, wchar_t __w)
 {
 	size_t __b = __builtin_object_size(__s, 0);
 
-	if (__s && MB_CUR_MAX > __b)
+	if (__s && MB_LEN_MAX > __b && MB_CUR_MAX > __b)
 		__builtin_trap();
 	return __orig_wctomb(__s, __w);
 }

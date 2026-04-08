@@ -35,13 +35,6 @@ enum {
 #define TC_ACT_QUEUED		5
 #define TC_ACT_REPEAT		6
 #define TC_ACT_REDIRECT		7
-#define TC_ACT_TRAP		8 /* For hw path, this means "trap to cpu"
-				   * and don't further process the frame
-				   * in hardware. For sw path, this is
-				   * equivalent of TC_ACT_STOLEN - drop
-				   * the skb and act like everything
-				   * is alright.
-				   */
 #define TC_ACT_JUMP		0x10000000
 
 /* Action type identifiers*/
@@ -135,7 +128,6 @@ enum {
 	TCA_U32_MARK,
 	TCA_U32_FLAGS,
 	TCA_U32_PAD,
-	TCA_U32_EXTMARK,
 	__TCA_U32_MAX
 };
 
@@ -401,57 +393,6 @@ enum {
 	TCA_FLOWER_KEY_TCP_DST_MASK,	/* be16 */
 	TCA_FLOWER_KEY_UDP_SRC_MASK,	/* be16 */
 	TCA_FLOWER_KEY_UDP_DST_MASK,	/* be16 */
-	TCA_FLOWER_KEY_SCTP_SRC_MASK,	/* be16 */
-	TCA_FLOWER_KEY_SCTP_DST_MASK,	/* be16 */
-
-	TCA_FLOWER_KEY_SCTP_SRC,	/* be16 */
-	TCA_FLOWER_KEY_SCTP_DST,	/* be16 */
-
-	TCA_FLOWER_KEY_ENC_UDP_SRC_PORT,	/* be16 */
-	TCA_FLOWER_KEY_ENC_UDP_SRC_PORT_MASK,	/* be16 */
-	TCA_FLOWER_KEY_ENC_UDP_DST_PORT,	/* be16 */
-	TCA_FLOWER_KEY_ENC_UDP_DST_PORT_MASK,	/* be16 */
-
-	TCA_FLOWER_KEY_FLAGS,		/* be32 */
-	TCA_FLOWER_KEY_FLAGS_MASK,	/* be32 */
-
-	TCA_FLOWER_KEY_ICMPV4_CODE,	/* u8 */
-	TCA_FLOWER_KEY_ICMPV4_CODE_MASK,/* u8 */
-	TCA_FLOWER_KEY_ICMPV4_TYPE,	/* u8 */
-	TCA_FLOWER_KEY_ICMPV4_TYPE_MASK,/* u8 */
-	TCA_FLOWER_KEY_ICMPV6_CODE,	/* u8 */
-	TCA_FLOWER_KEY_ICMPV6_CODE_MASK,/* u8 */
-	TCA_FLOWER_KEY_ICMPV6_TYPE,	/* u8 */
-	TCA_FLOWER_KEY_ICMPV6_TYPE_MASK,/* u8 */
-
-	TCA_FLOWER_KEY_ARP_SIP,		/* be32 */
-	TCA_FLOWER_KEY_ARP_SIP_MASK,	/* be32 */
-	TCA_FLOWER_KEY_ARP_TIP,		/* be32 */
-	TCA_FLOWER_KEY_ARP_TIP_MASK,	/* be32 */
-	TCA_FLOWER_KEY_ARP_OP,		/* u8 */
-	TCA_FLOWER_KEY_ARP_OP_MASK,	/* u8 */
-	TCA_FLOWER_KEY_ARP_SHA,		/* ETH_ALEN */
-	TCA_FLOWER_KEY_ARP_SHA_MASK,	/* ETH_ALEN */
-	TCA_FLOWER_KEY_ARP_THA,		/* ETH_ALEN */
-	TCA_FLOWER_KEY_ARP_THA_MASK,	/* ETH_ALEN */
-
-	TCA_FLOWER_KEY_MPLS_TTL,	/* u8 - 8 bits */
-	TCA_FLOWER_KEY_MPLS_BOS,	/* u8 - 1 bit */
-	TCA_FLOWER_KEY_MPLS_TC,		/* u8 - 3 bits */
-	TCA_FLOWER_KEY_MPLS_LABEL,	/* be32 - 20 bits */
-
-	TCA_FLOWER_KEY_TCP_FLAGS,	/* be16 */
-	TCA_FLOWER_KEY_TCP_FLAGS_MASK,	/* be16 */
-
-	TCA_FLOWER_KEY_IP_TOS,		/* u8 */
-	TCA_FLOWER_KEY_IP_TOS_MASK,	/* u8 */
-	TCA_FLOWER_KEY_IP_TTL,		/* u8 */
-	TCA_FLOWER_KEY_IP_TTL_MASK,	/* u8 */
-
-	TCA_FLOWER_KEY_CVLAN_ID,	/* be16 */
-	TCA_FLOWER_KEY_CVLAN_PRIO,	/* u8   */
-	TCA_FLOWER_KEY_CVLAN_ETH_TYPE,	/* be16 */
-
 	__TCA_FLOWER_MAX,
 };
 

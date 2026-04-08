@@ -1,0 +1,24 @@
+#
+# $Id$
+#
+
+TARGETTYPE=LIBRARY
+
+RELEASETYPE=CUSTOM
+
+C_DEFINES=$(C_DEFINES) \
+ 	-DNDIS51_MINIPORT -DNDIS51
+
+DDK_TARGET_OS = $(_TGTOS)
+DDKBUILDENV   = $(PLT)\$(WINCEDEBUG)\$(_TGTCPU)
+NTMAKEENV     = $(_MAKEENVROOT)
+
+!include ../common.inc
+
+CDEFINES = $(C_DEFINES)
+
+INCLUDES = $(INCLUDES);                         \
+           ..\..\windows\hw\mmb\wce;            \
+           $(_PROJECTROOT)\cesysgen\SDK\INC;    \
+           $(_PROJECTROOT)\cesysgen\OAK\INC;    \
+           $(_PROJECTROOT)\cesysgen\DDK\INC;

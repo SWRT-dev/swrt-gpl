@@ -1,0 +1,50 @@
+include $(abs_top_srcdir)/Makefile.am.kbuild
+
+ifeq ($(CONFIG_LINUX_BACKPORT), y)
+NOSTDINC_FLAGS := \
+	-I$(kernel_dir)/../compat-wireless-2016-10-08/backport-include/ \
+	-I$(kernel_dir)/../compat-wireless-2016-10-08/backport-include/uapi \
+	-I$(kernel_dir)/../compat-wireless-2016-10-08/include/ \
+	-I$(kernel_dir)/../compat-wireless-2016-10-08/include/uapi \
+	-include $(kernel_dir)/../compat-wireless-2016-10-08/backport-include/backport/backport.h \
+	$(CFLAGS)
+endif
+
+obj-m := mtlkroot.o
+
+mtlkroot-objs := ../log_drv.o logdrv_osdep.o mtlkroot.o     \
+                 mtlkirbd_root.o nlmsgs.o mtlkcdev.o        \
+                 mtlkndev.o                                 \
+                 mtlk_assert.o                              \
+                 $(driver_linux_builddir)/osal_defs.o       \
+                 $(driver_linux_builddir)/log_osdep.o       \
+                 $(driver_shared_builddir)/mtlk_snprintf.o  \
+                 $(tools_shared_builddir)/mtlkirbhash.o     \
+                 $(wireless_shared_builddir)/mtlkstartup.o  \
+                 $(wireless_shared_builddir)/mtlk_algorithms.o
+
+ifeq ($(CONFIG_ENABLE_OBJPOOL), y)
+  mtlkroot-objs += $(wireless_shared_builddir)/mem_leak.o $(wireless_shared_builddir)/mtlk_objpool.o
+endif
+
+# Include extended debug info regardless current Linux kernel configuration.
+# This is required for WLAN logger purposes.
+# For this, unset DEBUG_INFO_REDUCED even if it is defined in Linux ".config" file.
+#
+DEBUG_INFO_REDUCED :=
+
+EXTRA_CFLAGS += -g \
+                -I$(abs_srcdir)/..                 \
+                -I$(abs_rtlogger_shared_srcdir)    \
+                -I$(abs_driver_linux_srcdir)       \
+                -I$(abs_wireless_shared_srcdir)    \
+                -I$(abs_driver_shared_srcdir)      \
+                -I$(abs_root_driver_shared_srcdir) \
+                -I$(abs_tools_shared_srcdir) \
+                -I$(abs_root_driver_linux_srcdir) 
+
+logger_origin_name = mtlkroot
+logger_binary_name = mtlkroot.o
+logger_origin_id = 7
+
+include $(abs_top_srcdir)/Makefile.am.module_helper

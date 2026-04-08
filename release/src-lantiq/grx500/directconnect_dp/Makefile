@@ -3,6 +3,12 @@ include ../sdk.config
 include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
 
+EXTRA_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CXXFLAGS += -fno-pic -mno-abicalls
+TARGET_ASFLAGS_DEFAULT += -fno-pic -mno-abicalls
+TARGET_CPPFLAGS += -fno-pic -mno-abicalls
+
 EXTRA_CFLAGS += -DCONFIG_DIRECTCONNECT_DP_DBG
 EXTRA_CFLAGS += -I$(PKG_BUILD_DIR)/include
 

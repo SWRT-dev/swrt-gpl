@@ -1,5 +1,5 @@
 /* Generated automatically by the program 'build/genpreds'
-   from the machine description file '/home/paldier/isdk/8.4/openwrt/build_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/gcc-8.3.0/gcc/config/mips/mips.md'.  */
+   from the machine description file '/home/paldier/intel/prplos/build_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/gcc-8.3.0/gcc/config/mips/mips.md'.  */
 
 #ifndef GCC_TM_PREDS_H
 #define GCC_TM_PREDS_H

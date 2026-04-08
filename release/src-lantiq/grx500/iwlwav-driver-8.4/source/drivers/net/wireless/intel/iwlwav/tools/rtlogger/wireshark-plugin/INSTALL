@@ -1,0 +1,16 @@
+1. Unpack Wireshark source code to $(WIRESHARK)
+2. Patch Wireshark build system with wiresharkreshark_<ver>-plugin-mtlklog.diff
+3. Place plugin's source and auxiliary files in $(WIRESHARK)/plugins/mtlklog
+	AUTHORS
+	ChangeLog
+	COPYING
+	Makefile.am
+	Makefile.common
+	Makefile.nmake
+	moduleinfo.h
+	moduleinfo.nmake
+	mtlklog.c
+	plugin.rc.in
+4. Follow regular Wireshark build instructions (./autogen.sh - once after the patch is applied, ./configure, make)
+* Win32 build: http://www.wireshark.org/docs/wsdg_html_chunked/ChSetupWin32.html
+

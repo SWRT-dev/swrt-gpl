@@ -1,0 +1,88 @@
+diff -u -r wireshark-1.6.7-clean/CMakeLists.txt wireshark-1.6.7/CMakeLists.txt
+--- wireshark-1.6.7-clean/CMakeLists.txt	2012-04-06 21:51:14.000000000 +0300
++++ wireshark-1.6.7/CMakeLists.txt	2016-02-01 15:55:28.921521116 +0200
+@@ -388,6 +388,7 @@
+ 		plugins/sercosiii
+ 		plugins/stats_tree
+ 		plugins/unistim
++		plugins/wavelog
+ 		plugins/wimax
+ 		plugins/wimaxasncp
+ 	)
+diff -u -r wireshark-1.6.7-clean/configure.in wireshark-1.6.7/configure.in
+--- wireshark-1.6.7-clean/configure.in	2012-04-06 21:51:14.000000000 +0300
++++ wireshark-1.6.7/configure.in	2016-02-01 15:55:28.921521116 +0200
+@@ -2015,6 +2015,7 @@
+   plugins/sercosiii/Makefile
+   plugins/stats_tree/Makefile
+   plugins/unistim/Makefile
++  plugins/wavelog/Makefile
+   plugins/wimax/Makefile
+   plugins/wimaxasncp/Makefile
+   tools/Makefile
+diff -u -r wireshark-1.6.7-clean/epan/Makefile.am wireshark-1.6.7/epan/Makefile.am
+--- wireshark-1.6.7-clean/epan/Makefile.am	2012-04-06 21:51:10.000000000 +0300
++++ wireshark-1.6.7/epan/Makefile.am	2016-02-01 15:55:28.921521116 +0200
+@@ -243,6 +243,7 @@
+ 	../plugins/sercosiii/packet-sercosiii_1v1_mdt_devctrl.c \
+ 	../plugins/sercosiii/packet-sercosiii_1v1_mst.c \
+ 	../plugins/sercosiii/packet-sercosiii_1v1_svc.c \
++	../plugins/wavelog/packet-wavelog.c \
+         ../plugins/wimax/crc.c \
+         ../plugins/wimax/crc_data.c \
+         ../plugins/wimax/mac_hd_generic_decoder.c \
+diff -u -r wireshark-1.6.7-clean/Makefile.am wireshark-1.6.7/Makefile.am
+--- wireshark-1.6.7-clean/Makefile.am	2012-04-06 21:51:14.000000000 +0300
++++ wireshark-1.6.7/Makefile.am	2016-02-01 15:55:28.921521116 +0200
+@@ -293,6 +293,7 @@
+ 	-dlopen plugins/sercosiii/sercosiii.la \
+ 	-dlopen plugins/stats_tree/stats_tree.la \
+ 	-dlopen plugins/unistim/unistim.la \
++	-dlopen plugins/wavelog/wavelog.la \
+ 	-dlopen plugins/wimax/wimax.la
+ 
+ WTAP_PLUGIN_SOURCES = \
+diff -u -r wireshark-1.6.7-clean/packaging/nsis/Makefile.nmake wireshark-1.6.7/packaging/nsis/Makefile.nmake
+--- wireshark-1.6.7-clean/packaging/nsis/Makefile.nmake	2012-04-06 21:51:12.000000000 +0300
++++ wireshark-1.6.7/packaging/nsis/Makefile.nmake	2016-02-01 15:55:28.921521116 +0200
+@@ -61,6 +61,7 @@
+ 	../../plugins/sercosiii/sercosiii.dll \
+ 	../../plugins/stats_tree/stats_tree.dll \
+ 	../../plugins/unistim/unistim.dll \
++	../../plugins/wavelog/wavelog.dll \
+ 	../../plugins/wimax/wimax.dll \
+ 	../../plugins/wimaxasncp/wimaxasncp.dll \
+ 	$(CUSTOM_PLUGINS)
+diff -u -r wireshark-1.6.7-clean/packaging/nsis/wireshark.nsi wireshark-1.6.7/packaging/nsis/wireshark.nsi
+--- wireshark-1.6.7-clean/packaging/nsis/wireshark.nsi	2012-04-06 21:51:12.000000000 +0300
++++ wireshark-1.6.7/packaging/nsis/wireshark.nsi	2016-02-01 15:55:28.921521116 +0200
+@@ -928,6 +928,7 @@
+ File "..\..\plugins\profinet\profinet.dll"
+ File "..\..\plugins\sercosiii\sercosiii.dll"
+ File "..\..\plugins\unistim\unistim.dll"
++File "..\..\plugins\wavelog\wavelog.dll"
+ File "..\..\plugins\wimax\wimax.dll"
+ File "..\..\plugins\wimaxasncp\wimaxasncp.dll"
+ !include "custom_plugins.txt"
+diff -u -r wireshark-1.6.7-clean/plugins/Makefile.am wireshark-1.6.7/plugins/Makefile.am
+--- wireshark-1.6.7-clean/plugins/Makefile.am	2012-04-06 21:50:49.000000000 +0300
++++ wireshark-1.6.7/plugins/Makefile.am	2016-02-01 15:55:28.921521116 +0200
+@@ -37,6 +37,7 @@
+ 	sercosiii \
+ 	stats_tree \
+ 	unistim \
++	wavelog \
+ 	wimax \
+ 	wimaxasncp
+ 
+diff -u -r wireshark-1.6.7-clean/plugins/Makefile.nmake wireshark-1.6.7/plugins/Makefile.nmake
+--- wireshark-1.6.7-clean/plugins/Makefile.nmake	2012-04-06 21:50:49.000000000 +0300
++++ wireshark-1.6.7/plugins/Makefile.nmake	2016-02-01 15:55:28.921521116 +0200
+@@ -21,6 +21,7 @@
+ 	sercosiii   \
+ 	stats_tree  \
+ 	unistim     \
++	wavelog     \
+ 	wimax       \
+ 	wimaxasncp
+ 

@@ -1,0 +1,338 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="common.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_abbrev.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_addr_finder.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_alloc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_arange.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_die_deliv.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_elf_access.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_error.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_form.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_frame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_frame2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_frame3.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_funcs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_global.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_harmless.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_init_finish.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_leb.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_line.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_line2.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_loc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_macro.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_names.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_original_elf_init.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_print_lines.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_pubtypes.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_query.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_ranges.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_sort_line.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_string.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_stubs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_types.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_util.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_vars.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="dwarf_weaks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="gennames.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="malloc_check.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_alloc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_arange.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_die.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_encode_nm.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_error.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_expr.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_finish.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_forms.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_frame.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_funcs.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_init.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_line.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_macinfo.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_pubnames.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_reloc.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_reloc_stream.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_reloc_symbolic.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_section.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_types.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_vars.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="pro_weaks.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="common.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_abbrev.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_alloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_arange.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_base_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_die_deliv.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_elf_access.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_error.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_frame.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_funcs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_global.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_harmless.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_incl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_line.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_loc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_macro.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_names.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_names_enum.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_names_new.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_opaque.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_vars.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="dwarf_weaks.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libdwarf.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="libdwarfdefs.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="malloc_check.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_alloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_arange.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_die.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_encode_nm.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_error.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_expr.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_frame.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_incl.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_line.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_macinfo.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_opaque.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_reloc.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_reloc_stream.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_reloc_symbolic.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_section.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_types.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="pro_util.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="cmplrs\dwarf_addr_finder.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="config.h.in">
+      <Filter>Header Files</Filter>
+    </None>
+  </ItemGroup>
+</Project>

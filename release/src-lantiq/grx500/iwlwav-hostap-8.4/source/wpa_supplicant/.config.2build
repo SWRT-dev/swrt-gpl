@@ -1,0 +1,18 @@
+
+COREDIR := /home/toolchains/ugw/tag_built_7.2_pr1_20170524T155201-CV-05.04.00.74/openwrt/core
+
+TARGMIPSDIR := $(COREDIR)/build_dir/target-mips_mips32_uClibc-0.9.33.2_grx550_2000_mr_vdsl_lte_sec_gw_72
+TOOLMIPSDIR := $(COREDIR)/staging_dir/toolchain-mips_mips32_gcc-4.8-linaro_uClibc-0.9.33.2
+BINDIR := $(TOOLMIPSDIR)/bin
+LIBNL_INC := $(TARGMIPSDIR)/libnl-3.2.25/include
+
+CFLAGS += -I$(TOOLMIPSDIR)/include -I$(TARGMIPSDIR)/libnl-3.2.25/include \
+-I$(TARGMIPSDIR)/openssl-1.0.2h/include
+LDFLAGS += -L$(TARGMIPSDIR)/libnl-3.2.25/lib/.libs \
+-L$(TARGMIPSDIR)/openssl-1.0.2h
+IFX_LDFLAGS := $(LDFLAGS)
+
+CC := $(BINDIR)/mips-openwrt-linux-uclibc-gcc
+LD := $(BINDIR)/mips-openwrt-linux-uclibc-ld
+
+STRIP := $(BINDIR)/mips-openwrt-linux-uclibc-strip

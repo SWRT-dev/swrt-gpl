@@ -3,6 +3,13 @@ include ../sdk.config
 include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
 
+EXTRA_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CXXFLAGS += -fno-pic -mno-abicalls
+TARGET_ASFLAGS_DEFAULT += -fno-pic -mno-abicalls
+TARGET_CPPFLAGS += -fno-pic -mno-abicalls
+PKG_EXTRA_CFLAGS += -fno-pic -mno-abicalls
+
 PKG_EXTRA_CFLAGS += -DPPA_SS_VERSION='\"ugw_8.5.2.10\"'
 ifneq ($(CONFIG_PACKAGE_kmod-ppa-drv-accel),)
   PKG_EXTRA_CFLAGS += -DCONFIG_PPA_ACCEL
@@ -65,14 +72,11 @@ INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 
 all:
 	$(KERNEL_MAKE) $(PARALLEL_BUILD) $(MAKE_OPTS) EXTRA_CFLAGS="$(PKG_EXTRA_CFLAGS)" M="$(PKG_BUILD_DIR)/src" modules
-	$(TARGET_MAKE) $(TARGET_CONFIGURE_OPTS) -C $(PKG_BUILD_DIR)/tools/ppacmd all
 	touch stamp-h1
 
 install:
 	@[ -d $(INSTALLKMODDIR) ] || install -d $(INSTALLKMODDIR)
-	@[ -d $(INSTALLDIR)/usr/sbin ] || install -d $(INSTALLDIR)/usr/sbin
 	@[ -d $(INSTALLDIR)/lib/firmware ] || install -d $(INSTALLDIR)/lib/firmware
-	@install -m 755 $(PKG_BUILD_DIR)/tools/ppacmd/ppacmd $(INSTALLDIR)/usr/sbin/
 	@install -D $(PKG_BUILD_DIR)/src/ppa_api/ppa_api.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/src/ppa_api/ppa_api_sw_accel_mod.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/src/ppa_api/ppa_drv_stack_al.ko $(INSTALLKMODDIR)
@@ -82,7 +86,6 @@ install:
 	@install -D $(PKG_BUILD_DIR)/src/platform/xrx500/mpe_fw_be.img $(INSTALLDIR)/lib/firmware/
 	@install -D $(PKG_BUILD_DIR)/src/mac_violation_mirror/mac_violation_mirror.ko $(INSTALLKMODDIR)
 	@install -D $(PKG_BUILD_DIR)/src/platform/xrx500/hw_tcp_litepath.ko $(INSTALLKMODDIR)
-	@$(STRIP) $(INSTALLDIR)/usr/sbin/ppacmd
 	@$(STRIPX) $(INSTALLKMODDIR)/*.ko
 
 clean:

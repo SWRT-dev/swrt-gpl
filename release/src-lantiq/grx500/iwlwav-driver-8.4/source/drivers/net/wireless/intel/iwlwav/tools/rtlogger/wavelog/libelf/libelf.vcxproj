@@ -1,0 +1,155 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{0109BC3D-693C-4423-A4EB-4F9A98F809C9}</ProjectGuid>
+    <RootNamespace>libelf</RootNamespace>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>NotSet</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>StaticLibrary</ConfigurationType>
+    <CharacterSet>NotSet</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <_ProjectFileVersion>10.0.30319.1</_ProjectFileVersion>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(Configuration)\</IntDir>
+    <OutDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)$(Configuration)\</OutDir>
+    <IntDir Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(Configuration)\</IntDir>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <Optimization>Disabled</Optimization>
+      <AdditionalIncludeDirectories>lib</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_BIND_TO_CURRENT_CRT_VERSION=1;WIN32_LEAN_AND_MEAN;_LIB;HAVE_CONFIG_H;</PreprocessorDefinitions>
+      <MinimalRebuild>true</MinimalRebuild>
+      <BasicRuntimeChecks>EnableFastChecks</BasicRuntimeChecks>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+    <Lib>
+      <IgnoreAllDefaultLibraries>true</IgnoreAllDefaultLibraries>
+    </Lib>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <Optimization>MaxSpeed</Optimization>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <AdditionalIncludeDirectories>lib</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CRT_SECURE_NO_DEPRECATE;_CRT_NONSTDC_NO_DEPRECATE;_CRT_SECURE_NO_WARNINGS;_BIND_TO_CURRENT_CRT_VERSION=1;WIN32_LEAN_AND_MEAN;_LIB;HAVE_CONFIG_H;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <PrecompiledHeader>
+      </PrecompiledHeader>
+      <WarningLevel>Level3</WarningLevel>
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemGroup>
+    <ClCompile Include="lib\32.fsize.c" />
+    <ClCompile Include="lib\32.getehdr.c" />
+    <ClCompile Include="lib\32.getphdr.c" />
+    <ClCompile Include="lib\32.getshdr.c" />
+    <ClCompile Include="lib\32.newehdr.c" />
+    <ClCompile Include="lib\32.newphdr.c" />
+    <ClCompile Include="lib\32.xlatetof.c" />
+    <ClCompile Include="lib\64.xlatetof.c" />
+    <ClCompile Include="lib\assert.c" />
+    <ClCompile Include="lib\begin.c" />
+    <ClCompile Include="lib\checksum.c" />
+    <ClCompile Include="lib\cntl.c" />
+    <ClCompile Include="lib\cook.c" />
+    <ClCompile Include="lib\data.c" />
+    <ClCompile Include="lib\end.c" />
+    <ClCompile Include="lib\errmsg.c" />
+    <ClCompile Include="lib\errno.c" />
+    <ClCompile Include="lib\fill.c" />
+    <ClCompile Include="lib\flag.c" />
+    <ClCompile Include="lib\gelfehdr.c" />
+    <ClCompile Include="lib\gelfphdr.c" />
+    <ClCompile Include="lib\gelfshdr.c" />
+    <ClCompile Include="lib\gelftrans.c" />
+    <ClCompile Include="lib\getarhdr.c" />
+    <ClCompile Include="lib\getaroff.c" />
+    <ClCompile Include="lib\getarsym.c" />
+    <ClCompile Include="lib\getbase.c" />
+    <ClCompile Include="lib\getdata.c" />
+    <ClCompile Include="lib\getident.c" />
+    <ClCompile Include="lib\getscn.c" />
+    <ClCompile Include="lib\hash.c" />
+    <ClCompile Include="lib\input.c" />
+    <ClCompile Include="lib\kind.c" />
+    <ClCompile Include="lib\memset.c" />
+    <ClCompile Include="lib\ndxscn.c" />
+    <ClCompile Include="lib\newdata.c" />
+    <ClCompile Include="lib\newscn.c" />
+    <ClCompile Include="lib\next.c" />
+    <ClCompile Include="lib\nextscn.c" />
+    <ClCompile Include="lib\nlist.c" />
+    <ClCompile Include="lib\opt.delscn.c" />
+    <ClCompile Include="lib\rand.c" />
+    <ClCompile Include="lib\rawdata.c" />
+    <ClCompile Include="lib\rawfile.c" />
+    <ClCompile Include="lib\strptr.c" />
+    <ClCompile Include="lib\swap64.c" />
+    <ClCompile Include="lib\update.c" />
+    <ClCompile Include="lib\verdef_32_tof.c" />
+    <ClCompile Include="lib\verdef_32_tom.c" />
+    <ClCompile Include="lib\verdef_64_tof.c" />
+    <ClCompile Include="lib\verdef_64_tom.c" />
+    <ClCompile Include="lib\version.c" />
+    <ClCompile Include="lib\x.elfext.c" />
+    <ClCompile Include="lib\x.movscn.c" />
+    <ClCompile Include="lib\x.remscn.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="lib\byteswap.h" />
+    <ClInclude Include="lib\config.h" />
+    <ClInclude Include="lib\elf_repl.h" />
+    <ClInclude Include="lib\errors.h" />
+    <ClInclude Include="lib\ext_types.h" />
+    <ClInclude Include="lib\gelf.h" />
+    <ClInclude Include="lib\libelf.h" />
+    <ClInclude Include="lib\nlist.h" />
+    <ClInclude Include="lib\private.h" />
+    <ClInclude Include="lib\sys_elf.h" />
+    <ClInclude Include="lib\verdef.h" />
+    <ClInclude Include="lib\verneed.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="ReadMe.txt" />
+  </ItemGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>

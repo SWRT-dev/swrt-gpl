@@ -111,6 +111,10 @@
 	};
 };
 
+&cpu1 {
+	default-OS = "LINUX";
+};
+
 &pcie0 {
 	reset-gpios = <&gpio0 17 GPIO_ACTIVE_LOW>;
 };
@@ -121,4 +125,20 @@
 
 &pcie2 {
 	reset-gpios = <&gpio0 7 GPIO_ACTIVE_HIGH>;
+};
+
+&ssc1 {
+		status="disabled";
+};
+
+&ssogpio {
+	status = "disabled";
+};
+
+&ssoled {
+	status = "disabled";
+};
+
+&i2c {
+	status = "disabled";
 };

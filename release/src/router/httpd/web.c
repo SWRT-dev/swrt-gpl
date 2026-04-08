@@ -7791,6 +7791,13 @@ static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 #endif
 #endif
 #elif defined(RTCONFIG_LANTIQ)
+#if defined(RTCONFIG_MUSL_LIBC)//kernel4.9
+	char temperature[8] = { 0 };
+
+	if (f_read_string("/sys/class/thermal/thermal_zone0/temp", temperature, sizeof(temperature)) <= 0)
+		*temperature = '\0';
+	return websWrite(wp, "%3.3f", (double) safe_atoi(temperature) / 1000);
+#else
 	FILE *fp;
 	int temperature;
 	if ((fp = fopen("/sys/kernel/debug/ltq_tempsensor/allsensors", "r")) != NULL) {
@@ -7799,6 +7806,7 @@ static int get_cpu_temperature(int eid, webs_t wp, int argc, char_t **argv)
 	}
 
 	return websWrite(wp, "%d", (temperature/1000));
+#endif
 #elif defined(RTCONFIG_RALINK)
 #if defined(RTCONFIG_RALINK_MT7621) || defined(RTCONFIG_RALINK_EN7561)
 	return websWrite(wp, "0");//support

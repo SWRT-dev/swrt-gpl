@@ -1,0 +1,6 @@
+WAVELOG is the dissector that parses Lantiq's log messages FW and DRV used in WAVE300 related projects.
+
+The authors are:
+    Andrejs Vasiljevs  <Andrejs.Vasiljevs@lantiq.com>
+    Aleksandrs Sumilovs <A.Sumilovs@lantiq.com>
+

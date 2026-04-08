@@ -1,0 +1,42 @@
+		<Configuration
+			Name="[!!!CGF_NAME!!!] xconfig|Win32"
+			OutputDirectory="$(InputDir)msvcbld"
+			IntermediateDirectory="$(InputDir)msvcbld"
+			ConfigurationType="0"
+			BuildLogFile="$(OutDir)\$(ConfigurationName)_BuildLog.htm"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;cp -f builds/[!!!CGF_NAME!!!]/.config . ; make xconfig&quot;"
+				ReBuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;cp -f builds/[!!!CGF_NAME!!!]/.config . ; rm -rf builds/[!!!CGF_NAME!!!]; make xconfig&quot;"
+				CleanCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;cp -f builds/[!!!CGF_NAME!!!]/.config; rm -rf builds/[!!!CGF_NAME!!!]&quot;"
+				Output=""
+				PreprocessorDefinitions="WIN32;_DEBUG"
+				IncludeSearchPath="$(ProjectDir)\wireless\driver\linux"
+				ForcedIncludes="$(ProjectDir)\builds\[!!!CGF_NAME!!!]\.config.h"
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>
+		<Configuration
+			Name="[!!!CGF_NAME!!!] oldconfig|Win32"
+			OutputDirectory="$(InputDir)msvcbld"
+			IntermediateDirectory="$(InputDir)msvcbld"
+			ConfigurationType="0"
+			BuildLogFile="$(OutDir)\$(ConfigurationName)_BuildLog.htm"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make -C builds/[!!!CGF_NAME!!!] all&quot;"
+				ReBuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make -C builds/[!!!CGF_NAME!!!] clean all&quot;"
+				CleanCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make -C builds/[!!!CGF_NAME!!!] clean&quot;"
+				Output=""
+				PreprocessorDefinitions="WIN32;_DEBUG"
+				IncludeSearchPath="$(ProjectDir)\wireless\driver\linux"
+				ForcedIncludes="$(ProjectDir)\builds\[!!!CGF_NAME!!!]\.config.h"
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>

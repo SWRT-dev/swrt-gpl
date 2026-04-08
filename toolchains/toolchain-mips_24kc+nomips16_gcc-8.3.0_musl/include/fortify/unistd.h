@@ -75,7 +75,7 @@ _FORTIFY_FN(getgroups) int getgroups(int __l, gid_t *__s)
 {
 	size_t __b = __builtin_object_size(__s, 0);
 
-	if (__l < 0 || (size_t)__l > __b / sizeof(gid_t))
+	if (__l > 0 && (unsigned)__l > __b / sizeof(gid_t))
 		__builtin_trap();
 	return __orig_getgroups(__l, __s);
 }

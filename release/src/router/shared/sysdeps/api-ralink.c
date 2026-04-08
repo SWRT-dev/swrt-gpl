@@ -92,11 +92,6 @@ int get_mt7621_wan_unit_bytecount(int unit, unsigned long long *tx, unsigned lon
 #if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
 #include <limits.h>		//PATH_MAX, LONG_MIN, LONG_MAX
 #define GPIOLIB_DIR	"/sys/class/gpio"
-#if defined(RTCONFIG_SOC_MT7981)
-#define GPIOBASE 0
-#else
-#define GPIOBASE 411
-#endif
 
 /* Export specified GPIO
  * @return:
@@ -111,12 +106,12 @@ static int __export_gpio(uint32_t gpio)
 		_dprintf("%s does not exist!\n", __func__);
 		return -1;
 	}
-	snprintf(gpio_path, sizeof(gpio_path),"%s/gpio%d", GPIOLIB_DIR, gpio + GPIOBASE);
+	snprintf(gpio_path, sizeof(gpio_path),"%s/gpio%d", GPIOLIB_DIR, gpio);
 	if (d_exists(gpio_path))
 		return 0;
 
 	snprintf(export_path, sizeof(export_path), "%s/export", GPIOLIB_DIR);
-	snprintf(gpio_str, sizeof(gpio_str), "%d", gpio + GPIOBASE);
+	snprintf(gpio_str, sizeof(gpio_str), "%d", gpio);
 	f_write_string(export_path, gpio_str, 0, 0);
 
 	return 0;
@@ -167,7 +162,7 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
 	if (dir == GPIO_DIR_OUT) {
 		dir_str = "out";		/* output, low voltage */
 		*v = '\0';
-		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
+		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
 		if (f_read_string(path, v, sizeof(v)) > 0 && safe_atoi(v) == 1)
 			dir_str = "high";	/* output, high voltage */
 	} else if (dir == GPIO_DIR_OUT_LOW) {
@@ -177,7 +172,7 @@ uint32_t gpio_dir(uint32_t gpio, int dir)
         }
 
 	__export_gpio(gpio);
-	snprintf(path, sizeof(path), "%s/gpio%d/direction", GPIOLIB_DIR, gpio + GPIOBASE);
+	snprintf(path, sizeof(path), "%s/gpio%d/direction", GPIOLIB_DIR, gpio);
 	f_write_string(path, dir_str, 0, 0);
 
 	return 0;
@@ -194,7 +189,7 @@ uint32_t get_gpio(uint32_t gpio)
 		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio - GPIO_PWM_DEFSHIFT);
 #endif
 	} else {
-		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
+		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
 	}
 	f_read_string(path, value, sizeof(value));
 
@@ -213,7 +208,7 @@ uint32_t set_gpio(uint32_t gpio, uint32_t value)
 		snprintf(path, sizeof(path), PWM_SYS_PREFIX"/pwm%u/enable", gpio - GPIO_PWM_DEFSHIFT);
 #endif
 	} else {
-		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio + GPIOBASE);
+		snprintf(path, sizeof(path), "%s/gpio%d/value", GPIOLIB_DIR, gpio);
 	}
 	f_write_string(path, val_str, 0, 0);
 

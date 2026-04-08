@@ -117,11 +117,12 @@ static void mcast_helper_start_lanserver_timer(void);
 
 int mch_iptype = 0;
 
-int mch_acl_enabled = 0;
-int mch_accl_enabled = 1;
 #ifdef CONFIG_MCAST_HELPER_ACL
-mch_acl_enabled	= 1;
+int mch_acl_enabled	= 1;
+#else
+int mch_acl_enabled = 0;
 #endif
+int mch_accl_enabled = 1;
 
 static int mch_major = -1;
 static struct cdev mcast_cdev;

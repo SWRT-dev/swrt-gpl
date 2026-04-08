@@ -19,6 +19,7 @@
 /******************************************************************************
 ** Board configuration: Enable dect SS.
 ******************************************************************************/
+#if !defined(RAX40)
 / {
 dect {
 	compatible = "lantiq,ltqdect";
@@ -35,6 +36,7 @@ dect-page {
 	status = "okay";
 	};
 };
+#endif
 
 /******************************************************************************
 ** Board configuration: Enable spi0 configuration.
@@ -136,12 +138,14 @@ dect-page {
 		intel,groups = "spi0_cs1";
 	};
 
+#if !defined(RAX40)
 	pinctrl_spi1_cs0: spi1_cs0 {
 		intel,pins =  <14>; /* SPI1_CS0 */
 		intel,function = "spi1_cs0";
 		intel,mux = <EQBR_MUX_2>;
 		intel,groups = "spi1_cs0";
 	};
+#endif
 };
 
 /******************************************************************************
@@ -277,14 +281,17 @@ dect-page {
 /******************************************************************************
 ** Board configuration: Enable CoC power managment board feature  
 ******************************************************************************/
+#if !defined(RAX40)
 &pinctrl_i2c0 {
 			status="ok";
 };
+#endif
 
 &cpu0 {
 	cpu-supply = <&buck2_reg>;
 };
 
+#if !defined(RAX40)
 &i2c {
 	status = "ok";
 	ina219: ina219@40 {
@@ -328,6 +335,7 @@ dect-page {
 		};
 	};
 };
+#endif
 
 /******************************************************************************
 ** Board configuration: Enable SSC1 to support standard SPI devices (SPI Flash)  
@@ -364,7 +372,7 @@ dect-page {
 ******************************************************************************/
 &eth {
 	status = "ok";
-
+#if !defined(RAX40)
 	lan0: interface@0 {
 		compatible = "lantiq,xrx500-pdi";
 		#address-cells = <1>;
@@ -379,7 +387,7 @@ dect-page {
 			phy-mode = "rgmii";
 		};
 	};
-
+#endif
 	lan1: interface@1 {
 		compatible = "lantiq,xrx500-pdi";
 		#address-cells = <1>;

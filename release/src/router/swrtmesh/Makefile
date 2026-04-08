@@ -4,11 +4,13 @@ all:
 	$(MAKE) -C libwifi && $(MAKE) -C libwifi stage
 	$(MAKE) -C libdpp && $(MAKE) -C libdpp stage
 	$(MAKE) -C swrtmesh-utils && $(MAKE) -C swrtmesh-utils stage
+#	$(MAKE) -C cfg_mnt && $(MAKE) -C cfg_mnt stage
 	$(MAKE) -C wifimngr && $(MAKE) -C libwifi stage
 	$(MAKE) -C ieee1905 && $(MAKE) -C ieee1905 stage
 	$(MAKE) -C map-controller
 	$(MAKE) -C map-agent
 	$(MAKE) -C map-topology
+	touch stamp-h1
 
 install: libeasy-install libwifi-install libdpp-install swrtmesh-utils-install wifimngr-install ieee1905-install map-agent-install map-controller-install map-topology-install
 

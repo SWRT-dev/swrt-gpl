@@ -1,0 +1,8 @@
+    <ProjectConfiguration Include="[!!!CGF_NAME!!!] xconfig|Win32">
+      <Configuration>[!!!CGF_NAME!!!] xconfig</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="[!!!CGF_NAME!!!] oldconfig|Win32">
+      <Configuration>[!!!CGF_NAME!!!] oldconfig</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>

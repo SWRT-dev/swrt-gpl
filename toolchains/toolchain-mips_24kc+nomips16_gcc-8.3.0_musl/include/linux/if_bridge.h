@@ -234,6 +234,14 @@ struct br_mdb_entry {
 		} u;
 		__be16		proto;
 	} addr;
+	struct {
+		union {
+			__be32	ip4;
+			struct in6_addr ip6;
+		} u;
+		__be16		proto;
+		unsigned char eth_addr[6];
+	} src_addr;
 };
 
 enum {

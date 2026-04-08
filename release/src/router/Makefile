@@ -2390,6 +2390,8 @@ else ifeq ($(IPQ53XX),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-armhf.so.1
 else ifeq ($(or $(RTCONFIG_RALINK_MT7621),$(RTCONFIG_RALINK_EN7561)),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-mipsel-sf.so.1
+else ifeq ($(RTCONFIG_LANTIQ),y)
+	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-mips-sf.so.1
 else
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-arm.so.1
 endif
@@ -3723,7 +3725,7 @@ iptables-1.8.7: iptables-1.8.7/Makefile
 	@$(SEP)
 	$(MAKE) -C $@ KERNEL_DIR=$(LINUXDIR) COPT_FLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE $(MUSL_CFLAG)"
 
-iptables-1.8.7-install: iptables-1.8.7
+iptables-1.8.7-install:
 	install -D iptables-1.8.7/iptables/.libs/xtables-multi $(INSTALLDIR)/iptables-1.8.7/usr/sbin/xtables-multi
 	cd $(INSTALLDIR)/iptables-1.8.7/usr/sbin && \
 		ln -sf xtables-multi iptables-restore && \
@@ -3781,7 +3783,7 @@ iptables-1.4.21: iptables-1.4.21/Makefile
 	@$(SEP)
 	$(MAKE) -C $@ KERNEL_DIR=$(LINUXDIR) COPT_FLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE $(MUSL_CFLAG)"
 
-iptables-1.4.21-install: iptables-1.4.21
+iptables-1.4.21-install:
 	install -D iptables-1.4.21/iptables/.libs/xtables-multi $(INSTALLDIR)/iptables-1.4.21/usr/sbin/xtables-multi
 	cd $(INSTALLDIR)/iptables-1.4.21/usr/sbin && \
 		ln -sf xtables-multi iptables-restore && \
@@ -6613,7 +6615,7 @@ lzo/stamp-h1:
 	touch $@
 
 lzo: lzo/stamp-h1
-	$(MAKE) -C lzo && $(MAKE) $@-stage
+	$(MAKE) $(PARALLEL_BUILD)  -C lzo && $(MAKE) $@-stage
 
 lzo-clean:
 	-@$(MAKE) -C lzo clean
@@ -9845,7 +9847,7 @@ libplist-2.2.0/Makefile:
 libplist-2.2.0: libplist-2.2.0/Makefile
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
-libplist-2.2.0-install: libplist-2.2.0
+libplist-2.2.0-install:
 	install -D libplist-2.2.0/tools/plistutil $(INSTALLDIR)/libplist-2.2.0/usr/bin/plistutil
 	$(STRIP) $(INSTALLDIR)/libplist-2.2.0/usr/bin/plistutil
 	#install -D libplist-2.2.0/src/.libs/libplist-2.0.so.3.3.0 $(INSTALLDIR)/libplist-2.2.0/usr/lib/libplist-2.0.so.3.3.0
@@ -9877,7 +9879,7 @@ libusbmuxd-2.0.2/Makefile:
 libusbmuxd-2.0.2: libusbmuxd-2.0.2/Makefile
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
-libusbmuxd-2.0.2-install: libusbmuxd-2.0.2
+libusbmuxd-2.0.2-install:
 	install -D libusbmuxd-2.0.2/tools/inetcat $(INSTALLDIR)/libusbmuxd-2.0.2/usr/bin/inetcat
 	$(STRIP) $(INSTALLDIR)/libusbmuxd-2.0.2/usr/bin/inetcat
 	install -D libusbmuxd-2.0.2/tools/iproxy $(INSTALLDIR)/libusbmuxd-2.0.2/usr/bin/iproxy
@@ -9909,7 +9911,7 @@ libimobiledevice-1.3.0/Makefile:
 libimobiledevice-1.3.0: libimobiledevice-1.3.0/Makefile
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
-libimobiledevice-1.3.0-install: libimobiledevice-1.3.0
+libimobiledevice-1.3.0-install:
 	install -D libimobiledevice-1.3.0/tools/idevicebackup $(INSTALLDIR)/libimobiledevice-1.3.0/usr/bin/idevicebackup
 	install -D libimobiledevice-1.3.0/tools/idevicebackup2 $(INSTALLDIR)/libimobiledevice-1.3.0/usr/bin/idevicebackup2
 	install -D libimobiledevice-1.3.0/tools/idevicecrashreport $(INSTALLDIR)/libimobiledevice-1.3.0/usr/bin/idevicecrashreport
@@ -9976,7 +9978,7 @@ usbmuxd-1.1.1/Makefile:
 usbmuxd-1.1.1: usbmuxd-1.1.1/Makefile
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
-usbmuxd-1.1.1-install: usbmuxd-1.1.1
+usbmuxd-1.1.1-install:
 	install -D usbmuxd-1.1.1/src/usbmuxd $(INSTALLDIR)/usbmuxd-1.1.1/usr/bin/usbmuxd
 	$(STRIP) $(INSTALLDIR)/usbmuxd-1.1.1/usr/bin/usbmuxd
 
@@ -9995,8 +9997,10 @@ easymesh-sdk-install:
 endif
 
 libubus:libubox json-c
-	cd libubus && cmake -DABIVERSION="2021-06-03" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_LUA=0 -DBUILD_EXAMPLES=0  -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib
-	$(MAKE) -C libubus all && $(MAKE) $@-stage
+	if [ ! -f $@/stamp-h1 ];then \
+		cd libubus && cmake -DABIVERSION="2021-06-03" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_LUA=0 -DBUILD_EXAMPLES=0  -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib; \
+		$(MAKE) -C libubus all && $(MAKE) $@-stage && touch $@/stamp-h1; \
+	fi
 
 libubus-install:
 	install -d $(INSTALLDIR)/libubus/usr/lib
@@ -10011,7 +10015,9 @@ libubus-install:
 
 ifeq ($(RTCONFIG_SWRTMESH),y)
 swrtmesh: json-c libubox libubus libnl libuci openssl libgcrypt-1.5.1 avahi libmnl-1.0.4 libnfnetlink-1.0.1 libnetfilter_conntrack-1.0.7 ebtables
-	$(MAKE) -C swrtmesh all
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -C swrtmesh all; \
+	fi
 endif
 
 htop/Makefile:ncurses-6.3
@@ -10052,11 +10058,11 @@ safec3/Makefile:
 		--libdir=/usr/lib \
 		--disable-doc \
 		--disable-nullslack \
-		CFLAGS="$(CFLAGS) -D_POSIX_C_SOURCE=200809L -DSWRT_PATCH"
+		CFLAGS="$(CFLAGS) -D_POSIX_C_SOURCE=200809L -DSWRT_PATCH -D_ISOC11_SOURCE"
 
 safec3:safec3/Makefile
-	if [ ! -f $@/stamp-h1 ];then \
-		$(MAKE) -C safec3 && $(MAKE) safec3-stage && touch $@/stamp-h1; \
+	if [ ! -f $@/stamp-h2 ];then \
+		$(MAKE) -C safec3 && $(MAKE) safec3-stage && touch $@/stamp-h2; \
 	fi
 
 safec3-install:

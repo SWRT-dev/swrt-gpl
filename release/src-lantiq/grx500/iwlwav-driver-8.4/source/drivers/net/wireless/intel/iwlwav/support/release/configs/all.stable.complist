@@ -1,0 +1,7 @@
+#This is a list of all components in stable state
+#i.e. buildable on all platforms
+#Mainly, to be used by buildbot
+CONFIG_LIN_DRV=y
+CONFIG_LIN_MTTOOLS=y
+CONFIG_LIN_RTLOG_COMPONENTS=y
+CONFIG_LIN_DUT=y

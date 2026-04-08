@@ -1,0 +1,2 @@
+dnl Definition of the branch version for configure.ac
+m4_define([MTLK_BRANCH_VERSION], [@BRANCH_VERSION@])

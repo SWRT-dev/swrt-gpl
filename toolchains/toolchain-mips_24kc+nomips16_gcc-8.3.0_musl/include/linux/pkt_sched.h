@@ -254,7 +254,6 @@ struct tc_red_qopt {
 #define TC_RED_ECN		1
 #define TC_RED_HARDDROP		2
 #define TC_RED_ADAPTATIVE	4
-#define TC_RED_OFFLOADED	8
 };
 
 struct tc_red_xstats {
@@ -617,14 +616,6 @@ struct tc_drr_stats {
 /* MQPRIO */
 #define TC_QOPT_BITMASK 15
 #define TC_QOPT_MAX_QUEUE 16
-
-enum {
-	TC_MQPRIO_HW_OFFLOAD_NONE,	/* no offload requested */
-	TC_MQPRIO_HW_OFFLOAD_TCS,	/* offload TCs, no queue counts */
-	__TC_MQPRIO_HW_OFFLOAD_MAX
-};
-
-#define TC_MQPRIO_HW_OFFLOAD_MAX (__TC_MQPRIO_HW_OFFLOAD_MAX - 1)
 
 struct tc_mqprio_qopt {
 	__u8	num_tc;

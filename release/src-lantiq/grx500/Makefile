@@ -13,11 +13,19 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 #
 pobj-y:=
 
-pobj-y += directconnect_dp eip97 ltq_fw_phy_ip ppa_drv switch_cli upgrade_utils
+pobj-y += directconnect_dp eip97 ltq_fw_phy_ip ppa_drv ppacmd switch_cli upgrade_utils
+ifeq ($(BUILD_NAME),RAX40)
+#wav600a,old format cal_wlan0.bin
+pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += ltq-wlan-wave_6x-8.4 iwlwav-driver-8.4 iwlwav-firmware-8.4
+pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += dwpal_6x-8.4 iwlwav-tool-8.4
+pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += iwlwav-hostap-8.4 iwlwav-iw-8.4
+else
+#wav600b/wav600b_d2/wav700
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += ltq-wlan-wave_6x iwlwav-driver iwlwav-firmware
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += dwpal_6x iwlwav-tool
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += iwlwav-hostap iwlwav-iw
 #pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += swpal_6x
+endif
 pobj-$(RTCONFIG_WLMODULE_WAV5XX_AP) += wav5xx_drv wav5xx_hostapd wav5xx_crda wav5xx_iw ltq-wlan-wave_5x
 
 

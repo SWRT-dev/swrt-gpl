@@ -1,0 +1,86 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wavelog", "wavelog.vcxproj", "{F0CAC215-7E06-40B8-BB42-D0F08F264922}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8} = {C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B} = {F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libelf", "libelf\libelf.vcxproj", "{0109BC3D-693C-4423-A4EB-4F9A98F809C9}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "libdwarf", "libdwarf\libdwarf.vcxproj", "{488D0F81-4B5C-41AA-972E-6B99E54DA895}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9} = {0109BC3D-693C-4423-A4EB-4F9A98F809C9}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "scd_dwarf_parser", "scd_dwarf_parser\scd_dwarf_parser.vcxproj", "{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}"
+	ProjectSection(ProjectDependencies) = postProject
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895} = {488D0F81-4B5C-41AA-972E-6B99E54DA895}
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B} = {F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}
+	EndProjectSection
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "scd_reader", "scd_reader\scd_reader.vcxproj", "{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug_dwarf2diss_standalone|Win32 = Debug_dwarf2diss_standalone|Win32
+		Debug_scd_dwarf.exe|Win32 = Debug_scd_dwarf.exe|Win32
+		Debug|Win32 = Debug|Win32
+		Release_dwarf2diss_standalone|Win32 = Release_dwarf2diss_standalone|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Debug_dwarf2diss_standalone|Win32.ActiveCfg = Debug|Win32
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Debug_dwarf2diss_standalone|Win32.Build.0 = Debug|Win32
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Debug_scd_dwarf.exe|Win32.ActiveCfg = Debug_scd_dwarf.exe|Win32
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Debug|Win32.Build.0 = Debug|Win32
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Release_dwarf2diss_standalone|Win32.ActiveCfg = Release|Win32
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Release|Win32.ActiveCfg = Release|Win32
+		{F0CAC215-7E06-40B8-BB42-D0F08F264922}.Release|Win32.Build.0 = Release|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Debug_dwarf2diss_standalone|Win32.ActiveCfg = Debug|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Debug_dwarf2diss_standalone|Win32.Build.0 = Debug|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Debug_scd_dwarf.exe|Win32.ActiveCfg = Debug|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Debug_scd_dwarf.exe|Win32.Build.0 = Debug|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Debug|Win32.ActiveCfg = Debug|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Debug|Win32.Build.0 = Debug|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Release_dwarf2diss_standalone|Win32.ActiveCfg = Release|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Release_dwarf2diss_standalone|Win32.Build.0 = Release|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Release|Win32.ActiveCfg = Release|Win32
+		{0109BC3D-693C-4423-A4EB-4F9A98F809C9}.Release|Win32.Build.0 = Release|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Debug_dwarf2diss_standalone|Win32.ActiveCfg = Debug|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Debug_dwarf2diss_standalone|Win32.Build.0 = Debug|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Debug_scd_dwarf.exe|Win32.ActiveCfg = Debug|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Debug_scd_dwarf.exe|Win32.Build.0 = Debug|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Debug|Win32.ActiveCfg = Debug|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Debug|Win32.Build.0 = Debug|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Release_dwarf2diss_standalone|Win32.ActiveCfg = Release|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Release_dwarf2diss_standalone|Win32.Build.0 = Release|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Release|Win32.ActiveCfg = Release|Win32
+		{488D0F81-4B5C-41AA-972E-6B99E54DA895}.Release|Win32.Build.0 = Release|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Debug_dwarf2diss_standalone|Win32.ActiveCfg = Debug|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Debug_dwarf2diss_standalone|Win32.Build.0 = Debug|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Debug_scd_dwarf.exe|Win32.ActiveCfg = Debug_scd_dwarf.exe|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Debug_scd_dwarf.exe|Win32.Build.0 = Debug_scd_dwarf.exe|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Debug|Win32.Build.0 = Debug|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Release_dwarf2diss_standalone|Win32.ActiveCfg = Release|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Release_dwarf2diss_standalone|Win32.Build.0 = Release|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Release|Win32.ActiveCfg = Release|Win32
+		{C7AC1DB2-006B-4606-9C36-FF1E5EAD08E8}.Release|Win32.Build.0 = Release|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Debug_dwarf2diss_standalone|Win32.ActiveCfg = Debug|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Debug_dwarf2diss_standalone|Win32.Build.0 = Debug|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Debug_scd_dwarf.exe|Win32.ActiveCfg = Debug|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Debug_scd_dwarf.exe|Win32.Build.0 = Debug|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Debug|Win32.Build.0 = Debug|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Release_dwarf2diss_standalone|Win32.ActiveCfg = Release|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Release_dwarf2diss_standalone|Win32.Build.0 = Release|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Release|Win32.ActiveCfg = Release|Win32
+		{F6F01FE7-7CE1-4F29-9117-E6883FFA9E1B}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

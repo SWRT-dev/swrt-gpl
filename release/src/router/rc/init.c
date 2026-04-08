@@ -21711,13 +21711,14 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 			}
 		}
 
+		nvram_set_int("pwr_usb_gpio", 2);
 		nvram_set_int("btn_wps_gpio", 30|GPIO_ACTIVE_LOW);
 		nvram_set_int("btn_rst_gpio", 0|GPIO_ACTIVE_LOW);
 #ifdef RTCONFIG_WIFI_TOG_BTN
-		nvram_set_int("btn_wltog_gpio", 4|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_wltog_gpio", 36|GPIO_ACTIVE_LOW);
 #endif
 #ifdef RTCONFIG_LED_BTN
-		//nvram_set_int("btn_led_gpio", 22|GPIO_ACTIVE_LOW);
+		nvram_set_int("btn_led_gpio", 11);
 #endif
 		nvram_set_int("led_pwr_gpio", 35|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_pwr_red_gpio", 10|GPIO_ACTIVE_LOW);
@@ -21729,9 +21730,15 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 		nvram_set_int("led_wan_normal_gpio", 43|GPIO_ACTIVE_LOW);
 #endif
 		nvram_set_int("led_2g_gpio", 21|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_2g_gpio", 22|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_5g_gpio", 22|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_usb_gpio", 34|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_wps_gpio", 31|GPIO_ACTIVE_LOW);
+#ifdef RTCONFIG_LAN4WAN_LED
+		nvram_set_int("led_lan1_gpio", 4);
+		nvram_set_int("led_lan2_gpio", 5);
+		nvram_set_int("led_lan3_gpio", 6);
+		nvram_set_int("led_lan4_gpio", 9);
+#endif
 		if(usb_usb3 == 1)
 			nvram_set("xhci_ports", "2-1");
 		else
@@ -25596,6 +25603,9 @@ int init_main(int argc, char *argv[])
 				nvram_set("sshd_enable", "1");
 				nvram_set("ASUS_EULA", "1");
 			}
+#endif
+#if defined(RTCONFIG_LANTIQ)
+			system("/usr/sbin/upgrade_done");
 #endif
 #ifdef RTL_WTDOG
 			// stop watchdog first

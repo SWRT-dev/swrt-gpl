@@ -1,0 +1,558 @@
+config IWLWAV
+        tristate "Intel Wireless Lan Wave Driver (iwlwav)"
+        depends on m
+	depends on m
+	select CFG80211_WEXT_EXPORT
+	select WIRELESS_EXT
+        depends on MAC80211
+        ---help---
+          Select to build the driver supporting the:
+
+          Intel Wireless WiFi Link Next-Gen AGN
+
+          This option enables support for use with the following hardware:
+                GRX 350
+                GRX 550
+                GRX 750
+
+
+          This driver uses the kernel's mac80211 subsystem.
+
+if IWLWAV
+
+menu "Configuration"
+
+choice
+	prompt "Target platform"
+	default IWLWAV_PLATFORM_UGW73_GRX550
+
+config IWLWAV_PLATFORM_UGW73_GRX550
+	bool "UGW7.3 for GRX550"
+	help
+	  Lantiq GRX550 UGW-7.3 platform.
+
+config IWLWAV_PLATFORM_UGW73_GRX750_PUMA_X86
+	bool "UGW7.3 for GRX750 (PUMA7 Intel Atom)"
+	help
+	  Intel GRX750 UGW-7.3 (PUMA7 Intel Atom) platform.
+
+config IWLWAV_PLATFORM_UGW73_GRX350_A21
+	bool "UGW7.3 for GRX350-A21"
+	help
+	  Lantiq GRX350 (v1.4.3) UGW-7.3 platform.
+
+config IWLWAV_PLATFORM_UGW73_AXEPOINT
+	bool "UGW7.3 for WAVE600 AxePoint"
+	help
+	  Lantiq AxePoint UGW-7.3 platform.
+
+config IWLWAV_PLATFORM_UGW73_GRX330
+	bool "UGW7.3 for GRX330/AC1200 35B"
+	help
+	  Lantiq GRX330/AC1200 35B UGW-7.3 platform.
+
+config IWLWAV_PLATFORM_UGW8X_GRX550
+	bool "UGW8.x for GRX550"
+	help
+	  Lantiq GRX550 UGW-8.x platform.
+
+config IWLWAV_PLATFORM_YOCTO_PUMA6_X86
+	bool "PUMA6 Intel Atom (Yocto)"
+	help
+	  PUMA6 Intel Atom platform (Yocto SDK).
+
+config IWLWAV_PLATFORM_YOCTO_PUMA7_X86
+	bool "PUMA7 Intel Atom (Yocto)"
+	help
+	  PUMA7 Intel Atom platform (Yocto SDK).
+
+config IWLWAV_PLATFORM_YOCTO_PUMA7_X86_KERN_4_9
+	bool "PUMA7 Intel Atom (Yocto), kernel 4.9"
+	help
+	  PUMA7 Intel Atom platform (Yocto SDK), kernel 4.9.
+
+config IWLWAV_PLATFORM_PC_KERN_CURRENT
+	bool "PC with currently running kernel"
+	help
+	  Your PC with its current kernel, probably 64 bit.
+	  This kernel may be too old for the needs of this driver
+	  (3.12 or later is needed).
+
+# Platforms for UGW build
+
+# Yocto for Puma6/7
+config IWLWAV_PLATFORM_PUMA_X86_YOCTO_BUILD
+	bool "PUMA6/7 (inside YOCTO)"
+	help
+	  Intel PUMA6/7 platforms. Used to build driver from Yocto.
+
+# UGW for GRX750/Puma7  == [ONLY FOR COMPATIBILITY WITH OLD CONFIG] ==
+# config IWLWAV_PLATFORM_PUMA_X86_UGW_BUILD
+config IWLWAV_PLATFORM_UGW71_GRX750_PUMA_X86_UGW_BUILD
+	bool "UGW7.x for PUMA7/GRX750 (inside UGW)"
+	help
+	  Intel PUMA7/GRX750 platforms. Used to build driver from UGW.
+
+# UGW x.x for AR10 / GRX3xx  == [ONLY FOR COMPATIBILITY WITH OLD CONFIG] ==
+# config IWLWAV_PLATFORM_AR10_UGW_BUILD
+config IWLWAV_PLATFORM_LQ_UGW61_AR10_WAVE400
+	bool "UGW7.x for GRX3xx/GRX55x (inside UGW)"
+	#select IWLWAV_PLATFORM_AR10_FAMILY
+	help
+	  Intel GRX3xx/GRX55x platforms. Used to build driver from UGW.
+
+endchoice
+
+### Platforms Families ###
+
+config IWLWAV_PLATFORM_AR10_UGW_BUILD
+	bool
+	default y if IWLWAV_PLATFORM_LQ_UGW61_AR10_WAVE400
+	default n
+
+config IWLWAV_PLATFORM_PUMA_X86_UGW_BUILD
+	bool
+	default y if IWLWAV_PLATFORM_UGW71_GRX750_PUMA_X86_UGW_BUILD
+	default n
+
+# UGW for AR10 / GRX3xx / GRX55x
+config IWLWAV_PLATFORM_AR10_FAMILY
+	bool
+	default y if IWLWAV_PLATFORM_AR10_UGW_BUILD
+	default y if IWLWAV_PLATFORM_UGW73_GRX350_A21
+	default y if IWLWAV_PLATFORM_UGW73_AXEPOINT
+	default y if IWLWAV_PLATFORM_UGW73_GRX550
+	default y if IWLWAV_PLATFORM_UGW73_GRX330
+	default y if IWLWAV_PLATFORM_UGW8X_GRX550
+	default n
+
+# UGW for Puma7 / GRX750
+config IWLWAV_PLATFORM_PUMA_X86_UGW_FAMILY
+	bool
+	default y if IWLWAV_PLATFORM_PUMA_X86_UGW_BUILD
+	default y if IWLWAV_PLATFORM_UGW73_GRX750_PUMA_X86
+	default n
+
+# Yocto for Puma6/7
+config IWLWAV_PLATFORM_PUMA_X86_YOCTO_FAMILY
+	bool
+	default y if IWLWAV_PLATFORM_PUMA_X86_YOCTO_BUILD
+	default y if IWLWAV_PLATFORM_YOCTO_PUMA7_X86
+	default y if IWLWAV_PLATFORM_YOCTO_PUMA7_X86_KERN_4_9
+	default y if IWLWAV_PLATFORM_YOCTO_PUMA6_X86
+	default n
+
+# X86 PC platform
+config IWLWAV_X86_HOST_PC
+	bool
+	default y if IWLWAV_PLATFORM_PC_KERN_CURRENT
+	default n
+
+### End Platforms Families ###
+
+menuconfig IWLWAV_LIN_DRV
+	bool "Configuration"
+	default y
+	---help---
+	  Build WLAN driver for Linux.
+
+menuconfig IWLWAV_USE_PREBUILT_RFLIB
+	bool "Use prebuilt RF library"
+	depends on IWLWAV_LIN_DRV
+	default n
+	---help---
+	  Use prebuilt RF library
+
+config IWLWAV_RFLIB_PATH
+	string "Path to the RF library"
+	depends on IWLWAV_USE_PREBUILT_RFLIB
+	default "wireless/driver/rflib/prebuilt"
+	---help---
+	  Path to the prebuilt RB library
+
+config IWLWAV_PMCU_SUPPORT
+	depends on IWLWAV_LIN_DRV
+	bool "PMCU Support"
+	default n if IWLWAV_PLATFORM_UGW73_GRX350_A21
+	default n if IWLWAV_PLATFORM_UGW73_AXEPOINT
+	default n if IWLWAV_PLATFORM_UGW73_GRX550
+	#default y if IWLWAV_PLATFORM_UGW8X_GRX550 - should be set to 'y' later
+	default n
+	---help---
+	  Enable on-the-fly CPU frequency switch support
+
+config IWLWAV_PUMA6_UDMA_SUPPORT
+	bool "PUMA6 UDMA (partial offload)"
+	depends on IWLWAV_LIN_DRV
+	default y if IWLWAV_PLATFORM_YOCTO_PUMA6_X86
+	---help---
+	  Enable UDMA partial offload feature on PUMA6
+
+config IWLWAV_DC_DP_LIB_SUPPORT
+	depends on IWLWAV_LIN_DRV
+	bool "Use DirectConnect DP API"
+	default n if IWLWAV_PLATFORM_YOCTO_PUMA6_X86
+	default n if IWLWAV_PLATFORM_YOCTO_PUMA7_X86_KERN_4_9
+	default y
+	---help---
+	  Enable support for universal DirectConnect DP API (former FastPath API)
+
+comment "HW bus types"
+	depends on IWLWAV_LIN_DRV
+
+config IWLWAV_LINDRV_HW_PCIEG5
+	depends on IWLWAV_LIN_DRV
+	bool "PCI Express bus G5"
+	default n
+	---help---
+	  Enable support for Peripheral Component Interconnect Express bus (PCIEG5)
+
+comment "Interrupts mode configuration"
+	depends on IWLWAV_LIN_DRV
+
+config IWLWAV_LINDRV_GEN6_USE_LEGACY_INT
+	depends on IWLWAV_LIN_DRV
+	bool "Use legacy interrupts on Gen6"
+	default y
+	help
+	  Use legacy interrupts on Gen6 instead of MSI
+
+config IWLWAV_BUS_PCI_PCIE
+	depends on IWLWAV_LIN_DRV
+  bool
+	default y
+
+menu "Features"
+
+config IWLWAV_EEPROM_SUPPORT
+	bool "EEPROM Chip Support"
+	default y
+	---help---
+	  Read calibration data from EEPROM chip.
+
+config IWLWAV_FORCE_USE_GENL_ENABLE
+	bool "Use generic netlink socket"
+	depends on !IWLWAV_USE_GENL_DEF
+	default n
+	---help---
+	  Use generic netlink socket instead of newly allocated one.
+
+config IWLWAV_FORCE_USE_GENL_DISABLE
+	bool "Don't use generic netlink socket"
+	depends on IWLWAV_USE_GENL_DEF
+	default n
+	---help---
+	  Use newly allocated netlink socket instead of generic one.
+
+config IWLWAV_USE_LIBNL_NG
+	bool "Use LIBNL new generation interface"
+	default y
+	---help---
+	  Turns on the support of the LIBNL new interface (libnl v.2.x and above).
+
+config IWLWAV_USE_INTERRUPT_POLLING
+	bool "Use interrupt polling"
+	depends on IWLWAV_LIN_DRV
+	default n
+	---help---
+	  Turns interrupt polling on.
+	  This feature hits performance, therefore it is for debugging purposes
+	  mainly and must not be used in production without very special reasons.
+
+config IWLWAV_SET_PM_QOS
+	bool "Yocto Power management"
+	default y if IWLWAV_PLATFORM_YOCTO_PUMA6_X86
+	default y if IWLWAV_PLATFORM_YOCTO_PUMA7_X86
+	default y if IWLWAV_PLATFORM_YOCTO_PUMA7_X86_KERN_4_9
+	default n
+	---help---
+	  Set Power mode for DMA
+
+config IWLWAV_LEGACY_INT_RECOVERY_MON
+	bool "Lost Interrupts recovery mon"
+	default n if IWLWAV_PLATFORM_PUMA_X86_UGW_FAMILY
+	default n if IWLWAV_PLATFORM_PUMA_X86_YOCTO_FAMILY
+	default n
+	---help---
+	  Recover lost legacy Intterupt
+
+config IWLWAV_X86_PUMA7_WAVE600_NOSNOOP
+	bool "No snooping PCIe operations for Wave600 cards on Puma7"
+	default n if IWLWAV_PLATFORM_PUMA_X86_YOCTO_BUILD
+	default n
+	---help---
+	  Allow Wave600 card to perform memory read/write operations in no-snoop mode.
+	  This avoids synchronization between CPU cache and DRAM which causes DMA
+	  transfers to timeout if CPU went to power save mode. However, the use of this
+	  mode requires software to address the arising cache coherence issues.
+
+endmenu
+
+menu "Debug extentions"
+
+config IWLWAV_DEBUG
+	bool "General debug extentions"
+	default n if IWLWAV_PLATFORM_UGW73_GRX350_A21
+	default n if IWLWAV_PLATFORM_UGW73_AXEPOINT
+	default y if IWLWAV_DEVELOPMENT_PLATFORM
+	default n
+	---help---
+	  Enable run-time checks, memory access validation and extended printouts.
+
+config IWLWAV_ENABLE_OBJPOOL
+	bool "Object tracking extensions"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  Defines whether to compile OBJPOOL.
+
+config IWLWAV_ENABLE_NBUF_OBJPOOL
+	depends on IWLWAV_ENABLE_OBJPOOL
+	bool "Net Buffer Object tracking extensions"
+	default n
+	---help---
+	  Defines whether to enable Network Buffer monitoring by OBJPOOL.
+
+config IWLWAV_TXMM_HISTORY_LENGTH
+	int "TXMM history length"
+	range 0 20
+	default 3 if IWLWAV_DEBUG
+	default 0
+	---help---
+	  Advanced TXMM messages history length (0-20).
+	  0 to disable messages history.
+
+config IWLWAV_TRACER_HISTORY_LENGTH
+	int "TRACER history length"
+	range 0 1000
+	default 0
+	---help---
+	  Realtime TRACER history length (0-1000).
+	  0 to disable tracer.
+
+config IWLWAV_CPU_STAT
+	bool "Profiling tools"
+	default n
+	---help---
+	  Include profiling tools AKA CPU Stat.
+
+config IWLWAV_BENCHMARK_TOOLS
+	bool
+	default y if IWLWAV_CPU_STAT
+	default n
+
+config IWLWAV_IRB_BENCHMARKING
+	bool
+	default n
+
+config IWLWAV_CCR_DEBUG
+	bool "HW access tracing"
+	default n
+	---help---
+	  Include detailed printouts for shared memory access by the driver.
+	  This option is useful for startup sequence debugging, in other cases
+	  it produces too much printouts and makes driver virtually unusable.
+
+config IWLWAV_FW_WRITE_VALIDATION
+	bool "Validation of FW download"
+	default n
+	---help---
+	  Include validation of written FW chunks.
+	  This option is useful when there is suspicion that there is something wrong
+	  with FW download.
+
+config IWLWAV_STAT_CNTRS_DEBUG
+	bool "Debug statistic counters"
+	default y if IWLWAV_DEBUG
+	---help---
+	  Debug statistic counters
+
+config IWLWAV_PER_PACKET_STATS
+	bool "Per-Packet Statistics"
+	default n
+	---help---
+	  Per-packet statistics (timestamps, counters, info etc.)
+
+config IWLWAV_PRINT_PER_PACKET_STATS
+	depends on IWLWAV_PER_PACKET_STATS
+	bool "Log per-packet statistics"
+	default n
+	---help---
+	  Per-packet statistics will be logged.
+
+config IWLWAV_TSF_TIMER_TIMESTAMPS_IN_PER_PACKET_STATS
+	depends on IWLWAV_PER_PACKET_STATS
+	bool "Use TSF timestamps in per-packet statistics"
+	default n
+	---help---
+	  TSF timestamps will be added to per-packet statistics.
+	  TSF timer timestamps have microsecond resolution.
+
+config IWLWAV_TSF_TIMER_TIMESTAMPS_IN_DEBUG_PRINTOUTS
+	depends on IWLWAV_BUS_PCI_PCIE
+	bool "Add TSF timer timestamps to debug printouts"
+	default n
+	---help---
+	  TSF timestamp will be printed out with each debug message as a second timestamp.
+	  TSF timer timestamps have microsecond resolution.
+
+config IWLWAV_TSF_TIMER_ACCESS_ENABLED
+	bool "TSF_TIMER_ACCESS_ENABLED"
+	default y if IWLWAV_TSF_TIMER_TIMESTAMPS_IN_DEBUG_PRINTOUTS
+	default y if IWLWAV_TSF_TIMER_TIMESTAMPS_IN_PER_PACKET_STATS
+	default y if IWLWAV_DEBUG
+	default n
+
+config IWLWAV_NO_FW_RESET_ON_STOP
+	bool "Do not reset firmware on driver stop/unload"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  May be useful during firmware debugging.
+
+config IWLWAV_PKT_INJECT
+	bool "Enable packet injection via procfs"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  May be useful during firmware debugging.
+
+config IWLWAV_ETH_PARSER
+	bool "Enable ethernet packet parsing"
+	default n
+	---help---
+	  May be useful during connection debugging.
+
+config IWLWAV_VALIDATE_IFNAME
+	bool "Validate interface name in Linux callbacks"
+	default n
+	---help---
+	  Enable validation of interface name in Linux callbacks.
+	  If name is wrong (not wlan), packets will be dropped.
+
+config IWLWAV_PMCU_SIMULATE_GRX330
+	depends on IWLWAV_PMCU_SUPPORT
+	bool "Enable simulate grx330 pmcu gen4 functions"
+	default n
+	---help---
+	  Enable simulate grx330 pmcu gen4 functions
+
+config IWLWAV_PCIE_TUNING
+	bool "PCIe fine tuning tools" if IWLWAV_BUS_PCI_PCIE
+	default n
+	---help---
+	  Include instrumentation for fine tuning PCIE core settings.
+
+config IWLWAV_FILTER_BLACKLISTED_BSS
+	bool "Don't report frames from blacklisted BSS"
+	default y if IWLWAV_DEBUG
+	default n
+	---help---
+	  Don't report frames from blacklisted BSS to cfg80211.
+
+config IWLWAV_USE_MSI8_IF_AVAILABLE
+	bool "Use 8 MSI interrupt configuration if it is supported by Linux kernel"
+	default y if IWLWAV_PLATFORM_PUMA_X86_UGW_FAMILY
+	default y if IWLWAV_PLATFORM_PUMA_X86_YOCTO_FAMILY
+	default n
+	---help---
+	  Try to allocate an MSI vector. Use an 8 MSI mode if allocation succeeds, otherwise fall beck to legacy interrupts.
+
+choice
+	prompt "Runtime logger support"
+	default IWLWAV_RT_LOGGER_FUNCTIONS
+
+config IWLWAV_RT_LOGGER_FUNCTIONS
+	bool "Log directives as external functions"
+	---help---
+	  Making log directives external functions may decrease performance but makes image size smaller.
+
+config IWLWAV_RT_LOGGER_INLINES
+	bool "Log directives as inline functions"
+	---help---
+	  Making log directives inline functions may increase performance but makes image size bigger.
+
+endchoice
+
+config IWLWAV_G6_BAR0_TEST
+	depends on IWLWAV_LIN_DRV
+	bool "Test BAR0 RW failures on Gen6 FPGA"
+	default n
+	help
+	  Enable of BAR0 WR failures test on Gen6 FPGA
+
+config IWLWAV_G6_FPGA_IRAM_TEST
+	depends on IWLWAV_LIN_DRV
+	bool "Test IRAM WR access failures on Gen6 FPGA"
+	default n
+	help
+	  Enable of IRAM WR failures test on Gen6 FPGA
+
+menu "Log level"
+
+config IWLWAV_MAX_DLEVEL
+	int "Log level" if !IWLWAV_SILENT
+	range 0 9
+	default 3 if IWLWAV_PLATFORM_UGW73_GRX550
+	default 2 if IWLWAV_DEBUG
+	default 1
+	---help---
+	  Log level (0-9)
+
+config IWLWAV_SILENT
+	bool "Silent build (No debug printouts)"
+	---help---
+	  Disable driver printouts.
+
+endmenu
+
+endmenu
+
+menu "--- Auto configured options ---"
+
+config IWLWAV_USE_GENL_DEF
+	bool "USE_GENL_DEF"
+	default n if IWLWAV_PLATFORM_PUMA_X86_YOCTO_BUILD
+	default y
+
+config IWLWAV_USE_GENL
+	bool "USE_GENL"
+	default y if IWLWAV_FORCE_USE_GENL_ENABLE
+	default n if IWLWAV_FORCE_USE_GENL_DISABLE
+	default IWLWAV_USE_GENL_DEF
+
+config IWLWAV_DEVELOPMENT_PLATFORM
+	bool
+	default y if IWLWAV_PLATFORM_AR10_FAMILY
+	default y if IWLWAV_PLATFORM_PUMA_X86_UGW_FAMILY
+	default y if IWLWAV_PLATFORM_PUMA_X86_YOCTO_FAMILY
+	default n
+
+config IWLWAV_ENVIRONMENT_NAME
+	string "ENVIRONMENT_NAME"
+	default "ugw-x86-linux312"  if IWLWAV_PLATFORM_PUMA_X86_UGW_BUILD
+	default "ugw-linux310"      if IWLWAV_PLATFORM_AR10_UGW_BUILD
+	default "puma"              if IWLWAV_PLATFORM_PUMA_X86_YOCTO_BUILD
+	default "ugw7.3-grx350_a21" if IWLWAV_PLATFORM_UGW73_GRX350_A21
+	default "ugw7.3-axepoint_wave600"    if IWLWAV_PLATFORM_UGW73_AXEPOINT
+	default "ugw7.3-grx550"     if IWLWAV_PLATFORM_UGW73_GRX550
+	default "ugw7.3-grx330"     if IWLWAV_PLATFORM_UGW73_GRX330
+	default "ugw8.x-grx550"     if IWLWAV_PLATFORM_UGW8X_GRX550
+	default "ugw7.3-grx750_puma7"       if IWLWAV_PLATFORM_UGW73_GRX750_PUMA_X86
+	default "yocto-puma6"               if IWLWAV_PLATFORM_YOCTO_PUMA6_X86
+	default "yocto-puma7"               if IWLWAV_PLATFORM_YOCTO_PUMA7_X86
+	default "yocto-puma7-kern4.9"       if IWLWAV_PLATFORM_YOCTO_PUMA7_X86_KERN_4_9
+	default "x86-linux"                 if IWLWAV_PLATFORM_PC_KERN_CURRENT
+
+config IWLWAV_HOST_TYPE
+	string "HOST_TYPE"
+	default "mips-linux"        if IWLWAV_PLATFORM_AR10_FAMILY
+	default "x86-linux"         if IWLWAV_PLATFORM_PUMA_X86_UGW_FAMILY
+	default "i686-cm-linux"     if IWLWAV_PLATFORM_PUMA_X86_YOCTO_FAMILY
+	default "x86-linux"         if IWLWAV_PLATFORM_PC_KERN_CURRENT
+
+endmenu
+
+endmenu
+
+endif

@@ -513,78 +513,6 @@ else
 export KEY_PATH = $(SRC_ROOT)/../../key
 endif
 
-LANTIQ_LINUX_DIR=linux/linux-4.9.x
-
-define build_lantiq_image
-	$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux
-	$(CROSS_COMPILE)objcopy -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.elf
-	cp -fpR $(LANTIQ_LINUX_DIR)/vmlinux ./vmlinux.debug
-	cp ./vmlinux ./vmlinux-lantiq
-	$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(LINUXDIR)/include -undef -D__DTS__ -o $(DTS_DIR)/$(DTB).tmp $(DTS_DIR)/$(BUILD_NAME).dts
-	$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR) -o $(DTS_DIR)/$(DTB) $(DTS_DIR)/$(DTB).tmp
-	rm $(DTS_DIR)/$(DTB).tmp
-	cat $(DTS_DIR)/$(DTB) >> ./vmlinux-lantiq
-	tools/lzma e ./vmlinux-lantiq ./vmlinux-lantiq.lzma
-	mv ./vmlinux-lantiq.lzma ./vmlinux.lzma
-	len2=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'` ; \
-	echo "Raymond: $$len2"
-	len=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'`; pad=`expr  131072 - $$len %  131072`; pad=`expr $$pad %  131072`; pad=`expr $$pad -  64`; [ $$pad -lt 0 ] && pad=0; echo pad is $$pad; echo len is $$len; cat ./vmlinux.lzma > ./vmlinux.lzma.padded; dd if=/dev/zero of=./vmlinux.lzma.padded bs=1 count=$$pad seek=$$len
-	load_addr=0x$(shell grep -w _text $(LANTIQ_LINUX_DIR)/System.map 2>/dev/null| awk '{ printf "%s", $$1 }'); \
-	entry_addr=0x$(shell grep -w kernel_entry $(LANTIQ_LINUX_DIR)/System.map 2>/dev/null| awk '{ printf "%s", $$1 }'); \
-	asustools/mkimage -A mips -O linux -T kernel \
-		-a $(s_load_addr) -C $(compression_type) -e $(s_entry_addr) \
-	-n '$(image_header)' $(call bluecave_mkimage_extra_checks) \
-	-d ./vmlinux.lzma.padded ./uImage.padded
-	cp -f ./uImage.padded $(PLATFORMDIR)/uImage
-	# ------ rootfs --------
-	tools/mksquashfs4 $(PLATFORMDIR)/target $(PLATFORMDIR)/root.squashfs -noappend -root-owned -comp xz -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2
-	asustools/mkimage -A MIPS -O Linux -C lzma -T filesystem -e 0x00 -a 0x00 -n "LTQCPE RootFS" \
-	-d $(PLATFORMDIR)/root.squashfs $(PLATFORMDIR)/rootfs.img.padded
-	cp -f $(PLATFORMDIR)/rootfs.img.padded $(PLATFORMDIR)/rootfs.img
-	IMAGE_LIST="$(PLATFORMDIR)/rootfs.img \
-		$(PLATFORMDIR)/uImage"; \
-	ONEIMAGE="image/fullimage.img"; \
-	PLATFORM="XRX500" ; \
-	rm -f $$ONEIMAGE; \
-	for i in $$IMAGE_LIST; do \
-		if [ -e $$i ] ; then \
-			len=`wc -c $$i | awk '{ printf $$1 }'`; \
-			pad=`expr 16 - $$len % 16`; \
-			pad=`expr $$pad % 16`; \
-			if [ -e $$ONEIMAGE.tmp ] ; then \
-				cat $$i >> $$ONEIMAGE.tmp; \
-			else \
-				cat $$i > $$ONEIMAGE.tmp; \
-			fi; \
-			while [ $$pad -ne 0 ]; do \
-				echo -n "0" >> $$ONEIMAGE.tmp; \
-				pad=`expr $$pad - 1`; \
-			done; \
-		else \
-			echo "$$i not found!"; \
-			rm -f $$ONEIMAGE.tmp; \
-			exit 1; \
-		fi; \
-	done; \
-	tools/mkimage -A MIPS -O Linux -C none -T multi -e 0x00 -a 0x00 \
-		-n  \
-		"$$PLATFORM Fullimage" -d $$ONEIMAGE.tmp $$ONEIMAGE; \
-	rm -f $$ONEIMAGE.tmp; \
-	chmod 644 $$ONEIMAGE; \
-	if [ "$(RAX40)" = "y" ]; then \
-		gcc tools/rax40sign.c -o tools/rax40sign; \
-		tools/rax40sign image/fullimage.img; \
-		mv image/fullimage.img.pega image/rax40.img; \
-	fi
-	rm -f vmlinux*
-	rm -f uImage*
-	rm -f lantiq.dtb
-	dd if=/dev/zero count=1 bs=128 | tr "\000" "\145" > ./eof.txt
-	rm -f image/tmp-linux.trx; ctools/trx -o image/tmp-linux.trx image/fullimage.img ./eof.txt
-	ctools/trx_asus -i image/tmp-linux.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(EXTENDNO),image/$(IMGNAME).trx
-	rm -f ./eof.txt
-endef
-
 default:
 	@if [ -f .config -a "$(BUILD_NAME)" != "" ] ; then \
 		$(MAKE) bin ; \
@@ -1234,26 +1162,79 @@ else ifeq ($(LANTIQ),y)
 	$(MAKE) -C ctools clean
 	$(MAKE) -C ctools TRX=NEW
 	# generate kernel part
-	@rm -rf $(PLATFORMDIR)/zImage.lzma ; \
-		$(CROSS_COMPILE)objcopy -O binary $(LINUXDIR)/vmlinux $(PLATFORMDIR)/vmlinus ; \
-		asustools/lzma -9 -f -c $(PLATFORMDIR)/vmlinus > $(PLATFORMDIR)/zImage.lzma ; \
-		cp -f $(PLATFORMDIR)/zImage.lzma $(PLATFORMDIR)/zImage.img ; \
+	$(CROSS_COMPILE)objcopy -O binary -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S linux/linux-4.9.x/vmlinux ./vmlinux
+	#$(CROSS_COMPILE)objcopy -R .reginfo -R .notes -R .note -R .comment -R .mdebug -R .note.gnu.build-id -S linux/linux-4.9.x/vmlinux ./vmlinux.elf
+	#cp -fpR linux/linux-4.9.x/vmlinux ./vmlinux.debug
+	cp ./vmlinux ./vmlinux-lantiq
+	#$(CROSS_COMPILE)cpp -nostdinc -x assembler-with-cpp -I$(DTS_DIR) -I$(LINUXDIR)/include -undef -D__DTS__ -o $(DTS_DIR)/$(DTB).tmp $(DTS_DIR)/$(BUILD_NAME).dts
+	#$(LINUXDIR)/scripts/dtc/dtc -O dtb -i$(DTS_DIR) -o $(DTS_DIR)/$(DTB) $(DTS_DIR)/$(DTB).tmp
+	#rm $(DTS_DIR)/$(DTB).tmp
+	cat $(DTS_DIR)/$(DTB) >> ./vmlinux-lantiq
+	tools/lzma e ./vmlinux-lantiq -lc1 -lp2 -pb2 ./vmlinux-lantiq.lzma
+	mv ./vmlinux-lantiq.lzma ./vmlinux.lzma
 	# padded kernel image size
-	@SIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'`; \
-		PAD=`expr 64 - $${SIZE} % 64` ; \
-		dd if=/dev/zero count=1 bs=$${PAD} 2> /dev/null | tr \\000 \\377 >> $(PLATFORMDIR)/zImage.img
-	@cat $(PLATFORMDIR)/target.image >> $(PLATFORMDIR)/zImage.img ; \
+	len=`wc -c ./vmlinux.lzma | awk '{ printf $$1 }'`; \
+	pad=`expr  16 - $$len %  16`; \
+	pad=`expr $$pad %  16`; \
+	pad=`expr $$pad -  0`; [ $$pad -lt 0 ] && pad=0; \
+	echo pad is $$pad; \
+	echo len is $$len; \
+	cat ./vmlinux.lzma > ./vmlinux.lzma.padded; \
+	dd if=/dev/zero of=./vmlinux.lzma.padded bs=1 count=$$pad seek=$$len
+	asustools/mkimage -A mips -O linux -T kernel \
+		-a $(s_load_addr) -C $(compression_type) -e $(s_entry_addr) \
+	-n '$(image_header)' $(call bluecave_mkimage_extra_checks) \
+	-d ./vmlinux.lzma.padded ./uImage.padded
+	cp -f ./uImage.padded $(PLATFORMDIR)/uImage
+	tools/mksquashfs4 $(PLATFORMDIR)/target $(PLATFORMDIR)/root.squashfs -nopad -noappend -root-owned -comp xz -Xpreset 9 -Xe -Xlc 0 -Xlp 2 -Xpb 2 -processors 1 -b 256k
+	dd if=$(PLATFORMDIR)/root.squashfs of=$(PLATFORMDIR)/root.squashfs.padded bs=16 conv=sync
+	asustools/mkimage -A MIPS -O Linux -C lzma -T filesystem -e 0x00 -a 0x00 -n "LTQCPE RootFS" \
+	-d $(PLATFORMDIR)/root.squashfs.padded $(PLATFORMDIR)/rootfs.img.padded
+	cp -f $(PLATFORMDIR)/rootfs.img.padded $(PLATFORMDIR)/rootfs.img
+	IMAGE_LIST="$(PLATFORMDIR)/rootfs.img \
+		$(PLATFORMDIR)/uImage"; \
+	ONEIMAGE="image/fullimage.img"; \
+	PLATFORM="XRX500" ; \
+	rm -f $$ONEIMAGE; \
+	for i in $$IMAGE_LIST; do \
+		if [ -e $$i ] ; then \
+			len=`wc -c $$i | awk '{ printf $$1 }'`; \
+			pad=`expr 16 - $$len % 16`; \
+			pad=`expr $$pad % 16`; \
+			if [ -e $$ONEIMAGE.tmp ] ; then \
+				cat $$i >> $$ONEIMAGE.tmp; \
+			else \
+				cat $$i > $$ONEIMAGE.tmp; \
+			fi; \
+			while [ $$pad -ne 0 ]; do \
+				echo -n "0" >> $$ONEIMAGE.tmp; \
+				pad=`expr $$pad - 1`; \
+			done; \
+		else \
+			echo "$$i not found!"; \
+			rm -f $$ONEIMAGE.tmp; \
+			exit 1; \
+		fi; \
+	done; \
+	asustools/mkimage -A MIPS -O Linux -C none -T multi -e 0x00 -a 0x00 \
+		-n  \
+		"$$PLATFORM Fullimage" -d $$ONEIMAGE.tmp $$ONEIMAGE; \
+	rm -f $$ONEIMAGE.tmp; \
+	chmod 644 $$ONEIMAGE; \
+	if [ "$(RAX40)" = "y" ]; then \
+		gcc tools/rax40sign.c -o tools/rax40sign; \
+		tools/rax40sign image/fullimage.img; \
+		mv image/fullimage.img.pega image/RAX40.img; \
+	fi
+	rm -f vmlinux*
+	rm -f uImage*
+	rm -f lantiq.dtb
+	rm -f $(PLATFORMDIR)/root.squashfs.padded
 	#generate ASUS Image
-	@ISIZE=`wc -c $(PLATFORMDIR)/zImage.img | awk '{print $$1}'` ; \
-		KSIZE=`wc -c $(PLATFORMDIR)/zImage.lzma | awk '{print $$1}'` ; \
-		RSIZE=`wc -c $(PLATFORMDIR)/target.image | awk '{print $$1}'` ; \
-		PAD2=`expr $${ISIZE} - $${KSIZE} - $${RSIZE}` ; \
-		RFSOFFSET=`expr 64 + $${KSIZE} + $${PAD2}` ; \
-		echo "PAD2: $${PAD2}" ; \
-		asustools/mkimage -A $(ARCH) -O linux -T kernel -C lzma -a $(LOADADDR) -e $(ENTRYADDR) -r $${RFSOFFSET} \
-			-n $(BUILD_NAME) -V "$(KERNEL_VER)" "$(FS_VER)" "0" "0" "0" "0" "0" "0" "0" "0" \
-			-d $(PLATFORMDIR)/zImage.img image/$(IMGNAME).trx
-	$(call build_lantiq_image)
+	dd if=/dev/zero count=1 bs=128 | tr "\000" "\145" > ./eof.txt
+	rm -f image/tmp-linux.trx; ctools/trx -o image/tmp-linux.trx image/fullimage.img ./eof.txt
+	ctools/trx_asus -i image/tmp-linux.trx -r $(BUILD_NAME),$(KERNEL_VER).$(FS_VER),$(SERIALNO),$(SWRTEXTENDNO),image/$(IMGNAME).trx
+	rm -f ./eof.txt
 else
 # Broadcom ARM/MIPS platform
 	$(MAKE) -C ctools clean

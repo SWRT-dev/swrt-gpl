@@ -3,6 +3,12 @@ include ../sdk.config
 include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
 
+EXTRA_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CXXFLAGS += -fno-pic -mno-abicalls
+TARGET_ASFLAGS_DEFAULT += -fno-pic -mno-abicalls
+TARGET_CPPFLAGS += -fno-pic -mno-abicalls
+
 PKG_EXTRA_KCONFIG += \
 	CONFIG_CRYPTO_DEV_LANTIQ_EIP97=m \
 	CONFIG_LTQ_CRYPTO=y \

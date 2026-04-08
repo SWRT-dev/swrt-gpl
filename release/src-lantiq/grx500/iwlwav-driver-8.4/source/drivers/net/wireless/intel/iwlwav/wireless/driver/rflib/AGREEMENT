@@ -1,0 +1,79 @@
+DISCLAIMER AND INDEMNIFICATION AGREEMENT
+
+THIS DISCLAIMER AND INDEMNIFICATION AGREEMENT ("AGREEMENT") IS A LEGAL
+DOCUMENT BETWEEN YOU AND INTEL CORPORATION ("INTEL").
+
+PLEASE READ THIS AGREEMENT CAREFULLY BEFORE USING OR INSTALLING THE
+INTEL SOFTWARE LIBRARY RfLib PROVIDED TO YOU IN SOURCE CODE FORMAT
+("SOURCE CODE LIBRARY").
+
+"YOU" refers to both You individually and the entity for whom You are using
+or installing the Source Code Library and installing the Source Code
+Library.
+
+BY CLICKING "YES" OR "I AGREE" DURING THE INSTALLATION OF THE SOURCE CODE
+LIBRARY OR BY USING THE SOURCE CODE LIBRARY, YOU ACKNOWLEDGE THAT YOU HAVE
+READ THE AGREEMENT AND ACCEPT ITS TERMS. IF YOU DO NOT WANT TO BE BOUND BY
+THE TERMS, DO NOT USE THE SOURCE CODE LIBRARY AND CLICK "NO", IN WHICH CASE
+YOU WILL NOT BE PERMITTED TO INSTALL THE SOURCE CODE LIBRARY NOR USE THE
+SOURCE CODE LIBRARY.
+
+1. DISCLAIMER.
+
+YOU HAVE REQUESTED INTEL TO PROVIDE YOU WITH THE SOURCE CODE LIBRARY. THE
+ENTIRE RISK OF MODIFICATIONS YOU MAKE TO THE SOURCE CODE LIBRARY IS ASSUMED
+BY YOU. WITHOUT LIMITING THE FOREGOING, YOU SPECIFICALLY ASSUME ANY RISK,
+LIABILITY AND RESPONSIBILITY WITH REGARD TO THE COMPLIANCE OF THE MODIFIED
+SOURCE CODE LIBRARY WITH ANY RULES AND REGULATIONS, INCLUDING BUT NOT
+LIMITED TO THOSE ADOPTED BY THE FEDERAL COMMUNICATIONS COMMISSION ("FCC")
+AND OTHER COMMUNICATION AUTHORITIES. YOU FURTHER ASSUME ANY RISK, LIABILITY
+AND RESPONSIBILITY IF YOU PROVIDE THE UNMODIFIED OR MODIFIED SOURCE CODE
+LIBRARY TO ANY THIRD PARTY.
+
+2. INDEMNIFICATION.
+
+YOU AGREE TO DEFEND, INDEMNIFY AND HOLD INTEL, ITS AFFILIATES, DIRECTORS,
+OFFICERS, EMPLOYEES AND CONTRACTORS HARMLESS AGAINST ALL CLAIMS, COST,
+DAMAGE, LOSSES AND EXPENSES (INCLUDING ATTORNEYS FEES) INCURRED AS A RESULT
+OF MODIFICATIONS YOU MAKE TO THE SOURCE CODE LIBRARY AND/OR YOUR PROVISION
+OF THE UNMODIFIED OR MODIFIED SOURCE CODE LIBRARY TO ANY THIRD PARTY.
+
+3. OPEN SOURCE STATEMENT
+
+The Source Code Library may include Open Source Software (OSS) licensed
+pursuant to OSS license agreement(s) identified in the OSS comments in the
+applicable source code file(s) and/or file header(s) provided with or
+otherwise associated with the Software. Neither You nor any Original
+Equipment Manufacturing, Original Device Manufacturing, customer, or
+distributor may subject any proprietary portion of the Software to any OSS
+license obligations including, without limitation, combining or distributing
+the Software with OSS in a manner that subjects Intel, the Software or any
+portion thereof to any OSS license obligation. Nothing in this Agreement
+limits any rights under, or grants rights that supersede, the terms of any
+applicable OSS license.
+
+4. GENERAL.
+
+This Agreement constitutes the complete agreement between YOU and INTEL
+with regard to the subject matter stated herein and may not be modified
+unless a written amendment is signed by a corporate officer of INTEL. YOUR
+license rights to the Source Code Library and further terms and conditions
+thereto are governed by a separate License Agreement between YOU and INTEL.
+
+YOU agree to submit to exclusive jurisdiction in the courts of the state and
+federal courts sitting in Delaware, U.S.A.
+
+This Agreement shall be interpreted pursuant to the laws of the U.S.A. and
+Delaware without regard to principles of conflicts of laws.
+
+The invalidity or unenforceability of any provision hereof shall in no way
+affect the validity or enforceability of any other provision.
+
+
+INTEL CORPORATION
+2200 Mission College Blvd., 
+Santa Clara, California, 95054
+U.S.A.
+
+By selecting "YES" OR "I AGREE" OR BY USING THE SOURCE CODE LIBRARY YOU agree
+to these terms and conditions for the Source Code Library.

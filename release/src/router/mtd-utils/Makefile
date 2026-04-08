@@ -18,14 +18,15 @@ TESTS = tests
 
 MTD_BINS = \
 	ftl_format flash_erase nanddump doc_loadbios \
-	ftl_check mkfs.jffs2 flash_lock flash_unlock \
+	ftl_check flash_lock flash_unlock \
 	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite nandtest \
 	jffs2dump \
 	nftldump nftl_format docfdisk \
 	rfddump rfdformat \
 	serve_image recv_image \
-	sumtool jffs2reader \
-	nandflipbits
+	sumtool \
+	nandflipbits #\
+	#mkfs.jffs2 jffs2reader
 UBI_BINS = \
 	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
 	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol

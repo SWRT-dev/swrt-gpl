@@ -1,0 +1,46 @@
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] xconfig|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+	<IntDir>$(ProjectDir)msvcbld</IntDir>
+    <OutDir>$(ProjectDir)msvcbld</OutDir>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] xconfig|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] xconfig|Win32'">
+    <NMakeBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "cp -f builds/[!!!CGF_NAME!!!]/.config . ; make xconfig"</NMakeBuildCommandLine>
+    <NMakeOutput></NMakeOutput>
+    <NMakeCleanCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "cp -f builds/[!!!CGF_NAME!!!]/.config; rm -rf builds/[!!!CGF_NAME!!!]"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "cp -f builds/[!!!CGF_NAME!!!]/.config . ; rm -rf builds/[!!!CGF_NAME!!!]; make xconfig"</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeForcedIncludes>$(ProjectDir)\.config.h</NMakeForcedIncludes>
+    <NMakeIncludeSearchPath>$(ProjectDir)\wireless\driver\linux</NMakeIncludeSearchPath>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] oldconfig|Win32'" Label="Configuration">
+    <ConfigurationType>Makefile</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+	<IntDir>$(ProjectDir)msvcbld</IntDir>
+    <OutDir>$(ProjectDir)msvcbld</OutDir>
+  </PropertyGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] oldconfig|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] oldconfig|Win32'">
+    <NMakeBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make -C builds/[!!!CGF_NAME!!!] install"</NMakeBuildCommandLine>
+    <NMakeOutput></NMakeOutput>
+    <NMakeCleanCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make -C builds/[!!!CGF_NAME!!!] clean"</NMakeCleanCommandLine>
+    <NMakeReBuildCommandLine>$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c "make -C builds/[!!!CGF_NAME!!!] clean install"</NMakeReBuildCommandLine>
+    <NMakePreprocessorDefinitions>WIN32;_DEBUG;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
+    <NMakeForcedIncludes>$(ProjectDir)\.config.h</NMakeForcedIncludes>
+    <NMakeIncludeSearchPath>$(ProjectDir)\wireless\driver\linux</NMakeIncludeSearchPath>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] xconfig|Win32'">
+    <BuildLog>
+      <Path>$(OutDir)\$(ConfigurationName)_BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='[!!!CGF_NAME!!!] oldconfig|Win32'">
+    <BuildLog>
+      <Path>$(OutDir)\$(ConfigurationName)_BuildLog.htm</Path>
+    </BuildLog>
+  </ItemDefinitionGroup>

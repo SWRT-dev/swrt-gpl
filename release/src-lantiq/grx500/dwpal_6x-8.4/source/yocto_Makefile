@@ -1,0 +1,37 @@
+# wav-dpal source Makefile
+
+PKG_NAME := libdwpal
+MAJOR := 0
+MINOR := 1
+VERSION := $(MAJOR).$(MINOR)
+
+opt_no_flags := -Werror -Wcast-qual
+
+LOG_CFLAGS := -DPACKAGE_ID=\"DWPALWLAN\" -DLOGGING_ID="dwpal" -DLOG_LEVEL=7 -DLOG_TYPE=1
+EXTRALDFLAGS := -L./ -ldwpal -lncurses -lreadline -lrt -lpthread
+EXTRACFLAGS := -I./include -DCONFIG_CTRL_IFACE -DCONFIG_CTRL_IFACE_UNIX -DYOCTO
+
+LIB_OBJS := dwpal.o dwpal_ext.o wpa_ctrl.o os_unix.o
+DWPAL_CLI_OBJS := stats.o dwpal_cli.o
+
+%.o: %.c
+	$(CC) $(INCLUDES) $(CFLAGS) $(EXTRACFLAGS) $(LOG_CFLAGS) $(DEFS) $(CPPFLAGS) -fPIC -MT $@ -MD -MP -MF $@.d -c -o $@ $<
+
+$(PKG_NAME).so.$(VERSION): $(LIB_OBJS)
+	$(CC) -shared -fPIC -Wl,-soname,$@ $(LIB_OBJS) $(LDFLAGS) -lnl-genl-3 -o $@
+
+$(PKG_NAME).so: $(PKG_NAME).so.$(VERSION)
+	ln -sf $< $@
+
+dwpal_cli: $(DWPAL_CLI_OBJS) $(PKG_NAME).so.$(VERSION) $(PKG_NAME).so
+	$(CC) -o $@ $? $(EXTRALDFLAGS) $(LDFLAGS)
+
+.PHONY: all
+all: $(PKG_NAME).so.$(VERSION) dwpal_cli $(PKG_NAME).so
+
+.PHONY: clean
+clean:
+	@rm -f $(LIB_OBJS)
+	@rm -f lib$(NAME).so*
+	@rm -f dwpal_cli.o dwpal_cli stats.o
+	@rm -f *.o.d

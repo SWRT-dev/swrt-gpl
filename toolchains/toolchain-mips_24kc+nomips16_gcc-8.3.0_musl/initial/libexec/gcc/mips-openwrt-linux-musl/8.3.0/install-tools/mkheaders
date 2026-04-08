@@ -53,7 +53,7 @@ if [ x$1 != x ] ; then
   prefix=$1
   shift
 else
-  prefix=/home/paldier/isdk/8.4/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl
+  prefix=/home/paldier/intel/prplos/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl
 fi
 
 # Allow for alternate isysroot in which to find headers

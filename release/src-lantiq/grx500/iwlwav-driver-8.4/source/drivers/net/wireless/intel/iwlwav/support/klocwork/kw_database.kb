@@ -1,0 +1,4 @@
+__mtlk_dlist_push_back_obj - XMRF $2 : 0
+__dl_list_add_obj - XMRF $2 : 0
+__dl_list_add_tail_obj - XMRF $2 : 0
+_mtlk_cli_port_get_fname - TSCheckPT 1 : $1 : 1

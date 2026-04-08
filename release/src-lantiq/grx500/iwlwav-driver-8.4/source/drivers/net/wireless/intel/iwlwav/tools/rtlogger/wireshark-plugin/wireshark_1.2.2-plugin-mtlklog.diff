@@ -1,0 +1,89 @@
+--- clean/wireshark-1.2.2/configure.in	2009-09-15 04:50:45.000000000 +0300
++++ wireshark-1.2.2/configure.in	2009-09-29 14:50:45.000000000 +0200
+@@ -1717,6 +1717,7 @@
+   plugins/unistim/Makefile
+   plugins/wimax/Makefile
+   plugins/wimaxasncp/Makefile
++  plugins/mtlklog/Makefile
+   tools/Makefile
+   tools/idl2wrs.sh
+   tools/lemon/Makefile
+--- clean/wireshark-1.2.2/epan/Makefile.am	2009-09-15 04:50:14.000000000 +0300
++++ wireshark-1.2.2/epan/Makefile.am	2009-09-29 14:51:36.000000000 +0200
+@@ -270,8 +270,8 @@
+         ../plugins/wimax/wimax_pdu_decoder.c \
+         ../plugins/wimax/wimax_phy_attributes_decoder.c \
+         ../plugins/wimax/wimax_tlv.c \
+-        ../plugins/wimax/wimax_utils.c
+-
++        ../plugins/wimax/wimax_utils.c \
++        ../plugins/mtlklog/mtlklog.c
+ 
+ else		# ENABLE_STATIC
+ 
+--- clean/wireshark-1.2.2/Makefile.am	2009-09-15 04:50:46.000000000 +0300
++++ wireshark-1.2.2/Makefile.am	2009-09-29 14:53:04.000000000 +0200
+@@ -258,7 +258,8 @@
+ 	-dlopen plugins/sercosiii/sercosiii.la \
+ 	-dlopen plugins/stats_tree/stats_tree.la \
+ 	-dlopen plugins/unistim/unistim.la \
+-	-dlopen plugins/wimax/wimax.la
++	-dlopen plugins/wimax/wimax.la \
++	-dlopen plugins/mtlklog/mtlklog.la
+ 
+ WTAP_PLUGIN_SOURCES = \
+        epan/plugins.c \
+--- clean/wireshark-1.2.2/packaging/nsis/Makefile.nmake	2009-09-15 04:50:33.000000000 +0300
++++ wireshark-1.2.2/packaging/nsis/Makefile.nmake	2009-09-29 14:55:35.000000000 +0200
+@@ -60,7 +60,8 @@
+ 	../../plugins/stats_tree/stats_tree.dll \
+ 	../../plugins/unistim/unistim.dll \
+ 	../../plugins/wimax/wimax.dll \
+-	../../plugins/wimaxasncp/wimaxasncp.dll
++	../../plugins/wimaxasncp/wimaxasncp.dll \
++	../../plugins/mtlklog/mtlklog.dll
+ 
+ NSI=wireshark.nsi \
+ 	GetWindowsVersion.nsh \
+--- clean/wireshark-1.2.2/packaging/nsis/wireshark.nsi	2009-09-15 04:50:33.000000000 +0300
++++ wireshark-1.2.2/packaging/nsis/wireshark.nsi	2009-09-29 15:33:20.000000000 +0200
+@@ -825,6 +825,7 @@
+ File "..\..\plugins\unistim\unistim.dll"
+ File "..\..\plugins\wimax\wimax.dll"
+ File "..\..\plugins\wimaxasncp\wimaxasncp.dll"
++File "..\..\plugins\mtlklog\mtlklog.dll"
+ SectionEnd
+ 
+ Section "Tree Statistics Plugin" SecStatsTree
+--- clean/wireshark-1.2.2/plugins/Makefile.am	2009-09-15 04:47:26.000000000 +0300
++++ wireshark-1.2.2/plugins/Makefile.am	2009-09-29 14:56:11.000000000 +0200
+@@ -37,7 +37,8 @@
+ 	stats_tree \
+ 	unistim \
+ 	wimax \
+-	wimaxasncp
++	wimaxasncp \
++	mtlklog
+ 
+ plugindir = @plugindir@
+ 
+--- clean/wireshark-1.2.2/plugins/Makefile.nmake	2009-09-15 04:47:26.000000000 +0300
++++ wireshark-1.2.2/plugins/Makefile.nmake	2009-09-29 14:57:33.000000000 +0200
+@@ -75,6 +75,9 @@
+ 	cd wimaxasncp
+ 	$(MAKE) /$(MAKEFLAGS) -f Makefile.nmake $(PLUGIN_TARGET)
+ 	cd ..
++	cd mtlklog
++	$(MAKE) /$(MAKEFLAGS) -f Makefile.nmake $(PLUGIN_TARGET)
++	cd ..
+ 	if exist Custom.nmake $(MAKE) /$(MAKEFLAGS) -f Custom.nmake $(PLUGIN_TARGET)
+ 
+ ################################################################################
+@@ -100,6 +103,7 @@
+ 	xcopy plugins\unistim\*.dll $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	xcopy plugins\wimax\*.dll $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	xcopy plugins\wimaxasncp\*.dll $(INSTALL_DIR)\plugins\$(VERSION) /d
++	xcopy plugins\mtlklog\*.dll $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	cd plugins
+ 	if exist Custom.nmake $(MAKE) /$(MAKEFLAGS) -f Custom.nmake install-plugins
+ !ENDIF

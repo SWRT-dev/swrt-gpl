@@ -1,0 +1,9 @@
+2009-02-09: Support for libpcap 2.4 encapsulation type
+	Packet payload represented as:
+	{
+		uint8_t oid;
+		uint8_t gid;
+		uint16_t sid;
+		char msg[]; /* non-zero-terminated ascii message */
+	}
+

@@ -47,21 +47,26 @@ static void __load_wifi_driver(int testmode)
 	FILE *fp_wifi;
 	char vphy[IFNAMSIZ] = { 0 }, path_wifi[sizeof("/tmp/wifiXXXX.sh")];
 	char *handler_argv[]= { "/opt/intel/bin/dump_handler", "-i", index, "-f", "/opt/intel/wave/", NULL };
-	char *dwpald_argv[]= { "dwpald", NULL };
+#if !defined(RAX40)
+	char *dwpald_argv[]= { "dwpal_daemon", NULL };
+#endif
+	eval("insmod", "/lib/modules/4.9.276/compat.ko");
+	eval("insmod", "/lib/modules/4.9.276/cfg80211.ko");
+	eval("insmod", "/lib/modules/4.9.276/mac80211.ko");
+	eval("insmod", "/lib/modules/4.9.276/mtlkroot.ko");
+	eval("rmmod", "mtlk");
+	eval("insmod", "mtlk", "ap=1,1", "fastpath=1,1", "ahb_off=1", "loggersid=255,255");
 	setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/opt/intel/sbin:/opt/intel/usr/sbin:/opt/intel/bin", 1);
 	setenv("LD_LIBRARY_PATH", "/opt/intel/lib:/opt/intel/usr/lib", 1);
+#if !defined(RAX40)
 	_eval(dwpald_argv, NULL, 0, &pid);
+#endif
 	///proc/net/mtlk/card*
 	strlcpy(index, "0", sizeof(index));
 	_eval(handler_argv, NULL, 0, &pid);
-	strlcpy(index, "1", sizeof(index));
-	_eval(handler_argv, NULL, 0, &pid);
-	modprobe("compat");
-	modprobe("mac80211");
-	modprobe("cfg80211");
-	modprobe("mtlkroot");
-	modprobe_r("mtlk");
-	eval("modprobe", "-s", "mtlk", "ap=1,1", "fastpath=1,1", "ahb_off=1", "loggersid=255,255");
+	//strlcpy(index, "1", sizeof(index));
+	//_eval(handler_argv, NULL, 0, &pid);
+
 //	eval("ifconfig", "wlan0", "hw", "ether", macbuf);
 //	eval("ifconfig", "wlan2", "hw", "ether", macbuf);
 	eval("mkdir", "-p", "/etc/Wireless/sh");
@@ -102,17 +107,17 @@ static void __load_wifi_driver(int testmode)
 
 void init_devs(void)
 {
+	int status;
+	MKNOD("/dev/nvram", S_IFCHR | 0666, makedev(228, 0));
+
+	if((status = WEXITSTATUS(modprobe("nvram_linux"))))
+		printf("## modprobe(nvram_linux) fail status(%d)\n", status);
 	if(patch_Factory)
 		patch_Factory();
 }
 
 int init_devs_defer(void)
 {
-	int status;
-	MKNOD("/dev/nvram", S_IFCHR | 0666, makedev(228, 0));
-
-	if((status = WEXITSTATUS(modprobe("nvram_linux"))))
-		printf("## modprobe(nvram_linux) fail status(%d)\n", status);
 #if defined(K3C)
 	fprintf(stderr, "K3C: init gpio\n");
 	gpio_dir(34, GPIO_DIR_OUT);
@@ -151,28 +156,6 @@ int init_devs_defer(void)
 	set_gpio(42, 0);
 	gpio_dir(43, GPIO_DIR_OUT);
 	set_gpio(43, 1);
-#elif defined(RAX40)
-	fprintf(stderr, "RAX40: init gpio\n");
-	gpio_dir(0, GPIO_DIR_IN);
-	gpio_dir(30, GPIO_DIR_IN);
-	gpio_dir(10, GPIO_DIR_OUT);
-	set_gpio(10, 0);
-	gpio_dir(14, GPIO_DIR_OUT);
-	set_gpio(14, 0);
-	gpio_dir(21, GPIO_DIR_OUT);
-	set_gpio(21, 0);
-	gpio_dir(22, GPIO_DIR_OUT);
-	set_gpio(22, 0);
-	gpio_dir(31, GPIO_DIR_OUT);
-	set_gpio(31, 0);
-	gpio_dir(34, GPIO_DIR_OUT);
-	set_gpio(34, 0);
-	gpio_dir(35, GPIO_DIR_OUT);
-	set_gpio(35, 0);
-	gpio_dir(43, GPIO_DIR_OUT);
-	set_gpio(43, 0);
-#else
-#error fix me
 #endif
 	check_ubi_partition();
 	_dprintf("start_jffs2() start\n");
@@ -200,7 +183,7 @@ void init_others(void)
 //	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ done -----------\n");
 //	system("cp /opt/lantiq/wave/scripts/fapi_wlan_wave_lib_common.sh /tmp/");
 //	system("cp /opt/lantiq/wave/images/* /tmp/");
-	system("cp /rom/opt/intel/etc/wave_components.ver /etc/");
+	system("ln -sf /opt/intel/etc/wave_components.ver /etc/");
 	system("read_img wlanconfig /tmp/cal_eeprom.tar.gz");
 //	if(stat("/tmp/cal_eeprom.tar.gz", &cal_stat) || cal_stat.st_blocks < 801)
 //		write_default_cal();
@@ -216,35 +199,37 @@ void init_others(void)
 		MKNOD("/dev/switch_api/0", S_IFCHR | 0640, makedev(81, 0));
 	if(!f_exists("/dev/switch_api/1"))
 		MKNOD("/dev/switch_api/1", S_IFCHR | 0640, makedev(81, 1));
+	system("insmod xrx500_phy_fw");
 //	system("load_gphy_firmware_preinit.sh");
-	MKNOD("/dev/ifx_mei", S_IFCHR | 0666, makedev(105, 0));
-	MKNOD("/dev/ifx_ppa", S_IFCHR | 0666, makedev(181, 0));
+//	MKNOD("/dev/ifx_mei", S_IFCHR | 0666, makedev(105, 0));
+//	MKNOD("/dev/ifx_ppa", S_IFCHR | 0666, makedev(181, 0));
 //	system("insmod drv_ifxos");
 //	system("insmod drv_event_logger");
 	system("insmod directconnect_datapath");
-//	system("insmod ltq_eth_drv_xrx500");
+	system("insmod ltq_eth_drv_xrx500");
 	system("insmod dc_mode-hw");
 //	system("insmod mcast_helper");
 	system("insmod macvlan");
+	system("insmod ppa_drv_stack_al");
 	system("insmod ltq_pae_hal");
 	system("insmod ltq_tmu_hal_drv");
-	system("insmod qos_mgr_drv");
+	system("insmod ip_tables");
 	system("insmod ppa_api");
-//	system("insmod ppa_api_proc");
+	system("insmod esp4");
+	system("insmod ltq_crypto");
 	system("insmod ltq_mpe_hal_drv");
 //	system("insmod ppa_api_tmplbuf");
 	system("insmod ppa_api_sw_accel_mod");
 	system("insmod hw_tcp_litepath");
 	system("insmod mac_violation_mirror");
-	system("insmod ltq_temp");
-	system("insmod ltq_pmcu");
+//	system("insmod ltq_pmcu");
 	//modprobe("tntfs");
-	if(!pids("udevd"))
-	{
-		char *udevd_argv[] = {"udevd", "--daemon", NULL};
-		_eval(udevd_argv, NULL, 0, &pid);
-		logmessage("udevd", "daemon is started");
-	}
+//	if(!pids("udevd"))
+//	{
+//		char *udevd_argv[] = {"udevd", "--daemon", NULL};
+//		_eval(udevd_argv, NULL, 0, &pid);
+//		logmessage("udevd", "daemon is started");
+//	}
 	nvram_set("ctf_disable", nvram_safe_get("ctf_disable_force"));
 	system("ppacmd init -n 30");
 	system("ppacmd addlan -i eth0_1");
@@ -311,28 +296,6 @@ int init_gpio_again(void)
 	set_gpio(42, 0);
 	gpio_dir(43, GPIO_DIR_OUT);
 	set_gpio(43, 1);
-#elif defined(RAX40)
-	fprintf(stderr, "RAX40: init gpio again\n");
-	gpio_dir(0, GPIO_DIR_IN);
-	gpio_dir(30, GPIO_DIR_IN);
-	gpio_dir(10, GPIO_DIR_OUT);
-	set_gpio(10, 0);
-	gpio_dir(14, GPIO_DIR_OUT);
-	set_gpio(14, 0);
-	gpio_dir(21, GPIO_DIR_OUT);
-	set_gpio(21, 0);
-	gpio_dir(22, GPIO_DIR_OUT);
-	set_gpio(22, 0);
-	gpio_dir(31, GPIO_DIR_OUT);
-	set_gpio(31, 0);
-	gpio_dir(34, GPIO_DIR_OUT);
-	set_gpio(34, 0);
-	gpio_dir(35, GPIO_DIR_OUT);
-	set_gpio(35, 0);
-	gpio_dir(43, GPIO_DIR_OUT);
-	set_gpio(43, 0);
-#else
-#error fix me
 #endif
 	return 0;
 }

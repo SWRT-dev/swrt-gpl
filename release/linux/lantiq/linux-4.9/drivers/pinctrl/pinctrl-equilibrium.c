@@ -194,7 +194,7 @@ static int gpiochip_setup(struct device *dev, struct intel_gpio_desc *desc)
 	gc->direction_output	= intel_eqbr_gpio_dir_output;
 	gc->get			= intel_eqbr_gpio_get;
 	gc->set			= intel_eqbr_gpio_set;
-	gc->base		= -1; /* desc->bank->pin_base; */
+	gc->base		= desc->bank->pin_base;//-1; why? /* desc->bank->pin_base; */
 	gc->ngpio		= desc->bank->nr_pins;
 	gc->label		= desc->name;
 	gc->to_irq		= intel_eqbr_gpio_to_irq;

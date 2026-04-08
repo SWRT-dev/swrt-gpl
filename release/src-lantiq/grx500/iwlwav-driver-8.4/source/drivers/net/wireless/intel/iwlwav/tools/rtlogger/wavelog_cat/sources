@@ -1,0 +1,23 @@
+TARGETNAME=wavelog_cat
+TARGETTYPE=PROGRAM
+
+USE_MSVCRT=1
+UMTYPE=console
+
+WIN32_WINNT_VERSION=$(LATEST_WIN32_WINNT_VERSION)
+_NT_TARGET_VERSION=$(_NT_TARGET_VERSION_WINXP)
+NTDDI_VERSION=$(LATEST_NTDDI_VERSION)
+
+MSC_WARNING_LEVEL=/W3 /WX
+
+C_DEFINES = $(C_DEFINES) /DMTLK_SOURCE_VERSION=\"exported\"
+
+EXEENTRY=main
+
+INCLUDES=../../shared/windows;../../../wireless/shared;../shared;../../shared;$(INCLUDES)
+
+SOURCES=wavelog_cat.cpp
+
+TARGETLIBS=\
+         $(DDK_LIB_PATH)/Ws2_32.lib \
+         ../../shared/$(DDK_TARGET_OS)/$(DDKBUILDENV)/*/WinToolsShared.lib

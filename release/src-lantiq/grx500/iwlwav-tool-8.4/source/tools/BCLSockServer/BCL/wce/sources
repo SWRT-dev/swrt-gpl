@@ -1,0 +1,16 @@
+#
+# $Id: $
+#
+
+!include ..\common.inc
+
+RELEASETYPE   = CUSTOM
+
+DDK_TARGET_OS = $(_TGTOS)
+DDKBUILDENV   = $(PLT)\$(WINCEDEBUG)\$(_TGTCPU)
+NTMAKEENV     = $(_MAKEENVROOT)
+
+CDEFINES      = $(C_DEFINES)
+
+INCLUDES      = $(INCLUDES)                  \
+              $(_PUBLICROOT)\COMMON\SDK\INC; \

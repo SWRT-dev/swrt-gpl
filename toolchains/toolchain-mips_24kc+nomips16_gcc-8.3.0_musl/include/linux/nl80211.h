@@ -1936,10 +1936,6 @@ enum nl80211_commands {
  *	attribute.
  * @NL80211_ATTR_NAN_MATCH: used to report a match. This is a nested attribute.
  *	See &enum nl80211_nan_match_attributes.
- * @NL80211_ATTR_VENDOR_WDS: used to enable the wds vendor specific capability
- * @NL80211_ATTR_STA_RSSI: Received signal strength indication (u32)
- * @NL80211_ATTR_RADAR_BIT_MAP: Bit map of channel where radar was detected
- * @NL80211_ATTR_SB_DFS_BW: Sub Band DFS new operation bandwidth
  *
  * @NL80211_ATTR_BSSID: The BSSID of the AP. Note that %NL80211_ATTR_MAC is also
  *	used in various commands/events for specifying the BSSID.
@@ -2345,11 +2341,6 @@ enum nl80211_attrs {
 
 	NL80211_ATTR_BSSID,
 
-	NL80211_ATTR_VENDOR_WDS,
-	NL80211_ATTR_STA_RSSI,
-	NL80211_ATTR_RADAR_BIT_MAP,
-	NL80211_ATTR_SB_DFS_BW,
-
 	/* add attributes here, update the policy in nl80211.c */
 
 	__NL80211_ATTR_AFTER_LAST,
@@ -2709,7 +2700,6 @@ enum nl80211_sta_info {
 	NL80211_STA_INFO_TID_STATS,
 	NL80211_STA_INFO_RX_DURATION,
 	NL80211_STA_INFO_PAD,
-	NL80211_STA_INFO_MAX_RSSI,
 
 	/* keep last */
 	__NL80211_STA_INFO_AFTER_LAST,
@@ -5138,14 +5128,6 @@ enum nl80211_nan_match_attributes {
 	/* keep last */
 	NUM_NL80211_NAN_MATCH_ATTR,
 	NL80211_NAN_MATCH_ATTR_MAX = NUM_NL80211_NAN_MATCH_ATTR - 1
-};
-
-enum nl80211_sb_dfs_bw {
-	NL80211_SB_DFS_BW_NORMAL,
-	NL80211_SB_DFS_BW_20,
-	NL80211_SB_DFS_BW_40,
-	NL80211_SB_DFS_BW_80,
-	NL80211_SB_DFS_BW_FULL,
 };
 
 #endif /* __LINUX_NL80211_H */

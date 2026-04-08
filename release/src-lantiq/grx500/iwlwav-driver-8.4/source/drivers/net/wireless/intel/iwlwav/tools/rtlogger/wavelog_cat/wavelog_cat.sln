@@ -1,0 +1,20 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "wavelog_cat", "wavelog_cat.vcxproj", "{62472A30-8B0A-47E6-A871-C6B6630D2CC0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Win32 = Debug|Win32
+		Release|Win32 = Release|Win32
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{62472A30-8B0A-47E6-A871-C6B6630D2CC0}.Debug|Win32.ActiveCfg = Debug|Win32
+		{62472A30-8B0A-47E6-A871-C6B6630D2CC0}.Debug|Win32.Build.0 = Debug|Win32
+		{62472A30-8B0A-47E6-A871-C6B6630D2CC0}.Release|Win32.ActiveCfg = Release|Win32
+		{62472A30-8B0A-47E6-A871-C6B6630D2CC0}.Release|Win32.Build.0 = Release|Win32
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal

@@ -1,0 +1,77 @@
+Coding Style Recommendations.
+
+----------------------------------------------------------------------------
+Configuring the editor
+----------------------------------------------------------------------------
+
+1. If using VIM, add the following line to your ~/.vimrc file:
+    set secure exrc
+
+----------------------------------------------------------------------------
+Coding rules
+----------------------------------------------------------------------------
+
+1. Lines are not longer that 80 symbols along with comments.
+
+2. Source files are in Unix encoding.
+
+3. Indentation is 2 spaces, try not to use tabs, it's inconvenient when you
+   copy/paste. Use the following vi settings for conveniece:
+
+     :set ts=2 sw=2 expandtab cindent
+
+4. Operators (if, while, for etc.) are written like this:
+
+    if (a == 1) {
+      b = 2;
+    } else {
+      c = 3;
+    }
+
+5. Define functions like this:
+
+    char *
+    my_memcpy (char *dest, char *source)
+    {
+      ...
+    }
+
+6. Declare functions like this:
+    char *my_memcpy (char *dest, char *source);
+
+7. Do not indent switch statement's case labels. Indent the break statement.
+   Falltrough must be explicitly marked as such. For example:
+   
+    switch (cond) {
+    label_a:
+      break;
+    label_b:
+      // fallthrough
+    default:
+      break;
+    }
+
+8. Forward declarations at the top of .c files are acceptable only for
+static functions. Non-static functions must be declared in the corresponding
+.h files:
+    mtlk.c -> mtlk.h
+    mib.c -> mib.h
+    etc.
+
+9. Non-static function naming conventions:
+ 
+Functions of utility nature (like copy_str_to_userspace or a2t) should
+have no prefix.
+ 
+Other non-static function names should have the following form:
+    mtlk_[modulename]_[name]
+ 
+For example:
+    mtlk_scan_sysfs_open() // ok
+ 
+The only exception is mtlk module itself: do not specify the mtlk
+prefix twice. For example:
+ 
+    mtlk_mtlk_xmit() // wrong
+    mtlk_xmit() // ok
+

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?><?xml-stylesheet type='text/xsl' href='_UpgradeReport_Files/UpgradeReport.xslt'?><UpgradeLog>
+<Properties><Property Name="Solution" Value="libelf">
+</Property><Property Name="Solution File" Value="\\wlan-cf\vasiljev\projects\DWARF\ziloni-pull\third_party\libelf\libelf.sln">
+</Property><Property Name="Date" Value="19 июля 2012 г.">
+</Property><Property Name="Time" Value="9:54:58">
+</Property></Properties><Event ErrorLevel="0" Project="libelf" Source="libelf.vcproj" Description="Converting project file '\\wlan-cf\vasiljev\projects\DWARF\ziloni-pull\third_party\libelf\libelf.vcproj'.">
+</Event><Event ErrorLevel="1" Project="libelf" Source="libelf.vcproj" Description="VCWebServiceProxyGeneratorTool is no longer supported. The tool has been removed from your project settings.">
+</Event><Event ErrorLevel="0" Project="libelf" Source="libelf.vcproj" Description="Done converting to new project file '\\wlan-cf\vasiljev\projects\DWARF\ziloni-pull\third_party\libelf\libelf.vcxproj'.">
+</Event><Event ErrorLevel="3" Project="libelf" Source="libelf.vcproj" Description="Converted">
+</Event></UpgradeLog>

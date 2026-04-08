@@ -1,0 +1,8 @@
+#
+# $Id$
+#
+
+
+DIRS= utf \
+      driver
+

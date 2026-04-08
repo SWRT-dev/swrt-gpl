@@ -1,0 +1,6 @@
+#
+# $Id$
+#
+
+DIRS= wireless
+OPTIONAL_DIRS= tools

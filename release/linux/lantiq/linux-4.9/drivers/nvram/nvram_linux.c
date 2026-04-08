@@ -106,6 +106,9 @@ static char *nvram_buf;
 static char nvram_buf[NVRAM_SPACE] __attribute__((aligned(PAGE_SIZE)));
 #endif	// ASUS_NVRAM
 
+#define READ_BUF_SIZE	(NVRAM_SPACE + 1)
+static DEFINE_MUTEX(read_buf_lock);	/* protect read_buf */
+static char *read_buf = NULL;
 static char *commit_buf = NULL;
 
 #ifdef WL_NVRAM
@@ -173,7 +176,7 @@ static struct device *s_nvram_device = NULL;
 #       define MTD_UNLOCK(mtd, args...) do { if (mtd->unlock) (*(mtd->unlock))(mtd, args);  } while (0)
 #endif
 
-#define flush_cache_all()                       do { } while (0)
+#define flush_cache_all()	do { } while (0)
 
 #ifdef CFE_UPDATE
 #include <sbextif.h>
@@ -587,7 +590,7 @@ hndcrc8(
 	return crc;
 }
 
-#define NVRAM_DRIVER_VERSION	"0.05"
+#define NVRAM_DRIVER_VERSION	"0.07"
 
 static int 
 nvram_proc_show(struct seq_file *m, void *v)
@@ -798,7 +801,10 @@ nvram_set(const char *name, const char *value)
 {
 	unsigned long flags;
 	int ret;
-	struct nvram_header *header;
+	static struct nvram_header *header = NULL;
+
+	if (!header)
+		header = kzalloc(NVRAM_SPACE, GFP_KERNEL);
 
 	spin_lock_irqsave(&nvram_lock, flags);
 
@@ -823,12 +829,8 @@ nvram_set(const char *name, const char *value)
 
 	if ((ret = _nvram_set(name, value))) {
 		/* Consolidate space and try again */
-		if ((header = kmalloc(NVRAM_SPACE, GFP_ATOMIC))) {
-			if (_nvram_commit(header) == 0)		{
-				ret = _nvram_set(name, value);
-			}
-			kfree(header);
-		}
+		if (header && _nvram_commit(header) == 0)
+			ret = _nvram_set(name, value);
 	}
 	spin_unlock_irqrestore(&nvram_lock, flags);
 
@@ -874,6 +876,13 @@ nvram_unset(const char *name)
 	return ret;
 }
 
+static void
+erase_callback(struct erase_info *done)
+{
+	wait_queue_head_t *wait_q = (wait_queue_head_t *) done->priv;
+	wake_up(wait_q);
+}
+
 int
 nvram_commit(void)
 {
@@ -882,6 +891,8 @@ nvram_commit(void)
 	struct nvram_header *header;
 	unsigned long flags;
 	u_int32_t offset;
+	DECLARE_WAITQUEUE(wait, current);
+	wait_queue_head_t wait_q;
 	struct erase_info erase;
 #ifdef WL_NVRAM
 	int need_erase = 0, e_retry, w_retry;
@@ -977,19 +988,32 @@ start_erase_write:
 
 		/* Erase sector blocks */
 		if (need_erase) {
+			init_waitqueue_head(&wait_q);
+			erase.mtd = nvram_mtd;
 			erase.addr = o;
 			erase.len = nvram_mtd->erasesize;
+			erase.callback = erase_callback;
+			erase.priv = (u_long) &wait_q;
+
+			set_current_state(TASK_INTERRUPTIBLE);
+			add_wait_queue(&wait_q, &wait);
 
 			/* Unlock sector blocks */
 			MTD_UNLOCK(nvram_mtd, o, nvram_mtd->erasesize);
 
 			if ((ret = MTD_ERASE(nvram_mtd, &erase))) {
+				set_current_state(TASK_RUNNING);
+				remove_wait_queue(&wait_q, &wait);
 				printk(KERN_WARNING "%s: erase error. (retry %d)\n", __func__, e_retry);
 				if (++e_retry <= 3)
 					goto start_erase_write;
 				ret = -EIO;
 				goto done;
 			}
+
+			/* Wait for erase to finish */
+			schedule();
+			remove_wait_queue(&wait_q, &wait);
 		}
 
 		/* Write sector blocks */
@@ -1043,18 +1067,31 @@ start_erase_write:
 		goto done;
 
 	/* Erase sector blocks */
+	init_waitqueue_head(&wait_q);
 	for (; offset < nvram_mtd->size - NVRAM_SPACE + header->len; offset += nvram_mtd->erasesize) {
+		erase.mtd = nvram_mtd;
 		erase.addr = offset;
 		erase.len = nvram_mtd->erasesize;
+		erase.callback = erase_callback;
+		erase.priv = (u_long) &wait_q;
+
+		set_current_state(TASK_INTERRUPTIBLE);
+		add_wait_queue(&wait_q, &wait);
 
 		/* Unlock sector blocks */
 		if (nvram_mtd->unlock)
 			nvram_mtd->unlock(nvram_mtd, offset, nvram_mtd->erasesize);
 
 		if ((ret = MTD_ERASE(nvram_mtd, &erase))) {
+			set_current_state(TASK_RUNNING);
+			remove_wait_queue(&wait_q, &wait);
 			printk("nvram_commit: erase error\n");
 			goto done;
 		}
+
+		/* Wait for erase to finish */
+		schedule();
+		remove_wait_queue(&wait_q, &wait);
 	}
 
 	/* Write partition up to end of data area */
@@ -1100,14 +1137,17 @@ EXPORT_SYMBOL(nvram_commit);
 static ssize_t
 dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 {
-	char tmp[100], *name = tmp, *value;
+	char *name = read_buf, *value;
 	ssize_t ret;
 	unsigned long off;
 	
-	if ((count+1) > sizeof(tmp)) {
+	if ((count+1) > READ_BUF_SIZE) {
 		if (!(name = kmalloc(count+1, GFP_KERNEL)))
 			return -ENOMEM;
 	}
+
+	if (name == read_buf)
+		mutex_lock(&read_buf_lock);
 
 	if (copy_from_user(name, buf, count)) {
 		ret = -EFAULT;
@@ -1147,7 +1187,9 @@ dev_nvram_read(struct file *file, char *buf, size_t count, loff_t *ppos)
 #endif
  
 done:
-	if (name != tmp)
+	if (name == read_buf)
+		mutex_unlock(&read_buf_lock);
+	else
 		kfree(name);
 
 	return ret;
@@ -1380,6 +1422,7 @@ dev_nvram_exit(void)
 #endif
 
 	kfree(commit_buf);
+	kfree(read_buf);
 
 	if (nvram_mtd)
 		put_mtd_device(nvram_mtd);
@@ -1412,7 +1455,7 @@ dev_nvram_init(void)
 	size_t erasesize;
 
 #ifdef ASUS_NVRAM
-	nvram_buf = kmalloc (NVRAM_SPACE, GFP_ATOMIC);
+	nvram_buf = kzalloc (NVRAM_SPACE, GFP_ATOMIC);
 	if (nvram_buf == NULL) {
 		printk(KERN_ERR "%s(): Allocate %d bytes fail!\n", __func__, NVRAM_SPACE);
 		return -ENOMEM;
@@ -1440,8 +1483,7 @@ dev_nvram_init(void)
 		else
 		{
 			if (!strcmp(nvram_mtd->name, MTD_NVRAM_NAME) &&
-			    nvram_mtd->size >= NVRAM_SPACE
-			)
+			    nvram_mtd->size >= NVRAM_SPACE)
 			{
 				break;
 			}
@@ -1459,6 +1501,19 @@ dev_nvram_init(void)
 	if (nvram_mtd->type == MTD_NANDFLASH || nvram_mtd->type == MTD_UBIVOLUME) {
 		step_unit = ROUNDUP(STEP_UNIT, nvram_mtd->writesize);
 		rsv_blk_size = ROUNDUP(ROUNDUP(RESERVED_BLOCK_SIZE, nvram_mtd->writesize), step_unit);
+	}
+
+	if (rsv_blk_size >= nvram_mtd->erasesize) {
+		printk("%s: Size of reserved area must not exceed block size.\n", __func__);
+		ret = -EINVAL;
+		goto err;
+	}
+
+	/* buffer for dev_nvram_read() */
+	if (!(read_buf = kzalloc(NVRAM_SPACE, GFP_KERNEL))) {
+		printk("%s: out of memory\n", __func__);
+		ret = -ENOMEM;
+		goto err;
 	}
 
 	/* Pre-allocate buffer */
@@ -1742,3 +1797,4 @@ MODULE_LICENSE("GPL");
 #endif	// ASUS_NVRAM
 
 MODULE_VERSION("V0.01");
+

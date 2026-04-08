@@ -3,12 +3,18 @@ include ../sdk.config
 include ../rules.mk
 PKG_BUILD_DIR=$(shell pwd)/source
 
+EXTRA_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CFLAGS += -fno-pic -mno-abicalls
+TARGET_CXXFLAGS += -fno-pic -mno-abicalls
+TARGET_ASFLAGS_DEFAULT += -fno-pic -mno-abicalls
+TARGET_CPPFLAGS += -fno-pic -mno-abicalls
+
 CONFIG_FILE:=COMMON_WAVE600_CONFIG
 ifeq ($(CONFIG_TARGET_intel_x86_lgm),y)
  INSMOD_PRMS:="interface_index=4,2,0,6"
 endif
 
-IFX_CFLAGS += $(TARGET_CFLAGS) -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIE -Wl,-strip-debug
+IFX_CFLAGS += $(TARGET_CFLAGS) -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIE -Wl,-strip-debug -DSWRT_PATCH -D$(SWRT_NAME)
 
 ifeq ($(CONFIG_USE_WAVE600_2_EMULATOR),y)
 IFX_CFLAGS += -DCONFIG_WAVE_NO_TX_BSS_MONITOR

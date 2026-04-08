@@ -1,0 +1,113 @@
+Index: configure.in
+===================================================================
+--- configure.in	(revision 40429)
++++ configure.in	(working copy)
+@@ -2016,6 +2016,7 @@
+   plugins/unistim/Makefile
+   plugins/wimax/Makefile
+   plugins/wimaxasncp/Makefile
++  plugins/mtlklog/Makefile
+   tools/Makefile
+   tools/idl2wrs.sh
+   tools/lemon/Makefile
+Index: epan/Makefile.am
+===================================================================
+--- epan/Makefile.am	(revision 40429)
++++ epan/Makefile.am	(working copy)
+@@ -284,7 +284,8 @@
+         ../plugins/wimax/wimax_pdu_decoder.c \
+         ../plugins/wimax/wimax_phy_attributes_decoder.c \
+         ../plugins/wimax/wimax_tlv.c \
+-        ../plugins/wimax/wimax_utils.c
++        ../plugins/wimax/wimax_utils.c \
++        ../plugins/mtlklog/mtlklog.c
+ 
+ 
+ else		# ENABLE_STATIC
+Index: Makefile.am
+===================================================================
+--- Makefile.am	(revision 40429)
++++ Makefile.am	(working copy)
+@@ -293,7 +293,8 @@
+ 	-dlopen plugins/sercosiii/sercosiii.la \
+ 	-dlopen plugins/stats_tree/stats_tree.la \
+ 	-dlopen plugins/unistim/unistim.la \
+-	-dlopen plugins/wimax/wimax.la
++	-dlopen plugins/wimax/wimax.la \
++	-dlopen plugins/mtlklog/mtlklog.la
+ 
+ WTAP_PLUGIN_SOURCES = \
+        epan/plugins.c \
+Index: packaging/nsis/Custom.nmake
+===================================================================
+--- packaging/nsis/Custom.nmake	(revision 40429)
++++ packaging/nsis/Custom.nmake	(working copy)
+@@ -3,6 +3,7 @@
+ # 
+ # Add your csutom plugins here
+ CUSTOM_PLUGINS= \
++	../../plugins/mtlklog/mtlklog.dll
+ # Example:
+ # 	../../plugins/foo/foo.dll 	
+ 
+Index: packaging/nsis/custom_plugins.txt
+===================================================================
+--- packaging/nsis/custom_plugins.txt	(revision 40429)
++++ packaging/nsis/custom_plugins.txt	(working copy)
+@@ -1,3 +1,4 @@
+ ;Add your custom plugins directives here
+ ; Example:
+-;File "..\..\plugins\foo\foo.dll"
+\ No newline at end of file
++;File "..\..\plugins\foo\foo.dll"
++File "..\..\plugins\mtlklog\mtlklog.dll"
+Index: packaging/nsis/wireshark.nsi
+===================================================================
+--- packaging/nsis/wireshark.nsi	(revision 40429)
++++ packaging/nsis/wireshark.nsi	(working copy)
+@@ -915,6 +915,7 @@
+ File "..\..\plugins\unistim\unistim.dll"
+ File "..\..\plugins\wimax\wimax.dll"
+ File "..\..\plugins\wimaxasncp\wimaxasncp.dll"
++File "..\..\plugins\mtlklog\mtlklog.dll"
+ !include "custom_plugins.txt"
+ SectionEnd
+ 
+Index: plugins/Makefile.am
+===================================================================
+--- plugins/Makefile.am	(revision 40429)
++++ plugins/Makefile.am	(working copy)
+@@ -38,7 +38,8 @@
+ 	stats_tree \
+ 	unistim \
+ 	wimax \
+-	wimaxasncp
++	wimaxasncp \
++	mtlklog
+ 
+ plugindir = @plugindir@
+ 
+Index: plugins/Makefile.nmake
+===================================================================
+--- plugins/Makefile.nmake	(revision 40429)
++++ plugins/Makefile.nmake	(working copy)
+@@ -22,7 +22,8 @@
+ 	stats_tree  \
+ 	unistim     \
+ 	wimax       \
+-	wimaxasncp
++	wimaxasncp  \
++	mtlklog
+ 
+ 
+ all:
+@@ -56,6 +57,9 @@
+ 	cd $@
+ 	$(MAKE) /$(MAKEFLAGS) -f Makefile.nmake $(PLUGIN_TARGET)
+ 	cd ..
++	cd mtlklog
++	$(MAKE) /$(MAKEFLAGS) -f Makefile.nmake $(PLUGIN_TARGET)
++	cd ..
+ 
+ custom :
+ 	if exist Custom.nmake $(MAKE) /$(MAKEFLAGS) -f Custom.nmake $(PLUGIN_TARGET)

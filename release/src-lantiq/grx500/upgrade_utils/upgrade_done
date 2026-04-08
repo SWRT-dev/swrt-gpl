@@ -1,0 +1,25 @@
+#!/bin/sh
+
+update() {
+	local cmd_line t_active_bank active_bank t_update_chk update_chk
+
+	cmd_line="`cat /proc/cmdline`";
+	[ -z "${cmd_line##*active_bank=[AB]*}" ] && {
+		t_active_bank=${cmd_line##*active_bank=};
+		active_bank=${t_active_bank::1};
+	} || active_bank=A;
+
+	[ -z "${cmd_line##*update_chk=[0-4]*}" ] && {
+		t_update_chk=${cmd_line##*update_chk=};
+		update_chk=${t_update_chk::1};
+	} || update_chk=0;
+
+	if [ "$active_bank" = "B" -a "$update_chk" = "0" ]; then
+		/usr/sbin/uboot_env --set --name update_chk --value 2
+	elif [ "$active_bank" = "A" -a "$update_chk" != "0" ]; then
+		/usr/sbin/uboot_env --set --name update_chk --value 0
+	fi
+}
+
+update
+

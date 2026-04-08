@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="windows-1251"?>
+<VisualStudioProject
+	ProjectType="Visual C++"
+	Version="9.00"
+	Name="msvc_all"
+	ProjectGUID="{04E2C0CA-D63F-4E39-BB93-B57844C87801}"
+	RootNamespace="msvc_all"
+	Keyword="MakeFileProj"
+	TargetFrameworkVersion="196613"
+	>
+	<Platforms>
+		<Platform
+			Name="Win32"
+		/>
+	</Platforms>
+	<ToolFiles>
+	</ToolFiles>
+	<Configurations>
+		<Configuration
+			Name="xconfig|Win32"
+			OutputDirectory="$(InputDir)msvcbld"
+			IntermediateDirectory="$(InputDir)msvcbld"
+			ConfigurationType="0"
+			BuildLogFile="$(OutDir)\$(ConfigurationName)_BuildLog.htm"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make xconfig&quot;"
+				ReBuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make clean xconfig&quot;"
+				CleanCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make clean&quot;"
+				Output=""
+				PreprocessorDefinitions="WIN32;_DEBUG"
+				IncludeSearchPath=""
+				ForcedIncludes="$(ProjectDir)\.config.h"
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>
+		<Configuration
+			Name="oldconfig|Win32"
+			OutputDirectory="$(InputDir)msvcbld"
+			IntermediateDirectory="$(InputDir)msvcbld"
+			ConfigurationType="0"
+			BuildLogFile="$(OutDir)\$(ConfigurationName)_BuildLog.htm"
+			>
+			<Tool
+				Name="VCNMakeTool"
+				BuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make install&quot;"
+				ReBuildCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make clean install&quot;"
+				CleanCommandLine="$(ProjectDir)\support\wbld_scripts\mkwin.bat -p $(ProjectDir) -c &quot;make clean&quot;"
+				Output=""
+				PreprocessorDefinitions="WIN32;_DEBUG"
+				IncludeSearchPath=""
+				ForcedIncludes="$(ProjectDir)\.config.h"
+				AssemblySearchPath=""
+				ForcedUsingAssemblies=""
+				CompileAsManaged=""
+			/>
+		</Configuration>
+[!!!CONFIGURATIONS!!!]
+	</Configurations>
+	<References>
+	</References>
+	<Files>
+[!!!FILES!!!]
+	</Files>
+	<Globals>
+	</Globals>
+</VisualStudioProject>

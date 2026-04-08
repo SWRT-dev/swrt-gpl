@@ -19,8 +19,8 @@ import gdb
 import os
 import os.path
 
-pythondir = '/home/paldier/isdk/8.4/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/share/gcc-8.3.0/python'
-libdir = '/home/paldier/isdk/8.4/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/mips-openwrt-linux-musl/lib'
+pythondir = '/home/paldier/intel/prplos/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/share/gcc-8.3.0/python'
+libdir = '/home/paldier/intel/prplos/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/mips-openwrt-linux-musl/lib'
 
 # This file might be loaded when there is no current objfile.  This
 # can happen if the user loads it manually.  In this case we don't

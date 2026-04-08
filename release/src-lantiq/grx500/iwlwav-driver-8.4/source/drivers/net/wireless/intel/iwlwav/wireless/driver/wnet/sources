@@ -1,0 +1,17 @@
+#
+# $Id$
+#
+
+TARGETTYPE=DRIVER_LIBRARY
+
+#
+# NDIS 6.0 driver
+#
+# C_DEFINES = $(C_DEFINES) -DNDIS60_MINIPORT=1 -DNDIS60=1
+
+#
+# NDIS 5.1 driver
+#
+C_DEFINES = $(C_DEFINES) -DNDIS51_MINIPORT -DNDIS51
+
+!include ..\common.inc

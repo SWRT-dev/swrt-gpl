@@ -1,0 +1,90 @@
+--- ../../old/wireshark-1.0.5/configure.in	2008-12-10 01:10:42.000000000 +0200
++++ ./configure.in	2009-02-09 12:56:49.000000000 +0200
+@@ -1710,6 +1710,7 @@
+   plugins/lwres/Makefile
+   plugins/m2m/Makefile
+   plugins/mate/Makefile
++  plugins/mtlklog/Makefile
+   plugins/opcua/Makefile
+   plugins/opsi/Makefile
+   plugins/pcli/Makefile
+--- ../../old/wireshark-1.0.5/epan/Makefile.am	2008-12-10 01:10:36.000000000 +0200
++++ ./epan/Makefile.am	2009-02-09 12:56:49.000000000 +0200
+@@ -225,6 +225,7 @@
+ 	../plugins/lwres/packet-lwres.c \
+ 	../plugins/m2m/packet-m2m.c \
+ 	../plugins/m2m/wimax_tlv.c \
++	../plugins/mtlklog/mtlklog.c \
+ 	../plugins/mgcp/packet-mgcp.c \
+ 	../plugins/pcli/packet-pcli.c \
+ 	../plugins/rdm/packet-rdm.c \
+--- ../../old/wireshark-1.0.5/Makefile.am	2008-12-10 01:10:42.000000000 +0200
++++ ./Makefile.am	2009-02-09 12:56:49.000000000 +0200
+@@ -253,6 +253,7 @@
+ 	-dlopen plugins/lwres/lwres.la \
+ 	-dlopen plugins/m2m/m2m.la \
+ 	-dlopen plugins/mate/mate.la \
++	-dlopen plugins/mtlklog/mtlklog.la \
+ 	-dlopen plugins/opcua/opcua.la \
+ 	-dlopen plugins/opsi/opsi.la \
+ 	-dlopen plugins/pcli/pcli.la \
+--- ../../old/wireshark-1.0.5/Makefile.nmake	2008-12-10 01:10:42.000000000 +0200
++++ ./Makefile.nmake	2009-02-09 12:56:49.000000000 +0200
+@@ -977,6 +977,7 @@
+ 	xcopy ".\plugins\lwres\lwres.dll" $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	xcopy ".\plugins\m2m\m2m.dll" $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	xcopy ".\plugins\mate\mate.dll" $(INSTALL_DIR)\plugins\$(VERSION) /d
++	xcopy ".\plugins\mtlklog\mtlklog.dll" $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	xcopy ".\plugins\opcua\opcua.dll" $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	xcopy ".\plugins\opsi\opsi.dll" $(INSTALL_DIR)\plugins\$(VERSION) /d
+ 	xcopy ".\plugins\pcli\pcli.dll" $(INSTALL_DIR)\plugins\$(VERSION) /d
+--- ../../old/wireshark-1.0.5/packaging/nsis/Makefile.nmake	2008-12-10 01:10:41.000000000 +0200
++++ ./packaging/nsis/Makefile.nmake	2009-02-09 12:56:49.000000000 +0200
+@@ -85,6 +85,7 @@
+ 	../../plugins/lwres/lwres.dll \
+ 	../../plugins/m2m/m2m.dll \
+ 	../../plugins/mate/mate.dll \
++	../../plugins/mtlklog/mtlklog.dll \
+ 	../../plugins/opsi/opsi.dll \
+ 	../../plugins/pcli/pcli.dll \
+ 	../../plugins/rlm/rlm.dll \
+--- ../../old/wireshark-1.0.5/packaging/nsis/wireshark.nsi	2008-12-10 01:10:41.000000000 +0200
++++ ./packaging/nsis/wireshark.nsi	2009-02-09 12:56:49.000000000 +0200
+@@ -836,6 +836,7 @@
+ File "..\..\plugins\irda\irda.dll"
+ File "..\..\plugins\lwres\lwres.dll"
+ File "..\..\plugins\m2m\m2m.dll"
++File "..\..\plugins\mtlklog\mtlklog.dll"
+ File "..\..\plugins\opsi\opsi.dll"
+ File "..\..\plugins\pcli\pcli.dll"
+ File "..\..\plugins\profinet\profinet.dll"
+--- ../../old/wireshark-1.0.5/plugins/Makefile.am	2008-12-10 01:09:59.000000000 +0200
++++ ./plugins/Makefile.am	2009-02-09 12:56:49.000000000 +0200
+@@ -36,6 +36,7 @@
+ 	lwres \
+ 	m2m \
+ 	mate \
++	mtlklog \
+ 	opcua \
+ 	opsi \
+ 	pcli \
+--- ../../old/wireshark-1.0.5/plugins/Makefile.nmake	2008-12-10 01:09:59.000000000 +0200
++++ ./plugins/Makefile.nmake	2009-02-09 12:56:49.000000000 +0200
+@@ -71,6 +71,9 @@
+ 	cd mate
+ 	$(MAKE) /$(MAKEFLAGS) -f Makefile.nmake $(PLUGIN_TARGET)
+ 	cd ..
++	cd mtlklog
++	$(MAKE) /$(MAKEFLAGS) -f Makefile.nmake $(PLUGIN_TARGET)
++	cd ..
+ 	cd opcua
+ 	$(MAKE) /$(MAKEFLAGS) -f Makefile.nmake $(PLUGIN_TARGET)
+ 	cd ..
+@@ -135,6 +138,7 @@
+ 	xcopy lwres\*.dll $(VERSION) /d
+ 	xcopy m2m\*.dll $(VERSION) /d
+ 	xcopy mate\*.dll $(VERSION) /d
++	xcopy mtlklog\*.dll $(VERSION) /d
+ 	xcopy opcua\*.dll $(VERSION) /d
+ 	xcopy opsi\*.dll $(VERSION) /d
+ 	xcopy pcli\*.dll $(VERSION) /d

@@ -50,7 +50,7 @@ _FORTIFY_FN(memcpy) void *memcpy(void *__od, const void *__os, size_t __n)
 		__builtin_trap();
 	if (__n > __bd || __n > __bs)
 		__builtin_trap();
-	return __orig_memcpy(__od, __os, __n);
+	return __builtin_memcpy(__od, __os, __n);
 }
 
 _FORTIFY_FN(memmove) void *memmove(void *__d, const void *__s, size_t __n)
@@ -69,7 +69,7 @@ _FORTIFY_FN(memset) void *memset(void *__d, int __c, size_t __n)
 
 	if (__n > __b)
 		__builtin_trap();
-	return __orig_memset(__d, __c, __n);
+	return __builtin_memset(__d, __c, __n);
 }
 
 #if defined(_POSIX_SOURCE) || defined(_POSIX_C_SOURCE) \

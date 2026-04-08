@@ -201,7 +201,7 @@ void mips_tc_init(u32 *shared_ctxt_mem)
 	#endif
 	if (!shared_working_vir_mem) {
 		pr_err("%s:%d: Invalid shared memory\n", __func__, __LINE__);
-		return -1;
+		return;
 	}
 #ifdef USE_WLAN_SRAM
 	shared_vir_uncached_mem->ctrl.priv_data_vir =
@@ -967,6 +967,7 @@ int __init tc_sg_init (void)
 
 	/* create kernel thread to print debug message */
 	dbg_task = kthread_create(kernel_debug_thread, NULL, "debug_task");
+	return 0;
 }
 early_initcall(tc_sg_init);
 

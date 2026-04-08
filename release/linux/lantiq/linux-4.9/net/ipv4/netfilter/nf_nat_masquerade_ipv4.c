@@ -131,14 +131,13 @@ static inline struct nf_conntrack_expect *find_fullcone_exp(struct nf_conn *ct)
 {
 	struct nf_conntrack_tuple * tp =
 		&ct->tuplehash[IP_CT_DIR_ORIGINAL].tuple;
-	struct net *net = nf_ct_net(ct);
 	struct nf_conntrack_expect * exp = NULL;
 	struct nf_conntrack_expect * i;
 	unsigned int h;
 
 	rcu_read_lock();
 	for (h = 0; h < nf_ct_expect_hsize; h++) {
-		hlist_for_each_entry_rcu(i, &net->ct.expect_hash[h], hnode) {
+		hlist_for_each_entry_rcu(i, &nf_ct_expect_hash[h], hnode) {
 			if (nf_inet_addr_cmp(&i->saved_addr, &tp->src.u3) &&
 		    	    i->saved_proto.all == tp->src.u.all &&
 		    	    i->tuple.dst.protonum == tp->dst.protonum &&

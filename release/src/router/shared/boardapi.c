@@ -575,9 +575,6 @@ int init_gpio(void)
 #ifdef BLUECAVE
 	_dprintf("BLUECAVE: skip init_gpio()\n");
 	return 0;
-#elif defined(RAX40)
-	_dprintf("RAX40: skip init_gpio()\n");
-	return 0;
 #endif
 
 	/* btn input */

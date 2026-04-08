@@ -38,4 +38,4 @@ dlopen=''
 dlpreopen=''
 
 # Directory that this library needs to be installed in:
-libdir='/home/paldier/isdk/8.4/openwrt/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/libexec/gcc/mips-openwrt-linux-musl/8.3.0'
+libdir='/home/paldier/intel/prplos/staging_dir/toolchain-mips_24kc+nomips16_gcc-8.3.0_musl/libexec/gcc/mips-openwrt-linux-musl/8.3.0'

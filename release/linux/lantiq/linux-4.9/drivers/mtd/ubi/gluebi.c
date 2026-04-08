@@ -322,6 +322,13 @@ static int gluebi_create(struct ubi_device_info *di,
 	struct gluebi_device *gluebi, *g;
 	struct mtd_info *mtd;
 
+#if defined(CONFIG_UBIFS_FS)
+	if (!strcmp(vi->name, "jffs2") || !strcmp(vi->name, "data_vol")) {
+		printk(KERN_INFO "%s: skip %s volume\n", __func__, vi->name);
+		return 0;
+	}
+#endif
+
 	gluebi = kzalloc(sizeof(struct gluebi_device), GFP_KERNEL);
 	if (!gluebi)
 		return -ENOMEM;
