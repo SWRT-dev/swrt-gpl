@@ -608,12 +608,12 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 			return ret;
 		}
 		if (nvram_pf_match(prefix, "nband", "1")) {
-			if ( is_if_up("wlan2") != 1 ){
+			if ( is_if_up(WIF_5G) != 1 ){
 				ret += websWrite(wp, "5 GHz radio is not ready\n");
 				return ret;
 			}
 		} else {
-			if ( is_if_up("wlan0") != 1 ){
+			if ( is_if_up(WIF_2G) != 1 ){
 				ret += websWrite(wp, "2.4 GHz radio is not ready\n");
 				return ret;
 			}
@@ -1014,7 +1014,7 @@ ej_wps_info_5g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wps_info_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return wl_wps_info(eid, wp, argc, argv, WL_5G_2_BAND);
+	return wl_wps_info(eid, wp, argc, argv, -1);
 }
 
 int
@@ -1469,60 +1469,10 @@ ej_wl_scan_5g(int eid, webs_t wp, int argc, char_t **argv)
 int
 ej_wl_scan_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
-	return wl_scan(eid, wp, argc, argv, WL_5G_2_BAND);
+	return wl_scan(eid, wp, argc, argv, -1);
 }
 
-static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int unit)
-{
-	int retval = 0;
-	char chList[256];
-	char ifname[16] = {0};
-	int skfd;
-	struct iw_range	range;
-	int k;
-	char buffer[128];	/* Temporary buffer */
-
-	/* Create a channel to the NET kernel. */
-	if((skfd = iw_sockets_open()) < 0){
-		perror("socket");
-		return -1;
-	}
-
-	snprintf(ifname, sizeof(ifname), "%s", wl_vifname_wave(unit, 0));
-
-	/* Get list of frequencies / channels */
-	if(iw_get_range_info(skfd, ifname, &range) < 0){
-		fprintf(stderr, "%-8.16s  no frequency information.\n\n", ifname);
-	}
-
-	memset(chList, 0, sizeof(chList));
-
-	for(k = 0; k < range.num_frequency; k++){
-		if(k != 0){
-			if(range.freq[k].i != 165 && range.freq[k].i != 140 ){
-				strcat(chList, ",");
-			}
-		}
-		snprintf(buffer, sizeof(buffer), "%d", range.freq[k].i);
-		if(range.freq[k].i != 165 && range.freq[k].i != 140 ){
-			strcat(chList, buffer);
-		}
-	}
-	retval += websWrite(wp, "[%s]", chList);
-	/* Close the socket. */
-	iw_sockets_close(skfd);
-
-	return retval;
-}
-
-
-int
-ej_wl_channel_list_2g(int eid, webs_t wp, int argc, char_t **argv)
-{
-	return ej_wl_channel_list(eid, wp, argc, argv, WL_2G_BAND);
-}
-
-int display_channel(int bw, int channel)
+int display_channel(int bw, char *channel)
 {
 	char country_code[3];
 
@@ -1531,18 +1481,18 @@ int display_channel(int bw, int channel)
 
 	if(bw == 80){
 		if(strcmp(country_code, "GB") == 0){
-			if(channel == 116 || channel == 132 ||
-				channel == 136 || channel == 140 ){
+			if(!strcmp(channel, "116") || !strcmp(channel, "132") ||
+				 !strcmp(channel, "136") || !strcmp(channel, "140")){
 				return 0;
 			}
 		}else{
-			if(channel == 165 || channel == 140 ){
+			if(!strcmp(channel, "165") || !strcmp(channel, "140")){
 				return 0;
 			}
 		}
 	}else if(bw == 40){
 		if(strcmp(country_code, "GB") == 0){
-			if(channel == 116 || channel == 140){
+			if(!strcmp(channel, "116") || !strcmp(channel, "140")){
 				return 0;
 			}
 		}
@@ -1550,45 +1500,81 @@ int display_channel(int bw, int channel)
 	return 1;
 }
 
-int get_wl_channel_list_by_bw_core(int unit, char *ch_list, int bw)
+static int ej_wl_channel_list(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
 	int retval = 0;
-	char ifname[16] = {0};
-	int skfd;
-	struct iw_range	range;
-	int k;
+	int k = 0;
+	char chList[256];
 	char buffer[128];	/* Temporary buffer */
+	char* chan;
 
-	/* Create a channel to the NET kernel. */
-	if((skfd = iw_sockets_open()) < 0){
-		perror("socket");
-		return -1;
-	}
-
-	snprintf(ifname, sizeof(ifname), "%s", wl_vifname_wave(unit, 0));
-
-	/* Get list of frequencies / channels */
-	if(iw_get_range_info(skfd, ifname, &range) < 0){
-		fprintf(stderr, "%-8.16s  no frequency information.\n\n", ifname);
-	}
-
-	strcat(ch_list, "[");
-	for(k = 0; k < range.num_frequency; k++){
-		if(k != 0){
-			if(display_channel(bw, range.freq[k].i) == 1){
-				strcat(ch_list, ",");
+	get_channel_list_via_driver(unit, buffer, (int)sizeof(buffer));
+	memset(chList, 0, sizeof(chList));
+	if(unit){
+		chan = strtok(buffer, ",");
+		while(chan) {
+			if(display_channel(80, chan) == 1){
+				if(k != 0){
+					strlcat(chList, ",", sizeof(chList));
+				}
+				strlcat(chList, chan, sizeof(chList));
+				k++;
 			}
+			chan = strtok(NULL, ",");
 		}
-		snprintf(buffer, sizeof(buffer), "%d", range.freq[k].i);
-		if(display_channel(bw, range.freq[k].i) == 1){
-			strcat(ch_list, buffer);
+	}else
+		strlcat(chList, buffer, sizeof(chList));
+
+	return websWrite(wp, "[%s]", chList);
+}
+
+int
+ej_wl_channel_list_2g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_channel_list(eid, wp, argc, argv, WL_2G_BAND);
+}
+
+int
+ej_wl_channel_list_5g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	/* show 80MHz channel list */
+	return ej_wl_channel_list(eid, wp, argc, argv, WL_5G_BAND);
+}
+
+int
+ej_wl_channel_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_channel_list(eid, wp, argc, argv, -1);
+}
+
+int
+ej_wl_channel_list_6g(int eid, webs_t wp, int argc, char_t **argv)
+{
+	return ej_wl_channel_list(eid, wp, argc, argv, -1);
+}
+
+int get_wl_channel_list_by_bw_core(int unit, char *ch_list, size_t len, int bw)
+{
+	int k = 0;
+	char buffer[128];	/* Temporary buffer */
+	char* chan;
+
+	get_channel_list_via_driver(unit, buffer, (int)sizeof(buffer));
+
+	strlcat(ch_list, "[", len);
+	chan = strtok(buffer, ",");
+	while(chan) {
+		if(display_channel(bw, chan) == 1){
+			if(k != 0){
+				strlcat(ch_list, ",", len);
+			}
+			strlcat(ch_list, chan, len);
+			k++;
 		}
+		chan = strtok(NULL, ",");
 	}
 	strcat(ch_list, "]");
-	/* Close the socket. */
-	iw_sockets_close(skfd);
-
-	return retval;
+	return 0;
 }
 
 int ej_wl_channel_list_5g_20m(int eid, webs_t wp, int argc, char_t **argv)
@@ -1603,7 +1589,7 @@ int ej_wl_channel_list_5g_20m(int eid, webs_t wp, int argc, char_t **argv)
 		memset(ch_list, 0, sizeof(ch_list));
 	}
 
-	if(strlen(ch_list) == 0) retval = get_wl_channel_list_by_bw_core(1, ch_list, 20);
+	if(strlen(ch_list) == 0) retval = get_wl_channel_list_by_bw_core(1, ch_list, sizeof(ch_list), 20);
 	retval += websWrite(wp, ch_list);
 	return retval;
 }
@@ -1620,7 +1606,7 @@ int ej_wl_channel_list_5g_40m(int eid, webs_t wp, int argc, char_t **argv)
 		memset(ch_list, 0, sizeof(ch_list));
 	}
 
-	if(strlen(ch_list) == 0) retval = get_wl_channel_list_by_bw_core(1, ch_list, 40);
+	if(strlen(ch_list) == 0) retval = get_wl_channel_list_by_bw_core(1, ch_list, sizeof(ch_list), 40);
 	retval += websWrite(wp, ch_list);
 	return retval;
 }
@@ -1637,22 +1623,9 @@ int ej_wl_channel_list_5g_80m(int eid, webs_t wp, int argc, char_t **argv)
 		memset(ch_list, 0, sizeof(ch_list));
 	}
 
-	if(strlen(ch_list) == 0) retval = get_wl_channel_list_by_bw_core(1, ch_list, 80);
+	if(strlen(ch_list) == 0) retval = get_wl_channel_list_by_bw_core(1, ch_list, sizeof(ch_list), 80);
 	retval += websWrite(wp, ch_list);
 	return retval;
-}
-
-int
-ej_wl_channel_list_5g(int eid, webs_t wp, int argc, char_t **argv)
-{
-	/* show 80MHz channel list */
-	return ej_wl_channel_list(eid, wp, argc, argv, WL_5G_BAND);
-}
-
-int
-ej_wl_channel_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
-{
-	return ej_wl_channel_list(eid, wp, argc, argv, WL_5G_2_BAND);
 }
 
 static const struct g_bw40chanspec_s {
@@ -1801,8 +1774,17 @@ int ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	if (!(chlist_mask = chlist2bitmask(unit, ch_list, ",")))
 		goto exit_ej_wl_chanspecs;
 
+	if (unit == WL_6G_BAND) {
+		ch_prefix = "6g";
+	}
+
 	/* Generate 20MHz channelspecslist. */
-	__bitmask2chlist(unit, chlist_mask, "\", \"", tmp_ch_list, sizeof(tmp_ch_list));
+#if defined(RTCONFIG_HAS_6G)
+	if (unit == WL_6G_BAND)
+		__bitmask2chlist(unit, chlist_mask, "\", \"6g", tmp_ch_list, sizeof(tmp_ch_list));
+	else
+#endif
+		__bitmask2chlist(unit, chlist_mask, "\", \"", tmp_ch_list, sizeof(tmp_ch_list));
 	retval += websWrite(wp, "[ \"%s%s", ch_prefix, tmp_ch_list);
 
 	/* Generate 40MHz,u 40MHz,l 80MHz, 160MHz channelspecs. */
@@ -1830,6 +1812,10 @@ int ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 	) {
 		p = g_5gbw40chanspec_tbl;
+#if defined(RTCONFIG_HAS_6G)
+	} else if (unit == WL_6G_BAND) {
+		p = NULL;	/* u,l format is replaced by /40 */
+#endif
 	} else {
 		_dprintf("%s: 40MHz chanspec of unit %d hasn't been defined!\n", __func__, unit);
 	}
@@ -1852,6 +1838,10 @@ int ej_wl_chanspecs(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 	) {
 		q = g_5gbw80pchanspec_tbl;
+#if defined(RTCONFIG_HAS_6G)
+	} else if (unit == WL_6G_BAND) {
+		q = g_6gbw40pchanspec_tbl;
+#endif
 	} else {
 		_dprintf("%s: 80+MHz chanspec of unit %d hasn't been defined!\n", __func__, unit);
 	}
@@ -1999,57 +1989,27 @@ int
 ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
 	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
-		return ej_wl_rate(eid, wp, argc, argv, WL_5G_2_BAND);
+		return ej_wl_rate(eid, wp, argc, argv, -1);
 	else if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
 	else
 		return websWrite(wp, "");
 }
 
-#if defined(RTCONFIG_HAS_6G)
+
 int
 ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
 {
+#if defined(RTCONFIG_HAS_6G)
 	if(sw_mode() == SW_MODE_REPEATER || wisp_mode())
 		return ej_wl_rate(eid, wp, argc, argv, WL_6G_BAND);
-	else if(check_user_agent(user_agent) != FROM_BROWSER)
-		return websWrite(wp, "\"\"");
-	else
-		return websWrite(wp, "");
-}
-#else
-int
-ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv)
-{
+	else 
+#endif
 	if(check_user_agent(user_agent) != FROM_BROWSER)
 		return websWrite(wp, "\"\"");
 	else
 		return websWrite(wp, "");
 }
-#endif	/* RTCONFIG_HAS_6G */
-
-#if defined(RTCONFIG_HAS_6G_2)
-int
-ej_wl_rate_6g_2(int eid, webs_t wp, int argc, char_t **argv)
-{
-	if (sw_mode() == SW_MODE_REPEATER || wisp_mode())
-		return ej_wl_rate(eid, wp, argc, argv, 3 /* FIXME: WL_6G_2_BAND */);
-	else if(check_user_agent(user_agent) != FROM_BROWSER)
-		return websWrite(wp, "\"\"");
-	else
-		return websWrite(wp, "");
-}
-#else
-int
-ej_wl_rate_6g_2(int eid, webs_t wp, int argc, char_t **argv)
-{
-	if(check_user_agent(user_agent) != FROM_BROWSER)
-		return websWrite(wp, "\"\"");
-	else
-		return websWrite(wp, "");
-}
-
-#endif	/* RTCONFIG_HAS_6G_2 */
 
 int
 ej_nat_accel_status(int eid, webs_t wp, int argc, char_t **argv)
@@ -2067,14 +2027,14 @@ void __validate_apply_set_wl_var(char *nv, char *val)
 	int band;
 	char prefix[sizeof("wlxxx_")];
 
-	if (!nv || (strncmp(nv, "wl0_", 4) && strncmp(nv, "wl1_", 4) && strncmp(nv, "wl2_", 4)))
+	if (!nv || (strncmp(nv, "wl0_", 4) && strncmp(nv, "wl1_", 4)))
 		return;
 
 	for (p = &global_params[0]; *p != NULL; ++p) {
 		if (strcmp(nv + 4, *p))
 			continue;
 
-		for (band = WL_2G_BAND; band < min(MAX_NR_WL_IF, WL_5G_2_BAND + 1); ++band) {
+		for (band = WL_2G_BAND; band < MAX_NR_WL_IF; ++band) {
 			snprintf(prefix, sizeof(prefix), "wl%d_", band);
 			if (!strncmp(nv, prefix, safe_strlen(prefix)))
 				continue;

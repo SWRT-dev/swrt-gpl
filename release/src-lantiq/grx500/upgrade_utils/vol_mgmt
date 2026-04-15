@@ -290,9 +290,9 @@ upgrade_dualvol_kernel ()
                                 uboot_env --set --name active_bank --value $new_active
 
                                 if [ "$new_active" = "B" ]; then
-                                        uboot_env --set --name update_chk --value 2
+                                        uboot_env --set --name update_chk --value 1
                                 else
-                                        uboot_env --set --name update_chk --value 0
+                                        uboot_env --set --name update_chk --value 3
                                 fi
 
 			}
@@ -318,9 +318,9 @@ upgrade_dualvol_bootcore ()
                                 uboot_env --set --name active_bank --value $new_active
 
                                 if [ "$new_active" = "B" ]; then
-                                        uboot_env --set --name update_chk --value 2
+                                        uboot_env --set --name update_chk --value 1
                                 else
-                                        uboot_env --set --name update_chk --value 0
+                                        uboot_env --set --name update_chk --value 3
                                 fi
 
 			}

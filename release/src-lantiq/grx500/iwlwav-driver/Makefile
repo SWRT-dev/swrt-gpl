@@ -14,7 +14,7 @@ ifeq ($(CONFIG_TARGET_intel_x86_lgm),y)
  INSMOD_PRMS:="interface_index=4,2,0,6"
 endif
 
-IFX_CFLAGS += $(TARGET_CFLAGS) -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIE -Wl,-strip-debug -DSWRT_PATCH -D$(SWRT_NAME)
+IFX_CFLAGS += $(TARGET_CFLAGS) -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIE -Wl,-strip-debug -DSWRT_PATCH
 
 ifeq ($(CONFIG_USE_WAVE600_2_EMULATOR),y)
 IFX_CFLAGS += -DCONFIG_WAVE_NO_TX_BSS_MONITOR

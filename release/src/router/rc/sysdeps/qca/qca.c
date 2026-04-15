@@ -137,9 +137,9 @@ struct chattr_s {
 	int channel;
 	int isupper;
 	char *ht_str;
-	int chan_low;
-	int chan_high;
-	int chan_cen;
+	int chan_centr_40;
+	int chan_centr_80;
+	int chan_centr_160;
 	int pad;
 	int bw40cap;
 	int bw80cap;
@@ -195,6 +195,11 @@ struct bandx_defval_s {
 	short pad7;
 	short ext_nss;
 	short pad8;
+};
+
+struct chlist_s {
+	int channel;
+	int bw_mask;
 };
 
 struct bandx_defval_s bandx_defval[] = {
@@ -308,10 +313,10 @@ int calculate_bw_of_each_5g_channel(int band)
 {
 	char chList[256], word[128];
 	char *next;
-	int i, j, k;
-	int bw1 = 0, bw2 = 0;
-	int chlist40[] = { 36, 0, 44, 0, 52, 0, 60, 0, 100, 0, 108, 0, 116, 0, 124, 0, 132, 0, 140, 0, 149, 0, 157, 0};
-	int chlist80[] = { 36, 0, 52, 0, 100, 0, 116, 0, 132, 0, 149, 0};
+	int i, j;
+	int bw160_1 = 0, bw160_2 = 0/*, bw160_3 = 0*/;
+	struct chlist_s chlist40[] = {{36, 0}, {44, 0}, {52, 0}, {60, 0}, {100, 0}, {108, 0}, {116, 0}, {124, 0}, {132, 0}, {140, 0}, {149, 0}, {157, 0}};
+	struct chlist_s chlist80[] = {{36, 0}, {52, 0}, {100, 0}, {116, 0}, {132, 0}, {149, 0}};
 
 	if(band > WL_5G_2_BAND)
 		return -1;
@@ -320,27 +325,29 @@ int calculate_bw_of_each_5g_channel(int band)
 	{
 		foreach_44(word, chList, next){
 			i = safe_atoi(word);
-			for(j = 0; j < (sizeof(chlist40)/sizeof(int)); j += 2){
-				k = i - chlist40[j];
-				if(k < 5)
-					chlist40[j + 1] += 1;
+			for(j = 0; j < (sizeof(chlist40)/sizeof(struct chlist_s)); j++){
+				if(i - chlist40[j].channel < 5)
+					chlist40[j].bw_mask += 1;
 			}
-			for(j = 0; j < (sizeof(chlist80)/sizeof(int)); j += 2){
-				k = i - chlist80[j];
-				if(k < 13)
-					chlist80[j + 1] += 1;
+			for(j = 0; j < (sizeof(chlist80)/sizeof(struct chlist_s)); j++){
+				if((i - chlist80[j].channel) < 13)
+					chlist80[j].bw_mask += 1;
 			}
-			if((i - 36) < 29)
-				bw1++;
-			if((i - 100) < 29)
-				bw2++;
+			if(i >= 36 && i <= 64)
+				bw160_1++;
+			else if(i >= 100 && i <= 128)
+				bw160_2++;
+/*			else if(i >= 149 && i <= 177)
+				bw160_3++;
+*/
 		}
-		for(i = 0; i < 12; i++)
-			bw40cap[14 * (band - 1) + i] = chlist40[2 * i + 1] == 2;
-		for(i = 0; i < 6; i++)
-			bw80cap[7 * (band - 1) + i] = chlist80[2 * i + 1] == 4;
-		bw160cap[3 * (band - 1)] = bw1 == 8;
-		bw160cap[3 * (band - 1) + 1] = bw2 == 8;
+		for(i = 0; i < (sizeof(chlist40)/sizeof(struct chlist_s)); i++)
+			bw40cap[14 * (band - 1) + i] = chlist40[i].bw_mask == 2;
+		for(i = 0; i < (sizeof(chlist80)/sizeof(struct chlist_s)); i++)
+			bw80cap[7 * (band - 1) + i] = chlist80[i].bw_mask == 4;
+		bw160cap[3 * (band - 1)] = bw160_1 == 8;
+		bw160cap[3 * (band - 1) + 1] = bw160_2 == 8;
+/*		bw160cap[3 * (band - 1) + 2] = bw160_3 == 8;*/
 		return 0;
 	}
 	dbg("%s: can't get channel list of band %d\n", __func__, band);
@@ -2147,7 +2154,7 @@ int gen_ath_config(int band, int subnet)
 		{ 12, -1, "[HT40-]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0 },
 		{ 13, -1, "[HT40-]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0 },
 		{ 14, -1, "[HT40-]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0, 0 },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #else
 		{ 1, 1, "[HT40+]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0 },
 		{ 2, 1, "[HT40+]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0 },
@@ -2163,7 +2170,7 @@ int gen_ath_config(int band, int subnet)
 		{ 12, -1, "[HT40-]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0 },
 		{ 13, -1, "[HT40-]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0 },
 		{ 14, -1, "[HT40-]", 0, 0, 0, 0, bw40cap2g, 0, 0, 0, 0, 0 },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #endif
 	};
 
@@ -2171,7 +2178,7 @@ int gen_ath_config(int band, int subnet)
 #if defined(RTCONFIG_QCA_BECHIP)
 		{ 36, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[0], bw80cap[0], bw160cap[0], 0, 0, 0, 0 },
 		{ 40, -1, "[HT40-]", 38, 42, 50, 0, bw40cap[0], bw80cap[0], bw160cap[0], 0, 0, 0, 0 },
-		{ 44, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0, 0 },
+		{ 44, 1, "[HT40+]", 46, 42, 50, 0, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0, 0 },
 		{ 48, -1, "[HT40-]", 46, 42, 50, 0, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0, 0 },
 		{ 52, 1, "[HT40+]", 54, 58, 50, 0, bw40cap[2], bw80cap[1], bw160cap[0], 0, 0, 0, 0 },
 		{ 56, -1, "[HT40-]", 54, 58, 50, 0, bw40cap[2], bw80cap[1], bw160cap[0], 0, 0, 0, 0 },
@@ -2197,11 +2204,11 @@ int gen_ath_config(int band, int subnet)
 		{ 169, -1, "[HT40-]", 167, 171, 163, 0, bw40cap[12], bw80cap[6], bw160cap[2], 0, 0, 0, 0 },
 		{ 173, 1, "[HT40+]", 175, 171, 163, 0, bw40cap[13], bw80cap[6], bw160cap[2], 0, 0, 0, 0 },
 		{ 177, -1, "[HT40-]", 175, 171, 163, 0, bw40cap[13], bw80cap[6], bw160cap[2], 0, 0, 0, 0 },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #else
 		{ 36, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[0], bw80cap[0], bw160cap[0], 0, 0, 0 },
 		{ 40, -1, "[HT40-]", 38, 42, 50, 0, bw40cap[0], bw80cap[0], bw160cap[0], 0, 0, 0 },
-		{ 44, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0 },
+		{ 44, 1, "[HT40+]", 46, 42, 50, 0, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0 },
 		{ 48, -1, "[HT40-]", 46, 42, 50, 0, bw40cap[1], bw80cap[0], bw160cap[0], 0, 0, 0 },
 		{ 52, 1, "[HT40+]", 54, 58, 50, 0, bw40cap[2], bw80cap[1], bw160cap[0], 0, 0, 0 },
 		{ 56, -1, "[HT40-]", 54, 58, 50, 0, bw40cap[2], bw80cap[1], bw160cap[0], 0, 0, 0 },
@@ -2227,7 +2234,7 @@ int gen_ath_config(int band, int subnet)
 		{ 169, -1, "[HT40-]", 167, 171, 163, 0, bw40cap[12], bw80cap[6], bw160cap[2], 0, 0, 0 },
 		{ 173, 1, "[HT40+]", 175, 171, 163, 0, bw40cap[13], bw80cap[6], bw160cap[2], 0, 0, 0 },
 		{ 177, -1, "[HT40-]", 175, 171, 163, 0, bw40cap[13], bw80cap[6], bw160cap[2], 0, 0, 0 },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #endif
 	};
 
@@ -2235,7 +2242,7 @@ int gen_ath_config(int band, int subnet)
 #if defined(RTCONFIG_QCA_BECHIP)
 		{ 36, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[14], bw80cap[7], bw160cap[3], 0, 0, 0, 0 },
 		{ 40, -1, "[HT40-]", 38, 42, 50, 0, bw40cap[14], bw80cap[7], bw160cap[3], 0, 0, 0, 0 },
-		{ 44, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0, 0 },
+		{ 44, 1, "[HT40+]", 46, 42, 50, 0, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0, 0 },
 		{ 48, -1, "[HT40-]", 46, 42, 50, 0, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0, 0 },
 		{ 52, 1, "[HT40+]", 54, 58, 50, 0, bw40cap[16], bw80cap[8], bw160cap[3], 0, 0, 0, 0 },
 		{ 56, -1, "[HT40-]", 54, 58, 50, 0, bw40cap[16], bw80cap[8], bw160cap[3], 0, 0, 0, 0 },
@@ -2261,11 +2268,11 @@ int gen_ath_config(int band, int subnet)
 		{ 169, -1, "[HT40-]", 167, 171, 163, 0, bw40cap[26], bw80cap[13], bw160cap[5], 0, 0, 0, 0 },
 		{ 173, 1, "[HT40+]", 175, 171, 163, 0, bw40cap[27], bw80cap[13], bw160cap[5], 0, 0, 0, 0 },
 		{ 177, -1, "[HT40-]", 175, 171, 163, 0, bw40cap[27], bw80cap[13], bw160cap[5], 0, 0, 0, 0 },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #else
 		{ 36, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[14], bw80cap[7], bw160cap[3], 0, 0, 0 },
 		{ 40, -1, "[HT40-]", 38, 42, 50, 0, bw40cap[14], bw80cap[7], bw160cap[3], 0, 0, 0 },
-		{ 44, 1, "[HT40+]", 38, 42, 50, 0, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0 },
+		{ 44, 1, "[HT40+]", 46, 42, 50, 0, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0 },
 		{ 48, -1, "[HT40-]", 46, 42, 50, 0, bw40cap[15], bw80cap[7], bw160cap[3], 0, 0, 0 },
 		{ 52, 1, "[HT40+]", 54, 58, 50, 0, bw40cap[16], bw80cap[8], bw160cap[3], 0, 0, 0 },
 		{ 56, -1, "[HT40-]", 54, 58, 50, 0, bw40cap[16], bw80cap[8], bw160cap[3], 0, 0, 0 },
@@ -2291,7 +2298,7 @@ int gen_ath_config(int band, int subnet)
 		{ 169, -1, "[HT40-]", 167, 171, 163, 0, bw40cap[26], bw80cap[13], bw160cap[5], 0, 0, 0 },
 		{ 173, 1, "[HT40+]", 175, 171, 163, 0, bw40cap[27], bw80cap[13], bw160cap[5], 0, 0, 0 },
 		{ 177, -1, "[HT40-]", 175, 171, 163, 0, bw40cap[27], bw80cap[13], bw160cap[5], 0, 0, 0 },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #endif
 	};
 
@@ -2309,7 +2316,7 @@ int gen_ath_config(int band, int subnet)
 		{ 25, 0, NULL, 0, 0, 0, 0, 0, 0, 30, 0, 0, bw8640cap[0], 0 },
 		{ 26, 0, NULL, 0, 0, 0, 0, 0, 0, 60, 0, 0, bw8640cap[1], 0 },
 		{ 27, 0, NULL, 0, 0, 0, 0, 0, 0, 120, 0, 0, bw8640cap[2], 0 },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #else
 		{ 9, 0, NULL, 0, 0, 0, 0, 0, 0, 6, bw4320cap[0], 0 },
 		{ 10, 0, NULL, 0, 0, 0, 0, 0, 0, 12, bw4320cap[1], 0 },
@@ -2323,7 +2330,7 @@ int gen_ath_config(int band, int subnet)
 		{ 25, 0, NULL, 0, 0, 0, 0, 0, 0, 30, 0, 0, bw8640cap[0] },
 		{ 26, 0, NULL, 0, 0, 0, 0, 0, 0, 60, 0, 0, bw8640cap[1] },
 		{ 27, 0, NULL, 0, 0, 0, 0, 0, 0, 120, 0, 0, bw8640cap[2] },
-		{ -1, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
+		{ 0, 0, NULL, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 }
 #endif
 	};
 
@@ -4232,8 +4239,11 @@ int gen_ath_config(int band, int subnet)
 				snprintf(tmp, sizeof(tmp), "[SHORT-GI-%d]", 20);
 				strlcat(ht_capab, tmp, sizeof(ht_capab));
 			}
-		}else if(pchattr && (ht_str = pchattr->ht_str) != NULL){
-			strlcat(ht_capab, ht_str, sizeof(ht_capab));
+		}else if(pchattr){
+			if(!channel)
+				strlcat(ht_capab, "[HT40+][HT40-]", sizeof(ht_capab));
+			else
+				strlcat(ht_capab, pchattr->ht_str, sizeof(ht_capab));
 			if(shortgi){
 				snprintf(tmp, sizeof(tmp), "[SHORT-GI-%d]", 40);
 				strlcat(ht_capab, tmp, sizeof(ht_capab));
@@ -4259,47 +4269,51 @@ int gen_ath_config(int band, int subnet)
 			p_mode = "vht";
 
 		if(strstr(t_bw, "20")){
-			fprintf(fp, "%s_oper_chwidth=%d\n", p_mode, 0);
-			fprintf(fp, "%s_oper_centr_freq_seg0_idx=%d\n", p_mode, channel);
+			if(channel){
+				fprintf(fp, "%s_oper_chwidth=%d\n", p_mode, 0);
+				fprintf(fp, "%s_oper_centr_freq_seg0_idx=%d\n", p_mode, channel);
+			}
 			if(shortgi){
 				snprintf(tmp, sizeof(tmp), "[SHORT-GI-%d]", 20);
 				strlcat(ht_capab, tmp, sizeof(ht_capab));
 			}
-		}else if(strstr(t_bw, "40") || strstr(t_bw, "80") || strstr(t_bw, "160")){
-			if(pchattr && (ht_str = pchattr->ht_str) != NULL){
-				strlcat(ht_capab, ht_str, sizeof(ht_capab));
-			}else{
-				if(channel || !strstr(t_bw, "40")){
-					if(strstr(t_bw, "20") || strstr(t_bw, "40")){
-						if(pchattr)
-							snprintf(t_chan, sizeof(t_chan), "%d", pchattr->chan_low);
-						chwidth = 0;
-						fprintf(fp, "%s_oper_chwidth=%d\n", p_mode, chwidth);
-						fprintf(fp, "%s_oper_centr_freq_seg0_idx=%s\n", p_mode, t_chan);
-					}else if(strstr(t_bw, "80") && !strstr(t_bw, "80_80")){
-						if(pchattr)
-							snprintf(t_chan, sizeof(t_chan), "%d", pchattr->chan_high);
+		}else if(strstr(t_bw, "40")){
+			if(shortgi){
+				snprintf(tmp, sizeof(tmp), "[SHORT-GI-%d]", 40);
+				strlcat(ht_capab, tmp, sizeof(ht_capab));
+			}
+			if(pchattr){
+				if(channel){
+					strlcat(ht_capab, pchattr->ht_str, sizeof(ht_capab));
+					fprintf(fp, "%s_oper_chwidth=%d\n", p_mode, chwidth);
+					fprintf(fp, "%s_oper_centr_freq_seg0_idx=%d\n", p_mode, pchattr->chan_centr_40);
+				}else
+					strlcat(ht_capab, "[HT40+][HT40-]", sizeof(ht_capab));
+			}else
+				strlcat(ht_capab, "[HT40+][HT40-]", sizeof(ht_capab));
+		}else if(strstr(t_bw, "80") || strstr(t_bw, "160")){
+			if(shortgi){
+				snprintf(tmp, sizeof(tmp), "[SHORT-GI-%d]", 40);
+				strlcat(ht_capab, tmp, sizeof(ht_capab));
+			}
+			if(pchattr){
+				if(channel){
+					strlcat(ht_capab, pchattr->ht_str, sizeof(ht_capab));
+					if(strstr(t_bw, "80")){
 						chwidth = 1;
 						fprintf(fp, "%s_oper_chwidth=%d\n", p_mode, chwidth);
-						fprintf(fp, "%s_oper_centr_freq_seg0_idx=%s\n", p_mode, t_chan);
+						fprintf(fp, "%s_oper_centr_freq_seg0_idx=%d\n", p_mode, pchattr->chan_centr_80);
 					}else if(strstr(t_bw, "160")){
-						if(pchattr)
-							snprintf(t_chan, sizeof(t_chan), "%d", pchattr->chan_cen);
 						chwidth = 2;
 						fprintf(fp, "%s_oper_chwidth=%d\n", p_mode, chwidth);
-						fprintf(fp, "%s_oper_centr_freq_seg0_idx=%s\n", p_mode, t_chan);
+						fprintf(fp, "%s_oper_centr_freq_seg0_idx=%d\n", p_mode, pchattr->chan_centr_160);
 					}else{
 						dbg("%s: Can't resolve chattr %pt_bw [%s]\n", __func__, pchattr, t_bw);
 					}
-					if(puncture)
-						fprintf(fp, "puncture_bitmap=0x%x\n", 0xFFFF);
-					if(shortgi){
-						snprintf(tmp, sizeof(tmp), "[SHORT-GI-%d]", 40);
-						strlcat(ht_capab, tmp, sizeof(ht_capab));
-					}
 				}else
 					strlcat(ht_capab, "[HT40+][HT40-]", sizeof(ht_capab));
-			}
+			}else
+				strlcat(ht_capab, "[HT40+][HT40-]", sizeof(ht_capab));
 		}
 	}
 	snprintf(tmp, sizeof(tmp), "%s/%s/cfg80211_htcaps", "/sys/class/net", wif);

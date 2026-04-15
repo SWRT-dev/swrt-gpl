@@ -1093,9 +1093,6 @@ wl_default_wps(int unit)
 {
 	struct nvram_tuple *t;
 	char prefix[]="wlXXXXXX_", tmp[100];
-#ifdef RTCONFIG_CONCURRENTREPEATER
-	char *pssid = NULL, tmp2[100]={0};
-#endif
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 
 	for (t = router_defaults; t->name; t++) {
@@ -1122,14 +1119,6 @@ wl_default_wps(int unit)
 		else
 			nvram_set(t->name, t->value);
 	}
-
-#ifdef RTCONFIG_CONCURRENTREPEATER
-				pssid = nvram_default_get(strcat_r(prefix, "ssid", tmp));
-				if (strlen(pssid)){
-					sprintf(tmp2, "%s", pssid);
-					nvram_set(strcat_r(prefix, "ssid", tmp), tmp2);
-				}
-#endif
 }
 
 void
@@ -21644,20 +21633,20 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 		nvram_set("landevs", "eth0_1 eth0_2 eth0_3 eth0_4");
 #ifdef RTCONFIG_AMAS
 		if (sw_mode() == SW_MODE_AP && nvram_match("re_mode", "1")) {
-			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wlan0 wlan2 eth1");
+			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wifi0 wifi1 eth1");
 			nvram_set("wan_ifnames", "");
 		}
 		else
 #endif
 		if (sw_mode()==SW_MODE_AP) {
-			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wlan0 wlan2 eth1");
+			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wifi0 wifi1 eth1");
 			nvram_set("wan_ifnames", "");
 		}
 		else {
-			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wlan0 wlan2");
+			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wifi0 wifi1");
 			nvram_set("wan_ifnames", "eth1");
 		}
-		nvram_set("wl_ifnames", "wlan0 wlan2");
+		nvram_set("wl_ifnames", "wifi0 wifi1");
 		nvram_set("wl0_vifnames", "wl0.1 wl0.2 wl0.3");
 		nvram_set("wl1_vifnames", "wl1.1 wl1.2 wl1.3");
 		/* WAN2 MAC = 3rd 5G GuestNetwork */
@@ -21665,9 +21654,6 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 			nvram_set("wl1_vifnames", "wl1.1 wl1.2");
 			nvram_set("wl1.3_bss_enabled", "0");
 		}
-		// nvram_set("wl1_country_code", nvram_safe_get("1:ccode"));
-		// nvram_set("wl1_country_rev", nvram_safe_get("1:regrev"));
-		nvram_set("wl1_phytype", "v");
 
 		char prefix[] = "wlXXXXXXXXXXXXX_", tmp[100];
 		char prefix2[] = "wlXXXXXXXXXXXXX_", tmp2[100];
@@ -21711,7 +21697,7 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 			}
 		}
 
-		nvram_set_int("pwr_usb_gpio", 2);
+		//nvram_set_int("pwr_usb_gpio", 2);//set in dts
 		nvram_set_int("btn_wps_gpio", 30|GPIO_ACTIVE_LOW);
 		nvram_set_int("btn_rst_gpio", 0|GPIO_ACTIVE_LOW);
 #ifdef RTCONFIG_WIFI_TOG_BTN
@@ -21733,12 +21719,6 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 		nvram_set_int("led_5g_gpio", 22|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_usb_gpio", 34|GPIO_ACTIVE_LOW);
 		nvram_set_int("led_wps_gpio", 31|GPIO_ACTIVE_LOW);
-#ifdef RTCONFIG_LAN4WAN_LED
-		nvram_set_int("led_lan1_gpio", 4);
-		nvram_set_int("led_lan2_gpio", 5);
-		nvram_set_int("led_lan3_gpio", 6);
-		nvram_set_int("led_lan4_gpio", 9);
-#endif
 		if(usb_usb3 == 1)
 			nvram_set("xhci_ports", "2-1");
 		else
@@ -21758,6 +21738,9 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 		add_rc_support("movistarTriple");
 		add_rc_support("lantiq");
 		add_rc_support("app");
+		add_rc_support("11AC");
+		add_rc_support("11AX mbo ofdma");
+		add_rc_support("wpa3");
 #if defined(LANTIQ_BSD)
 		add_rc_support("bandstr");
 #endif
@@ -21786,8 +21769,8 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 						__func__, __LINE__,
 						sw_mode(),SW_MODE_REPEATER,SW_MODE_AP);
 			nvram_set("eth_ifnames", "eth1");
-			nvram_set("sta_phy_ifnames", "wlan1 wlan3");
-			nvram_set("sta_ifnames", "wlan1 wlan3");
+			nvram_set("sta_phy_ifnames", "sta0 sta1");
+			nvram_set("sta_ifnames", "sta0 sta1");
 			nvram_unset("dfschinfo");
 		}
 		add_led_ctrl_capability(CENTRAL_LED);

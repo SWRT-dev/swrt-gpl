@@ -344,7 +344,10 @@ int main(int argc, char *argv[])
 			goto out;
 		}
 	}
-
+#if defined(SWRT_PATCH)
+	params.wpa_debug_file_path = "/jffs/wpa_supplicant.log";
+	params.wpa_debug_timestamp = 1;
+#endif
 	exitcode = 0;
 	global = wpa_supplicant_init(&params);
 	if (global == NULL) {
@@ -435,3 +438,4 @@ out:
 
 	return exitcode;
 }
+

@@ -20,18 +20,6 @@
 #include <bcmutils.h>
 #include <wlutils.h>
 
-#ifdef RTCONFIG_QSR10G
-#include "qcsapi_output.h"
-#include "qcsapi_rpc_common/client/find_host_addr.h"
-
-#include "qcsapi.h"
-#include "qcsapi_rpc/client/qcsapi_rpc_client.h"
-#include "qcsapi_rpc/generated/qcsapi_rpc.h"
-#include <qcsapi_rpc_common/common/rpc_raw.h>
-#include <qcsapi_rpc_common/common/rpc_pci.h>
-#include "qcsapi_driver.h"
-#include "call_qcsapi.h"
-#endif
 
 //	ref: http://wiki.openwrt.org/OpenWrtDocs/nas
 
@@ -151,7 +139,7 @@ void notify_nas(const char *ifname)
 #if defined(CONFIG_BCMWL5) \
 		|| (defined(RTCONFIG_RALINK) && defined(RTCONFIG_WIRELESSREPEATER)) \
 		|| defined(RTCONFIG_QCA) || defined(RTCONFIG_REALTEK) \
-		|| defined(RTCONFIG_QSR10G) || defined(RTCONFIG_LANTIQ)
+		|| defined(RTCONFIG_LANTIQ)
 #define APSCAN_INFO "/tmp/apscan_info.txt"
 
 static int lock = -1;
@@ -173,32 +161,14 @@ int wlcscan_main(void)
 {
 	FILE *fp=NULL;
 	char word[256]={0}, *next = NULL;
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_MTK_REP)		
-	char wl_ifs[256]={0};
-#else
 	char wl_ifnames[32] = { 0 };
-#endif
 	int i = 0;
-#ifdef RTCONFIG_QSR10G
-	CLIENT *clnt;
-	char host[18];
-#endif
 #ifdef __CONFIG_DHDAP__
 	char tmp[100], prefix[]="wlXXXXXXX_";
 	int is_dhd = 0;
 #endif
 
 	signal(SIGTERM, wlcscan_safeleave);
-
-#ifdef RTCONFIG_QSR10G
-	snprintf(host, sizeof(host), "localhost");
-	clnt = clnt_pci_create(host, QCSAPI_PROG, QCSAPI_VERS, NULL);
-	if (clnt == NULL) {
-		_dprintf("[%s][%d] clnt_pci_create() error\n", __func__, __LINE__);
-	}else{
-		client_qcsapi_set_rpcclient(clnt);
-	}
-#endif
 
 	/* clean APSCAN_INFO */
 	lock = file_lock("sitesurvey");
@@ -211,22 +181,8 @@ int wlcscan_main(void)
 
 	/* Starting scanning */
 	i = 0;
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_MTK_REP)
-	if (nvram_match("wps_cli_state", "1")) {
-		if (nvram_match("wlc_express", "1"))
-			strncpy(wl_ifs,nvram_safe_get("wl0_ifname"), sizeof(wl_ifs));
-		else if (nvram_match("wlc_express", "2"))
-			strncpy(wl_ifs,nvram_safe_get("wl1_ifname"), sizeof(wl_ifs));		
-		else  
-			strncpy(wl_ifs,nvram_safe_get("wl_ifnames"), sizeof(wl_ifs));
-	}
-	else
-		strncpy(wl_ifs,nvram_safe_get("wl_ifnames"), sizeof(wl_ifs));
-	foreach (word, wl_ifs, next)
-#else
 	strlcpy(wl_ifnames, nvram_safe_get("wl_ifnames"), sizeof(wl_ifnames));
 	foreach (word, wl_ifnames, next)
-#endif
 	{	
 		SKIP_ABSENT_BAND_AND_INC_UNIT(i);
 #if defined(__CONFIG_DHDAP__)
@@ -244,21 +200,12 @@ int wlcscan_main(void)
 		i++;
 	}
 
-#ifdef RTCONFIG_QTN
-	wlcscan_core_qtn(APSCAN_INFO, "wifi0");
-#endif
-#ifdef RTCONFIG_QSR10GBAK
-	if(clnt != NULL){
-		clnt_destroy(clnt);
-	}
-#endif
-
 	nvram_set_int("wlc_scan_state", WLCSCAN_STATE_FINISHED);
 
 	return 1;
 }
 
-#endif /* CONFIG_BCMWL5 || (RTCONFIG_RALINK && RTCONFIG_WIRELESSREPEATER) || defined(RTCONFIG_QCA) */
+#endif
 
 #ifdef RTCONFIG_WIRELESSREPEATER
 #define NOTIFY_IDLE 0
@@ -273,21 +220,6 @@ static void wlcconnect_safeleave(int signo) {
 
 	exit(0);
 }
-
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_REALTEK)
-int get_wlc_rssi_status(char *interface)
-{
-	bss_info bss_buf;
-	char bssid[8];
-	memset(&bss_buf,0,sizeof(bss_info));
-	if (wl_ioctl(interface, WLC_GET_BSSID, bssid, ETHER_ADDR_LEN) < 0 ||
-	    wl_ioctl(interface, WLC_GET_BSS_INFO, &bss_buf, sizeof(bss_buf)) < 0)
-		return 0;
-	logmessage(__func__,"*******%s %d interface=%s state=%d channel=%d txRate=%d rssi=%d ssid=%s bssid=%x%x%x%x%x%x********\n",__FUNCTION__,__LINE__,interface,bss_buf.state,bss_buf.channel,bss_buf.txRate,bss_buf.rssi,bss_buf.ssid,bss_buf.bssid[0],bss_buf.bssid[1],bss_buf.bssid[2],bss_buf.bssid[3],bss_buf.bssid[4],bss_buf.bssid[5]);
-
-	return (bss_buf.rssi);
-}
-#endif
 
 // wlcconnect_main
 //	wireless ap monitor to connect to ap
@@ -306,8 +238,7 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 
 	_dprintf("%s: Start to run...\n", __FUNCTION__);
 	signal(SIGTERM, wlcconnect_safeleave);
-#if (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)) \
- && !defined(RTCONFIG_CONCURRENTREPEATER)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 	signal(SIGTSTP, wlcconnect_sig_handle);
 	signal(SIGCONT, wlcconnect_sig_handle);
 #endif
@@ -316,17 +247,13 @@ _dprintf("%s: Start to run...\n", __FUNCTION__);
 	nvram_set_int("wlc_sbstate", WLC_STOPPED_REASON_NONE);
 	nvram_set_int("wlc_state", WLC_STATE_CONNECTING);
 
-#if defined(RPAC51)
-	sleep_us = 500;
-#elif defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_RALINK)
 	sleep_s = 1;
-#elif defined(RTCONFIG_QCA)
+#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 	if (mediabridge_mode())
 		sleep_s = 20;
 	else
 		sleep_s = 5;
-#elif defined(RTCONFIG_LANTIQ)
-	sleep_s = 10;
 #endif
 
 	while (1) {
@@ -376,18 +303,6 @@ _dprintf("Ready to disconnect...%d.\n", wlc_count);
 				else
 					wanduck_notify = NOTIFY_DISCONN;
 
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_REALTEK)
-#if defined(RPAC55)
-				if (!strcmp(nvram_safe_get("wlc_band"), "0"))
-				{
-					get_wlc_rssi_status("wl0-vxd");	
-				}
-				else if (!strcmp(nvram_safe_get("wlc_band"), "1"))
-				{
-					get_wlc_rssi_status("wl1-vxd");
-				}
-#endif
-#endif
 				// notify the change to init.
 				if (ret == WLC_STATE_CONNECTED)
 				{
@@ -402,9 +317,6 @@ _dprintf("Ready to disconnect...%d.\n", wlc_count);
 					if (!wisp_mode())
 #endif
 					notify_rc_and_wait("restart_wlcmode 0");
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_RALINK)
-					nvram_set_int("lan_ready",0);
-#endif
 				}
 
 #if defined(RTCONFIG_BLINK_LED)

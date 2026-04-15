@@ -163,7 +163,7 @@ system.modelName = (() => {
 system.isBRCMplatform = isSupport("bcmwifi");
 system.isQCAplatform = isSupport("qcawifi");
 system.isMTKplatform = isSupport("rawifi");
-system.isINTEKplatform = isSupport("lantiq");
+system.isINTELplatform = isSupport("lantiq");
 system.wpa3Support = isSupport("wpa3");
 system.newWiFiCertSupport = isSupport("wifi2017");
 system.wifiLogoSupport = isSupport("wifilogo");

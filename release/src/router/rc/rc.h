@@ -160,6 +160,9 @@ void get_ext_phy_id();
 #elif defined(RTCONFIG_SOC_IPQ53XX) // MIAMI
 #define PRE_XHCI_KMODS	""
 #define POST_XHCI_KMODS	"xhci-plat-hcd dwc3-qcom dwc3 phy-qca-m31 phy-qca-uniphy"
+#elif defined(RTCONFIG_LANTIQ)
+#define PRE_XHCI_KMODS	"phy-grx500-usb dwc3-grx500"
+#define POST_XHCI_KMODS	"xhci-pci xhci-plat-hcd"
 #else
 #define PRE_XHCI_KMODS	""
 #define POST_XHCI_KMODS	""
@@ -961,6 +964,7 @@ extern int getWscStatusStr(int unit, char *buf, int buf_size);
 extern int getEEPROM(unsigned char *outbuf, unsigned short *lenpt, char *area);
 extern void hexdump(unsigned char *pt, unsigned short len);
 extern void setCTL(const char *);
+extern int calculate_bw_of_each_channel(int band);
 extern int verify_ctl_table(void);
 #if !defined(RTCONFIG_CONCURRENTREPEATER)
 extern void wlcconnect_sig_handle(int sig);

@@ -9,7 +9,7 @@ SRC=src
 endif
 
 all:
-	$(MAKE) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="" SUBDIRS=$(PWD)/$(SRC) modules
+	$(MAKE) $(PARALLEL_BUILD) -C $(LINUXDIR) CROSS_COMPILE=$(patsubst %-gcc,%-,$(KERNELCC)) EXTRA_CFLAGS="" SUBDIRS=$(PWD)/$(SRC) modules
 
 clean:
 	$(RM) *.o *.ko $(SRC)/*.o $(SRC)/*.ko $(SRC)/*.mod.*

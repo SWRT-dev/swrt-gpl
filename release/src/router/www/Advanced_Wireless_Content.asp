@@ -2514,7 +2514,7 @@
             }
 
             function apply() {
-                let { wlBandSeq, isKRSku, smartConnect, isBRCMplatform, isMTKplatform, isQCAplatform, aMesh } = systemManipulable;
+                let { wlBandSeq, isKRSku, smartConnect, isBRCMplatform, isMTKplatform, isQCAplatform, isINTELplatform, aMesh } = systemManipulable;
                 let { smartConnectEnable, radioSeqArray, version } = smartConnect;
                 let { dwbBand, dwbMode } = aMesh;
                 let postObject = {};
@@ -3012,6 +3012,8 @@
                 if (isMTKplatform) {
                     restartTime = 25;
                 } else if (isQCAplatform) {
+                    restartTime = 30;
+                } else if (isINTELplatform) {
                     restartTime = 30;
                 }
 

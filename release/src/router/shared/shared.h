@@ -1708,7 +1708,7 @@ enum wl_band_id {
 	WL_5G_BAND = 1,
 	WL_5G_2_BAND = 2,
 	WL_2G_BAND = 3,
-#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 	WL_2G_BAND = 0,
 	WL_5G_BAND = 1,
 	WL_5G_2_BAND = 2,
@@ -2451,7 +2451,7 @@ static inline int guest_wlif(char *ifname)
 	char *p = ifname + 5;
 	int v;
 
-	if (strncmp(ifname, "wlan", 4) || (*p == '\0'))
+	if (strncmp(ifname, "wifi", 4) || (*p == '\0'))
 		return 0;
 
 	v = atoi(p+1);
@@ -2776,6 +2776,19 @@ extern int rep_ssid_match(void);
 #endif
 #endif // end of RTCONFIG_QCA
 #if defined(RTCONFIG_LANTIQ)
+extern char *__get_wlifname(int band, int subunit, char *buf);
+extern int get_wlsubnet(int band, const char *ifname);
+extern int get_wlif_unit(const char *wlifname, int *unit, int *subunit);
+extern char *get_wififname(int band);
+extern char *get_staifname(int band);
+extern char *get_vphyifname(int band);
+extern int get_sta_ifname_unit(const char *ifname);
+extern int is_vap_ifname(const char *ifname);
+extern int is_sta_ifname(const char *ifname);
+extern int is_vphy_ifname(const char *ifname);
+extern int get_iwphy_name(int unit, char *iwphy, size_t size);
+extern int create_vap(char *ifname, int unit, char *mode);
+extern int destroy_vap(char *ifname);
 extern char *get_wpa_ctrl_sk(int band, char ctrl_sk[], int size);
 extern void set_wpa_cli_cmd(int band, const char *cmd, int chk_reply);
 extern char *get_vphyifname(int band);
@@ -2783,7 +2796,7 @@ extern int ppa_support(int wan_unit);
 extern int disable_ppa_wan(char *wan_ifname);
 extern int enable_ppa_wan(char *wan_ifname);
 extern int get_wlsubnet(int band, const char *ifname);
-extern int get_iwphy_name(int unit, char *iwphy, size_t size);
+extern int find_vap_by_sta(char *sta_addr, char *vap);
 #endif
 #if defined(RTCONFIG_RALINK) && (defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X))
 extern uint32_t is_pwm_exported(uint8_t channel);

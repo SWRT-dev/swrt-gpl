@@ -609,7 +609,7 @@ int main(int argc, char *argv[])
 	fprintf(fp, "map hidden = no\n");
 	fprintf(fp, "map read only = no\n");
 	fprintf(fp, "map system = no\n");
-#ifdef RTCONFIG_SAMBA36X || defined(RTCONFIG_SAMBA4)
+#if defined(RTCONFIG_SAMBA36X) || defined(RTCONFIG_SAMBA4)
 	fprintf(fp, "store dos attributes = no\n");
 #else
 	fprintf(fp, "store dos attributes = yes\n");

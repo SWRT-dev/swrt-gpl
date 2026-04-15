@@ -3003,10 +3003,10 @@ libwebapi: libwebapi/stamp-h1
 	@$(SEP)
 	@$(MAKE) -C libwebapi CC=$(CC)
 
-libwebapi-install: libwebapi
+libwebapi-install:
 	@echo INSTALLDIR=$(INSTALLDIR)
-	install -D libwebapi/libwebapi.so $(INSTALLDIR)/$</usr/lib/libwebapi.so
-	$(STRIP) $(INSTALLDIR)/$</usr/lib/libwebapi.so
+	install -D libwebapi/libwebapi.so $(INSTALLDIR)/libwebapi/usr/lib/libwebapi.so
+	$(STRIP) $(INSTALLDIR)/libwebapi/usr/lib/libwebapi.so
 
 libwebapi-clean:
 	@$(SEP)
@@ -3830,7 +3830,7 @@ iptables-1.4.18: iptables-1.4.18/Makefile
 	@$(SEP)
 	$(MAKE) -C $@ KERNEL_DIR=$(LINUX_INC_DIR) COPT_FLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE"
 
-iptables-1.4.18-install: iptables-1.4.18
+iptables-1.4.18-install:
 	install -D iptables-1.4.18/iptables/.libs/xtables-multi $(INSTALLDIR)/iptables-1.4.18/usr/sbin/xtables-multi
 	cd $(INSTALLDIR)/iptables-1.4.18/usr/sbin && \
 		ln -sf xtables-multi iptables-restore && \
@@ -3913,7 +3913,7 @@ iptables-1.4.x: iptables-1.4.x/Makefile
 	@$(SEP)
 	$(MAKE) -C $@ KERNEL_DIR=$(LINUX_INC_DIR) COPT_FLAGS="-Os $(EXTRACFLAGS) -U CONFIG_NVRAM_SIZE"
 
-iptables-1.4.x-install: iptables-1.4.x
+iptables-1.4.x-install:
 	install -D iptables-1.4.x/iptables/.libs/xtables-multi $(INSTALLDIR)/iptables-1.4.x/usr/sbin/xtables-multi
 	cd $(INSTALLDIR)/iptables-1.4.x/usr/sbin && \
 		ln -sf xtables-multi iptables-restore && \
@@ -3965,7 +3965,7 @@ mbedtls-2.6.0: mbedtls-2.6.0/stamp-h1
 mbedtls-2.6.0-clean:
 	[ ! -f mbedtls-2.16.3/Makefile ] || $(MAKE) -C mbedtls-2.16.3 -f Makefile clean
 
-mbedtls-2.6.0-install: mbedtls-2.6.0
+mbedtls-2.6.0-install:
 	install -D mbedtls-2.6.0/library/libmbedtls.so.2.6.0 $(INSTALLDIR)/mbedtls-2.6.0/usr/lib/libmbedtls.so.2.6.0
 	install -D mbedtls-2.6.0/library/libmbedcrypto.so.2.6.0 $(INSTALLDIR)/mbedtls-2.6.0/usr/lib/libmbedcrypto.so.2.6.0
 	install -D mbedtls-2.6.0/library/libmbedx509.so.2.6.0 $(INSTALLDIR)/mbedtls-2.6.0/usr/lib/libmbedx509.so.2.6.0
@@ -3989,7 +3989,7 @@ httpdb-clean:
 	[ ! -f httpdb/Makefile ] || $(MAKE) -C httpdb -f Makefile clean
 	@rm -f httpdb/Makefile
 
-httpdb-install: httpdb
+httpdb-install:
 	install -D httpdb/bin/httpdb $(INSTALLDIR)/httpdb/usr/sbin/httpdb
 	$(STRIP) $(INSTALLDIR)/httpdb/usr/sbin/httpdb
 
@@ -4012,7 +4012,7 @@ skipdbv2-clean:
 	@rm -f skipdbv2/cmake_install.cmake
 	@rm -f skipdbv2/Makefile
 
-skipdbv2-install: skipdbv2
+skipdbv2-install:
 	install -D skipdbv2/bin/skipd $(INSTALLDIR)/skipdbv2/usr/sbin/skipd
 	install -D skipdbv2/bin/dbus $(INSTALLDIR)/skipdbv2/usr/sbin/dbus
 	$(STRIP) $(INSTALLDIR)/skipdbv2/usr/sbin/skipd
@@ -4055,7 +4055,7 @@ k3screenctrl: k3screenctrl/Makefile
 k3screenctrl-clean:
 	[ ! -f k3screenctrl/Makefile ] || $(MAKE) -C k3screenctrl -f Makefile distclean
 
-k3screenctrl-install: k3screenctrl
+k3screenctrl-install:
 	install -D k3screenctrl/src/k3screenctrl $(INSTALLDIR)/k3screenctrl/usr/sbin/k3screenctrl
 	install -D k3screenctrl/src/k3screend $(INSTALLDIR)/k3screenctrl/usr/sbin/k3screend
 	$(STRIP) $(INSTALLDIR)/k3screenctrl/usr/sbin/k3screenctrl
@@ -4069,7 +4069,7 @@ smartdns:
 smartdns-clean:
 	[ ! -f smartdns/src/Makefile ] || $(MAKE) -C smartdns/src clean
 
-smartdns-install: smartdns
+smartdns-install:
 	install -D smartdns/src/smartdns $(INSTALLDIR)/smartdns/usr/sbin/smartdns
 	$(STRIP) $(INSTALLDIR)/smartdns/usr/sbin/smartdns
 endif
@@ -4102,7 +4102,7 @@ miniupnpd_1.4: $(IPTABLES) shared/version.h
 miniupnpd_1.4-clean:
 	-@$(MAKE) -C miniupnpd_1.4 -f Makefile.asus clean
 
-miniupnpd$(MUVER)-install: miniupnpd$(MUVER)
+miniupnpd$(MUVER)-install:
 	install -D miniupnpd$(MUVER)/miniupnpd $(INSTALLDIR)/miniupnpd$(MUVER)/usr/sbin/miniupnpd
 	$(STRIP) $(INSTALLDIR)/miniupnpd$(MUVER)/usr/sbin/miniupnpd
 
@@ -4178,7 +4178,7 @@ else
 endif
 	$(MAKE) -C $@
 
-vsftpd-3.x-install: vsftpd-3.x
+vsftpd-3.x-install:
 	install -D vsftpd-3.x/vsftpd $(INSTALLDIR)/vsftpd-3.x/usr/sbin/vsftpd
 	$(STRIP) -s $(INSTALLDIR)/vsftpd-3.x/usr/sbin/vsftpd
 
@@ -4198,7 +4198,7 @@ ntfs-3g-2016.2.22-clean:
 	-@$(MAKE) -C ntfs-3g-2016.2.22 clean
 	@rm -f ntfs-3g-2016.2.22/stamp-h1
 
-ntfs-3g-2016.2.22-install: ntfs-3g-2016.2.22
+ntfs-3g-2016.2.22-install:
 	install -D ntfs-3g-2016.2.22/src/ntfs-3g $(INSTALLDIR)/ntfs-3g-2016.2.22/bin/ntfs-3g
 	$(STRIP) -s $(INSTALLDIR)/ntfs-3g-2016.2.22/bin/ntfs-3g
 	install -d $(INSTALLDIR)/ntfs-3g-2016.2.22/sbin && cd $(INSTALLDIR)/ntfs-3g-2016.2.22/sbin && \
@@ -4233,7 +4233,7 @@ ntfs-3g-clean:
 	-@$(MAKE) -C ntfs-3g clean
 	@rm -f ntfs-3g/stamp-h1
 
-ntfs-3g-install: ntfs-3g
+ntfs-3g-install:
 	install -D ntfs-3g/src/ntfs-3g $(INSTALLDIR)/ntfs-3g/bin/ntfs-3g
 	$(STRIP) -s $(INSTALLDIR)/ntfs-3g/bin/ntfs-3g
 	install -d $(INSTALLDIR)/ntfs-3g/sbin && cd $(INSTALLDIR)/ntfs-3g/sbin && \
@@ -4276,7 +4276,7 @@ linux-ntfs-2.0.0-clean:
 libupnp-1.3.1: libupnp-1.3.1/Makefile
 	$(MAKE) -C $@
 
-libupnp-1.3.1-install: libupnp-1.3.1
+libupnp-1.3.1-install:
 	@echo "do nothing"
 #	install -d $(INSTALLDIR)/libupnp-1.3.1/usr/lib
 #	install -m 775 libupnp-1.3.1/ixml/.libs/libixml.so.2.0.0 $(INSTALLDIR)/libupnp-1.3.1/usr/lib/libixml.so.2.0.0
@@ -4311,7 +4311,7 @@ libusb10/Makefile:
 libusb10: libusb10/Makefile
 	$(MAKE) -C $@
 
-libusb10-install: libusb10
+libusb10-install:
 	install -D libusb10/libusb/.libs/libusb-1.0.so.0.2.0 $(INSTALLDIR)/libusb10/usr/lib/libusb-1.0.so.0
 	$(STRIP) $(INSTALLDIR)/libusb10/usr/lib/*.so.*
 	cd $(INSTALLDIR)/libusb10/usr/lib && \
@@ -4334,7 +4334,7 @@ libusb/Makefile:
 libusb: libusb10 libusb/Makefile
 	$(MAKE) -C $@
 
-libusb-install: libusb
+libusb-install:
 	install -D libusb/libusb/.libs/libusb-0.1.so.4.4.4 $(INSTALLDIR)/libusb/usr/lib/libusb-0.1.so.4
 	$(STRIP) $(INSTALLDIR)/libusb/usr/lib/*.so.*
 	cd $(INSTALLDIR)/libusb/usr/lib && \
@@ -4350,7 +4350,7 @@ usb-modeswitch-1.2.3: libusb
 		-Wl,-R/lib:/usr/lib:/opt/usr/lib:/usr/local/share -lpthread -ldl \
 		-L$(TOP)/libusb/libusb/.libs -lusb -L$(TOP)/libusb10/libusb/.libs -lusb-1.0"
 
-usb-modeswitch-1.2.3-install: usb-modeswitch-1.2.3
+usb-modeswitch-1.2.3-install:
 	install -D usb-modeswitch-1.2.3/usb_modeswitch $(INSTALLDIR)/usb-modeswitch-1.2.3/usr/sbin/usb_modeswitch
 	$(STRIP) -s $(INSTALLDIR)/usb-modeswitch-1.2.3/usr/sbin/usb_modeswitch
 	@mkdir -p $(TARGETDIR)/rom/etc
@@ -4361,7 +4361,7 @@ usb-modeswitch: libusb10
 		-Wl,-R/lib:/usr/lib:/opt/usr/lib:/usr/local/share -lpthread -ldl \
 		-L$(TOP)/libusb10/libusb/.libs -lusb-1.0"
 
-usb-modeswitch-install: usb-modeswitch
+usb-modeswitch-install:
 	install -D usb-modeswitch/usb_modeswitch $(INSTALLDIR)/usb-modeswitch/usr/sbin/usb_modeswitch
 	$(STRIP) -s $(INSTALLDIR)/usb-modeswitch/usr/sbin/usb_modeswitch
 	@mkdir -p $(TARGETDIR)/rom/$(EX_ROM)/etc
@@ -4376,9 +4376,9 @@ usbmode/stamp-h1:
 usbmode: json-c libubox usbmode/stamp-h1
 	$(MAKE) -C $@ EXTRACFLAGS="$(EXTRACFLAGS) -I$(TOP)/libubox"
 
-usbmode-install: usbmode
-	install -D $</$< $(INSTALLDIR)/$</usr/sbin/$<
-	$(STRIP) $(INSTALLDIR)/$</usr/sbin/$<
+usbmode-install:
+	install -D usbmode/usbmode $(INSTALLDIR)/usbmode/usr/sbin/usbmode
+	$(STRIP) $(INSTALLDIR)/usbmode/usr/sbin/usbmode
 
 usbmode-clean:
 	[ ! -f usbmode/Makefile ] || $(MAKE) -C usbmode clean
@@ -4393,7 +4393,7 @@ libusb-0.1.12/stamp-h1:
 libusb-0.1.12: libusb-0.1.12/stamp-h1
 	$(MAKE) -C $@
 
-libusb-0.1.12-install: libusb-0.1.12
+libusb-0.1.12-install:
 #	install -D libusb-0.1.12/.libs/libusb-0.1.so.4.4.4 $(INSTALLDIR)/libusb-0.1.12/usr/lib/libusb-0.1.so.4.4.4
 #	$(STRIP) $(INSTALLDIR)/libusb-0.1.12/usr/lib/*.so.*
 #	cd $(INSTALLDIR)/libusb-0.1.12/usr/lib && \
@@ -4408,10 +4408,10 @@ libusb-0.1.12-clean:
 libubox: json-c
 	$(MAKE) -C $@ EXTRACFLAGS="$(EXTRACFLAGS)" JSONC=$(TOP)/json-c && $(MAKE) $@-stage
 
-libubox-install: libubox
-	install -D $</libubox.so $(INSTALLDIR)/$</usr/lib/libubox.so
-	install -D $</libblobmsg_json.so $(INSTALLDIR)/$</usr/lib/libblobmsg_json.so
-	$(STRIP) $(INSTALLDIR)/$</usr/lib/*
+libubox-install:
+	install -D libubox/libubox.so $(INSTALLDIR)/libubox/usr/lib/libubox.so
+	install -D libubox/libblobmsg_json.so $(INSTALLDIR)/libubox/usr/lib/libblobmsg_json.so
+	$(STRIP) $(INSTALLDIR)/libubox/usr/lib/*
 
 libuci/Makefile:
 	cd libuci && cmake -G "Unix Makefiles" -DCMAKE_INSTALL_PREFIX=/usr -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib
@@ -4419,7 +4419,7 @@ libuci/Makefile:
 libuci: libuci/Makefile
 	$(MAKE) $@-stage
 
-libuci-install: libuci
+libuci-install:
 	install -D libuci/uci $(INSTALLDIR)/libuci/usr/sbin/uci
 	install -D libuci/libuci.so $(INSTALLDIR)/libuci/usr/lib/libuci.so
 	$(STRIP) $(INSTALLDIR)/libuci/usr/lib/libuci.so
@@ -4430,9 +4430,9 @@ swconfig: libuci libubox libnl-tiny-0.1
 uqmi: json-c libubox
 	$(MAKE) -C $@ EXTRACFLAGS="$(EXTRACFLAGS)" LIBUBOX=$(TOP)/libubox JSONC=$(TOP)/json-c
 
-uqmi-install: uqmi
-	install -D $</$< $(INSTALLDIR)/$</usr/sbin/$<
-	$(STRIP) $(INSTALLDIR)/$</usr/sbin/$<
+uqmi-install:
+	install -D uqmi/uqmi $(INSTALLDIR)/uqmi/usr/sbin/uqmi
+	$(STRIP) $(INSTALLDIR)/uqmi/usr/sbin/uqmi
 
 libdaemon/stamp-h1:
 	cd libdaemon && autoreconf -i -f && $(CONFIGURE) --prefix=/usr \
@@ -4443,7 +4443,7 @@ libdaemon/stamp-h1:
 libdaemon: libdaemon/stamp-h1
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
-libdaemon-install: libdaemon
+libdaemon-install:
 	install -D libdaemon/libdaemon/.libs/libdaemon.so.0.5.0 $(INSTALLDIR)/libdaemon/usr/lib/libdaemon.so.0.5.0
 	$(STRIP) $(INSTALLDIR)/libdaemon/usr/lib/*.so.*
 	cd $(INSTALLDIR)/libdaemon/usr/lib && \
@@ -4504,7 +4504,7 @@ util-linux-stage:
 	$(MAKE) -C util-linux/libuuid/src DESTDIR=$(STAGEDIR) \
 		install-usrlib_execLTLIBRARIES install-uuidincHEADERS
 
-util-linux-install: util-linux
+util-linux-install:
 	install -D $(STAGEDIR)/usr/lib/libuuid.so.1 $(INSTALLDIR)/util-linux/usr/lib/libuuid.so.1
 	$(STRIP) $(INSTALLDIR)/util-linux/usr/lib/*.so*
 
@@ -4518,7 +4518,7 @@ odhcp6c: odhcp6c/Makefile
 	PREFIX="/usr" \
 	$(MAKE) -C odhcp6c
 
-odhcp6c-install: odhcp6c
+odhcp6c-install:
 	install -D odhcp6c/src/odhcp6c $(INSTALLDIR)/odhcp6c/usr/sbin/odhcp6c
 	$(STRIP) $(INSTALLDIR)/odhcp6c/usr/sbin/odhcp6c
 
@@ -4547,7 +4547,7 @@ ndisc6-clean:
 	-@[ ! -f ndisc6/Makefile ] || $(MAKE) -C ndisc6 distclean
 	-@[ -f ndisc6/stamp-h1 ] || rm -f ndisc6/stamp-h1
 
-ndisc6-install: ndisc6
+ndisc6-install:
 	install -D ndisc6/src/rdisc6 $(INSTALLDIR)/ndisc6/usr/sbin/rdisc6
 	install -D ndisc6/src/rdisc6 $(INSTALLDIR)/ndisc6/usr/sbin/ndisc6
 	$(STRIP) $(INSTALLDIR)/ndisc6/usr/sbin/rdisc6
@@ -4564,7 +4564,7 @@ endif
 	PREFIX="/usr" \
 	$(MAKE) -C 6relayd
 
-6relayd-install: 6relayd
+6relayd-install:
 	install -D 6relayd/src/6relayd $(INSTALLDIR)/6relayd/usr/sbin/6relayd
 	$(STRIP) $(INSTALLDIR)/6relayd/usr/sbin/6relayd
 
@@ -4670,7 +4670,7 @@ ecmh-clean:
 	-@$(MAKE) -C ecmh clean
 	@rm -f ecmh/src/stamp-h1
 
-ecmh-install: ecmh
+ecmh-install:
 	install -D ecmh/src/ecmh $(INSTALLDIR)/ecmh/bin/ecmh
 	$(STRIP) $(INSTALLDIR)/ecmh/bin/ecmh
 
@@ -4736,7 +4736,7 @@ accel-pptpd-clean:
 	[ ! -f accel-pptpd/pptpd-1.3.3/Makefile ] || $(MAKE) -C accel-pptpd distclean
 	@rm -f accel-pptpd/pptpd-1.3.3/Makefile
 
-accel-pptpd-install: accel-pptpd
+accel-pptpd-install:
 	$(MAKE) -C accel-pptpd server_install
 
 pptpd/stamp-h1:
@@ -4745,7 +4745,7 @@ pptpd/stamp-h1:
 
 pptpd: pptpd/stamp-h1
 
-pptpd-install: pptpd
+pptpd-install:
 	@echo pptpd
 	@install -D pptpd/pptpd $(INSTALLDIR)/pptpd/usr/sbin/pptpd
 	@install -D pptpd/bcrelay $(INSTALLDIR)/pptpd/usr/sbin/bcrelay
@@ -4791,7 +4791,7 @@ rp-pppoe-clean:
 	-@$(MAKE) -C rp-pppoe/src clean
 	@rm -f rp-pppoe/src/stamp-h1
 
-rp-pppoe-install: rp-pppoe
+rp-pppoe-install:
 	install -D rp-pppoe/src/rp-pppoe.so $(INSTALLDIR)/rp-pppoe/usr/lib/pppd/rp-pppoe.so
 	$(STRIP) $(INSTALLDIR)/rp-pppoe/usr/lib/pppd/*.so
 	install -D rp-pppoe/src/pppoe-relay $(INSTALLDIR)/rp-pppoe/usr/sbin/pppoe-relay
@@ -4841,7 +4841,7 @@ accel-pptp-clean:
 	-@$(MAKE) -C accel-pptp clean
 	@rm -f accel-pptp/stamp-h1
 
-accel-pptp-install: accel-pptp
+accel-pptp-install:
 	install -D accel-pptp/src/.libs/pptp.so $(INSTALLDIR)/accel-pptp/usr/lib/pppd/pptp.so
 	$(STRIP) $(INSTALLDIR)/accel-pptp/usr/lib/pppd/pptp.so
 
@@ -5056,7 +5056,7 @@ nt_center: nt_center/stamp-h1 wb curl libxml2 $(if $(RTCONFIG_DMALLOC),dmalloc)
 	$(MAKE) -C nt_center
 
 
-nt_center-install: nt_center
+nt_center-install:
 	install -d $(INSTALLDIR)/nt_center/usr/lib/
 	install -d $(INSTALLDIR)/nt_center/usr/sbin/
 	install -D nt_center/lib/libnt.so $(INSTALLDIR)/nt_center/usr/lib/libnt.so
@@ -5090,7 +5090,7 @@ protect_srv-stage:
 protect_srv: protect_srv/stamp-h1 shared $(if $(BCM_502L07P2),ethctl_lib) nvram $(if $(RTCONFIG_HND_ROUTER), wlcsm)
 	$(MAKE) -C $@ && $(MAKE) $@-stage
 
-protect_srv-install: protect_srv
+protect_srv-install:
 	install -d $(INSTALLDIR)/protect_srv/usr/lib/
 	install -d $(INSTALLDIR)/protect_srv/usr/sbin/
 	install -D protect_srv/lib/libptcsrv.so $(INSTALLDIR)/protect_srv/usr/lib/libptcsrv.so
@@ -5136,7 +5136,7 @@ fprobe-1.1: libpcap
 	@$(SEP)
 	@$(MAKE) -C fprobe-1.1 CC=$(CC) AR=$(AR) RANLIB=$(RANLIB)
 
-fprobe-1.1-install: fprobe-1.1
+fprobe-1.1-install:
 	install -D fprobe-1.1/fprobe $(INSTALLDIR)/fprobe-1.1/usr/bin/fprobe
 
 fprobe-1.1-clean:
@@ -5151,11 +5151,11 @@ libev-4.33: libev-4.33/stamp-h1
 	@$(SEP)
 	@$(MAKE) -C libev-4.33 CC=$(CC)
 
-libev-4.33-install: libev-4.33
+libev-4.33-install:
 	@$(SEP)
-	install -D libev-4.33/.libs/libev.so.4.0.0 $(INSTALLDIR)/$</usr/lib/libev.so.4.0.0
-	$(STRIP) $(INSTALLDIR)/$</usr/lib/libev.so.4.0.0
-	cd $(INSTALLDIR)/$</usr/lib && ln -sf libev.so.4.0.0 libev.so.4
+	install -D libev-4.33/.libs/libev.so.4.0.0 $(INSTALLDIR)/libev-4.33/usr/lib/libev.so.4.0.0
+	$(STRIP) $(INSTALLDIR)/libev-4.33/usr/lib/libev.so.4.0.0
+	cd $(INSTALLDIR)/libev-4.33/usr/lib && ln -sf libev.so.4.0.0 libev.so.4
 
 libev-4.33-clean:
 	[ ! -f libev-4.33/Makefile ] || $(MAKE) -C libev-4.33 clean
@@ -5168,9 +5168,9 @@ nfcm: nfcm/stamp-h1 libev-4.33 sqlite3 json-c libnfnetlink-1.0.1 libmnl-1.0.4 li
 	@$(SEP)
 	@$(MAKE) -C nfcm CC=$(CC) QCA=$(if $(QCA),y,n) MODEL=$(MODEL) HND=$(if $(HND_ROUTER),y,n) AX=$(if $(RTCONFIG_HND_ROUTER_AX),y,n)
 
-nfcm-install: nfcm
+nfcm-install:
 	@echo INSTALLDIR=$(INSTALLDIR)
-	install -D nfcm/nfcm $(INSTALLDIR)/$</usr/bin/nfcm
+	install -D nfcm/nfcm $(INSTALLDIR)/nfcm/usr/bin/nfcm
 
 nfcm-clean: bridge-utils-clean
 	@$(SEP)
@@ -5184,9 +5184,9 @@ ipaddr: ipaddr/stamp-h1
 	@$(SEP)
 	@$(MAKE) -C ipaddr CC=$(CC)
 
-ipaddr-install: ipaddr
-	install -D ipaddr/libipaddr.so $(INSTALLDIR)/$</usr/lib/libipaddr.so
-	$(STRIP) $(INSTALLDIR)/$</usr/lib/libipaddr.so
+ipaddr-install:
+	install -D ipaddr/libipaddr.so $(INSTALLDIR)/ipaddr/usr/lib/libipaddr.so
+	$(STRIP) $(INSTALLDIR)/ipaddr/usr/lib/libipaddr.so
 
 ipaddr-clean:
 	@$(SEP)
@@ -5200,10 +5200,10 @@ pstree: pstree/stamp-h1
 	@$(SEP)
 	@$(MAKE) -C pstree CC=$(CC)
 
-pstree-install: pstree
+pstree-install:
 	@echo INSTALLDIR=$(INSTALLDIR)
 	$(STRIP) pstree/pstree
-	install -D pstree/pstree $(INSTALLDIR)/$</usr/bin/pstree
+	install -D pstree/pstree $(INSTALLDIR)/pstree/usr/bin/pstree
 
 pstree-clean:
 	@$(SEP)
@@ -5216,10 +5216,10 @@ libcodb: sqlite
 		$(MAKE) -C libcodb CC=$(CC) && touch $@/stamp-h1 ; \
 	fi
 
-libcodb-install: libcodb
+libcodb-install:
 	@echo INSTALLDIR=$(INSTALLDIR)
-	install -D libcodb/libcodb.so $(INSTALLDIR)/$</usr/lib/libcodb.so
-	$(STRIP) $(INSTALLDIR)/$</usr/lib/libcodb.so
+	install -D libcodb/libcodb.so $(INSTALLDIR)/libcodb/usr/lib/libcodb.so
+	$(STRIP) $(INSTALLDIR)/libcodb/usr/lib/libcodb.so
 
 libcodb-clean:
 	@$(SEP)
@@ -5260,7 +5260,7 @@ tcpdump-4.4.0: libpcap tcpdump-4.4.0/Makefile
 	@$(SEP)
 	@$(MAKE) -C $@
 
-tcpdump-4.4.0-install: tcpdump-4.4.0
+tcpdump-4.4.0-install:
 	install -D tcpdump-4.4.0/tcpdump $(INSTALLDIR)/tcpdump-4.4.0/usr/sbin/tcpdump
 	$(STRIP) $(INSTALLDIR)/tcpdump-4.4.0/usr/sbin/tcpdump
 
@@ -5275,7 +5275,7 @@ traceroute-2.1.0: traceroute-2.1.0/stamp-h1
 	$(MAKE) -C traceroute-2.1.0
 
 
-traceroute-2.1.0-install: traceroute-2.1.0
+traceroute-2.1.0-install:
 	install -d $(INSTALLDIR)/traceroute-2.1.0/usr/sbin/
 	install -D traceroute-2.1.0/traceroute/traceroute $(INSTALLDIR)/traceroute-2.1.0/usr/sbin/traceroute
 	$(STRIP) $(INSTALLDIR)/traceroute-2.1.0/usr/sbin/traceroute
@@ -5284,7 +5284,7 @@ traceroute-2.1.0-clean:
 	-$(MAKE) -C traceroute-2.1.0 clean
 	@rm -f traceroute-2.1.0/stamp-h1
 
-libqcsapi_client-install: libqcsapi_client
+libqcsapi_client-install:
 	install -d $(INSTALLDIR)/libqcsapi_client/usr/lib/
 	install -d $(INSTALLDIR)/libqcsapi_client/usr/sbin/
 	install -D libqcsapi_client/libqcsapi_client.so.1.0.1 $(INSTALLDIR)/libqcsapi_client/usr/lib/
@@ -5359,7 +5359,7 @@ lldpd-1.0.11/Makefile:
 	$(if $(filter y,$(HND_ROUTER)),,--enable-oldies) \
 	$(if $(RTCONFIG_AMAS),--with-json=yes,)
 
-lldpd-1.0.11-install: lldpd-1.0.11
+lldpd-1.0.11-install:
 	install -D lldpd-1.0.11/src/client/.libs/lldpcli $(INSTALLDIR)/lldpd-1.0.11/usr/sbin/lldpcli
 	install -D lldpd-1.0.11/src/daemon/lldpd $(INSTALLDIR)/lldpd-1.0.11/usr/sbin/lldpd
 	install -D lldpd-1.0.11/src/lib/.libs/liblldpctl.so.4.9.0 $(INSTALLDIR)/lldpd-1.0.11/usr/lib/liblldpctl.so.4.9.0
@@ -5385,10 +5385,10 @@ libevent-2.0.21/Makefile:
 		--disable-openssl --disable-debug-mode \
 	)
 
-libevent-2.0.21-install: libevent-2.0.21
-	install -D $(STAGEDIR)/usr/lib/libevent-2.0.so.5 $(INSTALLDIR)/$</usr/lib/libevent-2.0.so.5
-	$(STRIP) $(INSTALLDIR)/$</usr/lib/libevent-2.0.so*
-	cd $(INSTALLDIR)/$</usr/lib/ && ln -sf libevent-2.0.so.5 libevent.so
+libevent-2.0.21-install:
+	install -D $(STAGEDIR)/usr/lib/libevent-2.0.so.5 $(INSTALLDIR)/libevent-2.0.21/usr/lib/libevent-2.0.so.5
+	$(STRIP) $(INSTALLDIR)/libevent-2.0.21/usr/lib/libevent-2.0.so*
+	cd $(INSTALLDIR)/libevent-2.0.21/usr/lib/ && ln -sf libevent-2.0.so.5 libevent.so
 
 libevent-2.0.21-clean:
 	[ ! -f libevent-2.0.21/Makefile ] || $(MAKE) -C libevent-2.0.21 distclean
@@ -5448,7 +5448,7 @@ iproute2-3.15.0: kernel_header $(IPTABLES)
 	@$(SEP)
 	@$(MAKE) -C $@ IPTABLES_DIR=$(TOP)/iptables-1.4.21 KERNEL_INCLUDE=$(TOP)/kernel_header/include EXTRACFLAGS="$(EXTRACFLAGS) $(if $(RTCONFIG_IPV6),-DUSE_IPV6,-DNO_IPV6)"
 
-iproute2-3.15.0-install: iproute2-3.15.0
+iproute2-3.15.0-install:
 	install -D iproute2-3.15.0/tc/tc $(INSTALLDIR)/iproute2-3.15.0/usr/sbin/tc
 	install -D iproute2-3.15.0/ip/ip $(INSTALLDIR)/iproute2-3.15.0/usr/sbin/ip
 	$(STRIP) $(INSTALLDIR)/iproute2-3.15.0/usr/sbin/*
@@ -9999,7 +9999,7 @@ endif
 libubus:libubox json-c
 	if [ ! -f $@/stamp-h1 ];then \
 		cd libubus && cmake -DABIVERSION="2021-06-03" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr -DBUILD_LUA=0 -DBUILD_EXAMPLES=0  -DCMAKE_INCLUDE_PATH=$(STAGEDIR)/usr/include -DCMAKE_LIBRARY_PATH=$(STAGEDIR)/usr/lib; \
-		$(MAKE) -C libubus all && $(MAKE) $@-stage && touch $@/stamp-h1; \
+		cd ../ && $(MAKE) -C libubus all && $(MAKE) $@-stage && touch $@/stamp-h1; \
 	fi
 
 libubus-install:

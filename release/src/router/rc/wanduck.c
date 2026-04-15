@@ -3434,7 +3434,7 @@ int wanduck_main(int argc, char *argv[]){
 	int wan_unit, wan_sbstate;
 	char prefix_wan[8];
 	char wired_link_nvram[16];
-#if defined(RTCONFIG_WIRELESSREPEATER) && !defined(RTCONFIG_QCA) && !defined(RTCONFIG_CONCURRENTREPEATER)
+#if defined(RTCONFIG_WIRELESSREPEATER) && !defined(RTCONFIG_QCA)
 	char domain_mapping[64];
 #endif
 #ifdef RTCONFIG_DSL
@@ -3445,15 +3445,10 @@ int wanduck_main(int argc, char *argv[]){
 	char cmd[32];
 #endif
 #ifdef RTCONFIG_DUALWAN
-#if defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX)
+#if defined(RTAC68U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX)
 	int wanred_led_status = 0;	/* 1 is no internet, 2 is internet ok */
 	int u, link_status;
 #endif
-#endif
-#ifdef RTCONFIG_QTN
-	time_t qtn_now;
-	struct tm *qtn_tm;
-	char time_string[sizeof("MMDDhhmmYYYY")];
 #endif
 #ifdef RTCONFIG_USB_MODEM
 	int modem_unit;
@@ -3463,11 +3458,6 @@ int wanduck_main(int argc, char *argv[]){
 
 	wdbg = nvram_get_int("wdbg");
 	test_log = nvram_get_int("wanduck_debug");
-#if defined(RTCONFIG_HIDDEN_BACKHAUL)
-	char vif[15];
-	if(sw_mode() != SW_MODE_REPEATER)
-		sprintf(vif,"%s.%s",WIF_5G_BH,"55");
-#endif
 
 	signal(SIGHUP, SIG_IGN);
 	signal(SIGTERM, safe_leave);
@@ -3736,40 +3726,17 @@ _dprintf("wanduck(%d)(first detect start): state %d, state_old %d, changed %d, w
 				_dprintf("\n# AP mode: Enable direct rule(DISCONN)\n");
 				eval("ebtables", "-t", "broute", "-F");
 				eval("ebtables", "-t", "filter", "-F");
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_RALINK)
-				eval("rmmod", "ebtable_broute");
-				eval("rmmod", "ebtable_filter");
-				eval("rmmod", "ebtables");
-#endif
 				redirect_setting();
 				evalRet = eval("iptables-restore", REDIRECT_RULES);
 				rule_apply_checking("wanduck", __LINE__, REDIRECT_RULES, evalRet);
 				// nat_rules = NAT_STATE_REDIRECT;
 			}
-#ifdef RTCONFIG_WIFI_SON
-			else if(!nvram_match("cfg_master", "1") && nvram_match("wifison_ready", "1"))
-				; // do nothing.
-#endif
 			else if(cross_state == CONNED){
 				int evalRet;
 				_dprintf("\n# AP mode: Disable direct rule(CONNED)\n");
 				eval("ebtables", "-t", "broute", "-F");
 				eval("ebtables", "-t", "filter", "-F");
 				eval("ebtables", "-t", "broute", "-I", "BROUTING", "-p", "ipv4", "--ip-proto", "udp", "--ip-dport", "53", "-j", "redirect", "--redirect-target", "DROP");
-#ifdef RTCONFIG_WIFI_SON
-				if((sw_mode() == SW_MODE_AP && nvram_match("cfg_master", "1")) && nvram_match("wifison_ready", "1"))
-                                {
-                                        if(nvram_get_int("wl0.1_bss_enabled"))
-                                        {
-#if defined(RTCONFIG_HIDDEN_BACKHAUL)
-                                                eval("ebtables", "-t", "broute", "-I", "BROUTING","-i",vif ,"-j","ACCEPT");
-#else
-                                                eval("ebtables", "-t", "broute", "-I", "BROUTING","-i","ath1.55" ,"-j","ACCEPT");
-#endif
-                                                eval("ebtables", "-t", "broute", "-I", "BROUTING","-i",nvram_safe_get("wl0.1_ifname"),"-j","ACCEPT");
-                                        }
-                                }
-#endif
 				redirect_nat_setting();
 				evalRet = eval("iptables-restore", NAT_RULES);
 				rule_apply_checking("wanduck", __LINE__, NAT_RULES, evalRet);
@@ -3826,9 +3793,7 @@ _dprintf("wanduck(%d)(first detect start): state %d, state_old %d, changed %d, w
 			led_control(LED_WAN, LED_ON);
 		else
 			led_control(LED_WAN, LED_OFF);
-#elif defined(DSL_N55U) || defined(DSL_N55U_B)
-		led_control(LED_WAN, LED_ON);
-#elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
+#elif defined(RTAC68U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || (defined(HND_ROUTER) && !defined(RTCONFIG_HND_ROUTER_AX))
 		if(nvram_match("AllLED", "1")
 #if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 				&& (is_ac66u_v2_series() || is_ac68u_v3_series())
@@ -4775,13 +4740,6 @@ _dprintf("wanduck(%d)(all   end): state %d, state_old %d, changed %d, wan_state 
 					eval("ebtables", "-t", "filter", "-F");
 
 					// Drop the DHCP server from PAP.
-#ifdef RTCONFIG_CONCURRENTREPEATER
-					if (nvram_get_int("wlc_express") == 0) {	/* concurrent repeater */
-						eval("ebtables", "-t", "filter", "-A", "FORWARD", "-i", nvram_safe_get(wl_nvname("ifname", 0, 1)), "-j", "DROP");
-						eval("ebtables", "-t", "filter", "-A", "FORWARD", "-i", nvram_safe_get(wl_nvname("ifname", 1, 1)), "-j", "DROP");
-					}
-					else
-#endif
 					eval("ebtables", "-t", "filter", "-A", "FORWARD", "-i", nvram_safe_get(wlc_nvname("ifname")), "-j", "DROP");
 					f_write_string("/proc/net/dnsmqctrl", "", 0, 0);
 
@@ -4826,39 +4784,19 @@ _dprintf("nat_rule: stop_nat_rules 6.\n");
 					}
 #endif
 
-#if !defined(RTCONFIG_QCA) && !defined(RTCONFIG_CONCURRENTREPEATER) 
+#if !defined(RTCONFIG_QCA)
 					eval("ebtables", "-t", "broute", "-A", "BROUTING", "-d", "00:E0:11:22:33:44", "-j", "redirect", "--redirect-target", "DROP");
 					snprintf(domain_mapping, sizeof(domain_mapping), "%x %s", inet_addr(nvram_safe_get("lan_ipaddr")), DUT_DOMAIN_NAME);
 					f_write_string("/proc/net/dnsmqctrl", domain_mapping, 0, 0);
 #endif
 
-#ifndef RTCONFIG_LANTIQ
 #ifdef RTCONFIG_REDIRECT_DNAME
 					if (nvram_invmatch("redirect_dname", "0"))
 						eval("ebtables", "-t", "broute", "-A", "BROUTING", "-p", "ipv4", "--ip-proto", "udp", "--ip-dport", "53", "-j", "redirect", "--redirect-target", "DROP");
 #endif
-#endif
-
-#ifdef RTCONFIG_WIFI_SON
-                                	if((sw_mode() == SW_MODE_AP && nvram_match("cfg_master", "1")) && nvram_match("wifison_ready", "1"))
-                                	{
-                                       		if(nvram_get_int("wl0.1_bss_enabled"))
-                                        	{
-#if defined(RTCONFIG_HIDDEN_BACKHAUL)
-                                                	eval("ebtables", "-t", "broute", "-I", "BROUTING","-i",vif ,"-j","ACCEPT");
-#else
-                                                	eval("ebtables", "-t", "broute", "-I", "BROUTING","-i","ath1.55" ,"-j","ACCEPT");
-#endif                                                	
-							eval("ebtables", "-t", "broute", "-I", "BROUTING","-i",nvram_safe_get("wl0.1_ifname"),"-j","ACCEPT");
-                                        	}
-                                	}
-#endif
 
 _dprintf("nat_rule: start_nat_rules 6.\n");
 					nat_state = start_nat_rules();
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_RALINK)
-					nvram_set_int("lan_ready",1);
-#endif						
 				}
 
 				got_notify = 0;
@@ -4880,30 +4818,12 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 				rule_apply_checking("wanduck", __LINE__, REDIRECT_RULES, evalRet);
 				// nat_rules = NAT_STATE_REDIRECT;
 			}
-#ifdef RTCONFIG_WIFI_SON
-			else if(!nvram_match("cfg_master", "1") && nvram_match("wifison_ready", "1"))
-				; // do nothing.
-#endif
 			else if (conn_changed_state[current_wan_unit] == D2C) {
 				int evalRet;
 				_dprintf("\n# AP mode: Disable direct rule(D2C)\n");
 				eval("ebtables", "-t", "broute", "-F");
 				eval("ebtables", "-t", "filter", "-F");
 				eval("ebtables", "-t", "broute", "-I", "BROUTING", "-p", "ipv4", "--ip-proto", "udp", "--ip-dport", "53", "-j", "redirect", "--redirect-target", "DROP");
-#ifdef RTCONFIG_WIFI_SON
-                                if((sw_mode() == SW_MODE_AP && nvram_match("cfg_master", "1"))&& nvram_match("wifison_ready", "1"))
-                                {
-                                        if(nvram_get_int("wl0.1_bss_enabled"))
-                                        {
-#if defined(RTCONFIG_HIDDEN_BACKHAUL)
-                                                eval("ebtables", "-t", "broute", "-I", "BROUTING","-i",vif ,"-j","ACCEPT");
-#else
-                                                eval("ebtables", "-t", "broute", "-I", "BROUTING","-i","ath1.55" ,"-j","ACCEPT");
-#endif
-                                                eval("ebtables", "-t", "broute", "-I", "BROUTING","-i",nvram_safe_get("wl0.1_ifname"),"-j","ACCEPT");
-                                        }
-                                }
-#endif
 				redirect_nat_setting();
 				evalRet = eval("iptables-restore", NAT_RULES);
 				rule_apply_checking("wanduck", __LINE__, NAT_RULES, evalRet);
@@ -5037,8 +4957,6 @@ _dprintf("nat_rule: start_nat_rules 6.\n");
 					led_control(LED_WAN, LED_ON);
 				else
 					led_control(LED_WAN, LED_OFF);
-#elif defined(DSL_N55U) || defined(DSL_N55U_B)
-				led_control(LED_WAN, LED_ON);
 #elif defined(RTCONFIG_HND_ROUTER_AX) || defined(RTCONFIG_LANWAN_LED) || defined(RTCONFIG_WANRED_LED) || defined(RTCONFIG_FAILOVER_LED)
 				update_wan_leds(current_wan_unit, link_wan[current_wan_unit]);
 #elif defined(RTAC68U) || defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(HND_ROUTER)

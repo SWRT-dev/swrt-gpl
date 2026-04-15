@@ -22,13 +22,14 @@
 
 #define NAWDS_SH_FMT	"/etc/Wireless/sh/nawds_%s.sh"
 
-extern char *wlan_name[4];
 extern const char WIF_2G[];
 extern const char WIF_5G[];
 extern const char STA_2G[];
 extern const char STA_5G[];
 extern const char VPHY_2G[];
 extern const char VPHY_5G[];
+extern const char PHY_5G[];
+extern const char PHY_2G[];
 
 extern const char *max_2g_n_mode, *max_2g_ax_mode;
 extern const char *max_5g_ac_mode, *max_5g_ax_mode;
@@ -136,25 +137,49 @@ enum ASUS_IOCTL_SUBCMD {
 	ASUS_SUBCMD_MAX
 };
 
+#if defined(RAX40)
+#define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	0x6c0000
+#else
 #define SPI_PARALLEL_NOR_FLASH_FACTORY_LENGTH	0x100000
+#endif
 /* Below offset addresses, actually, based on start address of Flash.
  * Thus, there are absolute addresses and only valid on products
  * associated with parallel NOR Flash and SPI Flash.
  */
 
-#if defined(RTCONFIG_LANTIQ)
-#define ETH0_MAC_OFFSET			0x1002
-#define ETH1_MAC_OFFSET			0x5006
 
-#else
-#error Define MAC address offset.
-#endif
 
 #if defined(RAX40)
-#define MTD_FACTORY_BASE_ADDRESS	0xff60000 /*vendor + 0x6a0000*/
-#else
-#define MTD_FACTORY_BASE_ADDRESS	0x7ec0000
+#define ETH0_MAC_OFFSET			0x6a1002
+#define ETH1_MAC_OFFSET			0x6a5006
+#define MTD_FACTORY_BASE_ADDRESS	0xf8c0000 /*vendor + 0x6a0000*/
+#define OFFSET_RFCA_COPIED		(MTD_FACTORY_BASE_ADDRESS + 0x6aD00A)
+#define OFFSET_FORCE_USB3		(MTD_FACTORY_BASE_ADDRESS + 0x6aD010)
+#define OFFSET_MTD_FACTORY		(MTD_FACTORY_BASE_ADDRESS + 0x00000)
+#define OFFSET_BOOT_VER			(MTD_FACTORY_BASE_ADDRESS + 0x6aD18A)
+#define OFFSET_COUNTRY_CODE		(MTD_FACTORY_BASE_ADDRESS + 0x6aD188)
+#define	FACTORY_COUNTRY_CODE_LEN	2
+#define OFFSET_IPADDR_LAN		(MTD_FACTORY_BASE_ADDRESS + 0x6aD190)
+#define OFFSET_MAC_ADDR_2G		(MTD_FACTORY_BASE_ADDRESS + ETH0_MAC_OFFSET)
+#define OFFSET_MAC_ADDR			(MTD_FACTORY_BASE_ADDRESS + ETH1_MAC_OFFSET)
+#define OFFSET_PIN_CODE			(MTD_FACTORY_BASE_ADDRESS + 0x6aD180)
+#define OFFSET_PSK			(MTD_FACTORY_BASE_ADDRESS + 0x6aff60)
+#define OFFSET_TERRITORY_CODE		(MTD_FACTORY_BASE_ADDRESS + 0x6aff90)
+#ifdef RTCONFIG_DEFAULT_AP_MODE
+#define OFFSET_FORCE_DISABLE_DHCP	(MTD_FACTORY_BASE_ADDRESS + 0x6aD1AA)
 #endif
+
+#define OFFSET_DEV_FLAGS		(MTD_FACTORY_BASE_ADDRESS + 0x6affa0)
+#define OFFSET_ODMPID			(MTD_FACTORY_BASE_ADDRESS + 0x6affb0)
+#define OFFSET_FAIL_RET			(MTD_FACTORY_BASE_ADDRESS + 0x6affc0)
+#define OFFSET_FAIL_BOOT_LOG		(MTD_FACTORY_BASE_ADDRESS + 0x6affd0)
+#define OFFSET_FAIL_DEV_LOG		(MTD_FACTORY_BASE_ADDRESS + 0x6affe0)
+#define OFFSET_SERIAL_NUMBER		(MTD_FACTORY_BASE_ADDRESS + 0x6afff0)
+#else
+#define ETH0_MAC_OFFSET			0x1002
+#define ETH1_MAC_OFFSET			0x5006
+#define MTD_FACTORY_BASE_ADDRESS	0x7ec0000
+
 
 #define OFFSET_RFCA_COPIED		(MTD_FACTORY_BASE_ADDRESS + 0x0D00A)	/* 4 bytes */
 #define OFFSET_FORCE_USB3		(MTD_FACTORY_BASE_ADDRESS + 0x0D010)	/* 1 bytes */
@@ -164,7 +189,6 @@ enum ASUS_IOCTL_SUBCMD {
 #define	FACTORY_COUNTRY_CODE_LEN	2
 #define OFFSET_IPADDR_LAN		(MTD_FACTORY_BASE_ADDRESS + 0x0D190)	/* 0x0D190 -> 0x0D19F */
 
-#if defined(RTCONFIG_LANTIQ)
 /* WAN: eth0
  * LAN: eth1
  * 2G: follow WAN
@@ -176,9 +200,7 @@ enum ASUS_IOCTL_SUBCMD {
 #define	QCA9557_EEPROM_MAC_OFFSET	(OFFSET_MAC_ADDR_2G & 0xFFF) // 2
 #define	QC98XX_EEPROM_SIZE_LARGEST	2116 // sync with driver
 #define	QC98XX_EEPROM_MAC_OFFSET	(OFFSET_MAC_ADDR & 0xFFF) // 6
-#else
-#error Define EEPROM offset and size
-#endif
+
 
 #define OFFSET_PIN_CODE			(MTD_FACTORY_BASE_ADDRESS + 0x0D180)	/* 0x40180 -> 0x4D180 */
 #define OFFSET_PSK			(MTD_FACTORY_BASE_ADDRESS + 0x0ff60)    /* 15 bytes */  
@@ -199,7 +221,7 @@ enum ASUS_IOCTL_SUBCMD {
 #define OFFSET_FAIL_BOOT_LOG		(MTD_FACTORY_BASE_ADDRESS + 0x0ffd0)	//bit operation for max 100
 #define OFFSET_FAIL_DEV_LOG		(MTD_FACTORY_BASE_ADDRESS + 0x0ffe0)	//bit operation for max 100
 #define OFFSET_SERIAL_NUMBER		(MTD_FACTORY_BASE_ADDRESS + 0x0fff0)
-
+#endif
 /*
  * LED/Button GPIO# definitions
  */
@@ -239,9 +261,11 @@ extern int calc_qca_eeprom_csum(void *ptr, unsigned int eeprom_size);
 extern int trigger_wave_monitor(const char *func, int line, int action);
 extern int __get_qca_sta_info_by_ifname(const char *ifname, char subunit_id, int (*handler)(const WLANCONFIG_LIST *rptr, void *arg), void *arg);
 extern int get_lantiq_sta_info_by_ifname(const char *ifname, char subunit_id, WIFI_STA_TABLE *sta_info);
+extern char *get_realphyifname(int band);
 /* for ATE Get_WanLanStatus command */
+#define MAX_NR_SWITCH_PORTS	5
 typedef struct {
-	unsigned int link[5];
-	unsigned int speed[5];
+	unsigned int link[MAX_NR_SWITCH_PORTS];
+	unsigned int speed[MAX_NR_SWITCH_PORTS];
 } phyState;
 #endif	/* _LANTIQ_H_ */

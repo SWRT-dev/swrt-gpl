@@ -9,6 +9,9 @@
 #include "includes.h"
 
 #include "common.h"
+#if defined(SWRT_PATCH)
+#include <time.h>
+#endif
 
 #ifndef CONFIG_NO_WPA_RTLOGGER
 #include "wpa_rtlogger.h"
@@ -73,19 +76,40 @@ static FILE *out_file = NULL;
 void wpa_debug_print_timestamp(void)
 {
 #ifndef CONFIG_ANDROID_LOG
+#if defined(SWRT_PATCH)
+	char *timestamp;
+	time_t now;
+	struct tm *nowtm;
+#else
 	struct os_time tv;
+#endif
 
 	if (!wpa_debug_timestamp)
 		return;
 
+#if defined(SWRT_PATCH)
+	time(&now);
+	nowtm = localtime(&now);
+	timestamp = asctime(nowtm) + 4;
+	timestamp[15] = '\0';
+#else
 	os_get_time(&tv);
+#endif
 #ifdef CONFIG_DEBUG_FILE
 	if (out_file) {
+#if defined(SWRT_PATCH)
+		fprintf(out_file, "%s ", timestamp);
+#else
 		fprintf(out_file, "%ld.%06u: ", (long) tv.sec,
 			(unsigned int) tv.usec);
+#endif
 	} else
 #endif /* CONFIG_DEBUG_FILE */
+#if defined(SWRT_PATCH)
+		printf("%s ", timestamp);
+#else
 	printf("%ld.%06u: ", (long) tv.sec, (unsigned int) tv.usec);
+#endif
 #endif /* CONFIG_ANDROID_LOG */
 }
 
@@ -542,6 +566,44 @@ void wpa_hexdump_ascii_key(int level, const char *title, const void *buf,
 #ifdef CONFIG_DEBUG_FILE
 static char *last_path = NULL;
 #endif /* CONFIG_DEBUG_FILE */
+#if defined(SWRT_PATCH)
+#define MB 1000000
+int is_log_sizelimit(char *limit)
+{
+	unsigned long int  size;
+	double max_limit;
+	char new[48];
+	if (!out_file)
+		return 0;
+
+	if (limit)
+		max_limit = atof(limit)*MB;
+	else
+		max_limit = MB;
+
+	size = ftell(out_file);
+
+	if (size >= max_limit) {
+		snprintf(new, sizeof(new), "%s-1", last_path);
+		wpa_debug_stop_log();
+		unlink(new);
+		rename(last_path, new);
+		wpa_debug_open_file(last_path);
+	}
+
+	return 0;
+}
+void wpa_debug_stop_log(void)
+{
+#ifdef CONFIG_DEBUG_FILE
+	if (!out_file)
+		return;
+	fclose(out_file);
+	out_file = NULL;
+#endif /* CONFIG_DEBUG_FILE */
+}
+
+#endif
 
 int wpa_debug_reopen_file(void)
 {
@@ -864,10 +926,18 @@ void hostapd_logger(void *ctx, const u8 *addr, unsigned int module, int level,
 	if (hostapd_logger_cb)
 		hostapd_logger_cb(ctx, addr, module, level, buf, len);
 	else if (addr)
+#if defined(SWRT_PATCH)
+		wpa_printf(MSG_DEBUG, "STA " MACSTR " %s", MAC2STR(addr), buf);
+#else
 		wpa_printf(MSG_DEBUG, "hostapd_logger: STA " MACSTR " - %s",
 			   MAC2STR(addr), buf);
+#endif
 	else
+#if defined(SWRT_PATCH)
+		wpa_printf(MSG_DEBUG, "%s", buf);
+#else
 		wpa_printf(MSG_DEBUG, "hostapd_logger: %s", buf);
+#endif
 	bin_clear_free(buf, buflen);
 }
 #endif /* CONFIG_NO_HOSTAPD_LOGGER */
@@ -912,3 +982,4 @@ int str_to_debug_level(const char *s)
 		return MSG_ERROR;
 	return -1;
 }
+

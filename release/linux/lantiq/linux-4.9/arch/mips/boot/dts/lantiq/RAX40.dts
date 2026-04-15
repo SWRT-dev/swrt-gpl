@@ -27,32 +27,28 @@
 			linux,code = <KEY_WPS_BUTTON>;
 		};
 	};
-
+*/
 	gpio-leds {
 		compatible = "gpio-leds";
 
-		wifi {
-			label = "rax40:green:wifi";
-			gpios = <&gpio1 10 GPIO_ACTIVE_HIGH>;
-			default-state = "on";
+		lan1 {
+			label = "lan1";
+			gpios = <&gpio0 4 GPIO_ACTIVE_HIGH>;
 		};
-		wps {
-			label = "rax40:green:wps";
-			gpios = <&gpio0 31 GPIO_ACTIVE_HIGH>;
-			default-state = "on";
+		lan2 {
+			label = "lan2";
+			gpios = <&gpio0 5 GPIO_ACTIVE_HIGH>;
 		};
-		power {
-			label = "rax40:red:power";
-			gpios = <&gpio0 10 GPIO_ACTIVE_HIGH>;
-			default-state = "on";
+		lan3 {
+			label = "lan3";
+			gpios = <&gpio0 6 GPIO_ACTIVE_HIGH>;
 		};
-		inet {
-			label = "rax40:orange:inet";
-			gpios = <&gpio0 14 GPIO_ACTIVE_HIGH>;
-			default-state = "on";
+		lan4 {
+			label = "lan4";
+			gpios = <&gpio0 9 GPIO_ACTIVE_HIGH>;
 		};
 	};
-*/
+
 	ssx4@16000000 {
 		localbus@0 {
 			ranges = <0 0 0x1c00000 0xfffff>;

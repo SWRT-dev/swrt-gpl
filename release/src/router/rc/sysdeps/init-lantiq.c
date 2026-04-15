@@ -41,12 +41,14 @@ extern int init_gpio_again(void);
 
 static void __load_wifi_driver(int testmode)
 {
-	char country[FACTORY_COUNTRY_CODE_LEN + 1], prefix[sizeof("wlXXXXX_")], index[2];
+	char country[FACTORY_COUNTRY_CODE_LEN + 1], prefix[sizeof("wlXXXXX_")]/*, index[2]*/;
 	int unit;
 	pid_t pid;
 	FILE *fp_wifi;
 	char vphy[IFNAMSIZ] = { 0 }, path_wifi[sizeof("/tmp/wifiXXXX.sh")];
-	char *handler_argv[]= { "/opt/intel/bin/dump_handler", "-i", index, "-f", "/opt/intel/wave/", NULL };
+	char macaddr[] = "00:11:22:33:44:55";
+	unsigned char mac_binary[6];
+//	char *handler_argv[]= { "/opt/intel/bin/dump_handler", "-i", index, "-f", "/opt/intel/wave/", NULL };
 #if !defined(RAX40)
 	char *dwpald_argv[]= { "dwpal_daemon", NULL };
 #endif
@@ -62,13 +64,11 @@ static void __load_wifi_driver(int testmode)
 	_eval(dwpald_argv, NULL, 0, &pid);
 #endif
 	///proc/net/mtlk/card*
-	strlcpy(index, "0", sizeof(index));
-	_eval(handler_argv, NULL, 0, &pid);
+	//strlcpy(index, "0", sizeof(index));
+	//_eval(handler_argv, NULL, 0, &pid);
 	//strlcpy(index, "1", sizeof(index));
 	//_eval(handler_argv, NULL, 0, &pid);
 
-//	eval("ifconfig", "wlan0", "hw", "ether", macbuf);
-//	eval("ifconfig", "wlan2", "hw", "ether", macbuf);
 	eval("mkdir", "-p", "/etc/Wireless/sh");
 	for (unit = WL_2G_BAND; unit < MAX_NR_WL_IF; ++unit) {
 		SKIP_ABSENT_BAND(unit);
@@ -89,7 +89,7 @@ static void __load_wifi_driver(int testmode)
 			/* Country */
 			strlcpy(country, nvram_pf_safe_get(prefix, "country_code"), sizeof(country));
 			fprintf(fp_wifi, "iw reg set %s\n", country);
-
+			nvram_set_int("wl_country_changed", 7);
 			/* TX power adjustment. */
 			if (find_word(nvram_safe_get("rc_support"), "pwrctrl")) {
 				if(nvram_pf_get_int(prefix, "txpower") > 100 || nvram_pf_get_int(prefix, "txpower") <= 0)
@@ -98,6 +98,15 @@ static void __load_wifi_driver(int testmode)
 					fprintf(fp_wifi, "iw phy %s set txpower fixed %d\n",
 						vphy, nvram_pf_get_int(prefix, "txpower") * 30);//0-3000mBm
 			}
+			//create master ap/vphy and initial data
+			fprintf(fp_wifi, "iw phy %s interface add %s type __ap\n", get_realphyifname(unit), vphy);
+			strlcpy(macaddr, nvram_pf_safe_get(prefix, "hwaddr"), sizeof(macaddr));
+			ether_atoe(macaddr, mac_binary);
+			mac_binary[5] += 0xa;
+			ether_etoa(mac_binary, macaddr);
+			fprintf(fp_wifi, "ifconfig %s hw ether %s\n", vphy, macaddr);
+			fprintf(fp_wifi, "ifconfig %s up\n", vphy);
+			fprintf(fp_wifi, "ifconfig %s down\n", vphy);
 		}
 
 		fclose(fp_wifi);
@@ -156,6 +165,26 @@ int init_devs_defer(void)
 	set_gpio(42, 0);
 	gpio_dir(43, GPIO_DIR_OUT);
 	set_gpio(43, 1);
+#elif defined(RAX40)
+	if(nvram_match("AllLED", "1")){
+		f_write_string("/sys/class/leds/lan1/trigger", "netdev", 0, 0);
+		f_write_string("/sys/class/leds/lan1/device_name", "eth0_1", 0, 0);
+		f_write_string("/sys/class/leds/lan1/mode", "link tx rx", 0, 0);
+		f_write_string("/sys/class/leds/lan2/trigger", "netdev", 0, 0);
+		f_write_string("/sys/class/leds/lan2/device_name", "eth0_2", 0, 0);
+		f_write_string("/sys/class/leds/lan2/mode", "link tx rx", 0, 0);
+		f_write_string("/sys/class/leds/lan3/trigger", "netdev", 0, 0);
+		f_write_string("/sys/class/leds/lan3/device_name", "eth0_3", 0, 0);
+		f_write_string("/sys/class/leds/lan3/mode", "link tx rx", 0, 0);
+		f_write_string("/sys/class/leds/lan4/trigger", "netdev", 0, 0);
+		f_write_string("/sys/class/leds/lan4/device_name", "eth0_4", 0, 0);
+		f_write_string("/sys/class/leds/lan4/mode", "link tx rx", 0, 0);
+	} else {
+		f_write_string("/sys/class/leds/lan1/trigger", "none", 0, 0);
+		f_write_string("/sys/class/leds/lan2/trigger", "none", 0, 0);
+		f_write_string("/sys/class/leds/lan3/trigger", "none", 0, 0);
+		f_write_string("/sys/class/leds/lan4/trigger", "none", 0, 0);
+	}
 #endif
 	check_ubi_partition();
 	_dprintf("start_jffs2() start\n");
@@ -174,15 +203,6 @@ void init_others(void)
 #if defined(BLUECAVE)
 	system("cp -R /lib/firmware/ar3k /tmp/");
 #endif
-//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ -----------\n");
-//	system("cd /tmp/wireless; ln -s /rom/opt/beerocks beerocks");
-//	system("cd /tmp/wireless; ln -s /rom/opt/errorhd.cfg errorhd.cfg");
-//	system("cd /tmp/wireless; ln -s /rom/opt/lantiq lantiq");
-//	_dprintf("--------- extract fapi database -----------\n");
-//	system("cd /tmp/; rm -rf lantiq_wave; tar zxf /rom/opt/lantiq/wave.tgz; mv wave lantiq_wave");
-//	_dprintf("--------- create link /tmp/wireless/ to /rom/opt/ done -----------\n");
-//	system("cp /opt/lantiq/wave/scripts/fapi_wlan_wave_lib_common.sh /tmp/");
-//	system("cp /opt/lantiq/wave/images/* /tmp/");
 	system("ln -sf /opt/intel/etc/wave_components.ver /etc/");
 	system("read_img wlanconfig /tmp/cal_eeprom.tar.gz");
 //	if(stat("/tmp/cal_eeprom.tar.gz", &cal_stat) || cal_stat.st_blocks < 801)
@@ -223,13 +243,6 @@ void init_others(void)
 	system("insmod hw_tcp_litepath");
 	system("insmod mac_violation_mirror");
 //	system("insmod ltq_pmcu");
-	//modprobe("tntfs");
-//	if(!pids("udevd"))
-//	{
-//		char *udevd_argv[] = {"udevd", "--daemon", NULL};
-//		_eval(udevd_argv, NULL, 0, &pid);
-//		logmessage("udevd", "daemon is started");
-//	}
 	nvram_set("ctf_disable", nvram_safe_get("ctf_disable_force"));
 	system("ppacmd init -n 30");
 	system("ppacmd addlan -i eth0_1");
@@ -326,18 +339,15 @@ int write_default_cal(void)
 
 void enable_jumbo_frame(void)
 {
-	char buf[] = "8000XXX";
-
 	if(nvram_contains_word("rc_support", "switchctrl"))
 	{
 		if(nvram_get_int("jumbo_frame_enable"))
 		{
-			snprintf(buf, sizeof(buf), "%d", 8000);
-			eval("ifconfig", "eth0_1", "mtu", buf);
-			eval("ifconfig", "eth0_2", "mtu", buf);
-			eval("ifconfig", "eth0_3", "mtu", buf);
+			ifconfig_mtu("eth0_1", 8000);
+			ifconfig_mtu("eth0_2", 8000);
+			ifconfig_mtu("eth0_3", 8000);
 #if !defined(K3C)
-			eval("ifconfig", "eth0_4", "mtu", buf);
+			ifconfig_mtu("eth0_4", 8000);
 #endif
 		}
 	}
@@ -408,11 +418,7 @@ void deinit_all_vaps(const int unregister_vap)
 	int unit, sunit, max_sunit;
 	char wif[IFNAMSIZ], prefix[sizeof("wlX_YYY")];
 	char hconf_path[sizeof("/etc/Wireless/conf/hostapd_X.confXXX") + IFNAMSIZ];
-#if defined(RTCONFIG_SINGLE_HOSTAPD)
 	char sock_path[sizeof("/var/run/hostapd/XXXXXX") + IFNAMSIZ];
-#else
-	char pid_path[sizeof("/var/run/hostapd_athXXX.pidYYYYYY")];
-#endif
 
 	for (unit = 0; unit < MAX_NR_WL_IF; ++unit) {
 		SKIP_ABSENT_BAND(unit);
@@ -421,15 +427,9 @@ void deinit_all_vaps(const int unregister_vap)
 		for (sunit = 0; sunit <= max_sunit; ++sunit) {
 			get_wlxy_ifname(unit, sunit, wif);
 			snprintf(hconf_path, sizeof(hconf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
-#if defined(RTCONFIG_SINGLE_HOSTAPD)
 			snprintf(sock_path, sizeof(sock_path), "/var/run/hostapd/%s", wif);
 			if (f_exists(sock_path))
 				eval(QWPA_CLI, "-g", QHOSTAPD_CTRL_IFACE, "raw", "REMOVE", wif);
-#else
-			snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wif);
-			if (f_exists(pid_path))
-				kill_pidfile_tk(pid_path);
-#endif
 			if (unregister_vap && f_exists(hconf_path))
 				unlink(hconf_path);
 			if (!iface_exist(wif))
@@ -438,19 +438,51 @@ void deinit_all_vaps(const int unregister_vap)
 		}
 	}
 
-#if defined(RTCONFIG_SINGLE_HOSTAPD)
 	kill_pidfile_tk(QHOSTAPD_PID_PATH);
-#endif
 
 	/* in case of pid file is gone...*/
 	eval("killall", "hostapd");
+}
+
+/**
+ * Rebuild main VAP of each bands.
+ * @return:
+ * 	0:	success
+ *  otherwise:	error
+ */
+int rebuild_main_vap(void)
+{
+	int band;
+	char vap[IFNAMSIZ];
+	char sock_path[sizeof("/var/run/hostapd/XXXXXX") + IFNAMSIZ];
+
+	for (band = WL_2G_BAND; band < MAX_NR_WL_IF; ++band) {
+		SKIP_ABSENT_BAND(band);
+		__get_wlifname(band, 0, vap);
+		snprintf(sock_path, sizeof(sock_path), "/var/run/hostapd/%s", vap);
+		if (f_exists(sock_path))
+			eval(QWPA_CLI, "-g", QHOSTAPD_CTRL_IFACE, "raw", "REMOVE", vap);
+		if (band == WL_60G_BAND)
+			continue;
+		if (iface_exist(vap))
+			destroy_vap(vap);
+		create_vap(vap, band, "ap");
+	}
+
+	return 0;
 }
 
 static int create_node=0;
 void init_wl(void)
 {
 	int unit;
+	char *p, *ifname;
+	char *wl_ifnames;
 	char path_wifi[sizeof("/tmp/wifiXXXX.sh")];
+	char prefix[] = "wl1_1xxxxxxx";
+#ifdef RTCONFIG_WIRELESSREPEATER
+	int wlc_band;
+#endif
 	handle_location_code_for_wl();
 	if(!create_node)
 	{ 
@@ -463,7 +495,72 @@ void init_wl(void)
 			eval(path_wifi);
 			unlink(path_wifi);
 		}
+		dbG("init_wl:create wi node\n");
+		if ((wl_ifnames = strdup(nvram_safe_get("lan_ifnames"))) != NULL) 
+		{
+			p = wl_ifnames;
+			while ((ifname = strsep(&p, " ")) != NULL) {
+				while (*ifname == ' ') ++ifname;
+				if (*ifname == 0) break;
+				SKIP_ABSENT_FAKE_IFACE(ifname);
+
+#if defined(RTCONFIG_BONDING_WAN) || defined(RTCONFIG_LACP)
+				if (!strncmp(ifname, "bond", 4))
+					continue;
+#endif
+
+				//create ath00x & ath10x 
+				if (!strncmp(ifname, WIF_2G, strlen(WIF_2G)))
+					unit = 0;
+				else if (!strncmp(ifname, WIF_5G, strlen(WIF_5G)))
+					unit = 1;
+				else
+					unit=-99;	
+
+				switch (unit) {
+				case WL_2G_BAND:	/* fall-through */
+				case WL_5G_BAND:	/* fall-through */
+					create_vap(ifname, unit, "ap");
+					snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+					set_hwaddr(ifname, nvram_pf_safe_get(prefix, "hwaddr"));
+					sleep(1);
+
+#if defined(RTCONFIG_REPEATER_STAALLBAND)
+					if (sw_mode() == SW_MODE_REPEATER && nvram_get_int("x_Setting")) {
+						dbG("\ncreate a STA node %s from %s\n", get_staifname(unit), get_vphyifname(unit));
+						create_vap(get_staifname(unit), unit, "sta");
+						set_hwaddr(get_staifname(unit), nvram_pf_safe_get(prefix, "hwaddr"));
+						sleep(1);
+					}
+#endif
+
+					break;
+				default:
+					if (!strncmp(ifname, "eth", 3))
+						break;
+					dbg("%s: Unknown wl%d band, ifname [%s]!\n", __func__, unit, ifname);
+				}
+			}
+			free(wl_ifnames);
+		}
 		create_node=1;
+#ifdef RTCONFIG_WIRELESSREPEATER
+#if !defined(RTCONFIG_REPEATER_STAALLBAND)
+		if ((sw_mode() == SW_MODE_REPEATER || wisp_mode()) && nvram_get_int("x_Setting")) {
+			wlc_band=nvram_get_int("wlc_band");
+			create_vap(get_staifname(wlc_band), wlc_band, "sta");
+			snprintf(prefix, sizeof(prefix), "wl%d_", wlc_band);
+			set_hwaddr(get_staifname(wlc_band), nvram_pf_safe_get(prefix, "hwaddr"));
+		}
+#endif
+#endif
+		/* Calculate 40/80/160MHz and 4.32/6.48/8.64GHz bandwidth capability based on channel list.
+		 * Main VAP must ready before doing this.
+		 */
+		for (unit = WL_2G_BAND; unit < MAX_NR_WL_IF; ++unit) {
+			SKIP_ABSENT_BAND(unit);
+			calculate_bw_of_each_channel(unit);
+		}
 	}
 }
 
@@ -500,8 +597,13 @@ void fini_wl(void)
 			continue;
 
 		ifconfig(ifname, 0, NULL, NULL);
+		destroy_vap(ifname);
 	}
-
+	//destroy vphy wlan0&wlan2
+	ifconfig(get_vphyifname(0), 0, NULL, NULL);
+	ifconfig(get_vphyifname(1), 0, NULL, NULL);
+	eval("iw", get_vphyifname(0), "del");
+	eval("iw", get_vphyifname(1), "del");
 	create_node=0;
 }
 
@@ -594,7 +696,7 @@ void init_syspara(void)
 		else
 			nvram_set("secret_code", pin);
 	}
-
+#if defined(BLUECAVE)
 	dst = buffer;
 	bytes = 16;
 	if (linuxRead(dst, 0x20, bytes) < 0) {	/* The "linux" MTD partition, offset 0x20. */
@@ -609,6 +711,11 @@ void init_syspara(void)
 		nvram_set("productid", trim_r(productid));
 		nvram_set("firmver", trim_r(fwver));
 	}
+#else
+	nvram_set("firmver", rt_version);
+	nvram_set("productid", rt_buildname);
+	strncpy(productid, rt_buildname, sizeof(productid));
+#endif
 
 #if defined(RTCONFIG_TCODE)
 	/* Territory code */

@@ -27,10 +27,9 @@ extern char *get_vphyifname(int band);
 #endif
 #if defined(RTCONFIG_LANTIQ)
 extern void deinit_all_vaps(const int remove_vap);
+extern int rebuild_main_vap(void);
 extern void load_wifi_driver(void);
 extern void load_testmode_wifi_driver(void);
-extern int skip_ifconfig_up(const char *ifname);
-extern void update_txburst_status(void);
 #endif
 extern void fini_wl(void);
 extern void init_syspara(void);

@@ -189,17 +189,6 @@ int _ifconfig(const char *name, int flags, const char *addr, const char *netmask
 	struct in_addr in_addr, in_netmask, in_broadaddr;
 
 #ifdef RTCONFIG_LANTIQ
-	/* wlan0-wlan0.2, wlan2-wlan2.2 */
-	if(strncmp(name, "wlan", 4) == 0){
-		if(flags == 0){
-			_dprintf("[%s][%d]skip ifconfig down:[%s]\n",
-				__func__, __LINE__, name);
-			return -1;
-		}
-		if(flags & IFUP){
-			if(skip_ifconfig_up(name) == -1) return -1;
-		}
-	}
 	if(strcmp(name, "eth0_1") == 0 ||
 		strcmp(name, "eth0_2") == 0 ||
 		strcmp(name, "eth0_3") == 0 ||

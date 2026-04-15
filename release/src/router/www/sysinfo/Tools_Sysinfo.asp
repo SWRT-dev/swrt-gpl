@@ -11,7 +11,51 @@
 <title>System Information</title>
 <link rel="stylesheet" type="text/css" href="index_style.css">
 <link rel="stylesheet" type="text/css" href="form_style.css">
-<link rel="stylesheet" type="text/css" href="/css/networkMap.css">
+<style>
+.bar-container{
+	background-color:#000000;
+	width: 150px;
+	height: 8px;
+	border-radius: 6px;
+	padding: 2px 1px;
+}
+.core-color-container{
+	width: 35%;
+	height: 8px;
+	border-radius: 4px;
+	-webkit-transition: all 0.5s ease-in-out;
+	-moz-transition: all 0.5s ease-in-out;
+	-o-transition: all 0.5s ease-in-out;
+	transition: all 0.5s ease-in-out;
+}
+
+.memgrid {
+	display: grid;
+	grid-template-columns: max-content max-content;
+	column-gap: 8px;
+	row-gap: 4px;
+	align-items: center;
+}
+
+.memrow {
+	display: contents;
+}
+
+.memlabel {
+	justify-self: end;
+	margin-right: 4px;
+}
+
+.memvalue {
+	justify-self: end;
+	padding-left: 10px;
+}
+
+span.memvalue {
+	color: revert !important;
+}
+</style>
+
 <script language="JavaScript" type="text/javascript" src="/js/jquery.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/httpApi.js"></script>
 <script language="JavaScript" type="text/javascript" src="/js/chart.min.js"></script>
@@ -19,10 +63,8 @@
 <script language="JavaScript" type="text/javascript" src="/general.js"></script>
 <script language="JavaScript" type="text/javascript" src="/popup.js"></script>
 <script language="JavaScript" type="text/javascript" src="/help.js"></script>
-<script language="JavaScript" type="text/javascript" src="/tmhist.js"></script>
-<script language="JavaScript" type="text/javascript" src="/tmmenu.js"></script>
 <script language="JavaScript" type="text/javascript" src="/client_function.js"></script>
-<script type="text/javascript" src="/js/table/table.js"></script>
+<script language="JavaScript" type="text/javascript" src="/js/table/table.js"></script>
 <script>
 var ctf_dis = "<% nvram_get("ctf_disable"); %>";
 var ctf_dis_force = "<% nvram_get("ctf_disable_force"); %>";
@@ -33,6 +75,68 @@ var sc_mount = "<% nvram_get("sc_mount"); %>";
 overlib_str_tmp = "";
 overlib.isOut = true;
 
+let backgroundColorCPU,
+    borderColorCPU,
+	backgroundColor24GHZ,
+	borderColor24GHZ,
+	backgroundColor5GHZ,
+	borderColor5GHZ,
+	backgroundColor5GHZ2,
+	borderColor5GHZ2,
+	backgroundColor6GHZ,
+	borderColor6GHZ,
+	backgroundColor6GHZ2,
+	borderColor6GHZ2,
+	labelsColor,
+	ticksColor,
+	canvasColor;
+
+if (isSupport("UI4")) {
+	backgroundColorCPU = "rgba(107, 174, 214, 0.2)";
+	borderColorCPU = "rgba(107, 174, 214, 1)";
+
+	backgroundColor24GHZ = "rgba(116, 196, 118, 0.2)";
+	borderColor24GHZ = "rgba(116, 196, 118, 1)";
+
+	backgroundColor5GHZ = "rgba(253, 180, 98, 0.2)";
+	borderColor5GHZ = "rgba(253, 180, 98, 1)";
+
+	backgroundColor5GHZ2 = "rgba(188, 128, 189, 0.2)";
+	borderColor5GHZ2 = "rgba(188, 128, 189, 1)";
+
+	backgroundColor6GHZ = "rgba(255, 153, 153, 0.2)";
+	borderColor6GHZ = "rgba(255, 153, 153, 1)";
+
+	backgroundColor6GHZ2 = "rgba(188, 128, 189, 0.2)";
+	borderColor6GHZ2 = "rgba(188, 128, 189, 1)";
+
+	labelsColor = "black";
+	ticksColor = "black";
+	canvasColor = "white";
+
+} else {
+	backgroundColorCPU = "rgba(0, 128, 191, 0.3)";
+	borderColorCPU = "rgba(0, 128, 191, 1)";
+
+	backgroundColor24GHZ = "rgba(200, 200, 0, 0.3)";
+	borderColor24GHZ = "rgba(200, 200, 0, 1)";
+
+	backgroundColor5GHZ = "rgba(0, 200, 200, 0.3)";
+	borderColor5GHZ = "rgba(0, 200, 200,  1)";
+
+	backgroundColor5GHZ2 = "rgba(200, 0, 200, 0.3)";
+	borderColor5GHZ2 = "rgba(200, 0, 200, 1)";
+
+	backgroundColor6GHZ = "rgba(128, 191, 0, 0.3)";
+	borderColor6GHZ = "rgba(128, 191, 0, 1)";
+
+	backgroundColor6GHZ2 = "rgba(200, 0, 200, 0.3)";
+	borderColor6GHZ2 = "rgba(200, 0, 200, 1)";
+
+	labelsColor = "#CCC";
+	ticksColor = "#CCC";
+	canvasColor = "#2f3e44";
+}
 
 var pieColor = ["rgba(0, 84, 159, 1)",
                 "rgba(0, 172, 223, 1)",
@@ -50,7 +154,6 @@ var wifi62data = [];
 
 
 function draw_mem_charts(){
-
 /* Memory */
 	var memchart = document.getElementById("memchartId").getContext("2d");
 	var memdata = [mem_stats_arr[8], mem_stats_arr[9] - mem_stats_arr[1], mem_stats_arr[1]];
@@ -74,14 +177,12 @@ function draw_mem_charts(){
 			},
 			options: {
 				responsive: false,
-				animation: false,
 				segmentShowStroke : false,
-				segmentStrokeColor : "#000",
 				plugins: {
 					legend: {
 						display: true,
 						position: 'right',
-						labels: {color: '#FFF'}
+						labels: {color: labelsColor}
 					},
 					tooltip: {
 						callbacks: {
@@ -125,14 +226,12 @@ function draw_mem_charts(){
 			},
 			options: {
 				responsive: false,
-				animation: false,
 				segmentShowStroke : false,
-				segmentStrokeColor : "#000",
 				plugins: {
 					legend: {
 						display: true,
 						position: 'right',
-						labels: {color: '#FFF'}
+						labels: {color: labelsColor}
 					},
 					tooltip: {
 						callbacks: {
@@ -199,15 +298,15 @@ function draw_temps_charts(){
                 cputempGraph.update();
                 return;
         }
-        var cpuchart = document.getElementById("tempchartId").getContext("2d");
+	var cpuchart = document.getElementById("tempchartId").getContext("2d");
 	var datasets = [];
 
 /* CPU */
 	datasets.push({
 		label: "CPU",
 		data: cpudata,
-		backgroundColor: "rgba(0, 128, 191, 0.3)",
-		borderColor: "rgba(0, 128, 191, 1)",
+		backgroundColor: backgroundColorCPU,
+		borderColor: borderColorCPU,
 		borderWidth: "2",
 		pointStyle: "line",
 		lineTension: "0",
@@ -219,8 +318,8 @@ function draw_temps_charts(){
 		datasets.push({
 			label: "2.4 GHz",
 			data: wifi24data,
-			backgroundColor: "rgba(200, 200, 0, 0.3)",
-			borderColor: "rgba(200, 200, 0, 1)",
+			backgroundColor: backgroundColor24GHZ,
+			borderColor: borderColor24GHZ,
 			borderWidth: "2",
 			pointStyle: "line",
 			lineTension: "0",
@@ -233,21 +332,22 @@ function draw_temps_charts(){
 		datasets.push({
 			label: "5 GHz",
 			data: wifi51data,
-			backgroundColor: "rgba(0, 200, 200, 0.3)",
-			borderColor: "rgba(0, 200, 200,  1)",
+			backgroundColor: backgroundColor5GHZ,
+			borderColor: borderColor5GHZ,
 			borderWidth: "2",
 			pointStyle: "line",
 			lineTension: "0",
 			fill: { target: "origin"}
 		});
 	}
+
 /* 5 GHz-2 */
 	if (typeof wifi52data[0] === "number" && wifi52data[0] > 0) {
 		datasets.push({
 			label: "5 GHz-2",
 			data: wifi52data,
-			backgroundColor: "rgba(200, 0, 200, 0.3)",
-			borderColor: "rgba(200, 0, 200, 1)",
+			backgroundColor: backgroundColor5GHZ2,
+			borderColor: borderColor5GHZ2,
 			borderWidth: "2",
 			pointStyle: "line",
 			lineTension: "0",
@@ -260,8 +360,8 @@ function draw_temps_charts(){
 		datasets.push({
 			label: (wl_info.band6g_2_support ? "6 GHz-1" :"6 GHz"),
 			data: wifi6data,
-			backgroundColor: "rgba(128, 191, 0, 0.3)",
-			borderColor: "rgba(128, 191, 0, 1)",
+			backgroundColor: backgroundColor6GHZ,
+			borderColor: borderColor6GHZ,
 			borderWidth: "2",
 			pointStyle: "line",
 			lineTension: "0",
@@ -274,8 +374,8 @@ function draw_temps_charts(){
 		datasets.push({
 			label: "6 GHz-2",
 			data: wifi62data,
-			backgroundColor: "rgba(200, 0, 200, 0.3)",
-			borderColor: "rgba(200, 0, 200, 1)",
+			backgroundColor: backgroundColor6GHZ2,
+			borderColor: borderColor6GHZ2,
 			borderWidth: "2",
 			pointStyle: "line",
 			lineTension: "0",
@@ -287,10 +387,9 @@ function draw_temps_charts(){
 		type: "line",
 		data: {datasets: datasets},
 		options: {
-			responsive: false,
+			responsive: true,
 			animation: false,
 			segmentShowStroke : false,
-			segmentStrokeColor : "#000",
 			plugins: {
 				tooltip: {
 					displayColors: false,
@@ -307,21 +406,21 @@ function draw_temps_charts(){
 				legend: {
 					display: true,
 					position: "right",
-					labels: {color: "#CCC"}
+					labels: {color: labelsColor}
 				},
 			},
 			scales: {
 				x: {
 					labels: [0,3,6,9,12,15,18,21,24,27,30,33,36,39,42,45,48,51,54,57],
 					ticks: {
-						color: "#CCC",
+						color: ticksColor,
 					}
 				},
 				y: {
 					grace: "5%",
 					ticks: {
-						color: "#CCC",
-						callback: function(value, index, ticks) {return value + "°C";}
+						color: ticksColor,
+						callback: function(value, index, ticks) {return (Number.isInteger(value) ? value : value.toFixed(1)) + "°C";}
 					}
 				},
 			}
@@ -332,6 +431,8 @@ function draw_temps_charts(){
 
 function initial(){
 	show_menu();
+
+	document.getElementById("tempchartId").style.backgroundColor = canvasColor
 	if (wl_info.band5g_2_support) {
 		document.getElementById("wifi51_clients_th").innerHTML = "Wireless Clients (5 GHz-1)";
 		document.getElementById("wifi52_clients_tr").style.display = "";
@@ -375,7 +476,6 @@ function initial(){
 	document.getElementById("rc_td").innerHTML = rc_caps;
 	hwaccel_state();
 	update_temperatures();
-	updateClientList();
 	show_etherstate();
 	update_sysinfo();
 	show_wifi_version();
@@ -445,11 +545,11 @@ function hwaccel_state(){
 	var qos_enable = '<% nvram_get("qos_enable"); %>';
 	var qos_type = '<% nvram_get("qos_type"); %>';
 	if (hnd_support) {
-		var machine_name = "<% get_machine_name(); %>";
-		if (machine_name.search("aarch64") != -1)
-			code = "<span>Runner:</span> ";
-		else
+		var cpu_model = "<% sysinfo("cpu.model"); %>";
+		if (cpu_model.search("BCM67") != -1)
 			code = "<span>Archer:</span> ";
+		else
+			code = "<span>Runner:</span> ";
 
 		var state = "<% sysinfo("hwaccel.runner"); %>";
 
@@ -594,29 +694,29 @@ function show_connstate(){
 			wlc_6_arr = wlc_2_arr;
 	}
 
-	document.getElementById("wlc_24_td").innerHTML = "<span>Associated: </span>" + wlc_24_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
+	document.getElementById("wlc_24_td").innerHTML = (!wifi7_support ? "<span>Associated: </span>" + wlc_24_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" : "") +
 	                                                 "<span>Authorized: </span>" + wlc_24_arr[1] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
 	                                                 "<span>Authenticated: </span>" + wlc_24_arr[2];
 
 	if (band5g_support) {
-		document.getElementById("wlc_51_td").innerHTML = "<span>Associated: </span>" + wlc_51_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
+		document.getElementById("wlc_51_td").innerHTML = (!wifi7_support ? "<span>Associated: </span>" + wlc_51_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" : "") +
 		                                                 "<span>Authorized: </span>" + wlc_51_arr[1] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
 		                                                 "<span>Authenticated: </span>" + wlc_51_arr[2];
 	}
 
 	if (wl_info.band5g_2_support) {
-		document.getElementById("wlc_52_td").innerHTML = "<span>Associated: </span>" + wlc_52_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
+		document.getElementById("wlc_52_td").innerHTML = (!wifi7_support ? "<span>Associated: </span>" + wlc_52_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" : "") +
 		                                                 "<span>Authorized: </span>" + wlc_52_arr[1] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
 		                                                 "<span>Authenticated: </span>" + wlc_52_arr[2];
 	}
 	if (wl_info.band6g_support) {
-		document.getElementById("wlc_6_td").innerHTML = "<span>Associated: </span>" + wlc_6_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
+		document.getElementById("wlc_6_td").innerHTML = (!wifi7_support ? "<span>Associated: </span>" + wlc_6_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" : "") +
 		                                                "<span>Authorized: </span>" + wlc_6_arr[1] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
 		                                                "<span>Authenticated: </span>" + wlc_6_arr[2];
 	}
 
 	if (wl_info.band6g_2_support) {
-		document.getElementById("wlc_62_td").innerHTML = "<span>Associated: </span>" + wlc_62_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
+		document.getElementById("wlc_62_td").innerHTML = (!wifi7_support ? "<span>Associated: </span>" + wlc_62_arr[0] + "&nbsp;&nbsp;-&nbsp;&nbsp;" : "") +
 		                                                "<span>Authorized: </span>" + wlc_62_arr[1] + "&nbsp;&nbsp;-&nbsp;&nbsp;" +
 		                                                "<span>Authenticated: </span>" + wlc_62_arr[2];
         }
@@ -630,7 +730,7 @@ function show_memcpu(){
 	document.getElementById("mem_buffer_div").innerHTML = mem_stats_arr[2] + " MB";
 	document.getElementById("mem_cache_div").innerHTML = mem_stats_arr[3] + " MB";
 	if (parseInt(mem_stats_arr[5]) == 0) {
-		document.getElementById("mem_swap_total_div").innerHTML = "<span>No swap configured</span>";
+		document.getElementById("mem_swap_total_div").innerHTML = "<span>No swap</span>";
 		document.getElementById("swap_div").style.display="none";
 	} else {
 		document.getElementById("mem_swap_total_div").innerHTML = mem_stats_arr[5] + " MB";
@@ -640,18 +740,7 @@ function show_memcpu(){
 
 	draw_mem_charts();
 }
-function updateClientList(e){
-	$.ajax({
-		url: '/update_clients.asp',
-		dataType: 'script',
-		error: function(xhr) {
-			setTimeout("updateClientList();", 1000);
-		},
-		success: function(response){
-			setTimeout("updateClientList();", 3000);
-		}
-	});
-}
+
 function update_sysinfo(e){
 	$.ajax({
 		url: '/ajax_sysinfo.asp',
@@ -723,7 +812,7 @@ function show_wifi_version() {
                 <tr bgcolor="#4D595D">
                 <td valign="top">
                 <div>&nbsp;</div>
-                <div class="formfonttitle">Tools - System Information</div>
+                <div class="formfonttitle">System Information</div>
 		<div style="margin:10px 0 10px 5px;" class="splitLine"></div>
 
 				<table width="100%" border="1" align="center" cellpadding="4" cellspacing="0" bordercolor="#6b8fa3"  class="FormTable">
@@ -793,41 +882,44 @@ function show_wifi_version() {
 					</tr>
 					<tr>
 						<td>
-							<div style="display: flex;">
-								<div class="hint-color" style="width:20%;"> Total :</div>
-								<div style="width:76%;padding-left: 10px;" id="mem_total_div"></div>
-							</div>
-							<div style="display: flex;">
-								<div class="hint-color" style="width:20%;">Used</div>
-								<div style="width:76%;padding-left: 10px;" id="mem_used_div"></div>
-							</div>
-
-							<div style="display: flex;">
-								<div class="hint-color" style="width:20%;">Available :</div>
-								<div style="width:76%;padding-left: 10px;" id="mem_available_div"></div>
-							</div>
-							<div style="display: flex;">
-								<div class="hint-color" style="width:20%;">Free :</div>
-								<div style="width:76%;padding-left: 10px;" id="mem_free_div"></div>
-							</div>
-							<div style="display: flex;">
-								<div class="hint-color" style="width:20%;">Buffers :</div>
-								<div style="width:76%;padding-left: 10px;" id="mem_buffer_div"></div>
-							</div>
-							<div style="display: flex;">
-								<div class="hint-color" style="width:20%;">Cache :</div>
-								<div style="width:76%;padding-left: 10px;" id="mem_cache_div"></div>
+							<div class="memgrid">
+								<div class="memrow">
+									<span class="memlabel" style="color: #FFCC00;"> Total :</span>
+									<span class="memvalue" id="mem_total_div"></span>
+								</div>
+								<div class="memrow">
+									<span class="memlabel" style="color: #FFCC00;">Used :</span>
+									<span class="memvalue" id="mem_used_div"></span>
+								</div>
+								<div class="memrow">
+									<span class="memlabel" style="color: #FFCC00;">Available :</span>
+									<span class="memvalue" id="mem_available_div"></span>
+								</div>
+								<div class="memrow">
+									<span class="memlabel" style="color: #FFCC00;">Free :</span>
+									<span class="memvalue" id="mem_free_div"></span>
+								</div>
+								<div class="memrow">
+									<span class="memlabel" style="color: #FFCC00;">Buffers :</span>
+									<span class="memvalue" id="mem_buffer_div"></span>
+								</div>
+								<div class="memrow">
+									<span class="memlabel" style="color: #FFCC00;">Cache :</span>
+									<span class="memvalue" id="mem_cache_div"></span>
+								</div>
 							</div>
 						</td>
 
 						<td style="vertical-align:top;">
-							<div style="display: flex;">
-								<div class="hint-color" style="width:20%;"<th>Total Swap :</div>
-								<div style="width:76%; padding-left: 10px;" id="mem_swap_total_div"></div>
-							</div>
-							<div id="swap_div" style="display: flex;">
-								<div class="hint-color" style="width:20%;"<th>Used Swap :</div>
-								<div style="width:76%; padding-left: 10px;" id="mem_swap_used_div"></div>
+							<div class="memgrid">
+								<div class="memrow">
+									<span class="memlabel" style="color: #FFCC00;">Total Swap :</span>
+									<span class="memvalue" id="mem_swap_total_div"></span>
+								</div>
+								<div class="mewrow" id="swap_div">
+									<span class="memlabel" style="color: #FFCC00;">Used Swap :</span>
+									<span class="memvalue" id="mem_swap_used_div"></span>
+								</div>
 							</div>
 						</td>
 
@@ -863,7 +955,7 @@ function show_wifi_version() {
 						</tr>
 					</thead>
 					<tr>
-						<td colspan="2"><canvas style="background-color:#2f3e44;border-radius:10px;"id="tempchartId" height="250" width="700"></canvas></td>
+						<td colspan="2" style="padding:14px;" width="100%"><canvas style="border-radius:10px;width: 100% !important; height:275px;"id="tempchartId" ></canvas></td>
 					</tr>
 					<tr>
 						<th>Temperatures</th>

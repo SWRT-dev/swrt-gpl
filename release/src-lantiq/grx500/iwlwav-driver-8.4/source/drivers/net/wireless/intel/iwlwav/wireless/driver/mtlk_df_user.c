@@ -7734,6 +7734,112 @@ static int mtlk_df_ui_utest (mtlk_seq_entry_t *s, void *data)
 
 #endif /* CPTCFG_IWLWAV_DBG_DRV_UTEST */
 
+
+#if defined(SWRT_PATCH)
+static ssize_t _mtlk_df_ui_cfg80211_htcaps_read(mtlk_seq_entry_t *s, void *data)
+{
+	enum nl80211_band band;
+	mtlk_df_t *df = mtlk_df_proc_seq_entry_get_df(s);
+	mtlk_df_user_t *df_user = mtlk_df_get_user(df);
+	struct wireless_dev *wdev = mtlk_df_user_get_wdev(df_user);
+	struct wiphy *wiphy = wdev->wiphy;
+	struct ieee80211_supported_band *sband;
+	u16 ht_cap;
+
+	for (band = 0; band < NUM_NL80211_BANDS; band++) {
+		sband = wiphy->bands[band];
+		if (!sband)
+			continue;
+		if(sband->ht_cap.ht_supported){
+			ht_cap = sband->ht_cap.cap;
+			if(!ht_cap)
+				return MTLK_ERR_OK;
+			if((ht_cap & IEEE80211_HT_CAP_LDPC_CODING))
+				mtlk_aux_seq_printf(s, "%s", "[LDPC]");
+			if(wiphy->features & NL80211_FEATURE_STATIC_SMPS)
+				mtlk_aux_seq_printf(s, "%s", "[SMPS-STATIC]");
+			if(ht_cap & IEEE80211_HT_CAP_TX_STBC)
+				mtlk_aux_seq_printf(s, "%s", "[TX-STBC]");
+			if(((ht_cap & IEEE80211_HT_CAP_RX_STBC) >> IEEE80211_HT_CAP_RX_STBC_SHIFT) == 1)
+				mtlk_aux_seq_printf(s, "%s", "[RX-STBC-1]");
+			if(ht_cap & IEEE80211_HT_CAP_MAX_AMSDU)
+				mtlk_aux_seq_printf(s, "%s", "[MAX-AMSDU-7935]");
+			if(ht_cap & IEEE80211_HT_CAP_DSSSCCK40)
+				mtlk_aux_seq_printf(s, "%s", "[DSSS_CCK-40]");
+		}
+	}
+	return MTLK_ERR_OK;
+}
+
+static ssize_t _mtlk_df_ui_cfg80211_vhtcaps_read(mtlk_seq_entry_t *s, void *data)
+{
+	u32 num_sts;
+	enum nl80211_band band;
+	mtlk_df_t *df = mtlk_df_proc_seq_entry_get_df(s);
+	mtlk_df_user_t *df_user = mtlk_df_get_user(df);
+	struct wireless_dev *wdev = mtlk_df_user_get_wdev(df_user);
+	struct wiphy *wiphy = wdev->wiphy;
+	struct ieee80211_supported_band *sband;
+	u16 vht_cap;
+
+	for (band = 0; band < NUM_NL80211_BANDS; band++) {
+		sband = wiphy->bands[band];
+		if (!sband)
+			continue;
+		if(sband->vht_cap.vht_supported){
+			vht_cap = sband->vht_cap.cap;
+			if(!vht_cap)
+				return MTLK_ERR_OK;
+			if(vht_cap & IEEE80211_VHT_CAP_MAX_MPDU_LENGTH_11454)
+				mtlk_aux_seq_printf(s, "%s", "[MAX-MPDU-11454]");
+			if(band == NL80211_BAND_5GHZ && (vht_cap & IEEE80211_VHT_CAP_SUPP_CHAN_WIDTH_160MHZ))
+				mtlk_aux_seq_printf(s, "%s", "[VHT160]");
+			if(vht_cap & IEEE80211_VHT_CAP_RXLDPC)
+				mtlk_aux_seq_printf(s, "%s", "[RXLDPC]");
+			if(band == NL80211_BAND_5GHZ && (vht_cap & IEEE80211_VHT_CAP_SHORT_GI_80))
+				mtlk_aux_seq_printf(s, "%s", "[SHORT-GI-80]");
+			if(band == NL80211_BAND_5GHZ && (vht_cap & IEEE80211_VHT_CAP_SHORT_GI_160))
+				mtlk_aux_seq_printf(s, "%s", "[SHORT-GI-160]");
+			if(vht_cap & IEEE80211_VHT_CAP_TXSTBC)
+				mtlk_aux_seq_printf(s, "%s", "[TX-STBC-2BY1]");
+			if(vht_cap & IEEE80211_VHT_CAP_RXSTBC_1)
+				mtlk_aux_seq_printf(s, "%s", "[RX-STBC1]");
+			if(vht_cap & IEEE80211_VHT_CAP_SU_BEAMFORMER_CAPABLE)
+				mtlk_aux_seq_printf(s, "%s", "[SU-BEAMFORMER]");
+			num_sts = ((vht_cap & IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_MASK) >> IEEE80211_VHT_CAP_SOUNDING_DIMENSIONS_SHIFT);
+			if(num_sts == 3)
+				mtlk_aux_seq_printf(s, "%s", "[SOUNDING-DIMENSION-4]");
+			else if(num_sts == 2)
+				mtlk_aux_seq_printf(s, "%s", "[SOUNDING-DIMENSION-3]");
+			else if(num_sts == 1)
+				mtlk_aux_seq_printf(s, "%s", "[SOUNDING-DIMENSION-2]");
+			if(vht_cap & IEEE80211_VHT_CAP_SU_BEAMFORMEE_CAPABLE)
+				mtlk_aux_seq_printf(s, "%s", "[SU-BEAMFORMEE]");
+			num_sts = ((vht_cap & IEEE80211_VHT_CAP_BEAMFORMEE_STS_MASK) >> IEEE80211_VHT_CAP_BEAMFORMEE_STS_SHIFT);
+			if(num_sts == 3)
+				mtlk_aux_seq_printf(s, "%s", "[BF-ANTENNA-4]");
+			else if(num_sts == 2)
+				mtlk_aux_seq_printf(s, "%s", "[BF-ANTENNA-3]");
+			else if(num_sts == 1)
+				mtlk_aux_seq_printf(s, "%s", "[BF-ANTENNA-2]");
+			num_sts = ((vht_cap & IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_MASK) >> IEEE80211_VHT_CAP_MAX_A_MPDU_LENGTH_EXPONENT_SHIFT);
+			mtlk_aux_seq_printf(s, "[MAX-A-MPDU-LEN-EXP%d]", num_sts);
+			if(vht_cap & IEEE80211_VHT_CAP_MU_BEAMFORMER_CAPABLE)
+				mtlk_aux_seq_printf(s, "%s", "[MU-BEAMFORMER]");
+			if(vht_cap & IEEE80211_VHT_CAP_VHT_TXOP_PS)
+				mtlk_aux_seq_printf(s, "%s", "[VHT-TXOP-PS]");
+			if(vht_cap & IEEE80211_VHT_CAP_HTC_VHT)
+				mtlk_aux_seq_printf(s, "%s", "[HTC-VHT]");
+			if(vht_cap & IEEE80211_VHT_CAP_RX_ANTENNA_PATTERN)
+				mtlk_aux_seq_printf(s, "%s", "[RX-ANTENNA-PATTERN]");
+			if(vht_cap & IEEE80211_VHT_CAP_TX_ANTENNA_PATTERN)
+				mtlk_aux_seq_printf(s, "%s", "[TX-ANTENNA-PATTERN]");
+		}
+	}
+	return MTLK_ERR_OK;
+}
+#endif
+
 /*---------------------------------------------------------------------------*/
 /* Proc files table.
  * Supported file types: 1) seq file    2) write_only file
@@ -7796,6 +7902,10 @@ static struct _proc_file_info _proc_files_list[] =
   /* WriteOnly */
   { "ResetStats",     _DEBUG_, NULL, _mtlk_df_ui_reset_stats_proc },
   { "rcvry_msg_tx",   _DEBUG_, NULL, _wave_df_ui_rcvry_msg_tx     },
+#endif
+#if defined(SWRT_PATCH)
+  { "cfg80211_htcaps",  _NODBG_,  _mtlk_df_ui_cfg80211_htcaps_read },
+  { "cfg80211_vhtcaps", _NODBG_, _mtlk_df_ui_cfg80211_vhtcaps_read },
 #endif
 };
 

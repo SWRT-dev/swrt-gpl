@@ -65,6 +65,9 @@
 #ifdef RTCONFIG_QCA
 #include <qca.h>
 #endif
+#ifdef RTCONFIG_LANTIQ
+#include <lantiq.h>
+#endif
 #ifdef RTCONFIG_DSL
 #include <dsl-upg.h>
 #endif
@@ -741,7 +744,7 @@ int switch_root(const char *newroot)
 	int r;
 	dev_t rdev;
 	struct stat st;
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 	char *const argv[] = { "/sbin/init", "reboot", NULL };
 #else
 	char *const argv[] = { "sh", NULL };
@@ -1106,7 +1109,7 @@ void get_dhcp_pool(char **dhcp_start, char **dhcp_end, char *buffer)
         if ((repeater_mode()
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
                 || psr_mode() || mediabridge_mode()
-#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA)
+#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
                 || mediabridge_mode()
 #endif
 #if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
@@ -1328,9 +1331,6 @@ int restart_dnsmasq(int need_link_DownUp)
 #if (defined(PLN12) || defined(PLAC56) || defined(PLAC66) || defined(RTCONFIG_QCA_PLC2))
 		nvram_set("plc_ready", "0");
 #endif
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_RALINK)
-		nvram_set("lan_ready","0");
-#endif
 		link_down();
 		sleep(9);
 	}
@@ -1350,63 +1350,9 @@ int restart_dnsmasq(int need_link_DownUp)
 #if (defined(PLN12) || defined(PLAC56) || defined(PLAC66) || defined(RTCONFIG_QCA_PLC2))
 		nvram_set("plc_ready", "1");
 #endif
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_RALINK)
-		int wlc_wait_time = nvram_get_int("wl_time") ? : 5;
-		sleep(wlc_wait_time);
-		nvram_set("lan_ready","1");
-#endif
 	}
 
 	return 0;
-}
-#endif
-
-
-#ifdef RTCONFIG_WIFI_SON
-void gen_apmode_dnsmasq(void)
-{
-	FILE *fp;
- 	char glan[24];
-	char *value;
-	unsigned int dip;
-	struct in_addr guest;
-	int count = nvram_get_int("dhcp_num");
-
-	if ((fp = fopen("/etc/dnsmasq.conf", "w")) == NULL)
-		return;
-	dip= ntohl(inet_addr(APMODE_BRGUEST_IP));
-	guest.s_addr = htonl(dip);
-	strlcpy(glan, inet_ntoa(guest), sizeof(glan));
-	if ((value = strrchr(glan, '.')) != NULL) *(value + 1) = 0;
-
-	fprintf(fp, "pid-file=/var/run/dnsmasq.pid\n"
-		    "user=nobody\n"
-		    "bind-dynamic\n"		// listen only on interface & lo
-		);
-	fprintf(fp,"interface=%s\n",BR_GUEST);
-	fprintf(fp,"resolv-file=/tmp/resolv.conf\n");
-	fprintf(fp,"servers-file=/tmp/resolv.dnsmasq\n");
-	fprintf(fp,"no-poll\n");
-	fprintf(fp,"no-negcache\n");
-	fprintf(fp,"cache-size=1500\n");
-	fprintf(fp,"min-port=4096\n");
-	fprintf(fp,"dhcp-range=guest,%s2,%s254,%s,%ds\n",
-		glan,glan, nvram_safe_get("lan_netmask_rt"), 86400);
-	fprintf(fp,"dhcp-option=lan,3,%s\n",APMODE_BRGUEST_IP);
-#if 0
-	fprintf(fp,"dhcp-option=lan,252,\n");
-#endif
-	fprintf(fp,"dhcp-authoritative\n");
- 	fprintf(fp,"listen-address=127.0.0.1,%s\n",nvram_safe_get("lan_ipaddr"));
- 	fprintf(fp,"no-dhcp-interface=%s\n",nvram_safe_get("lan_ifname"));
-
-	fclose(fp);
-#ifdef RTCONFIG_MULTILAN_CFG
-	stop_dnsmasq(ALL_SDN);
-#else
-	stop_dnsmasq();
-#endif
-	eval("dnsmasq", "--log-async");
 }
 #endif
 
@@ -1473,7 +1419,7 @@ void start_dnsmasq(void)
 	if ((repeater_mode()
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		|| psr_mode() || mediabridge_mode()
-#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 		|| mediabridge_mode()
 #endif
 #if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
@@ -1641,7 +1587,7 @@ void start_dnsmasq(void)
 		&& !repeater_mode()
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 		&& !psr_mode() && !mediabridge_mode()
-#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 		&& !mediabridge_mode()
 #endif
 #if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
@@ -1682,7 +1628,7 @@ void start_dnsmasq(void)
 
 #if defined(RTCONFIG_REDIRECT_DNAME)
 	if (!repeater_mode()
-#if defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 /* [MUST] : Need to clarify ..... */
 	&& !mediabridge_mode() // skip media bridge
 #endif
@@ -1692,10 +1638,6 @@ void start_dnsmasq(void)
 		fprintf(fp,"interface=%s\n",		// dns & dhcp on LAN interface
 			lan_ifname);
 
-#ifdef RTCONFIG_WIFI_SON
-		if (sw_mode() != SW_MODE_REPEATER)
-			fprintf(fp,"interface=%s\n",BR_GUEST);	// guest-network
-#endif
 #ifdef RTCONFIG_IPSEC
 	if (nvram_get_int("ipsec_server_enable") || nvram_get_int("ipsec_client_enable")
 #ifdef RTCONFIG_INSTANT_GUARD
@@ -1771,7 +1713,7 @@ void start_dnsmasq(void)
 		|| ((repeater_mode()
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 			|| psr_mode() || mediabridge_mode()
-#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 			|| mediabridge_mode()
 #endif
 #if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
@@ -1789,11 +1731,6 @@ void start_dnsmasq(void)
 #if defined(RTCONFIG_TR069) && !defined(RTCONFIG_TR181)
 		unsigned char hwaddr[6];
 #endif
-#ifdef RTCONFIG_WIFI_SON
-		int i;
-		unsigned int dip[2];
-		struct in_addr guest;
-#endif
 		have_dhcp |= 1; /* DHCPv4 */
 
 		get_dhcp_pool(&dhcp_start, &dhcp_end, buffer);
@@ -1801,7 +1738,7 @@ void start_dnsmasq(void)
 			(repeater_mode()
 #if defined(RTCONFIG_BCMWL6) && defined(RTCONFIG_PROXYSTA)
 				|| psr_mode() || mediabridge_mode()
-#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#elif defined(RTCONFIG_REALTEK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 				|| mediabridge_mode()
 #endif
 #if defined(RTCONFIG_DPSTA) || defined(RTCONFIG_DPSR)
@@ -1819,32 +1756,8 @@ void start_dnsmasq(void)
 
 		/* LAN range */
 		if (*dhcp_start && *dhcp_end) {
-#if defined(RTCONFIG_CONCURRENTREPEATER) && defined(RTCONFIG_REALTEK)
-			if (!nvram_match("lan_proto", "static")) // Dynamic. get_dhcp_pool() will return default dhcp_start & dhcp_end.
-				fprintf(fp, "dhcp-range=lan,%s,%s,%s,%ds\n",
-					dhcp_start, dhcp_end, nvram_default_get("lan_netmask"), dhcp_lease);
-			else
-#endif
 			fprintf(fp, "dhcp-range=lan,%s,%s,%s,%ds\n",
 				dhcp_start, dhcp_end, nvram_safe_get("lan_netmask"), dhcp_lease);
-
-#ifdef RTCONFIG_WIFI_SON
-			//if (nvram_get_int("wl0.1_bss_enabled"))
-			if (sw_mode() != SW_MODE_REPEATER)
-			{
-
-				dip[0] = ntohl(inet_addr(dhcp_start))+0x100;
-				dip[1] = ntohl(inet_addr(dhcp_end))+0x100;
-				fprintf(fp, "dhcp-range=guest");
-				for(i=0;i<2;i++)
-				{
-					guest.s_addr = htonl(dip[i]);
-					fprintf(fp, ",%s",inet_ntoa(guest));
-				}
-				fprintf(fp, ",%s,%ds\n",nvram_safe_get("lan_netmask"), dhcp_lease);
-			}
-#endif
-
 		} else {
 			/* compatibility */
 			char lan[24];
@@ -1856,22 +1769,6 @@ void start_dnsmasq(void)
 
 			fprintf(fp, "dhcp-range=lan,%s%d,%s%d,%s,%ds\n",
 				lan, start, lan, start + count - 1, nvram_safe_get("lan_netmask"), dhcp_lease);
-
-#ifdef RTCONFIG_WIFI_SON
-			//if (nvram_get_int("wl0.1_bss_enabled"))
-			if (sw_mode() != SW_MODE_REPEATER)
-			{
-				char glan[24];
-				dip[0] = ntohl(inet_addr(lan_ipaddr))+0x100;
-				guest.s_addr = htonl(dip[0]);
-				strlcpy(glan, inet_ntoa(guest), sizeof(glan));
-				if ((value = strrchr(glan, '.')) != NULL) *(value + 1) = 0;
-
-				fprintf(fp, "dhcp-range=guest,%s%d,%s%d,%s,%ds\n",
-					glan, start, glan, start + count - 1, nvram_safe_get("lan_netmask"), dhcp_lease);
-
-			}
-#endif
 		}
 
 		/* Gateway, if not set, force use lan ipaddr to avoid repeater issue */
@@ -3490,14 +3387,6 @@ int no_need_to_start_wps(void)
 		return 0;
 #endif
 
-#ifdef RTCONFIG_CONCURRENTREPEATER
-	if (sw_mode() != SW_MODE_REPEATER)
-		return 0;
-	if ((sw_mode() != SW_MODE_ROUTER) &&
-		(sw_mode() != SW_MODE_AP) &&
-		(sw_mode() != SW_MODE_REPEATER))
-		return 1;
-#else
 	if ((sw_mode() != SW_MODE_ROUTER) &&
 #ifdef RTCONFIG_DPSTA
 		!(dpsta_mode() && nvram_get_int("re_mode") == 0) &&
@@ -3508,7 +3397,6 @@ int no_need_to_start_wps(void)
 #endif
 		(sw_mode() != SW_MODE_AP))
 		return 1;
-#endif
 
 	i = 0;
 	wps_band = nvram_get_int("wps_band_x");
@@ -3815,34 +3703,7 @@ start_re_wpsc()
 #endif	/* RTCONFIG_RALINK */
 #endif
 
-#if defined(RTCONFIG_CONCURRENTREPEATER)
-int
-stop_led_monitor()
-{
-	if (pids("led_monitor"))
-		killall("led_monitor", SIGTERM);
-
-	return 0;
-}
-int
-start_led_monitor()
-{
-	char *led_monitor_argv[] = {"led_monitor", NULL};
-	pid_t pid;
-	int ret = 0;
-
-	stop_led_monitor();
-
-	ret = _eval(led_monitor_argv, NULL, 0, &pid);
-	return ret;
-}
-#endif
-
 extern int restore_defaults_g;
-
-#ifdef HND_ROUTER
-
-#endif
 
 int
 start_wps(void)
@@ -3951,13 +3812,7 @@ reset_wps(void)
 	nvram_set("wps_reset", "1");
 
 	restart_wireless();
-#elif defined(RTCONFIG_LANTIQ)
-	nvram_set("w_Setting", "0");
-
-	stop_wps_method();
-
-	wps_oob();
-#elif defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
+#elif defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 	wps_oob_both();
 #endif
 }
@@ -6800,9 +6655,8 @@ void start_smartdns(void)
 	fprintf(fp, "log-size 64k\n");
 	fprintf(fp, "log-num 1\n");
 	if(nvram_get_int("smartdns_num") == 0){
-#if !defined(K3) && !defined(R8000P) && !defined(R7000P) && !defined(XWR3100)
-		if(!strncmp(nvram_safe_get("territory_code"), "CN",2)){
-#endif
+		if(!strncmp(nvram_safe_get("territory_code"), "CN",2)
+			|| !strcmp(nvram_safe_get("preferred_lang"), "CN")){
 			nvram_set("smartdns_num", "3");
 			nvram_set("smartdns_server_1", "114.114.114.114");
 			nvram_set("smartdns_port_1", "53");
@@ -6813,7 +6667,6 @@ void start_smartdns(void)
 			nvram_set("smartdns_server_3", "223.5.5.5");
 			nvram_set("smartdns_port_3", "53");
 			nvram_set("smartdns_type_3", "UDP");
-#if !defined(K3) && !defined(R8000P) && !defined(R7000P) && !defined(XWR3100)
 		}else{
 			nvram_set("smartdns_num", "3");
 			nvram_set("smartdns_server_1", "8.8.8.8");
@@ -6826,7 +6679,6 @@ void start_smartdns(void)
 			nvram_set("smartdns_port_3", "53");
 			nvram_set("smartdns_type_3", "UDP");
 		}
-#endif
 	}
 	for(i = 1; i <= nvram_get_int("smartdns_num"); i++){
 		char *ss = NULL, *sp = NULL, *st = NULL;
@@ -9113,152 +8965,6 @@ void start_ezmesh_cap(void)
 	else
 		_dprintf("EZ process is not started yet\n");
 }	
-#endif
-
-#ifdef RTCONFIG_WIFI_SON
-#if defined(RTCONFIG_ETHBACKHAUL) && defined(RTCONFIG_QCA_ORG_UPDOWN_SEPARATE)
-void start_ethbl_lldpd(void)
-{
-	char ifname[32],buf[120];
-	char *next;
-	//char *lldpd[] = {"lldpd", nvram_safe_get("lan_ifname"), NULL};
-	char *lldpd[] = {"lldpd", NULL};
-	pid_t pid;
-	int len = 0;
-
-	if (pids("lldpd"))
-		killall_tk("lldpd");
-
-	if(sw_mode() == SW_MODE_ROUTER || nvram_match("cfg_master", "1")){
-		eval("lldpd","-I","lo,br0","-c","-f","-s","-e","-M","4","-S","MAP-CAP");
-	}
-	else if(sw_mode() == SW_MODE_AP && !nvram_match("cfg_master", "1")){
-		eval("lldpd","-I","lo,br0","-c","-f","-s","-e","-M","4","-S","MAP-RE");
-	}
-	sleep(2);
-	memset(buf,0,sizeof(buf));
-	foreach(ifname, nvram_safe_get("lan_ifnames"), next)
-	{
-		if(len)
-			len += sprintf(buf + len,",%s",ifname);
-		else
-			len = sprintf(buf,"%s",ifname);
-	}
-	sprintf(buf + len,",%s","br0");
-	eval("lldpcli","configure","system","interface","pattern",buf);
-	eval("lldpcli","configure","lldp","tx-interval","10");
-	eval("lldpcli","configure","lldp","tx-hold","2");
-}
-#endif
-
-void start_hyfi_process(void)
-{
-#ifdef RTCONFIG_AMAS
-#if defined(RTCONFIG_WIFI_SON)
-        if(nvram_match("wifison_ready","1"))
-	{
-                stop_amas_lib();
-#ifdef RTCONFIG_NEW_USER_LOW_RSSI
-        	stop_roamast();
-#endif
-	}
-#endif
-#endif
-	hyfi_process();
-}
-
-void start_hyfi_sync(void)
-{
-	pid_t pid;
-	char *argv[]={"/sbin/delay_exec","4","hive_cap config_change",NULL};
-
-	_eval(argv, NULL, 0, &pid);
-}
-
-void start_chg_swmode(void)
-{
-	FILE *fp = NULL;
-	char path[]="/tmp/chg_swmode.sh";
-	int sw_mode=nvram_get_int("sw_mode");
-	int delay=30;
-
-	if (!(fp = fopen(path, "w+")))
-		return;
-	else {
-		fprintf(fp, "hive_cmd reboot\n"
-				"sleep %d\n"
-				"reboot\n", delay	);
-
-		fclose(fp);
-		chmod(path, 0777);
-	}
-
-	if (sw_mode==3) {
-		nvram_set("lan_proto", "dhcp");
-		nvram_set("lan_dnsenable_x", "1");
-	}
-	else if (sw_mode==1) {
-		nvram_set("lan_proto", nvram_default_get("lan_proto"));
-		nvram_set("lan_ipaddr", nvram_default_get("lan_ipaddr"));
-		nvram_set("lan_ipaddr_rt", nvram_default_get("lan_ipaddr_rt"));
-		nvram_set("dhcp_start", nvram_default_get("dhcp_start"));
-		nvram_set("dhcp_end", nvram_default_get("dhcp_end"));
-		nvram_set("lan_dnsenable_x", nvram_default_get("lan_dnsenable_x"));
-	}
-
-	nvram_commit();
-
-	doSystem(path);
-}
-
-void start_spcmd(void)
-{
-	if (nvram_match("x_Setting", "1")) {
-		char *cmd=nvram_get("spcmd");
-		pid_t pid;
-		if (!cmd) return;
-
-		if (!strcmp(cmd, "xx")) {
-			char *argv[]={"/sbin/delay_exec","60","reboot",NULL};
-			_eval(argv, NULL, 0, &pid);
-		} else if (memcmp(cmd, "SCH", 3)==0) { /* SCH2G_5G1_5G2 */
-			int ch0, ch1, ch2;
-			int my_ch0, my_ch1, my_ch2;
-			my_ch0 = shared_get_channel(get_wififname(0));
-			my_ch1 = shared_get_channel(get_wififname(1));
-#if defined(RTCONFIG_HAS_5G_2)
-			my_ch2 = shared_get_channel(get_wififname(2));
-#else
-			my_ch2 = 0;
-#endif
-			ch0=atoi(cmd+3);
-			ch1=atoi(cmd+6);
-			ch2=atoi(cmd+10);
-			//_dprintf("[LYRA SCH] CAP's channel %d:%d:%d, mine %d:%d:%d\n", ch0, ch1, ch2, my_ch0, my_ch1, my_ch2);
-			if (ch0 && (my_ch0 != ch0)) /* 2.4G front haul channel */
-				doSystem("iwconfig %s channel %d", get_wififname(0), ch0);
-			if (ch1 && (my_ch1 != ch1 && nvram_get_int("eth_backl")==1)) /* 5G backhaul haul channel */
-				doSystem("iwconfig %s channel %d", get_wififname(1), ch1);
-#if defined(RTCONFIG_HAS_5G_2)
-			if (ch2 && (my_ch2 != ch2)) /* 5G front haul channel */
-				doSystem("iwconfig %s channel %d", get_wififname(2), ch2);
-#endif
-		}
-		nvram_set("spcmd", "0");
-	}
-}
-
-#if defined(MAPAC2200)
-void start_bhblock(void)
-{
-	int enable=nvram_get_int("ncb_enable");
-
-	if (nvram_match("x_Setting", "1")) {
-		logmessage("start_bhblock", "%s 5G backhaul client connection.", enable?"Enable":"Disable");
-		doSystem("iwpriv wifi1 ncb_enable %d", enable);
-	}
-}
-#endif
 #endif
 
 #if defined(RTCONFIG_MLO) && defined(RTCONFIG_QCA)
@@ -13227,12 +12933,6 @@ int stop_wifi_service(void)
 
 	deinit_all_vaps(0);
 
-#if defined(RTCONFIG_WIRELESSREPEATER)
-#if defined(RTCONFIG_CONCURRENTREPEATER)
-	kill_wifi_wpa_supplicant(-1);
-#endif
-#endif
-
 #if defined(QCA_WIFI_INS_RM)
 	if(sw_mode()==SW_MODE_REPEATER)
 		is_unload=0;
@@ -13253,6 +12953,12 @@ int stop_wifi_service(void)
 		if (module_loaded("ath_hal"))
 			modprobe_r("ath_hal");
 	}
+	return 0;
+}
+#elif defined(RTCONFIG_LANTIQ)
+int stop_wifi_service(void)
+{
+	deinit_all_vaps(0);
 	return 0;
 }
 #elif defined(RTCONFIG_RALINK)
@@ -13425,7 +13131,7 @@ stop_services_mfg(void)
 	stop_wlcconnect();
 #endif
 
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 	stop_wifi_service();
 #endif
 #ifdef RTCONFIG_SYSSTATE
@@ -15467,13 +15173,8 @@ again:
 #endif
 				stop_networkmap();
 				stop_wpsaide();
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
-#ifdef RTCONFIG_CONCURRENTREPEATER
-				stop_wlcconnect();
-#endif	//RTCONFIG_CONCURRENTREPEATE
 #if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 				stop_wifi_service();
-#endif	//RTCONFIG_QCA
 #ifdef RTCONFIG_AMAS
 				stop_amas_lldpd();
 #endif
@@ -15811,13 +15512,8 @@ again:
 #endif
 				stop_networkmap();
 				stop_wpsaide();
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
-#ifdef RTCONFIG_CONCURRENTREPEATER
-				stop_wlcconnect();
-#endif	//RTCONFIG_CONCURRENTREPEATE
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 				stop_wifi_service();
-#endif	//RTCONFIG_QCA
 #ifdef RTCONFIG_AMAS
 				stop_amas_lldpd();
 #endif
@@ -19232,7 +18928,7 @@ check_ddr_done:
 			nvram_unset("wps_ign_btn");
 		}
 	}
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_BRCM_HOSTAPD)
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_BRCM_HOSTAPD) || defined(RTCONFIG_LANTIQ)
 	else if (strcmp(script, "wpsie")==0)
 	{
 		runtime_onoff_wps(nvram_get_int("wps_enable"));
@@ -21240,8 +20936,7 @@ start_wlcconnect(void)
 		return;
 	}
 
-#if (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)) \
- && !defined(RTCONFIG_CONCURRENTREPEATER)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 	if (!pids("wlcconnect"))
 		_eval(wlcconnect_argv, NULL, 0, &pid);
 	else
@@ -21260,8 +20955,7 @@ stop_wlcconnect(void)
 		return;
 	}
 
-#if (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)) \
- && !defined(RTCONFIG_CONCURRENTREPEATER)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 	killall("wlcconnect", SIGTSTP);
 #else
 	killall("wlcconnect", SIGTERM);
@@ -22129,7 +21823,7 @@ int start_nat_rules(void)
 
 	nat_state = nvram_get_int("nat_state");
 	if (nat_state == NAT_STATE_NORMAL) {
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 		setup_ct_timeout(TRUE);
 		setup_udp_timeout(TRUE);
 #endif
@@ -23039,16 +22733,12 @@ void start_ecoguard(void)
 #if defined(RTCONFIG_RALINK)
 		eval("iwpriv", ifname,"set", "httxstream=1");
 		eval("iwpriv", ifname,"set", "htrxstream=1");
-#elif defined(RTCONFIG_QCA)
-#else /* BCM */
-
-#if defined(RTCONFIG_QTN)
+#elif defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 #else
 		eval("wl", "-i", ifname, "txchain", "1");
 		eval("wl", "-i", ifname, "rxchain", "1");
 		eval("wl", "-i", ifname, "down");
 		eval("wl", "-i", ifname, "up");
-#endif
 #endif
 		}
 	}

@@ -6513,6 +6513,16 @@ void wpa_supplicant_rtlogger_deinit(struct wpa_rtlogger_data *data)
 }
 #endif /* CONFIG_NO_WPA_RTLOGGER */
 
+#if defined(SWRT_PATCH)
+static void monitor_logsize(void *eloop_ctx, void *timeout_ctx)
+{
+	struct wpa_global *global = eloop_ctx;
+	char *size_limit = timeout_ctx;
+
+	eloop_register_timeout(120, 0, monitor_logsize, global, size_limit);
+	is_log_sizelimit(size_limit);
+}
+#endif
 
 /**
  * wpa_supplicant_init - Initialize %wpa_supplicant
@@ -6657,6 +6667,11 @@ struct wpa_global * wpa_supplicant_init(struct wpa_params *params)
 	eloop_register_timeout(WPA_SUPPLICANT_CLEANUP_INTERVAL, 0,
 			       wpas_periodic, global, NULL);
 
+#if defined(SWRT_PATCH)
+	if (params->wpa_debug_file_path)
+		eloop_register_timeout(120, 0,
+				       monitor_logsize, global, "1");
+#endif
 	return global;
 }
 
@@ -7780,3 +7795,4 @@ int wpas_disable_mac_addr_randomization(struct wpa_supplicant *wpa_s,
 
 	return 0;
 }
+

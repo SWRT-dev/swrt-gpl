@@ -119,7 +119,9 @@ static void hostapd_logger_cb(void *ctx, const u8 *addr, unsigned int module,
 		conf_stdout = 0;
 #endif /* CONFIG_DEBUG_SYSLOG */
 	if ((conf_stdout & module) && level >= conf_stdout_level) {
+#if !defined(SWRT_PATCH)
 		wpa_debug_print_timestamp();
+#endif
 		wpa_printf(MSG_INFO, "%s", format);
 	}
 
@@ -621,6 +623,10 @@ static int gen_uuid(const char *txt_addr)
 }
 #endif /* CONFIG_WPS */
 
+#if defined(SWRT_PATCH)
+/*2min*/
+#define HOSTAPD_CHECK_LOG_SIZE 120
+#endif
 
 #ifndef HOSTAPD_CLEANUP_INTERVAL
 #define HOSTAPD_CLEANUP_INTERVAL 10
@@ -632,6 +638,17 @@ static int hostapd_periodic_call(struct hostapd_iface *iface, void *ctx)
 	return 0;
 }
 
+#if defined(SWRT_PATCH)
+static void monitor_logsize(void *eloop_ctx, void *timeout_ctx)
+{
+	struct hapd_interfaces *interfaces = eloop_ctx;
+	char *size_limit = timeout_ctx;
+
+	eloop_register_timeout(HOSTAPD_CHECK_LOG_SIZE, 0,
+			       monitor_logsize, interfaces, size_limit);
+	is_log_sizelimit(size_limit);
+}
+#endif
 
 /* Periodic cleanup tasks */
 static void hostapd_periodic(void *eloop_ctx, void *timeout_ctx)
@@ -680,7 +697,12 @@ int main(int argc, char *argv[])
 	size_t i, j;
 	int c, debug = 0, daemonize = 0;
 	char *pid_file = NULL;
+#if defined(SWRT_PATCH)
+	const char *log_file = "/jffs/hostapd.log";
+	char *max_size_limit = "1";//1MB
+#else
 	const char *log_file = NULL;
+#endif
 	const char *entropy_file = NULL;
 	char **bss_config = NULL, **tmp_bss;
 	size_t num_bss_configs = 0;
@@ -809,7 +831,10 @@ int main(int argc, char *argv[])
 	if (optind == argc && interfaces.global_iface_path == NULL &&
 	    num_bss_configs == 0)
 		usage();
-
+#if defined(SWRT_PATCH)
+	//debug = 5;
+	wpa_debug_timestamp = 1;
+#endif
 	wpa_msg_register_ifname_cb(hostapd_msg_ifname_cb);
 
 	if (log_file)
@@ -850,6 +875,11 @@ int main(int argc, char *argv[])
 
 	eloop_register_timeout(HOSTAPD_CLEANUP_INTERVAL, 0,
 			       hostapd_periodic, &interfaces, NULL);
+#if defined(SWRT_PATCH)
+	if (log_file)
+		eloop_register_timeout(HOSTAPD_CHECK_LOG_SIZE, 0,
+				       monitor_logsize, &interfaces, max_size_limit);
+#endif
 
 	if (fst_global_init()) {
 		wpa_printf(MSG_ERROR,
@@ -1015,3 +1045,4 @@ no_ifaces:
 
 	return ret;
 }
+

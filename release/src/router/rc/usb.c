@@ -322,6 +322,7 @@ void add_usb_host_modules(void)
 	modprobe(USB30_MOD);
 #elif defined(RTCONFIG_LANTIQ)
 	modprobe(USB30_MOD);
+	load_kmods(POST_XHCI_KMODS);
 #elif defined(RTCONFIG_ALPINE)
 	modprobe(USB30_MOD);
 #else

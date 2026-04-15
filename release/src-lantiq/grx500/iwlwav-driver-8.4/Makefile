@@ -11,7 +11,7 @@ TARGET_CPPFLAGS += -fno-pic -mno-abicalls
 
 CONFIG_FILE:=GRX350_GRX550_WAVE600_CONFIG
 
-IFX_CFLAGS += $(TARGET_CFLAGS) -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIE -Wl,-strip-debug
+IFX_CFLAGS += $(TARGET_CFLAGS) -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIE -Wl,-strip-debug -DSWRT_PATCH
 
 CONFIG_SUFFIX:=
 ifeq ($(DEBUG),y)

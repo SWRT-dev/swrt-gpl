@@ -1062,9 +1062,9 @@ static void get_phy_info_by_sysfs(unsigned int vport, unsigned int *link, unsign
 				if(info)
 					info->link_rate = s;
 			}
-		}else
+		}else if(info)
 			snprintf(info->state, sizeof(info->state), "down");
-	}else
+	}else if(info)
 		snprintf(info->state, sizeof(info->state), "down");
 
 	if(link)
@@ -1450,3 +1450,85 @@ int get_lantiq_sta_info_by_ifname(const char *ifname, char subunit_id, WIFI_STA_
 
 	return __get_IW_sta_info_by_ifname(ifname, subunit_id, handler_lantiq_sta_info, sta_info);
 }
+
+
+struct find_vap_by_sta_priv_s {
+	char *addr;
+
+	int found;
+};
+
+/* Helper of rssi_check_unit()
+ * @src:	pointer to WLANCONFIG_LIST
+ * @arg:
+ * @return:
+ * 	0:	success
+ *  otherwise:	error
+ */
+static int handle_find_vap_by_sta(const WLANCONFIG_LIST *src, void *arg)
+{
+	unsigned char ea1[6] = { 0 }, ea2[6] = { 0 };
+	struct find_vap_by_sta_priv_s *priv = arg;
+
+	if (!src || !arg || !priv->addr)
+		return -1;
+	if (priv->found)
+		return 0;
+
+	if (!ether_atoe(priv->addr, ea1) || !ether_atoe(src->addr, ea2) || memcmp(ea1, ea2, sizeof(ea1)))
+		return 0;
+
+	priv->found = 1;
+	return 0;
+}
+
+/* Check whether @sta_addr exist on @vap, if not, find correct VAP and return it by @vap.
+ * @sta_addr:
+ * @vap:	pointer to char pointer, length IFNAMSIZ.
+ * @return:
+ *    < 0:	error
+ * 	0:	@sta_addr is not found in all VAP at same band
+ * 	1:	@sta_addr is found, @vap maybe update
+ */
+int find_vap_by_sta(char *sta_addr, char *vap)
+{
+	int band, y, max_subnet;
+	char prefix[sizeof("wlX.XXX_")], ifname[IFNAMSIZ];
+	struct find_vap_by_sta_priv_s priv;
+
+	if (!sta_addr || *sta_addr == '\0' || !vap || *vap == '\0')
+		return -1;
+
+	memset(&priv, 0, sizeof(priv));
+	priv.addr = sta_addr;
+	__get_lantiq_sta_info_by_ifname(ifname, 0, handle_find_vap_by_sta, &priv);
+	if (priv.found)
+		return 1;
+
+	band = -1;
+	get_wlif_unit(vap, &band, NULL);
+	if (band < 0 || band >= MAX_NR_WL_IF)
+		return -1;
+
+	/* Find correct VAP for @sta_addr. */
+	max_subnet = num_of_mssid_support(band);
+	for (y = 0; y < max_subnet; ++y) {
+		snprintf(prefix, sizeof(prefix), "wl%d.%d_", band, y);
+		if (!nvram_pf_match(prefix, "bss_enabled", "1"))
+			continue;
+
+		get_wlxy_ifname(band, y, ifname);
+		if (!strcmp(ifname, vap))
+			continue;
+
+		memset(&priv, 0, sizeof(priv));
+		priv.addr = sta_addr;
+		if (!__get_lantiq_sta_info_by_ifname(ifname, 0, handle_find_vap_by_sta, &priv) && priv.found) {
+			strlcpy(vap, ifname, IFNAMSIZ);
+			break;
+		}
+	}
+
+	return priv.found? 1 : 0;
+}
+

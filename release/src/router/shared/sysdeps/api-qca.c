@@ -490,7 +490,7 @@ void set_radio(int on, int unit, int subunit)
 	int onoff = (!on)? LED_OFF:LED_ON;
 	int led = get_wl_led_id(unit);
 	int sub = (subunit >= 0) ? subunit : 0;
-	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX", athfix[]="athXXXXXX";
+	char prefix[] = "wlXXXXXXXXXXXXXX", athfix[]="athXXXXXX";
 	char path[sizeof(NAWDS_SH_FMT) + 6], wds_iface[IFNAMSIZ] = "";
 #if !defined(RTCONFIG_SINGLE_HOSTAPD) || !defined(RTCONFIG_CFG80211)
 	char conf_path[sizeof("/etc/Wireless/conf/hostapd_athXXX.confYYYYYY")];
@@ -508,7 +508,7 @@ void set_radio(int on, int unit, int subunit)
 			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, sub);
 		else
 			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-		strcpy(athfix, nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
+		strlcpy(athfix, nvram_pf_safe_get(prefix, "ifname"), sizeof(athfix));
 
 		if (*athfix != '\0' && strncmp(athfix, "sta", 3)) {
 			/* all lan-interfaces except sta when running repeater mode */
@@ -524,10 +524,10 @@ void set_radio(int on, int unit, int subunit)
 					eval(QWPA_CLI, "-g", QHOSTAPD_CTRL_IFACE, "raw", "REMOVE", athfix);
 				}
 #else
-				snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", wds_iface);
+				snprintf(pid_path, sizeof(pid_path), "/var/run/hostapd_%s.pid", athfix);
 				if (on) {
-					snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wds_iface);
-					snprintf(entropy_path, sizeof(entropy_path), "/var/run/entropy_%s.bin", wds_iface);
+					snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", athfix);
+					snprintf(entropy_path, sizeof(entropy_path), "/var/run/entropy_%s.bin", athfix);
 					eval("hostapd", "-d", "-B", "-P", pid_path, "-e", entropy_path, conf_path);
 				} else {
 					kill_pidfile(pid_path);
@@ -538,7 +538,7 @@ void set_radio(int on, int unit, int subunit)
 			/* Reconnect to peer WDS AP */
 			if (!sub) {
 				snprintf(path, sizeof(path), NAWDS_SH_FMT, wds_iface);
-				if (!nvram_match(strcat_r(prefix, "mode_x", tmp), "0") && f_exists(path))
+				if (!nvram_pf_match(prefix, "mode_x", "0") && f_exists(path))
 					doSystem(path);
 			}
 		}
@@ -552,16 +552,16 @@ char *wif_to_vif(char *wif)
 {
 	static char vif[32];
 	int unit = 0, subunit = 0;
-	char tmp[100], prefix[] = "wlXXXXXXXXXXXXXX";
+	char prefix[] = "wlXXXXXXXXXXXXXX";
 
 	vif[0] = '\0';
 
 	for (unit = 0; unit < MAX_NR_WL_IF; unit++) {
 		SKIP_ABSENT_BAND(unit);
 		for (subunit = 1; subunit < MAX_NO_MSSID; subunit++) {
-			snprintf(prefix, sizeof(prefix), "wl%d.%d", unit, subunit);
+			snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
 
-			if (nvram_match(strcat_r(prefix, "_ifname", tmp), wif)) {
+			if (nvram_pf_match(prefix, "ifname", wif)) {
 				snprintf(vif, sizeof(vif), "%s", prefix);
 				goto RETURN_VIF;
 			}
@@ -1577,7 +1577,7 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 {
 #if 1
 	char wifbuf[32];
-	char prefix[] = "wlXXXXXX_", tmp[100];
+	char prefix[] = "wlXXXXXX_";
 	int wlc_band __attribute__((unused)) = nvram_get_int("wlc_band");
 #if defined(RTCONFIG_WIRELESSREPEATER)
 	if (sw_mode() == SW_MODE_REPEATER
@@ -1605,7 +1605,7 @@ char *get_wlifname(int unit, int subunit, int subunit_x, char *buf)
 	{
 		__get_wlifname(unit, 0, wifbuf);
 		snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, subunit);
-		if (nvram_match(strcat_r(prefix, "bss_enabled", tmp), "1"))
+		if (nvram_pf_match(prefix, "bss_enabled", "1"))
 			sprintf(buf, "%s0%d", wifbuf, subunit_x);
 		else
 			sprintf(buf, "%s", "");

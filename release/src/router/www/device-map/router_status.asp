@@ -29,7 +29,7 @@ var led_table = ["<#btn_disable#>", "<#Priority_Level_3#>", "<#Medium#>", "<#Hig
 $(document).ready(function(){
 	const get_header_info = httpApi.hookGet("get_header_info");
 	window.parent.postMessage('router_status.asp', `${get_header_info.protocol}://${get_header_info.host}:${get_header_info.port}`);
-	if(system.INTELplatform){
+	if(system.INTELplatform && based_modelid == "BLUECAVE"){
 		register_event();
 		var ledLv = httpApi.nvramGet(["bc_ledLv"]).bc_ledLv;
 		translated_value = Math.round(100*(ledLv/3));
@@ -121,7 +121,7 @@ function getVariable(){
 
 function genElement(){
 	var code = '';
-	if(system.INTELplatform){
+	if(system.INTELplatform && based_modelid == "BLUECAVE"){
 		code += '<div class="info-title"><#LED_Brightness#></div>';
 		code += '<div class="display-flex flex-a-center led-container">';
 		code += '<div id="slider"></div>';
