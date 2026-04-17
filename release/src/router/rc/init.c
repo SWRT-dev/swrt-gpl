@@ -21706,19 +21706,19 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 #ifdef RTCONFIG_LED_BTN
 		nvram_set_int("btn_led_gpio", 11);
 #endif
-		nvram_set_int("led_pwr_gpio", 35|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_pwr_red_gpio", 10|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_pwr_gpio", 35);
+		//nvram_set_int("led_pwr_red_gpio", 10);
 #ifdef RTCONFIG_WANRED_LED
-		nvram_set_int("led_wan_gpio", 43|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_wan_red_gpio", 14|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wan_gpio", 43);
+		nvram_set_int("led_wan_red_gpio", 14);
 #else
-		nvram_set_int("led_wan_gpio", 14|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_wan_normal_gpio", 43|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_wan_gpio", 14);
+		nvram_set_int("led_wan_normal_gpio", 43);
 #endif
-		nvram_set_int("led_2g_gpio", 21|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_5g_gpio", 22|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_usb_gpio", 34|GPIO_ACTIVE_LOW);
-		nvram_set_int("led_wps_gpio", 31|GPIO_ACTIVE_LOW);
+		nvram_set_int("led_2g_gpio", 21);
+		nvram_set_int("led_5g_gpio", 22);
+		nvram_set_int("led_usb_gpio", 34);
+		nvram_set_int("led_wps_gpio", 31);
 		if(usb_usb3 == 1)
 			nvram_set("xhci_ports", "2-1");
 		else
