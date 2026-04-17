@@ -966,6 +966,10 @@ extern void hexdump(unsigned char *pt, unsigned short len);
 extern void setCTL(const char *);
 extern int calculate_bw_of_each_channel(int band);
 extern int verify_ctl_table(void);
+extern int mem_main(int argc, char **argv);
+extern void set_usb3_to_usb2();
+extern void set_usb2_to_usb3();
+extern int getCountryCode_5G(void);
 #if !defined(RTCONFIG_CONCURRENTREPEATER)
 extern void wlcconnect_sig_handle(int sig);
 #endif

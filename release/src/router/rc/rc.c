@@ -2933,6 +2933,9 @@ static const applets_t applets[] = {
 #if defined(RTCONFIG_NEW_PHYMAP)
 	{ "conn_diag",			conn_diag_main			},
 #endif 
+#ifdef RTCONFIG_LANTIQ
+	{ "mem",			mem_main			},
+#endif 
 	{ "toolbox",			swrt_toolbox		},
 	{NULL, NULL}
 };

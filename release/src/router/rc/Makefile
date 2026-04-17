@@ -490,7 +490,7 @@ endif
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += init-lantiq.o lantiq.o ate-lantiq.o #lantiq-wave.o
-OBJS += wps-lantiq.o
+OBJS += wps-lantiq.o lantiq-mem.o
 ifeq ($(RTCONFIG_AMAS),y)
 OBJS += $(if $(wildcard sysdeps/lantiq/obd-lantiq.c),obd-lantiq.o,prebuild/obd-lantiq.o)
 endif
@@ -1273,9 +1273,10 @@ endif
 ifeq ($(RTCONFIG_LANTIQ),y)
 ifeq ($(BLUECAVE),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc restart_bluetoothd
+endif
 	@cd $(INSTALLDIR)/sbin && ln -sf rc set_usb3_to_usb2
 	@cd $(INSTALLDIR)/sbin && ln -sf rc set_usb2_to_usb3
-endif
+	@cd $(INSTALLDIR)/sbin && ln -sf rc mem
 endif
 ifneq ($(RTCONFIG_QCA)$(RTCONFIG_RALINK)$(RTCONFIG_ALPINE)$(RTCONFIG_LANTIQ),y)
 	@cd $(INSTALLDIR)/sbin && ln -sf rc watchdog02
