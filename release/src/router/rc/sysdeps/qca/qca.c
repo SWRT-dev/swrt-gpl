@@ -152,6 +152,11 @@ struct chattr_s {
 #endif
 };
 
+struct chlist_s {
+	int channel;
+	int bw_mask;
+};
+
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
 struct bandx_defval_s {
 	short pad;
@@ -195,11 +200,6 @@ struct bandx_defval_s {
 	short pad7;
 	short ext_nss;
 	short pad8;
-};
-
-struct chlist_s {
-	int channel;
-	int bw_mask;
 };
 
 struct bandx_defval_s bandx_defval[] = {

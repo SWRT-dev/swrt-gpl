@@ -136,7 +136,7 @@ static void getWPSConfig(int unit, WPS_CONFIGURED_VALUE *result)
 
 	memset(result, 0, sizeof(*result));
 
-	snprintf(buf, sizeof(buf), "hostapd_cli -i%s get_config", get_wifname(unit));
+	snprintf(buf, sizeof(buf), "hostapd_cli -i%s get_config", get_wififname(unit));
 	fp = popen(buf, "r");
 	if (fp) {
 		while (fgets(buf, sizeof(buf), fp) != NULL) {
@@ -383,55 +383,6 @@ char *getAPPhyMode(int unit)
 	return r;
 }
 
-static unsigned int getAPChannelbyIface(const char *ifname)
-{
-	char buf[8192];
-	FILE *fp;
-	int len, i = 0;
-	char *pt1, *pt2, ch_mhz[10], ch_mhz_t[10];
-
-	if (!ifname || *ifname == '\0') {
-		dbg("%S: got invalid ifname %p\n", __func__, ifname);
-		return 0;
-	}
-
-	snprintf(buf, sizeof(buf), "iwconfig %s", ifname);
-	fp = popen(buf, "r");
-	if (fp) {
-		memset(buf, 0, sizeof(buf));
-		len = fread(buf, 1, sizeof(buf), fp);
-		pclose(fp);
-		if (len > 1) {
-			buf[len-1] = '\0';
-			pt1 = strstr(buf, "Frequency:");
-			if (pt1) {
-				pt2 = pt1 + strlen("Frequency:");
-				pt1 = strstr(pt2, " GHz");
-				if (pt1) {
-					*pt1 = '\0';
-					memset(ch_mhz, 0, sizeof(ch_mhz));
-					len = strlen(pt2);
-					for (i = 0; i < 5; i++) {
-						if (i < len) {
-							if (pt2[i] == '.')
-								continue;
-							snprintf(ch_mhz_t, sizeof(ch_mhz), "%s%c", ch_mhz, pt2[i]);
-							strlcpy(ch_mhz, ch_mhz_t, sizeof(ch_mhz));
-						}
-						else{
-							snprintf(ch_mhz_t, sizeof(ch_mhz), "%s0", ch_mhz);
-							strlcpy(ch_mhz, ch_mhz_t, sizeof(ch_mhz));
-						}
-					}
-					//dbg("Frequency:%s MHz\n", ch_mhz);
-					return ieee80211_mhz2ieee((unsigned int)safe_atoi(ch_mhz));
-				}
-			}
-		}
-	}
-	return 0;
-}
-
 static unsigned int getAPChannelbyIWInfo(const char *ifname)
 {
 	int r;
@@ -473,7 +424,7 @@ unsigned int getAPChannel(int unit)
 	case WL_2G_BAND:	/* fall-through */
 	case WL_5G_BAND:	/* fall-through */
 	case WL_5G_2_BAND:
-		r = shared_get_channel(get_wifname(unit));
+		r = shared_get_channel(get_wififname(unit));
 		break;
 	case WL_60G_BAND:
 		/* FIXME */

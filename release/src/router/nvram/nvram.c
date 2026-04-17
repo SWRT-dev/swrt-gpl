@@ -162,8 +162,11 @@ static int nvram_dec_all(char* buf_ap, char* buf)
 				value = output;
 			}
 		}
-
-		snprintf(nv, sizeof(nv), "%s=%s", name, value);
+		if(strcmp("fb_state", name))
+		{
+			// skip 'fb_state'
+			snprintf(nv, sizeof(nv), "%s=%s", name, value);
+		}
 		ptr = stpcpy(ptr, nv) + 1;
 #ifdef ASUS_DEBUG
 				puts(nv);
@@ -751,8 +754,14 @@ int issyspara(char *p)
 	{
 		//if(!strncmp(p, t->name, strlen(t->name))){
 		if(strstr(p, t->name)){
-			if(!strcmp("wl", t->name) && !strncmp(p+3, "_failed", 7))
-				break;
+			if(!strcmp("wl", t->name)){
+				if(!strncmp(p+3, "_failed", 7))
+					return 0;
+#ifdef RTCONFIG_MSSID_PRELINK
+				else if(pass_prelink_interface(p))
+					return 0;
+#endif
+			}
 			return 1;
 		}
 	}

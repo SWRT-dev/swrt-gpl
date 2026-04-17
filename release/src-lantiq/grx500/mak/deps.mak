@@ -166,4 +166,9 @@ uuidgen:libuuid
 		$(MAKE) -C $@ stage ; \
 	fi
 
-
+iwinfo:
+	@$(SEP)
+	if [ ! -f $@/stamp-h1 ];then \
+		$(MAKE) -C $@ ; \
+		$(MAKE) -C $@ stage ; \
+	fi

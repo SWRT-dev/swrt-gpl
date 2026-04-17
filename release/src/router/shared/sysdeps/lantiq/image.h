@@ -175,6 +175,13 @@ typedef struct {
 	version_t fs;
 	char	  productid[MAX_STRING];
 	version_t hw[MAX_VER*2];
+	uint16_t  sn;
+	uint16_t  en;
+	uint8_t   key;
+	char      pad[3];
+	uint32_t  en2;
+	char	  pad2[19];
+	uint8_t   flag;
 } TAIL;
 
 typedef struct image_header {

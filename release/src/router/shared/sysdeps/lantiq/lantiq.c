@@ -1322,27 +1322,29 @@ static int handler_lantiq_sta_info(const WLANCONFIG_LIST *src, void *arg)
  * 	0:	success
  *  otherwise:	error
  *
- * ILQ1.3.7 Example: iw wlan0 station dump
- * Station 04:ce:14:0a:21:17 (on wlan0)
- *       rx bytes:       0
- *       rx packets:     0
- *       tx bytes:       0
- *       tx packets:     0
- *       tx failed:      0
- *       tx bitrate:     27.5 MBit/s MCS 0
- *       rx bitrate:     27.5 MBit/s MCS 0
- *       connected time: 292 seconds
- * SPF10.0 FC Example: iw wlan0 station dump
- *  Station 04:ce:14:0b:46:12 (on wlan0)
- *        rx bytes:       0
- *        rx packets:     0
- *        tx bytes:       0
- *        tx packets:     0
- *        tx failed:      0
- *        rx drop misc:   0
- *        signal:         -55 dBm
- *        tx bitrate:     27.5 MBit/s MCS 0
- *        rx bitrate:     27.5 MBit/s MCS 0
+Station 38:00:25:a9:58:b7 (on wifi1)
+        inactive time:  0 ms
+        rx bytes:       493914
+        rx packets:     22038
+        tx bytes:       733099
+        tx packets:     16615
+        tx retries:     0
+        tx failed:      0
+        signal:         -46 dBm
+        signal avg:     -37 dBm
+        tx bitrate:     6.0 MBit/s
+        rx duration:    0 us
+        authorized:     yes
+        authenticated:  yes
+        associated:     yes
+        preamble:       long
+        WMM/WME:        yes
+        MFP:            no
+        TDLS peer:      no
+        DTIM period:    3
+        beacon interval:100
+        short slot time:yes
+        connected time: 4341 seconds
  */
 
 static int __get_IW_sta_info_by_ifname(const char *ifname, char subunit_id, int (*handler)(const WLANCONFIG_LIST *rptr, void *arg), void *arg)

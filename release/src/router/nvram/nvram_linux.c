@@ -31,7 +31,6 @@
 #include <bcmnvram.h>
 #include <nvram_convert.h>
 #include <shutils.h>
-#include <utils.h>
 #ifdef RTCONFIG_REALTEK
 #include <sysdeps/realtek/realtek.h>
 #endif
@@ -386,6 +385,15 @@ int nvram_commit(void)
 	pid_t pid = getpid();
 	int n;
 
+#if defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
+	char *nv = NULL;
+
+	if ((nv = nvram_get("restart_wifi")) && !strcmp(nv, "1")) {
+		//_dprintf("%s: skip during restart_wireless...\n", __func__);
+		nvram_set("ncarw", "1");
+		return r;
+	}
+#endif
 	if (nvram_get(ASUS_STOP_COMMIT) != NULL)
 	{
 		cprintf("# %s skip pid(%d %s) #\n", __func__, pid, get_process_name_by_pid(pid));

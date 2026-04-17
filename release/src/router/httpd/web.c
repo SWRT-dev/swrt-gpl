@@ -16319,7 +16319,7 @@ do_upgrade_post(char *url, FILE *stream, int len, char *boundary)
 		}
 	}
 
-	_dprintf("\n~End of pipe to fifo, filelen=%d, len=%d\n", filelen, len);
+	_dprintf("\n~End of pipe to fifo, filelen=%ld, len=%d\n", filelen, len);
 #ifdef HND_ROUTER
 	_dprintf("\nhnd add len of ex_len:%d (len:%d)\n", ex_len, len);
 	len += ex_len;
@@ -16361,12 +16361,9 @@ do_upgrade_post(char *url, FILE *stream, int len, char *boundary)
 	if (fw_check() != 0)
 		goto err;
 #endif
-
 	upgrade_err = check_imagefile(upload_fifo);
-
 	if (upgrade_err) /* 0: legal image, 1: illegal image 2: new trx format validation failure */
 		goto err;
-
 #endif  // RTCONFIG_PIPEFW
 err:
 #ifdef RTCONFIG_COMFW
@@ -16384,10 +16381,13 @@ err:
 	while (len > 0) {
 		len--;
 		if((ch = fgetc(stream)) == EOF) {
+#ifdef RTCONFIG_COMFW
 			_dprintf("remained len:%d not slurp ?! continue slurp...\n", len);
 			len++;
-#ifdef RTCONFIG_COMFW
 			remlen_chk++;
+#else
+			_dprintf("remained len:%d not slurp ?!\n", len);
+			break;
 #endif
 		}
 #ifdef RTCONFIG_COMFW

@@ -562,6 +562,7 @@ void init_wl(void)
 			calculate_bw_of_each_channel(unit);
 		}
 	}
+	nvram_set("wave_action", "0");
 }
 
 void fini_wl(void)

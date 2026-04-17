@@ -951,6 +951,10 @@ obj-y += wireless_tools$(WTOOL_SUFFIX)
 # Lantiq-specific packages
 #################################################################################
 else ifeq ($(RTCONFIG_LANTIQ),y)
+obj-y += libnl-tiny-0.1
+obj-y += libubox
+obj-y += libuci
+obj-y += libubus
 obj-y += wireless_tools$(WTOOL_SUFFIX)
 obj-y += safec3
 obj-y += ncurses-6.3 readline-6.2

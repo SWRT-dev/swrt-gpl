@@ -52,4 +52,8 @@ int cfg80211_wext_giwretry(struct net_device *dev,
 			   struct iw_request_info *info,
 			   struct iw_param *retry, char *extra);
 
+int cfg80211_wext_giwrate(struct net_device *dev,
+				 struct iw_request_info *info,
+				 struct iw_param *rate, char *extra);
+
 #endif /* __NET_CFG80211_WEXT_H */

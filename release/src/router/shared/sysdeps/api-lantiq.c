@@ -244,73 +244,6 @@ uint32_t set_phy_ctrl(int wan_unit, int ctrl)
 	return 1;		/* FIXME */
 }
 
-/* 0: it is not a legal image
- * 1: it is legal image
- */
-int check_imageheader(char *buf, long *filelen)
-{
-	long aligned;
-
-	if (strncmp(buf, IMAGE_HEADER, sizeof(IMAGE_HEADER) - 1) == 0)
-	{
-		memcpy(&aligned, buf + sizeof(IMAGE_HEADER) - 1, sizeof(aligned));
-		*filelen = __bswap32(aligned);
-
-		_dprintf("image len: %x[%08X]\n", aligned, aligned);
-		return 1;
-	}
-	else return 0;
-}
-
-/*
- * 0: legal image
- * 1: illegal image
- * 2: new trx format validation failure
- *
- * check product id, crc ..
- */
-
-int check_imagefile(char *fname)
-{
-	FILE *fp;
-	TAIL tail;
-	int i, model = get_model();
-
-	fp = fopen(fname, "r");
-	if (fp == NULL)
-		return 1;
-
-	fseek(fp, -MAX_TAIL_LEN, SEEK_END);
-	fread(&tail, 1, MAX_TAIL_LEN, fp);
-	fclose(fp);
-
-	_dprintf("productid field in image: %.12s\n", tail.productid);
-
-	for (i = 0; i < sizeof(tail); i++)
-		_dprintf("%02x ", ((uint8_t *)&tail)[i]);
-	_dprintf("\n");
-
-	/* safe strip trailing spaces */
-	for (i = 0; i < MAX_PID_LEN && tail.productid[i] != '\0'; i++);
-	for (i--; i >= 0 && tail.productid[i] == '\x20'; i--)
-		tail.productid[i] = '\0';
-
-	if (!checkcrc(fname)) {
-		_dprintf("check crc error!!!\n");
-		return 1;
-	}
-
-	/* compare up to the first \0 or MAX_PID_LEN
-	 * nvram productid or hw model's original productid */
-	if (strncmp(nvram_safe_get("productid"), (char *) tail.productid, MAX_PID_LEN) == 0
-	 || strncmp(get_modelid(model), (char *) tail.productid, MAX_PID_LEN) == 0)
-	{
-		_dprintf("correct model name\n");
-		return 0;
-	}
-	return 1;
-}
-
 int wl_ioctl(const char *ifname, int cmd, struct iwreq *pwrq)
 {
 	int ret = 0;
@@ -1954,6 +1887,28 @@ int has_dfs_channel(void)
 	else
 		nvram_unset("has_dfs_channel");
 	return has_dfs_channel;
+}
+
+int get_radar_channel_list(const char *vphy, int radar_list[], int size)
+{
+	int i;
+	int cnt, ret;
+	int ch_list[32];
+
+	if(vphy == NULL || radar_list == NULL || size < 0)
+		return -1;
+
+	if (strcmp(vphy, VPHY_5G))
+		return 0;
+
+	ret = get_channel_list(vphy, ch_list, ARRAY_SIZE(ch_list));
+	for(i = 0, cnt = 0; i < ret && cnt < size; i++) {
+		if(is_dfs_channel(ch_list[i])){
+			radar_list[cnt] = ch_list[i];
+			cnt++;
+		}
+	}
+	return cnt;
 }
 
 int check_wave_ready(int action)

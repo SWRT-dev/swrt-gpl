@@ -8472,7 +8472,7 @@ static int hostapd_ctrl_iface_receive_process(struct hostapd_data *hapd,
 	} else if (os_strncmp(buf, "MIB ", 4) == 0) {
 		reply_len = hostapd_ctrl_iface_mib(hapd, reply, reply_size,
 						   buf + 4);
-	} else if (os_strncmp(buf, "STA-FIRST ", 10) == 0) {
+	} else if (os_strncmp(buf, "STA-FIRST", 9) == 0) {
 		reply_len = hostapd_ctrl_iface_sta_first(hapd, buf + 10, reply,
 							 reply_size);
 	} else if (os_strncmp(buf, "STA ", 4) == 0) {

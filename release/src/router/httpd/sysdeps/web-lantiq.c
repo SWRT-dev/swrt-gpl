@@ -81,9 +81,20 @@ static int wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit);
 #include <net/if_arp.h>
 #include <dirent.h>
 
+typedef struct _WPS_CONFIGURED_VALUE {
+	unsigned short 	Configured;	// 1:un-configured/2:configured
+	char		BSSID[18];
+	char 		SSID[32 + 1];
+	char		AuthMode[16];	// Open System/Shared Key/WPA-Personal/WPA2-Personal/WPA-Enterprise/WPA2-Enterprise
+	char 		Encryp[8];	// None/WEP/TKIP/AES
+	char 		DefaultKeyIdx;
+	char 		WPAKey[64 + 1];
+} WPS_CONFIGURED_VALUE;
 
 /* shared/sysdeps/api-qca.c */
 extern u_int ieee80211_mhz2ieee(u_int freq);
+extern int get_channel_list_via_driver(int unit, char *buffer, int len);
+extern int shared_get_channel(const char *ifname);
 
 #define WL_A		(1U << 0)
 #define WL_B		(1U << 1)
@@ -104,16 +115,6 @@ static const struct mode_s {
 	{ WL_AX, "ax" },
 	{ 0, NULL },
 };
-
-typedef struct _WPS_CONFIGURED_VALUE {
-	unsigned short 	Configured;	// 1:un-configured/2:configured
-	char		BSSID[18];
-	char 		SSID[32 + 1];
-	char		AuthMode[16];	// Open System/Shared Key/WPA-Personal/WPA2-Personal/WPA-Enterprise/WPA2-Enterprise
-	char 		Encryp[8];	// None/WEP/TKIP/AES
-	char 		DefaultKeyIdx;
-	char 		WPAKey[64 + 1];
-} WPS_CONFIGURED_VALUE;
 
 static void getWPSConfig(int unit, WPS_CONFIGURED_VALUE *result)
 {
@@ -179,6 +180,48 @@ static void getWPSConfig(int unit, WPS_CONFIGURED_VALUE *result)
 	//dbg("%s: SSID[%s], Configured[%d], WPAKey[%s], AuthMode[%s], Encryp[%s]\n", __FUNCTION__, result->SSID, result->Configured, result->WPAKey, result->AuthMode, result->Encryp);
 }
 
+/**
+ * Convert WL_XXX bit masks to string via mode_tbl[]
+ * @mask:
+ * @return:
+ */
+static char *mode_mask_to_str(unsigned int mask)
+{
+	static char result[sizeof("11b/g/nXXXXXXXXXXXX")] = "";
+	const struct mode_s *q;
+	char *p, *sep;
+	size_t len, l;
+	int noax = 0;
+
+	if (!find_word(nvram_safe_get("rc_support"), "11AX"))
+		noax = 1;
+
+	p = result;
+	len = sizeof(result);
+	*p = '\0';
+	sep = "11";
+	for (q = &mode_tbl[0]; len > 0 && mask > 0 && q->mask; ++q) {
+		if (!(mask & q->mask))
+			continue;
+
+		if (q->mask == WL_AX && noax)
+			continue;
+
+		mask &= ~q->mask;
+		strlcat(p, sep, len);
+		l = safe_strlen(sep);
+		p += l;
+		len -= l;
+		strlcat(p, q->mode, len);
+		l = safe_strlen(q->mode);
+		p += l;
+		len -= l;
+		sep = "/";
+	}
+
+	return result;
+}
+
 
 /* protect bit rate error code */
 int isnumber(const char*s, float *fRate) {
@@ -186,6 +229,76 @@ int isnumber(const char*s, float *fRate) {
 	*fRate = strtof(s, &e);
 	*fRate *= 10;
 	return e != NULL && *e == (char)0;
+}
+
+/**
+ * Get phy mode via nl80211 driver.
+ * @ifname:
+ * @return:
+ */
+char *getAPPhyModebyIfaceIW(const char *ifname)
+{
+	static char result[sizeof("11a/b/g/n/ac/adXXXXXX")] = "";
+	unsigned int m = 0;
+	char cmd[sizeof("iwinfo wlan0 info") + IFNAMSIZ];
+
+	if (!ifname || *ifname == '\0') {
+		dbg("%s: got invalid ifname %p\n", __func__, ifname);
+		return 0;
+	}
+
+	/* Example:
+	 * wlan0     ESSID: "OpenWrt_11ax"
+	 *           Access Point: 04:CE:14:0A:21:17
+	 *           Mode: Master  Channel: 3 (62.640 GH)
+	 *           Tx-Power: unknown  Link Quality: 0/100
+	 *           Signal: unknown  Noise: unknown
+	 *           Bit Rate: unknown
+	 *           Encryption: none
+	 *           Type: nl80211  HW Mode(s): 802.11ac/ax/n
+	 *           Hardware: 1AE9:0310 1AE9:0000 [Generic MAC80211]
+	 *           TX power offset: unknown
+	 *           Frequency offset: unknown
+	 *           Supports VAPs: no
+	 *           Beacon Interval: 100
+	 */
+	snprintf(cmd, sizeof(cmd), "iwinfo %s info", ifname);
+	if (exec_and_parse(cmd, "HW Mode", "%*[^:]:%*[^:]: %s", 1, result))
+		*result = '\0';
+	if(strstr(result, "ax"))
+		m |= WL_AX;
+	if(strstr(result, "ac"))
+		m |= WL_AC;
+	if(strstr(result, "n"))
+		m |= WL_N;
+	if(strstr(result, "g"))
+		m |= WL_G;
+	if(strstr(result, "b"))
+		m |= WL_B;
+	if(strstr(result, "a"))
+		m |= WL_A;
+
+	return mode_mask_to_str(m);
+}
+
+char *getAPPhyMode(int unit)
+{
+	char *r = "";
+
+	if (unit < 0 || unit >= MAX_NR_WL_IF)
+		return "";
+
+	switch (unit) {
+	case WL_2G_BAND:	/* fall-through */
+	case WL_5G_BAND:	/* fall-through */
+	case WL_5G_2_BAND:
+		r = getAPPhyModebyIfaceIW(get_wififname(unit));
+		break;
+	default:
+		dbg("%s: unknown wl%d band!\n", __func__, unit);
+	}
+
+	return r;
 }
 
 int is_if_up(char *ifname)
@@ -212,72 +325,173 @@ int is_if_up(char *ifname)
     close(s);
     return 0;
 }
-
-unsigned int getAPChannelbyIface(const char *ifname)
-{
-	int skfd;
-	struct iwreq		wrq;
-	struct iw_range	range;
-	double		freq;
-	char	vbuf[16];
-
-  /* Create a channel to the NET kernel. */
-  if((skfd = iw_sockets_open()) < 0){
-      perror("socket");
-      return -1;
-	}
-
-  /* Get list of frequencies / channels */
-  if(iw_get_range_info(skfd, ifname, &range) < 0){
-      fprintf(stderr, "%-8.16s  no frequency information.\n\n", ifname);
-	}
-
-	/* Get current frequency / channel and display it */
-	if(iw_get_ext(skfd, ifname, SIOCGIWFREQ, &wrq) >= 0){
-		/* remove IW_FREQ_FIXED */
-		wrq.u.freq.flags = wrq.u.freq.flags & 0xFE;
-	  freq = iw_freq2float(&(wrq.u.freq));
-		if(freq > KILO)
-			freq = iw_freq_to_channel(freq, &range);
-		/* vbuf is channel */
-		iw_print_freq_value(vbuf, sizeof(vbuf), freq);
-	}
-	/* Close the socket. */
-	iw_sockets_close(skfd);
-
-	return atoi(vbuf);
-}
-
 unsigned int getAPChannel(int unit)
 {
-	return getAPChannelbyIface(get_wififname(unit));
+	int r = 0;
+
+	if (__absent_band(unit))
+		return 0;
+
+	switch (unit) {
+	case WL_2G_BAND:	/* fall-through */
+	case WL_5G_BAND:	/* fall-through */
+	case WL_5G_2_BAND:
+		r = shared_get_channel(get_wififname(unit));
+		break;
+	default:
+		dbg("%s: Unknown wl%d band!\n", __func__, unit);
+	}
+
+	return r;
 }
 
-/**
- * Return SSID of a interface.
- * @return:	Don't return NULL even interface name is invalid or interface absent.
- */
-char* getSSIDbyIFace(const char *iface)
+static void getVAPBandwidth(int unit, char *buf, size_t buf_len)
 {
-	static char ssid[33] = "";
-	char ifname[16];
-	int skfd;
-	struct iwreq wrq;
-	/* Create a channel to the NET kernel. */
-	if((skfd = iw_sockets_open()) < 0){
-		perror("socket");
-	}else{
-		memset(ssid, 0, sizeof(ssid));
-		strncpy(ifname, iface, sizeof(ifname));
-		/* Get ESSID */
-		wrq.u.essid.pointer = (caddr_t) ssid;
-		wrq.u.essid.length = sizeof(ssid);
-		wrq.u.essid.flags = 0;
-		iw_get_ext(skfd, ifname, SIOCGIWESSID, &wrq);
-		/* Close the socket. */
-		iw_sockets_close(skfd);
+	FILE *fp;
+	int r;
+	char rate[4], cmd[64], line[64];
+
+	if (!buf || !buf_len)
+		return;
+
+	strlcpy(buf, rate, buf_len);
+	snprintf(cmd, sizeof(cmd), "cat /proc/net/mtlk/%s/channel", get_vphyifname(unit));
+	fp = popen(cmd, "r");
+	if (!fp)
+		return;
+	/* Example:
+	 * width:           	  80
+	 * center_freq1:    	5210
+	 * chan.center_freq:	5180
+	 * channum_from:    	  36
+	 * channum_to:      	  48
+	 * primary_channel: 	  36
+	 * primary_chan_idx:	   0
+	 */
+	while (fgets(line, sizeof(line), fp)) {
+		if (!strstr(line, "width"))
+			continue;
+		if ((r = sscanf(line, "%*[^:]:%s", rate)) != 1) {
+			continue;
+		}
+		break;
 	}
-	return ssid;
+	pclose(fp);
+
+	if (rate[0] == '\0') {
+		strlcpy(buf, "20", buf_len);
+	} else {
+		snprintf(buf, buf_len, "%s", rate);
+	}
+}
+
+static int __getAPBitRate(const char *ifname, char *buf, size_t buf_len)
+{
+	int r, band, isax = 0;
+	FILE *fp;
+	char cmd[sizeof("iwconfig athXYYYYYY")], line[256], rate[16] = {0}, unit[16] = {0};
+
+	if (!ifname || *ifname == '\0' || !buf || !buf_len) {
+		dbg("%s: got invalid ifname,buf,buf_len %p,%p,%d\n",
+			__func__, ifname, buf, buf_len);
+		return 0;
+	}
+
+	snprintf(cmd, sizeof(cmd), "iwconfig %s", ifname);
+	fp = popen(cmd, "r");
+	if (!fp)
+		return 0;
+
+	/* Example:
+	 * / # iwconfig ath0
+	 * ath0      IEEE 802.11axa  ESSID:"ASUS_00_5G"
+	 *           Mode:Master  Frequency:5.745 GHz  Access Point: 00:03:7F:12:B3:B3
+	 *           Bit Rate:4.8039 Gb/s   Tx-Power:40 dBm
+	 *           RTS thr:off   Fragment thr:off
+	 *           Encryption key:BEA0-1288-6B95-B8A6-BDB4-4AF3-3248-2244   Security mode:restricted
+	 *           Power Management:off
+	 *           Link Quality=94/94  Signal level=-107 dBm  Noise level=-105 dBm
+	 *           Rx invalid nwid:3287  Rx invalid crypt:0  Rx invalid frag:0
+	 *           Tx excessive retries:0  Invalid misc:0   Missed beacon:0
+	 */
+	while (fgets(line, sizeof(line), fp)) {
+		if(strstr(line, "acax") || strstr(line, "nax"))
+			isax = 1;
+		if (!strstr(line, "Bit Rate"))
+			continue;
+		if ((r = sscanf(line, "%*[^:]:%15s %15s", rate, unit)) != 2) {
+			_dprintf("%s: Unknown bit rate of ifname [%s]: [%s]\n",
+				__func__, ifname, line);
+			continue;
+		}
+		break;
+	}
+	pclose(fp);
+
+	if (rate[0] == '\0' || unit[0] == '\0') {
+		band = get_wifname_band(ifname);
+		getVAPBandwidth(band, line, sizeof(line));
+		if(isax){
+			if(strstr(line, "160"))
+				r = 2400;
+			else if(strstr(line, "80"))
+				r = 1200;
+			else if(strstr(line, "40"))
+				r = 600;
+			else
+				r = 300;
+		}else{
+			if(strstr(line, "160"))
+				r = 1733;
+			else if(strstr(line, "80"))
+				r = 866;
+			else if(strstr(line, "40"))
+				r = 433;
+			else
+				r = 266;
+		}
+		snprintf(buf, buf_len, "%d %s", r, "Mb/s");
+	} else {
+		snprintf(buf, buf_len, "%s %s", rate, unit);
+	}
+
+	return 0;
+}
+
+static void getVAPBitRate(int unit, char *ifname, char *buf, size_t buf_len)
+{
+	if (!buf || !buf_len)
+		return;
+
+	switch (unit) {
+	case WL_2G_BAND:	/* fall-through */
+	case WL_5G_BAND:	/* fall-through */
+	case WL_5G_2_BAND:
+		__getAPBitRate(ifname, buf, buf_len);
+		break;
+	default:
+		dbg("%s: Unknown wl%d band!\n", __func__, unit);
+	}
+}
+
+static int getVAPCAC(int unit)
+{
+	FILE *fp;
+	int r = 0;
+	char cmd[64], line[64];
+	snprintf(cmd, sizeof(cmd), "hostapd_cli status");
+	fp = popen(cmd, "r");
+	if (!fp)
+		return r;
+	while (fgets(line, sizeof(line), fp)) {
+		if (strstr(line, "state=")){
+			if (strstr(line, "state=DFS"))
+				r = 1;
+			break;
+		}
+	}
+	pclose(fp);
+	return r;
 }
 
 int
@@ -296,30 +510,14 @@ ej_wl_control_channel(int eid, webs_t wp, int argc, char_t **argv)
 }
 
 typedef struct _LANTIQ_WLANCONFIG_LIST {
+	int idx;
 	char addr[18];
-	unsigned int aid;
-	unsigned int chan;
 	char txrate[7];
 	char rxrate[10];
 	unsigned int rssi;
-	unsigned int idle;
-	unsigned int txseq;
-	unsigned int rxseq;
-	char caps[12];
-	char acaps[10];
-	char erp[7];
 	char state_maxrate[20];
-	char wps[4];
 	char conn_time[12];
-	char rsn[4];
-	char wme[4];
 	char mode[31];
-	char ie[32];
-	char htcaps[10];
-	unsigned int u_acaps;
-	unsigned int u_erp;
-	unsigned int u_state_maxrate;
-	unsigned int u_psmode;
 	int subunit;
 } LANTIQ_WLANCONFIG_LIST;
 
@@ -354,7 +552,7 @@ static int getSTAInfo(int unit, LANTIQ_WIFI_STA_TABLE *sta_info)
 {
 	#define STA_INFO_PATH "/tmp/iw_wlanX_list"
 	FILE *fp;
-	int ret = 0, subunit;
+	int ret = 0, subunit, time_val, hr, min, sec, idx = 0;
 	char *unit_name;
 	char *p, *ifname;
 	char *wl_ifnames;
@@ -387,24 +585,39 @@ static int getSTAInfo(int unit, LANTIQ_WIFI_STA_TABLE *sta_info)
 		if (fp) {
 /* iw dev wlan0 station dump
 	Station b0:48:1a:ce:f2:13 (on wlan0)
-		inactive time:	9310 ms
-		rx bytes:	13170
-		rx packets:	187
-		tx bytes:	30080
-		tx packets:	53
-		signal:		-35 dBm
-		tx bitrate:	11.5 MBit/s
-		rx bitrate:	13.0 MBit/s
+        inactive time:  0 ms
+        rx bytes:       400217
+        rx packets:     4485
+        tx bytes:       4649216
+        tx packets:     4291
+        tx retries:     0
+        tx failed:      0
+        signal:         -40 dBm
+        signal avg:     -36 dBm
+        tx bitrate:     6.0 MBit/s
+        rx duration:    0 us
+        authorized:     yes
+        authenticated:  yes
+        associated:     yes
+        preamble:       long
+        WMM/WME:        yes
+        MFP:            no
+        TDLS peer:      no
+        DTIM period:    3
+        beacon interval:100
+        short slot time:yes
+        connected time: 485 seconds
 */
 			while ( fgets(line_buf, sizeof(line_buf), fp) ) {
 				if(strstr(line_buf, "Station")) {
 					LANTIQ_WLANCONFIG_LIST *r = &sta_info->Entry[sta_info->Num++];
+					idx++;
+					r->idx = idx;
 					sscanf(line_buf, "%*s%s", r->addr);
 					r->subunit = subunit;
 					while ( fgets(line_buf, sizeof(line_buf), fp) ) {
 						if(strstr(line_buf, "signal")) {
-							sscanf(line_buf, "%*s%s", rssi_char);
-							r->rssi = atoi(rssi_char);
+							sscanf(line_buf, "%*s%d", &r->rssi);
 						}
 						else if(strstr(line_buf, "tx bitrate")) {
 							sscanf(line_buf, "%*s%*s%s", r->txrate);
@@ -420,6 +633,14 @@ static int getSTAInfo(int unit, LANTIQ_WIFI_STA_TABLE *sta_info)
 							else
 								snprintf(r->rxrate, sizeof(r->rxrate), "%0.f", tRx);
 							break;
+						}
+						else if(strstr(line_buf, "connected time")) {
+							sscanf(line_buf, "%*[^:]: %d", &time_val);
+							hr = time_val / 3600;
+							time_val %= 3600;
+							min = time_val / 60;
+							sec = time_val % 60;
+							snprintf(r->conn_time, sizeof(r->conn_time), "%02d:%02d:%02d", hr, min, sec);
 						}
 					}
 					convert_mac_string(r->addr);
@@ -489,69 +710,72 @@ ej_wl_status_2g(int eid, webs_t wp, int argc, char_t **argv)
 static int
 show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 {
-	int ret = 0;
+	int i, ret = 0, cac = 0, radar_cnt = 0, radar_list[32];
+	uint64_t m = 0;
 	FILE *fp;
 	unsigned char mac_addr[ETHER_ADDR_LEN];
-	char tmpstr[1024], cmd[] = "iwconfig staXYYYYYY";
-	char *p, ap_bssid[] = "00:00:00:00:00:00XXX";
-	struct iwreq		wrq;
-	struct iw_range	range;
-	int skfd;
-	double	freq;
-//	int		channel;
-//	char	buffer[128];	/* Temporary buffer */
-	char	vbuf[16];
-//	struct ifreq ifr;
+	char tmpstr[1024], cmd[sizeof("iwconfig staXYYYYYY")], prefix[sizeof("wlX_XXX")];
+	char *p, ap_bssid[sizeof("00:00:00:00:00:00XXX")], vphy[IFNAMSIZ];
+#if defined(RTCONFIG_MULTILAN_MWL)
+	char swap_name[64];
+#endif
 
 	if (unit < 0 || !ifname || !op_mode)
 		return 0;
 
-	/* Create a channel to the NET kernel. */
-	if((skfd = iw_sockets_open()) < 0){
-		perror("socket");
-		return -1;
+#if defined(RTCONFIG_MULTILAN_MWL)
+	if (!strcmp(get_wififname(unit), ifname)) {
+		/* do not show hidden BACKHAUL infromation */
+		if (get_sdntype_iface("MAINFH", unit, swap_name, sizeof(swap_name)))
+			ifname = swap_name;
 	}
-
+#endif
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	memset(&mac_addr, 0, sizeof(mac_addr));
 	get_iface_hwaddr(ifname, mac_addr);
 	ret += websWrite(wp, "=======================================================================================\n"); // separator
-	ret += websWrite(wp, "OP Mode\t\t: %s\n", op_mode);
-	ret += websWrite(wp, "SSID\t\t: %s\n", getSSIDbyIFace(ifname));
-	snprintf(cmd, sizeof(cmd), "iwconfig %s", ifname);
-	if ((fp = popen(cmd, "r")) != NULL && fread(tmpstr, 1, sizeof(tmpstr), fp) > 1) {
-		pclose(fp);
-		*(tmpstr + sizeof(tmpstr) - 1) = '\0';
-		*ap_bssid = '\0';
-		if ((p = strstr(tmpstr, "Access Point: ")) != NULL) {
-			strlcpy(ap_bssid, p + 14, sizeof(ap_bssid));
-			ap_bssid[17] = '\0';
+	ret += websWrite(wp, "OP Mode		: %s\n", op_mode);
+	ret += websWrite(wp, "SSID		: %s\n", nvram_pf_safe_get(prefix, "ssid"));
+
+		/* Example: iw wlan0 info
+		 * Interface wlan0
+		 *         ifindex 24
+		 *         wdev 0x1
+		 *         addr 04:ce:14:0b:46:12
+		 *         type AP
+		 *         wiphy 0
+		 */
+		snprintf(cmd, sizeof(cmd), "iw %s info", ifname);
+		if (exec_and_parse(cmd, "addr", "%*s %[^\n]", 1, ap_bssid))
+			*ap_bssid = '\0';
+		convert_mac_string(ap_bssid);
+	ret += websWrite(wp, "BSSID		: %s\n", ap_bssid);
+	ret += websWrite(wp, "MAC address	: %02X:%02X:%02X:%02X:%02X:%02X\n",
+		mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
+	*tmpstr = '\0';
+	strlcpy(tmpstr, getAPPhyMode(unit), sizeof(tmpstr));
+	ret += websWrite(wp, "Phy Mode	: %s\n", tmpstr);
+	getVAPBitRate(unit, ifname, tmpstr, sizeof(tmpstr));
+	if (unit == WL_5G_BAND || unit == WL_5G_2_BAND) {
+		cac = getVAPCAC(unit);
+		strlcpy(vphy, get_vphyifname(unit), sizeof(vphy));
+		radar_cnt = get_radar_channel_list(vphy, radar_list, ARRAY_SIZE(radar_list));
+		for (i = 0; i < radar_cnt; ++i) {
+			m |= ch5g2bitmask(radar_list[i]);
 		}
-		ret += websWrite(wp, "BSSID\t\t: %s\n", ap_bssid);
-	}
-	ret += websWrite(wp, "MAC address\t: %02X:%02X:%02X:%02X:%02X:%02X\n",
-			mac_addr[0], mac_addr[1], mac_addr[2], mac_addr[3], mac_addr[4], mac_addr[5]);
-
-	/* Get list of frequencies / channels */
-	if(iw_get_range_info(skfd, ifname, &range) < 0){
-		fprintf(stderr, "%-8.16s  no frequency information.\n\n", ifname);
 	}
 
-	/* Get current frequency / channel and display it */
-	if(iw_get_ext(skfd, ifname, SIOCGIWFREQ, &wrq) >= 0){
-		/* remove IW_FREQ_FIXED */
-		wrq.u.freq.flags = wrq.u.freq.flags & 0xFE;
-		freq = iw_freq2float(&(wrq.u.freq));
-		if(freq > KILO)
-			freq = iw_freq_to_channel(freq, &range);
-		/* vbuf is channel */
-		iw_print_freq_value(vbuf, sizeof(vbuf), freq);
-	 //  iw_print_freq(buffer, sizeof(buffer),
-//			freq, channel, wrq.u.freq.flags);
+	ret += websWrite(wp, "Bit Rate	: %s%s", tmpstr, cac? " (CAC scan)" : "");
+	getVAPBandwidth(unit, tmpstr, sizeof(tmpstr));
+	if (*tmpstr != '\0')
+		ret += websWrite(wp, ", %sMHz", tmpstr);
+	ret += websWrite(wp, "\n");
+	ret += websWrite(wp, "Channel		: %u", getAPChannel(unit));
+	if (m) {
+		ret += websWrite(wp, " (Radar: %s)", bitmask2chlist5g(m, ","));
 	}
-	/* Close the socket. */
-	iw_sockets_close(skfd);
-	/* current channel */
-	ret += websWrite(wp, "Channel\t\t: %s\n", vbuf);
+	ret += websWrite(wp, "\n");
+
 	return ret;
 }
 
@@ -578,20 +802,25 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	} else {
 #endif
 		/* Router mode, Repeater and AP mode */
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 #if defined(RTCONFIG_WIRELESSREPEATER)
 		if (!unit && repeater_mode()) {
 			/* Show P-AP information first, if we are about to show 2.4G information in repeater mode. */
-			ret += show_wliface_info(wp, unit, get_staifname(nvram_get_int("wlc_band")), "Repeater");
+#if defined(RTCONFIG_REPEATER_STAALLBAND)
+			unit = nvram_get_int("wlc_triBand");
+			snprintf(prefix, sizeof(prefix), "sta%d", unit);
+			ret += show_wliface_info(wp, unit, prefix, "Repeater");
 			ret += websWrite(wp, "\n");
+			unit = 0;
+#else
+			snprintf(prefix, sizeof(prefix), "wl%d.1_", nvram_get_int("wlc_band"));
+			ifname = nvram_pf_safe_get(prefix, "ifname");
+			ret += show_wliface_info(wp, nvram_get_int("wlc_band"), ifname, "Repeater");
+			ret += websWrite(wp, "\n");
+#endif
 		}
 #endif
-		if (nvram_get_int("wave_action_cur") == 1) {
-			ret += websWrite(wp, "%s radio is initializing\n",
-				wl_nband_name(nvram_pf_get(prefix, "nband")));
-			return ret;
-		}
 
+		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 		ifname = nvram_pf_safe_get(prefix, "ifname");
 		if (!get_radio_status(ifname)) {
 #if defined(BAND_2G_ONLY)
@@ -628,20 +857,22 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		ret += show_wliface_info(wp, unit, ifname, op_mode);
 		ret += websWrite(wp, "\nStations List\n");
 		ret += websWrite(wp, "----------------------------------------------------------------\n");
-		ret += websWrite(wp, "%-3s %-17s %-6s %-6s\n",
-			"idx", "MAC", "TXRATE", "RXRATE");
+		ret += websWrite(wp, "%-3s %-17s %-4s %-6s %-6s %-12s\n",
+			"idx", "MAC", "RSSI", "TXRATE", "RXRATE", "Connect Time");
 
 		if ((sta_info = malloc(sizeof(*sta_info))) != NULL) {
 			getSTAInfo(unit, sta_info);
 			for(i = 0; i < sta_info->Num; i++) {
 				*subunit_str = '\0';
-				if (sta_info->Entry[i].subunit)
+				if (sta_info->Entry[i].idx)
 					snprintf(subunit_str, sizeof(subunit_str), "%d", sta_info->Entry[i].subunit);
-				ret += websWrite(wp, "%3s %-17s %6s %6s\n",
+				ret += websWrite(wp, "%-3s %-17s %d %-6s %-6s %-12s\n",
 					subunit_str,
 					sta_info->Entry[i].addr,
+					sta_info->Entry[i].rssi,
 					sta_info->Entry[i].txrate,
-					sta_info->Entry[i].rxrate
+					sta_info->Entry[i].rxrate,
+					sta_info->Entry[i].conn_time
 					);
 			}
 			free(sta_info);
@@ -730,9 +961,14 @@ int ej_wl_sta_list_5g(int eid, webs_t wp, int argc, char_t **argv)
 	return 0;
 }
 
-int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
+int ej_wl_sta_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 {
-	// TODO
+#if defined(RTCONFIG_HAS_5G_2)
+	/* FIXME: I think it's not good to report 2-nd 5G station list in 1-st 5G station list. */
+	ej_wl_sta_list(2, wp);
+#endif
+	if(hook_get_json == 1)
+		websWrite(wp, "{}");
 	return 0;
 }
 
@@ -769,7 +1005,7 @@ static int wl_stainfo_list(int unit, webs_t wp)
 		websWrite(wp, "\"%s\"", r->addr);
 		websWrite(wp, ", \"%s\"", r->txrate);
 		websWrite(wp, ", \"%s\"", r->rxrate);
-		//websWrite(wp, ", \"%s\"", r->conn_time);
+		websWrite(wp, ", \"%s\"", r->conn_time);
 		s = r->subunit;
 		if (s < 0 || s > 7)
 			s = 0;
@@ -804,6 +1040,73 @@ ej_wl_stainfo_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
 	return wl_stainfo_list(2, wp);
 }
 #endif	/* RTCONFIG_STAINFO */
+
+int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
+{
+	char word[64], *next;
+	int unit = 0;
+	int haveInfo = 0;
+
+	websWrite(wp, "{");
+
+	foreach (word, nvram_safe_get("wl_ifnames"), next) {
+		LANTIQ_WIFI_STA_TABLE *sta_info;
+		LANTIQ_WLANCONFIG_LIST *r;
+		int i, j, s;
+		char alias[16];
+
+		SKIP_ABSENT_BAND_AND_INC_UNIT(unit);
+		if ((sta_info = malloc(sizeof(*sta_info))) == NULL)
+			return 0;
+
+		getSTAInfo(unit, sta_info);
+		for (i = 0; i < MAX_NO_MSSID; i++) {
+			int firstRow = 1;
+
+			memset(alias, 0, sizeof(alias));
+			switch (unit) {
+				case WL_2G_BAND:
+					if (i == 0)
+						strlcpy(alias, "2G", sizeof(alias));
+					else
+						snprintf(alias, sizeof(alias), "%s_%d", "2G", i);
+					break;
+				case WL_5G_BAND:	/* fall-through */
+#if defined(RTCONFIG_HAS_5G_2)
+				case WL_5G_2_BAND:
+#endif
+					if (i == 0)
+						snprintf(alias, sizeof(alias), "%s", unit == 2 ? "5G1" : "5G");
+					else
+						snprintf(alias, sizeof(alias), "%s_%d", unit == 2 ? "5G1" : "5G", i);
+					break;
+				default:
+					dbg("%s():%d: Unknown unit %d (MAX_NR_WL_IF %d)\n", __func__, __LINE__, unit, MAX_NR_WL_IF);
+			}
+
+			for(j = 0, r = &sta_info->Entry[0]; j < sta_info->Num; j++, r++) {
+				if (firstRow == 1) {
+					if (haveInfo)
+						websWrite(wp, ",");
+					websWrite(wp, "\"%s\":[", alias);
+					firstRow = 0;
+					haveInfo = 1;
+				}
+				else
+					websWrite(wp, ",");
+				websWrite(wp, "{\"mac\":\"%s\",\"rssi\":%d}", r->addr, r->rssi);
+			}
+
+			if (!firstRow)
+				websWrite(wp, "]");
+		}
+		free(sta_info);
+		unit++;
+	}
+	websWrite(wp, "}");
+
+	return 0;
+}
 
 char *getWscStatus(int unit)
 {
@@ -844,7 +1147,7 @@ char *getAPPIN(int unit)
 	int len;
 
 	buffer[0] = '\0';
-	snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s wps_ap_pin get", get_wifname(unit));
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -i%s wps_ap_pin get", get_wififname(unit));
 	fp = popen(cmd, "r");
 	if (fp) {
 		len = fread(buffer, 1, sizeof(buffer), fp);

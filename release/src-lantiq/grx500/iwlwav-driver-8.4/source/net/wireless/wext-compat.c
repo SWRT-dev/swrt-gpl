@@ -1248,7 +1248,7 @@ static int cfg80211_wext_siwrate(struct net_device *dev,
 	return rdev_set_bitrate_mask(rdev, dev, NULL, &mask);
 }
 
-static int cfg80211_wext_giwrate(struct net_device *dev,
+int cfg80211_wext_giwrate(struct net_device *dev,
 				 struct iw_request_info *info,
 				 struct iw_param *rate, char *extra)
 {
@@ -1289,6 +1289,7 @@ free:
 	cfg80211_sinfo_release_content(&sinfo);
 	return err;
 }
+EXPORT_WEXT_HANDLER(cfg80211_wext_giwrate);
 
 /* Get wireless statistics.  Called by /proc/net/wireless and by SIOCGIWSTATS */
 static struct iw_statistics *cfg80211_wireless_stats(struct net_device *dev)

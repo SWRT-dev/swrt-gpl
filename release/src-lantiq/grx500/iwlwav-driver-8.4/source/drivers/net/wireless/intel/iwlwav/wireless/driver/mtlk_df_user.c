@@ -9175,7 +9175,11 @@ mtlk_df_user_create (mtlk_df_t *df, const char *name, struct net_device *ndev_p)
 
   if (ndev_p && !df_user->is_secondary_df) {
     /* Configure bcl iwpriv handlers */
+#if defined(SWRT_PATCH)
+    ndev_p->wireless_handlers = &wave_linux_iw_core_handler_def;
+#else
     ndev_p->wireless_handlers = &wave_linux_iw_core_handler_bcl_only;
+#endif
   }
 
 

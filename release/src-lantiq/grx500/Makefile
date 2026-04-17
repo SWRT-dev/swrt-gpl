@@ -14,6 +14,7 @@ export LDFLAGS+=$(EXTRALDFLAGS)
 pobj-y:=
 
 pobj-y += directconnect_dp eip97 ltq_fw_phy_ip ppa_drv ppacmd switch_cli upgrade_utils
+pobj-y += iwinfo
 ifeq ($(BUILD_NAME),RAX40)
 #wav600a,old format cal_wlan0.bin
 pobj-$(RTCONFIG_WLMODULE_WAV6XX_AP) += ltq-wlan-wave_6x-8.4 iwlwav-driver-8.4 iwlwav-firmware-8.4
