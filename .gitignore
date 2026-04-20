@@ -26,10 +26,6 @@ release/src/router/nas_arm/*.c
 release/src/router/nas_arm/*.h
 release/src/router/nt_center/*.c
 release/src/router/nt_center/*/*.c
-release/src/router/networkmap/JSON_checker.c
-release/src/router/networkmap/download.c
-release/src/router/networkmap/protect_name.c
-release/src/router/networkmap/shared_func.c
 release/src/router/pbr-optimizer/*.c
 release/src/router/pbr-optimizer/*.h
 release/src/router/rc/cfe.c
