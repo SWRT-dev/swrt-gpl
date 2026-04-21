@@ -169,16 +169,24 @@ int init_devs_defer(void)
 	if(nvram_match("AllLED", "1")){
 		f_write_string("/sys/class/leds/lan1/trigger", "netdev", 0, 0);
 		f_write_string("/sys/class/leds/lan1/device_name", "eth0_1", 0, 0);
-		f_write_string("/sys/class/leds/lan1/mode", "link tx rx", 0, 0);
+		f_write_string("/sys/class/leds/lan1/link", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan1/rx", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan1/tx", "1", 0, 0);
 		f_write_string("/sys/class/leds/lan2/trigger", "netdev", 0, 0);
 		f_write_string("/sys/class/leds/lan2/device_name", "eth0_2", 0, 0);
-		f_write_string("/sys/class/leds/lan2/mode", "link tx rx", 0, 0);
+		f_write_string("/sys/class/leds/lan2/link", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan2/rx", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan2/tx", "1", 0, 0);
 		f_write_string("/sys/class/leds/lan3/trigger", "netdev", 0, 0);
 		f_write_string("/sys/class/leds/lan3/device_name", "eth0_3", 0, 0);
-		f_write_string("/sys/class/leds/lan3/mode", "link tx rx", 0, 0);
+		f_write_string("/sys/class/leds/lan3/link", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan3/rx", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan3/tx", "1", 0, 0);
 		f_write_string("/sys/class/leds/lan4/trigger", "netdev", 0, 0);
 		f_write_string("/sys/class/leds/lan4/device_name", "eth0_4", 0, 0);
-		f_write_string("/sys/class/leds/lan4/mode", "link tx rx", 0, 0);
+		f_write_string("/sys/class/leds/lan4/link", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan4/rx", "1", 0, 0);
+		f_write_string("/sys/class/leds/lan4/tx", "1", 0, 0);
 	} else {
 		f_write_string("/sys/class/leds/lan1/trigger", "none", 0, 0);
 		f_write_string("/sys/class/leds/lan2/trigger", "none", 0, 0);

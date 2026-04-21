@@ -2354,6 +2354,21 @@ int gen_lantiq_config(int band, int subnet)
 	}else{
 		fprintf(fp, "channel=%s\n", "acs_smart");//0==auto_channel
 	}
+	if(band){
+		if(val != 0 && val > 161)
+			fprintf(fp, "op_class=%d\n", 125);
+		else
+			fprintf(fp, "op_class=%d\n", 130);
+		if(strstr(t_mode, "11AHE"))
+			fprintf(fp, "he_phy_channel_width_set=%d\n", 6);
+	}else{
+		if(val != 14)
+			fprintf(fp, "op_class=%d\n", 81);
+		else
+			fprintf(fp, "op_class=%d\n", 82);
+		if(strstr(t_mode, "11GHE"))
+			fprintf(fp, "he_phy_channel_width_set=%d\n", 1);
+	}
 #if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
 //	if(strstr(t_mode, "11NG") || strstr(t_mode, "11GHE") || strstr(t_mode, "11GEHT"))
 #else
