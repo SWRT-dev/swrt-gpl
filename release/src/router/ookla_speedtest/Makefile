@@ -37,6 +37,9 @@ else
 	-cp -f $(OOKLA_PATH)/ookla-MTK7621A prebuild/ookla     # MTK7621A
 endif # RTCONFIG_MT798X
 endif # RTCONFIG_RALINK
+ifeq ($(RTCONFIG_LANTIQ),y)
+	-cp -f $(OOKLA_PATH)/ookla-QCN5502      prebuild/ookla
+endif
 
 all: prebuild
 

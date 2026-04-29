@@ -3738,7 +3738,7 @@ extern unsigned int netdev_calc(char *ifname, char *ifname_desc, unsigned long l
 extern void disable_dpi_engine_setting(void);
 extern int get_iface_hwaddr(char *name, unsigned char *hwaddr);
 extern int get_lower_iface_of_vlan_iface(const char *viface, char *iface);
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_LANTIQ)
 extern int __set_iface_ps(const char *ifname, int nr_rx_mask, const unsigned int *rx_mask, int nr_tx_mask, const unsigned int *tx_mask);
 static inline int set_iface_ps2(const char *ifname, unsigned int rx_mask, unsigned tx_mask)
 {

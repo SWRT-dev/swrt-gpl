@@ -1241,6 +1241,8 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
 	if (!(hapd->iface->drv_flags & WPA_DRIVER_FLAGS_PROBE_RESP_OFFLOAD))
 		return NULL;
 
+#if !defined(SWRT_PATCH)
+	/* unsupported wps offload */
 #ifdef CONFIG_WPS
 	if (hapd->conf->wps_state && hapd->wps_probe_resp_ie &&
 	    (!(hapd->iface->probe_resp_offloads &
@@ -1249,6 +1251,7 @@ static u8 * hostapd_probe_resp_offloads(struct hostapd_data *hapd,
 		wpa_printf(MSG_WARNING, "Device is trying to offload WPS "
 			   "Probe Response while not supporting this");
 #endif /* CONFIG_WPS */
+#endif
 
 #ifdef CONFIG_P2P
 	if ((hapd->conf->p2p & P2P_ENABLED) && hapd->p2p_probe_resp_ie &&

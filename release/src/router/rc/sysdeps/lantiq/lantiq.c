@@ -4210,6 +4210,8 @@ void destroy_tmp_sta(char *sta)
 	unlink(fpath);
 	_dprintf("==>wps enrollee: destroy %s vap\n",sta);
 	ifconfig(sta, 0, NULL, NULL);
+	snprintf(fpath, sizeof(fpath), "ppacmd dellan -i %s", sta);
+	system(fpath);
 	destroy_vap(sta);
 }
 

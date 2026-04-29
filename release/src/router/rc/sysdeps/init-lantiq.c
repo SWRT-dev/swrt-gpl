@@ -42,6 +42,7 @@ extern int init_gpio_again(void);
 static void __load_wifi_driver(int testmode)
 {
 	char country[FACTORY_COUNTRY_CODE_LEN + 1], prefix[sizeof("wlXXXXX_")]/*, index[2]*/;
+	char fastpath[] = "fastpath=1,1";/* disable=0,fastpath=1,dcdp=2 */
 	int unit;
 	pid_t pid;
 	FILE *fp_wifi;
@@ -57,7 +58,7 @@ static void __load_wifi_driver(int testmode)
 	eval("insmod", "/lib/modules/4.9.276/mac80211.ko");
 	eval("insmod", "/lib/modules/4.9.276/mtlkroot.ko");
 	eval("rmmod", "mtlk");
-	eval("insmod", "mtlk", "ap=1,1", "fastpath=1,1", "ahb_off=1", "loggersid=255,255");
+	eval("insmod", "mtlk", fastpath, "loggersid=255,255"/*, "ap=1,1", "ahb_off=1"*/);
 	setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/opt/intel/sbin:/opt/intel/usr/sbin:/opt/intel/bin", 1);
 	setenv("LD_LIBRARY_PATH", "/opt/intel/lib:/opt/intel/usr/lib", 1);
 #if !defined(RAX40)
@@ -107,6 +108,7 @@ static void __load_wifi_driver(int testmode)
 			fprintf(fp_wifi, "ifconfig %s hw ether %s\n", vphy, macaddr);
 			fprintf(fp_wifi, "ifconfig %s up\n", vphy);
 			fprintf(fp_wifi, "ifconfig %s down\n", vphy);
+			fprintf(fp_wifi, "ppacmd addlan -i %s", vphy);
 		}
 
 		fclose(fp_wifi);
@@ -472,9 +474,12 @@ int rebuild_main_vap(void)
 			eval(QWPA_CLI, "-g", QHOSTAPD_CTRL_IFACE, "raw", "REMOVE", vap);
 		if (band == WL_60G_BAND)
 			continue;
-		if (iface_exist(vap))
+		if (iface_exist(vap)){
+			eval("ppacmd", "dellan", "-i", vap);
 			destroy_vap(vap);
+		}
 		create_vap(vap, band, "ap");
+		eval("ppacmd", "addlan", "-i", vap);
 	}
 
 	return 0;
@@ -531,6 +536,7 @@ void init_wl(void)
 					create_vap(ifname, unit, "ap");
 					snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 					set_hwaddr(ifname, nvram_pf_safe_get(prefix, "hwaddr"));
+					eval("ppacmd", "addlan", "-i", ifname);
 					sleep(1);
 
 #if defined(RTCONFIG_REPEATER_STAALLBAND)
@@ -538,6 +544,7 @@ void init_wl(void)
 						dbG("\ncreate a STA node %s from %s\n", get_staifname(unit), get_vphyifname(unit));
 						create_vap(get_staifname(unit), unit, "sta");
 						set_hwaddr(get_staifname(unit), nvram_pf_safe_get(prefix, "hwaddr"));
+						eval("ppacmd", "addlan", "-i", get_staifname(wlc_band));
 						sleep(1);
 					}
 #endif
@@ -559,6 +566,12 @@ void init_wl(void)
 			create_vap(get_staifname(wlc_band), wlc_band, "sta");
 			snprintf(prefix, sizeof(prefix), "wl%d_", wlc_band);
 			set_hwaddr(get_staifname(wlc_band), nvram_pf_safe_get(prefix, "hwaddr"));
+#if defined(RTCONFIG_WISP)
+			if(wisp_mode())
+				eval("ppacmd", "addwan", "-i", get_staifname(wlc_band));
+			else
+#endif
+				eval("ppacmd", "addlan", "-i", get_staifname(wlc_band));
 		}
 #endif
 #endif
@@ -606,11 +619,20 @@ void fini_wl(void)
 			continue;
 
 		ifconfig(ifname, 0, NULL, NULL);
+#if defined(RTCONFIG_WISP)
+		if(wisp_mode() && nvram_get_int("wlc_band") == i)
+			eval("ppacmd", "delwan", "-i", ifname);
+		else
+#endif
+			eval("ppacmd", "dellan", "-i", ifname);
+
 		destroy_vap(ifname);
 	}
 	//destroy vphy wlan0&wlan2
 	ifconfig(get_vphyifname(0), 0, NULL, NULL);
 	ifconfig(get_vphyifname(1), 0, NULL, NULL);
+	eval("ppacmd", "dellan", "-i", get_vphyifname(0));
+	eval("ppacmd", "dellan", "-i", get_vphyifname(1));
 	eval("iw", get_vphyifname(0), "del");
 	eval("iw", get_vphyifname(1), "del");
 	create_node=0;

@@ -4372,7 +4372,7 @@ int get_lower_iface_of_vlan_iface(const char *viface, char *iface)
 	return 1;
 }
 
-#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074)
+#if defined(RTCONFIG_SOC_IPQ8064) || defined(RTCONFIG_SOC_IPQ8074) || defined(RTCONFIG_LANTIQ)
 /**
  * Set Receive/Transmit Packet Scaling of specified interface.
  * @ifname:	interface name
@@ -4558,6 +4558,8 @@ int ctrl_lan_gro(int onoff)
 #if defined(RTCONFIG_WIGIG)
 		    || !strncmp(word, "wlan", 4)
 #endif
+#elif defined(RTCONFIG_LANTIQ)
+		    || !strncmp(word, "wlan", 4) || !strncmp(word, "wifi", 4)
 #else
 		    || !strncmp(word, "wl", 2)
 #endif

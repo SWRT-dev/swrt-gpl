@@ -2204,7 +2204,7 @@ static int do_dq_cbm_poll(struct napi_struct *napi, int budget)
 			temp_len = data_len + new_offset + data_offset;
 			real_len = SKB_DATA_ALIGN(temp_len)
 			+ SKB_DATA_ALIGN(sizeof(struct skb_shared_info));
-			skb = build_skb_grx500(real_buf_start,
+			skb = build_skb_grx500(&real_buf_start,
 					       real_len,
 					       GFP_ATOMIC);
 			if (skb) {
@@ -3696,7 +3696,7 @@ u32 flags)
 	u32 reg, reg1;
 	#ifdef CONFIG_CBM_LS_ENABLE
 	s32 pos = 3;
-	int count1 = 0;
+	int count0 = 0, count1 = 0;
 	#endif
 	#ifdef CHECK_WHILE_LOOP
 	int iter = 0;
@@ -5290,7 +5290,7 @@ static int cbm_xrx500_probe(struct platform_device *pdev)
 #ifdef CONFIG_CBM_LS_ENABLE
 	init_dummy_netdev(&g_cbm_ctrl.dummy_dev);
 	netif_napi_add(&g_cbm_ctrl.dummy_dev,
-		       g_cbm_ctrl.napi, do_dq_cbm_poll, 20);
+		       &g_cbm_ctrl.napi, do_dq_cbm_poll, 20);
 	napi_enable(&g_cbm_ctrl.napi);
 #endif
 	/* Disable all the EQM and DQM interrupts */

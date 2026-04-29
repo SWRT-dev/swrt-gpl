@@ -1,9 +1,9 @@
-#include "easy550_anywan.dts"
+#include "easy350_V1_anywan.dts"
 #include <dt-bindings/input/input.h>
 
 / {
 	model = "Netgear Nighthawk RAX40";
-//	compatible = "netgear,rax40", "lantiq,grx500", "lantiq,xrx500";
+	compatible = "intel,easy550_anywan", "intel,easy350_anywan", "lantiq,grx500", "lantiq,xrx500";
 /*
 	gpio-keys-polled {
 		compatible = "gpio-keys-polled";
@@ -105,6 +105,16 @@
 			};
 		};
 	};
+	ssx0@1E000000 {
+		/delete-node/ mps@1107000;
+	};
+};
+
+&cooling_maps {
+	map0 {
+		trip = <&cpu_alert0>;
+		cooling-device = <&cpu0 3 3>;
+	};
 };
 
 &cpu1 {
@@ -124,7 +134,8 @@
 };
 
 &ssc1 {
-		status="disabled";
+	status="disabled";
+	/delete-property/ pinctrl-0;
 };
 
 &ssogpio {
@@ -137,4 +148,32 @@
 
 &i2c {
 	status = "disabled";
+	/delete-property/ pinctrl-0;
+};
+
+&pinctrl {
+	/delete-node/ vcodec;
+	/delete-node/ tdm;
+	/delete-node/ spi1;
+	/delete-node/ i2c0;
+	/delete-node/ spi1_cs0;
+};
+
+&eth {
+	/delete-node/ interface@0;
+};
+
+&dect0 {
+	status = "disabled";
+	/delete-property/ gpio-reset;
+	/delete-property/ gpio-int;
+};
+
+&dect_page0 {
+	status = "disabled";
+	/delete-property/ lantiq,pagepin;
+};
+
+&ssc0 {
+	/delete-node/ vcodec@5;
 };

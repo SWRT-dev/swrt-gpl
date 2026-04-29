@@ -1070,7 +1070,6 @@ ifeq ($(RTCONFIG_RALINK),y)
 else ifeq ($(RTCONFIG_QCA),y)
 else ifeq ($(RTCONFIG_LANTIQ),y)
 obj-$(RTCONFIG_BT_CONN) += btconfig
-# obj-y += ppacmd
 obj-y += libnl-bf
 obj-y += libnl
 obj-y += taskset
@@ -8054,9 +8053,6 @@ i2c-tools-3.1.2-install: i2c-tools-3.1.2
 	# cd $(INSTALLDIR)/i2c-tools-3.1.2/lib && \
 	#	ln -sf libi2c.so.0.1.0 libi2c.so.0 && \
 	#	ln -sf libi2c.so.0.1.0 libi2c.so
-
-ppacmd:
-	cd ppacmd; make
 
 hostapd-2.6: libnl-bf openssl
 	cd hostapd-2.6/hostapd;	make clean; make hostapd; make hostapd_cli
