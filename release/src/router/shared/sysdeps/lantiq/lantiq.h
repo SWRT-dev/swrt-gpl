@@ -24,12 +24,16 @@
 
 extern const char WIF_2G[];
 extern const char WIF_5G[];
+extern const char WIF_5G2[];
 extern const char STA_2G[];
 extern const char STA_5G[];
+extern const char STA_5G2[];
 extern const char VPHY_2G[];
 extern const char VPHY_5G[];
+extern const char VPHY_5G2[];
 extern const char PHY_5G[];
 extern const char PHY_2G[];
+extern const char PHY_5G2[];
 
 extern const char *max_2g_n_mode, *max_2g_ax_mode;
 extern const char *max_5g_ac_mode, *max_5g_ax_mode;

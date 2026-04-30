@@ -1821,7 +1821,11 @@ mtlk_stadb_get_stat(sta_db *stadb, hst_db *hstdb, mtlk_clpb_t *clpb, uint8 group
         stadb_stat.u.general_stat.sta_sid = mtlk_sta_get_sid(sta);
         stadb_stat.u.general_stat.aid = mtlk_sta_get_sid(sta) + 1;
         stadb_stat.u.general_stat.sta_rx_dropped = 0;
+#if defined(SWRT_PATCH)
+		stadb_stat.u.general_stat.network_mode = sta->info.sta_net_modes;
+#else
         /* stadb_stat.u.general_stat.network_mode = mtlk_sta_get_net_mode(sta); */
+#endif
         stadb_stat.u.general_stat.tx_rate = _mtlk_sta_get_tx_data_rate(sta);
         stadb_stat.u.general_stat.is_sta_auth = _mtlk_sta_get_is_sta_auth(sta);
         stadb_stat.u.general_stat.is_four_addr = mtlk_sta_is_4addr(sta);

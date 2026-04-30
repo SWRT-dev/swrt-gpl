@@ -1518,6 +1518,7 @@ void handle_client_list(CLIENT_DETAIL_INFO_TABLE *p_client_tab, ARP_HEADER *arp_
 void handle_detail_client_list(CLIENT_DETAIL_INFO_TABLE *tab)
 {
 	int i, hlock;
+	static int count = 0;
 	if(tab->detail_info_num < tab->ip_mac_num){
 		NMP_DEBUG("handle_detail_client_list Scan ! detail_info_num = %d, ip_mac_num = %d\n", tab->detail_info_num, tab->ip_mac_num);
 		hlock = file_lock("networkmap");
@@ -1585,12 +1586,11 @@ void handle_detail_client_list(CLIENT_DETAIL_INFO_TABLE *tab)
 		if(nvram_match("nmp_wl_offline_check", "1")){
 			check_brctl_macs(tab);
 			check_ip6_addr(tab);
-			if(sw_mode != 1){
-				hlock = file_lock("networkmap");
+			if(count == 5){//5*2s
 				nmp_wl_offline_check(tab, 1);
-				file_unlock(hlock);
-				return;
-			}
+				count = 0;
+			}else
+				count++;
 		}
 		check_clientlist_offline(tab);
 	}

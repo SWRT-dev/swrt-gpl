@@ -31,31 +31,6 @@
 
 typedef uint32_t __u32;
 
-/////// copy from qca-wifi
-#define IEEE80211_CHAN_MAX      255
-#define IEEE80211_IOCTL_GETCHANINFO     (SIOCIWFIRSTPRIV+7)
-typedef unsigned int	u_int;
-
-struct ieee80211_channel {
-    u_int16_t       ic_freq;        /* setting in Mhz */
-    u_int32_t       ic_flags;       /* see below */
-    u_int8_t        ic_flagext;     /* see below */
-    u_int8_t        ic_ieee;        /* IEEE channel number */
-    int8_t          ic_maxregpower; /* maximum regulatory tx power in dBm */
-    int8_t          ic_maxpower;    /* maximum tx power in dBm */
-    int8_t          ic_minpower;    /* minimum tx power in dBm */
-    u_int8_t        ic_regClassId;  /* regClassId of this channel */ 
-    u_int8_t        ic_antennamax;  /* antenna gain max from regulatory */
-    u_int8_t        ic_vhtop_ch_freq_seg1;         /* Channel Center frequency */
-    u_int8_t        ic_vhtop_ch_freq_seg2;         /* Channel Center frequency applicable
-                                                  * for 80+80MHz mode of operation */ 
-};
-
-struct ieee80211req_chaninfo {
-	u_int	ic_nchans;
-	struct ieee80211_channel ic_chans[IEEE80211_CHAN_MAX];
-};
-
 u_int
 ieee80211_mhz2ieee(u_int freq)
 {
@@ -85,19 +60,20 @@ ieee80211_mhz2ieee(u_int freq)
 }
 /////////////
 
-#if defined(RAX40)
 //phy0->wlan0->wifi0
+const char WIF_5G2[] = "wifi2";
 const char WIF_5G[] = "wifi1";
 const char WIF_2G[] = "wifi0";
+const char STA_5G2[] = "sta2";
 const char STA_5G[] = "sta1";
 const char STA_2G[] = "sta0";
+const char VPHY_5G2[] = "wlan4";
 const char VPHY_5G[] = "wlan2";
 const char VPHY_2G[] = "wlan0";
+const char PHY_5G2[] = "phy2";
 const char PHY_5G[] = "phy1";
 const char PHY_2G[] = "phy0";
-#else
-#error Define WiFi 2G/5G interface name!
-#endif
+
 const char *max_2g_ax_mode = "11GHE";	/* B,G,N,AX */
 const char *max_5g_ax_mode = "11AHE";	/* A,N,AC,AX */
 const char *max_2g_n_mode = "11NG";	/* B,G,N */
@@ -287,6 +263,8 @@ int wl_client_unit(int unit){
 int get_wifname_band(char *name){
 	if(!strcmp(name, WIF_5G) || !strcmp(name, STA_5G))
 		return 1;
+	else if(!strcmp(name, WIF_5G2) || !strcmp(name, STA_5G2))
+		return 2;
 	else
 		return 0;
 }
@@ -421,33 +399,6 @@ RETURN_VIF:
 /* get channel list via currently setting in wifi driver */
 int get_channel_list_via_driver(int unit, char *buffer, int len)
 {
-#if 0
-	struct ieee80211req_chaninfo chans;
-	struct iwreq wrq;
-	char prefix[] = "wlXXXXXXXXXX_", *ifname;
-	int i;
-	char *p;
-
-	if (buffer == NULL || len <= 0)
-		return -1;
-
-	memset(buffer, 0, len);
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	ifname = nvram_pf_safe_get(prefix, "ifname");
-
-	memset(&wrq, 0, sizeof(wrq));
-	wrq.u.data.pointer = (void *)&chans;
-	wrq.u.data.length = sizeof(chans);
-	if (wl_ioctl(ifname, IEEE80211_IOCTL_GETCHANINFO, &wrq) < 0)
-		return -1;
-
-	for (i = 0, p=buffer; i < chans.ic_nchans ; i++) {
-		if (i == 0)
-			p += sprintf(p, "%u", ieee80211_mhz2ieee(chans.ic_chans[i].ic_freq));
-		else
-			p += sprintf(p, ",%u", ieee80211_mhz2ieee(chans.ic_chans[i].ic_freq));
-	}
-#else
 	int l, r, found, freq, first = 1;
 	FILE *fp;
 	char *p = buffer, line[256], cmd[sizeof("iw phy0 infoXXXXXXXXXXXX")];
@@ -502,7 +453,6 @@ int get_channel_list_via_driver(int unit, char *buffer, int len)
 		}
 	}
 	pclose(fp);
-#endif
 	return (p - buffer);
 }
 
@@ -1218,7 +1168,7 @@ char *get_wlxy_ifname(int x, int y, char *buf)
 
 char *get_wififname(int band)
 {
-	const char *wif[] = { WIF_2G, WIF_5G };
+	const char *wif[] = { WIF_2G, WIF_5G, WIF_5G2 };
 	if (band < 0 || band >= ARRAY_SIZE(wif)) {
 		dbg("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
@@ -1228,7 +1178,7 @@ char *get_wififname(int band)
 
 char *get_staifname(int band)
 {
-	const char *sta[] = { STA_2G, STA_5G };
+	const char *sta[] = { STA_2G, STA_5G, STA_5G2 };
 	if (band < 0 || band >= ARRAY_SIZE(sta)) {
 		dbg("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
@@ -1238,7 +1188,7 @@ char *get_staifname(int band)
 
 char *get_vphyifname(int band)
 {
-	const char *vphy[] = { VPHY_2G, VPHY_5G };
+	const char *vphy[] = { VPHY_2G, VPHY_5G, VPHY_5G2 };
 	if (band < 0 || band >= ARRAY_SIZE(vphy)) {
 		dbg("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
@@ -1249,7 +1199,7 @@ char *get_vphyifname(int band)
 
 char *get_realphyifname(int band)
 {
-	const char *phy[] = { PHY_2G, PHY_5G };
+	const char *phy[] = { PHY_2G, PHY_5G, PHY_5G2 };
 	if (band < 0 || band >= ARRAY_SIZE(phy)) {
 		dbg("%s: Invalid wl%d band!\n", __func__, band);
 		band = 0;
@@ -1268,7 +1218,7 @@ char *get_realphyifname(int band)
 int get_sta_ifname_unit(const char *ifname)
 {
 	int band;
-	const char *sta[] = { STA_2G, STA_5G };
+	const char *sta[] = { STA_2G, STA_5G, STA_5G2 };
 
 	if (!ifname)
 		return -1;
@@ -1291,7 +1241,7 @@ int get_sta_ifname_unit(const char *ifname)
 int is_vap_ifname(const char *ifname)
 {
 	int band;
-	const char *wif[] = { WIF_2G, WIF_5G };
+	const char *wif[] = { WIF_2G, WIF_5G, WIF_5G2 };
 
 	if (!ifname)
 		return 0;
@@ -1314,7 +1264,7 @@ int is_vap_ifname(const char *ifname)
 int is_sta_ifname(const char *ifname)
 {
 	int band;
-	const char *sta[] = { STA_2G, STA_5G };
+	const char *sta[] = { STA_2G, STA_5G, STA_5G2 };
 
 	if (!ifname)
 		return 0;
@@ -1337,7 +1287,7 @@ int is_sta_ifname(const char *ifname)
 int is_vphy_ifname(const char *ifname)
 {
 	int band;
-	const char *vphy[] = { VPHY_2G, VPHY_5G };
+	const char *vphy[] = { VPHY_2G, VPHY_5G, VPHY_5G2 };
 
 	if (!ifname)
 		return 0;
@@ -1898,7 +1848,7 @@ int get_radar_channel_list(const char *vphy, int radar_list[], int size)
 	if(vphy == NULL || radar_list == NULL || size < 0)
 		return -1;
 
-	if (strcmp(vphy, VPHY_5G))
+	if (!strcmp(vphy, VPHY_2G))
 		return 0;
 
 	ret = get_channel_list(vphy, ch_list, ARRAY_SIZE(ch_list));

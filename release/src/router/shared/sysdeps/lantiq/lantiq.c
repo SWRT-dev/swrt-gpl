@@ -122,65 +122,6 @@ void mac_allow_list_add(int band, unsigned char *mac)
 	}
 }
 
-// --- move begin ---
-#ifdef GPIO_IOCTL
-
-#include <sys/ioctl.h>
-
-static int _gpio_ioctl(int f, int gpioreg, unsigned int mask, unsigned int val)
-{
-	return 0;
-}
-
-static int _gpio_open()
-{
-	return 0;
-}
-
-int gpio_open(uint32_t mask)
-{
-	return 0;
-}
-
-void gpio_write(uint32_t bitvalue, int en)
-{
-
-}
-
-uint32_t _gpio_read(int f)
-{
-	return 0;
-}
-
-uint32_t gpio_read(void)
-{
-	return 0;
-}
-
-#else
-
-int gpio_open(uint32_t mask)
-{
-	return 0;
-}
-
-void gpio_write(uint32_t bitvalue, int en)
-{
-
-}
-
-uint32_t _gpio_read(int f)
-{
-	return 0;
-}
-
-uint32_t gpio_read(void)
-{
-	return 0;
-}
-
-#endif
-
 #ifdef RTCONFIG_AMAS 
 static bool g_swap = FALSE;
 #define htod32(i) (g_swap?bcmswap32(i):(uint32)(i))
@@ -1347,6 +1288,37 @@ Station 38:00:25:a9:58:b7 (on wifi1)
         connected time: 4341 seconds
  */
 
+static void getphymode(char *ifname, char *macaddr, char *phymode, size_t len)
+{
+	FILE *fp;
+	char path[64], line_buf[128],tmp[16];
+	snprintf(path, sizeof(path), "/proc/net/mtlk/%s/sta_list", ifname);
+	fp = fopen(path, "r");
+	if(fp){
+		while(fgets(line_buf, sizeof(line_buf), fp)){
+			if(strstr(line_buf, macaddr)){
+				if(strstr(line_buf, "11AX"))
+					strlcpy(phymode, "11AX", len);
+				else if(strstr(line_buf, "11AC"))
+					strlcpy(phymode, "11AC", len);
+				else if(strstr(line_buf, "11N"))
+					strlcpy(phymode, "11N", len);
+				else if(strstr(line_buf, "11G"))
+					strlcpy(phymode, "11G", len);
+				else if(strstr(line_buf, "11B"))
+					strlcpy(phymode, "11B", len);
+				else if(strstr(line_buf, "11A"))
+					strlcpy(phymode, "11A", len);
+				else
+					strlcpy(phymode, "N/A", len);
+				fclose(fp);
+				return;
+			}
+		}
+	}
+	strlcpy(phymode, "N/A", len);
+}
+
 static int __get_IW_sta_info_by_ifname(const char *ifname, char subunit_id, int (*handler)(const WLANCONFIG_LIST *rptr, void *arg), void *arg)
 {
 	FILE *fp;
@@ -1377,7 +1349,8 @@ next_sta:
 		convert_mac_string(r->addr);
 		if (subunit_id)
 			r->subunit_id = subunit_id;
-		strlcpy(r->mode, "11ax", sizeof(r->mode));	/* FIXME */
+		getphymode(ifname, r->addr, r->mode, sizeof(r->mode));
+		c = 0;
 		while (fgets(line_buf, sizeof(line_buf), fp)) {
 			if (!strncmp(line_buf, "Station", 7)) {
 
@@ -1388,35 +1361,27 @@ next_sta:
 				handler(r, arg);
 				goto next_sta;
 			} else if (strstr(line_buf, "tx bitrate:")) {
-				c = sscanf(line_buf, "%*[ \t]tx bitrate:%*[ \t]%6[0-9.]", rate);
-				if (c != 1) {
-					continue;
-				}
-				snprintf(r->txrate, sizeof(r->txrate), "%sM", rate);
+				sscanf(line_buf, "%*[^:]: %s MBit/s", r->txrate);
 			} else if (strstr(line_buf, "rx bitrate:")) {
-				c = sscanf(line_buf, "%*[ \t]rx bitrate:%*[ \t]%6[0-9.]", rate);
-				if (c != 1) {
-					continue;
-				}
-				snprintf(r->rxrate, sizeof(r->rxrate), "%sM", rate);
+				sscanf(line_buf, "%*[^:]: %s MBit/s", r->rxrate);
 			} else if (strstr(line_buf, "connected time:")) {
-				c = sscanf(line_buf, "%*[ \t]connected time:%*[ \t]%d seconds", &time_val);
-				if (c != 1) {
-					continue;
-				}
+				sscanf(line_buf, "%*[^:]: %d", &time_val);
 				hr = time_val / 3600;
 				time_val %= 3600;
 				min = time_val / 60;
 				sec = time_val % 60;
 				snprintf(r->conn_time, sizeof(r->conn_time), "%02d:%02d:%02d", hr, min, sec);
+				c = 1;
 			} else if (strstr(line_buf, "signal:")) {
-				c = sscanf(line_buf, "%*[ \t]signal:%*[ \t]%d dBm", &rssi);
+				sscanf(line_buf, "%*[^:]: %d", &rssi);
 				r->rssi = rssi;
 			} else {
 				//dbg("%s: skip [%s]\n", __func__, line_buf);
 			}
 		}
 	}
+	if(c == 1)//last one
+		handler(r, arg);
 	pclose(fp);
 
 	return 0;

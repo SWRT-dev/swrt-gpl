@@ -36,7 +36,6 @@
 #define MKNOD(name,mode,dev)		if (mknod(name,mode,dev))		perror("## mknod " name)
 
 extern void check_ubi_partition(void);
-extern void gen_config_sh(void);
 extern int init_gpio_again(void);
 
 static void __load_wifi_driver(int testmode)
@@ -208,7 +207,6 @@ void init_others(void)
 //	struct stat cal_stat;
 	pid_t pid;
 
-	gen_config_sh();
 	init_gpio_again();
 #if defined(BLUECAVE)
 	system("cp -R /lib/firmware/ar3k /tmp/");
@@ -262,6 +260,7 @@ void init_others(void)
 	system("ppacmd addlan -i eth0_4");
 #endif
 	system("ppacmd addlan -i br0");
+	doSystem("ethtool -K eth1 gro off\n");
 #if defined(RTCONFIG_AMAS)
 	if(!aimesh_re_mode())
 		eval("iptables", "-t", "mangle", "-A", "INPUT", "-p", "tcp", "-m", "state", "--state", "ESTABLISHED", "-j", "EXTMARK", "--set-mark", "0x80000000/0x80000000");

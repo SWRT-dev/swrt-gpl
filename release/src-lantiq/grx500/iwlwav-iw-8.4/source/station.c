@@ -1,6 +1,10 @@
 #include <net/if.h>
 #include <errno.h>
 #include <string.h>
+#if defined(SWRT_PATCH)
+#include <stdio.h>
+#include <ctype.h>
+#endif
 
 #include <netlink/genl/genl.h>
 #include <netlink/genl/family.h>
@@ -202,6 +206,98 @@ static char *get_chain_signal(struct nlattr *attr_list)
 	return buf;
 }
 
+#if defined(SWRT_PATCH)
+/*
+	FC:4E:A4:23:C0:04 : STA MAC
+	                0 : STA ID
+	           434681 : HW Number of packets transmitted
+	           135764 : HW Number of packets received
+	       1046234444 : HW Number of bytes sent successfully
+	        214127313 : HW Number of bytes received
+	         120100.0 : Last data transmit rate
+	          28670.0 : Last data receive rate
+	                0 : Air Time Used by RX/TX to/from STA [%]
+	                0 : Efficiency of used air time [bytes/sec]
+	             -128 : Short-term RSSI average per antenna [dBm] [0]
+	              -47 : Short-term RSSI average per antenna [dBm] [1]
+	             -128 : Short-term RSSI average per antenna [dBm] [2]
+	              -54 : Short-term RSSI average per antenna [dBm] [3]
+	                0 : Signal to Noise ratio per antenna [dB] [0]
+	               16 : Signal to Noise ratio per antenna [dB] [1]
+	                0 : Signal to Noise ratio per antenna [dB] [2]
+	               19 : Signal to Noise ratio per antenna [dB] [3]
+*/
+static void swrt_get_rate(char *ifname, char *macaddr, char *buf, size_t buflen, int type)
+{
+	FILE *fp;
+	int i, rate;
+	char path[64], line[128], mac[32] = {0}, *rate_str;
+	snprintf(path, sizeof(path), "/proc/net/mtlk/%s/PeerFlowStatus", ifname);
+	fp = fopen(path, "r");
+	if(fp){
+		if(type == NL80211_STA_INFO_TX_BITRATE)
+			rate_str = "Last data transmit rate";
+		else
+			rate_str = "Last data receive rate";
+
+		for(i = 0; macaddr[i] != '\0'; i++)
+			mac[i] = toupper((unsigned char)macaddr[i]);
+
+		while(fgets(line, sizeof(line), fp)){
+			if(strstr(line, mac)){
+				while(fgets(line, sizeof(line), fp)){
+					if(strstr(line, rate_str)){
+						sscanf(line, "%d.%*d :", &rate);
+						snprintf(buf, buflen, "%d MBit/s", rate / 100);
+						fclose(fp);
+						return;
+					}
+				}
+			}
+		}
+		fclose(fp);
+	}
+	strlcpy(buf, "(unknown)", buflen);
+}
+
+static void swrt_get_signal(char *ifname, char *macaddr, int8_t *signal, int type)
+{
+	FILE *fp;
+	int i, rssi, rssi2;
+	char path[64], line[128], mac[32] = {0}, *antenna_str;
+	snprintf(path, sizeof(path), "/proc/net/mtlk/%s/PeerFlowStatus", ifname);
+	fp = fopen(path, "r");
+	if(fp){
+		antenna_str = "Short-term RSSI average per antenna";
+		for(i = 0; macaddr[i] != '\0'; i++)
+			mac[i] = toupper((unsigned char)macaddr[i]);
+
+		while(fgets(line, sizeof(line), fp)){
+			if(strstr(line, mac)){
+				while(fgets(line, sizeof(line), fp)){
+					if(strstr(line, antenna_str)){
+						if(!strcmp(ifname, "wifi1"))// 2.4:0+2, 5:1+3
+							fgets(line, sizeof(line), fp);
+						sscanf(line, "%d :", &rssi);
+						if(type == NL80211_STA_INFO_CHAIN_SIGNAL_AVG){
+							fgets(line, sizeof(line), fp);//0->1 or 1->2
+							fgets(line, sizeof(line), fp);//1->2 or 2->3
+							sscanf(line, "%d :", &rssi2);
+							*signal = (rssi + rssi2) / 2;
+						}else
+							*signal = rssi;
+						fclose(fp);
+						return;
+					}
+				}
+			}
+		}
+		fclose(fp);
+	}
+	*signal = -128;
+}
+#endif
+
 static int print_sta_handler(struct nl_msg *msg, void *arg)
 {
 	struct nlattr *tb[NL80211_ATTR_MAX + 1];
@@ -302,7 +398,15 @@ static int print_sta_handler(struct nl_msg *msg, void *arg)
 	if (sinfo[NL80211_STA_INFO_RX_DROP_MISC])
 		printf("\n\trx drop misc:\t%llu",
 		       (unsigned long long)nla_get_u64(sinfo[NL80211_STA_INFO_RX_DROP_MISC]));
-
+#if defined(SWRT_PATCH)
+	{
+		int8_t signal = 0;
+		swrt_get_signal(dev, mac_addr, &signal, NL80211_STA_INFO_SIGNAL);
+		printf("\n\tsignal:  \t%d dBm", signal);
+		swrt_get_signal(dev, mac_addr, &signal, NL80211_STA_INFO_CHAIN_SIGNAL_AVG);
+		printf("\n\tsignal avg:  \t%d dBm", signal);
+	}
+#else
 	chain = get_chain_signal(sinfo[NL80211_STA_INFO_CHAIN_SIGNAL]);
 	if (sinfo[NL80211_STA_INFO_SIGNAL])
 		printf("\n\tsignal:  \t%d %sdBm",
@@ -314,6 +418,7 @@ static int print_sta_handler(struct nl_msg *msg, void *arg)
 		printf("\n\tsignal avg:\t%d %sdBm",
 			(int8_t)nla_get_u8(sinfo[NL80211_STA_INFO_SIGNAL_AVG]),
 			chain);
+#endif
 
 	if (sinfo[NL80211_STA_INFO_BEACON_SIGNAL_AVG])
 		printf("\n\tbeacon signal avg:\t%d dBm",
@@ -324,17 +429,28 @@ static int print_sta_handler(struct nl_msg *msg, void *arg)
 
 	if (sinfo[NL80211_STA_INFO_TX_BITRATE]) {
 		char buf[100];
-
+#if defined(SWRT_PATCH)
+		swrt_get_rate(dev, mac_addr, buf, sizeof(buf), NL80211_STA_INFO_TX_BITRATE);
+#else
 		parse_bitrate(sinfo[NL80211_STA_INFO_TX_BITRATE], buf, sizeof(buf));
+#endif
 		printf("\n\ttx bitrate:\t%s", buf);
 	}
 
+#if defined(SWRT_PATCH)
+	{
+		char buf[100];
+		swrt_get_rate(dev, mac_addr, buf, sizeof(buf), NL80211_STA_INFO_RX_BITRATE);
+		printf("\n\trx bitrate:\t%s", buf);
+	}
+#else
 	if (sinfo[NL80211_STA_INFO_RX_BITRATE]) {
 		char buf[100];
 
 		parse_bitrate(sinfo[NL80211_STA_INFO_RX_BITRATE], buf, sizeof(buf));
 		printf("\n\trx bitrate:\t%s", buf);
 	}
+#endif
 
 	if (sinfo[NL80211_STA_INFO_RX_DURATION])
 		printf("\n\trx duration:\t%lld us",

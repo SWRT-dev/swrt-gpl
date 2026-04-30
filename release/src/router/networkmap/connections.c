@@ -93,7 +93,7 @@ void conn_debug_info()
 	STA_INFO_TABLE *tmp;
 	tmp = g_sta_info_tab;
 	while(tmp != NULL){
-		if(f_exists("/tmp/conn_debug"))
+		if(g_show_sta_info)
 			_dprintf("%02X%02X%02X%02X%02X%02X\n", tmp->mac_addr[0], tmp->mac_addr[1], tmp->mac_addr[2], tmp->mac_addr[3], tmp->mac_addr[4], tmp->mac_addr[5]);
 		tmp = tmp->next;
 	}
@@ -148,7 +148,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					p_client_tab->rssi[i] = tmp->rssi;
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
 					p_client_tab->online[i] = 1;
-					if(g_show_sta_info && f_exists("/tmp/conn_debug")){
+					if(g_show_sta_info){
 						_dprintf("###%d client wl: %d, rx %s tx %s rssi %d conn_time %s \n", i, p_client_tab->wireless[i], 
 							p_client_tab->rxrate[i], p_client_tab->txrate[i], p_client_tab->rssi[i], p_client_tab->conn_time[i]);
 					}
@@ -166,7 +166,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					p_client_tab->device_flag[i] &= 0xf7;
 					continue;
 				}
-				if(f_exists("/tmp/conn_debug"))
+				if(g_show_sta_info)
 					_dprintf(" ###%d wireless client mac check: %02x%02x%02x%02x%02x%02x \n", i, p_client_tab->mac_addr[i][0], p_client_tab->mac_addr[i][1],
 						p_client_tab->mac_addr[i][2], p_client_tab->mac_addr[i][3], p_client_tab->mac_addr[i][4], p_client_tab->mac_addr[i][5]);
 				if(g_sta_info_tab){
@@ -174,7 +174,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					while(memcmp(p_client_tab->mac_addr[i], tmp->mac_addr, sizeof(p_client_tab->mac_addr[0]))){
 						tmp = tmp->next;
 						if(tmp == NULL){
-							if(g_show_sta_info && f_exists("/tmp/conn_debug"))
+							if(g_show_sta_info)
 								_dprintf("### %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
 							p_client_tab->device_flag[i] &= 0xf7;
 							break;
@@ -186,12 +186,12 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					strlcpy(p_client_tab->txrate[i], tmp->txrate, sizeof(p_client_tab->txrate[0]));
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
-					if(g_show_sta_info && f_exists("/tmp/conn_debug"))
+					if(g_show_sta_info)
 						_dprintf("### check: %d client wireless: %d, type = %d\n", i, p_client_tab->wireless[i], p_client_tab->type[i]);
 					p_client_tab->device_flag[i] |= (1<<FLAG_EXIST);
 					p_client_tab->online[i] = 1;
 				}else{
-					if(g_show_sta_info && f_exists("/tmp/conn_debug"))
+					if(g_show_sta_info)
 						_dprintf("### check: %d client leave! wireless: %d\n", i, p_client_tab->wireless[i]);		
 					p_client_tab->device_flag[i] &= 0xf7;
 				}

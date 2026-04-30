@@ -87,7 +87,7 @@ void MTK_stainfo(int unit)
 					if(rx_ratedata)
 						snprintf(sta_info_tab->rxrate, sizeof(sta_info_tab->rxrate), "%5uM", mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 1));
 				}
-				if(g_show_sta_info && f_exists("/tmp/conn_debug"))
+				if(g_show_sta_info)
 					printf("%s[%3d,MTK] %02X%02X%02X%02X%02X%02X, rx: %s tx: %s, rssi: %d\n", "[connection log]", i, sta_info_tab->mac_addr[0], sta_info_tab->mac_addr[1],
 						sta_info_tab->mac_addr[2], sta_info_tab->mac_addr[3], sta_info_tab->mac_addr[4], sta_info_tab->mac_addr[5], 
 						sta_info_tab->rxrate, sta_info_tab->txrate, sta_info_tab->rssi);

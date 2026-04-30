@@ -24,11 +24,12 @@ static int handle_QCA_stainfo(const WLANCONFIG_LIST *src, void *arg)
 		ether_atoe(buffer, macaddr);
 		memcpy(sta_info_tab->mac_addr, macaddr, sizeof(sta_info_tab->mac_addr));
 		sta_info_tab->wireless = priv->unit + 1;
-		_dprintf("unit=%d,ifname=%s\n",priv->unit, priv->wlif_name);
-		if(g_show_sta_info && f_exists("/tmp/conn_debug"))
+		if(g_show_sta_info){
+			_dprintf("unit=%d,ifname=%s\n",priv->unit, priv->wlif_name);
 			_dprintf("%s[QCA] %02X%02X%02X%02X%02X%02X %s wl:%d %d, rx %s tx %s rssi %d conn_time %s\n", "[connection log]", sta_info_tab->mac_addr[0],
 				sta_info_tab->mac_addr[1], sta_info_tab->mac_addr[2], sta_info_tab->mac_addr[3], sta_info_tab->mac_addr[4], sta_info_tab->mac_addr[5],
 				priv->wlif_name, priv->unit, priv->subunit, sta_info_tab->txrate, sta_info_tab->rxrate, sta_info_tab->rssi, sta_info_tab->conn_time);
+		}
 		sta_info_tab->next = NULL;
 		if(g_sta_info_tab == NULL){
 			g_sta_info_tab = sta_info_tab;
@@ -47,7 +48,7 @@ int QCA_stainfo(char *ifname)
 //only for ath0 & ath1
 	int unit;
 	struct get_stainfo_priv_s priv = { .unit = unit, .subunit = 0, .wlif_name = ifname };
-	if(g_show_sta_info && f_exists("/tmp/conn_debug"))
+	if(g_show_sta_info)
 		_dprintf("%s[QCA] scan interface %s\n", "[connection log]", ifname);
 	for(unit = 0; unit < MAX_NR_WL_IF; unit++){
 		if(!strcmp(ifname, get_wififname(unit))){

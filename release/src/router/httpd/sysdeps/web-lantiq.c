@@ -222,15 +222,6 @@ static char *mode_mask_to_str(unsigned int mask)
 	return result;
 }
 
-
-/* protect bit rate error code */
-int isnumber(const char*s, float *fRate) {
-	char* e = NULL;
-	*fRate = strtof(s, &e);
-	*fRate *= 10;
-	return e != NULL && *e == (char)0;
-}
-
 /**
  * Get phy mode via nl80211 driver.
  * @ifname:
@@ -509,24 +500,6 @@ ej_wl_control_channel(int eid, webs_t wp, int argc, char_t **argv)
 	return ret;
 }
 
-typedef struct _LANTIQ_WLANCONFIG_LIST {
-	int idx;
-	char addr[18];
-	char txrate[7];
-	char rxrate[10];
-	unsigned int rssi;
-	char state_maxrate[20];
-	char conn_time[12];
-	char mode[31];
-	int subunit;
-} LANTIQ_WLANCONFIG_LIST;
-
-#define MAX_STA_NUM 256
-typedef struct _LANTIQ_WIFI_STA_TABLE {
-	int Num;
-	LANTIQ_WLANCONFIG_LIST Entry[ MAX_STA_NUM ];
-} LANTIQ_WIFI_STA_TABLE;
-
 void
 convert_mac_string(char *mac)
 {
@@ -548,19 +521,14 @@ convert_mac_string(char *mac)
 	strlcpy(mac, mac_str, safe_strlen(mac_str) + 1);
 }
 
-static int getSTAInfo(int unit, LANTIQ_WIFI_STA_TABLE *sta_info)
+static int getSTAInfo(int unit, WIFI_STA_TABLE *sta_info)
 {
-	#define STA_INFO_PATH "/tmp/iw_wlanX_list"
-	FILE *fp;
-	int ret = 0, subunit, time_val, hr, min, sec, idx = 0;
+	int ret = 0, subunit;
 	char *unit_name;
 	char *p, *ifname;
 	char *wl_ifnames;
-	char line_buf[300];
-	char rssi_char[5];
-	float tTx, tRx;
 
-	memset(sta_info, 0, sizeof(*sta_info));
+	memset(sta_info, 0, sizeof(WIFI_STA_TABLE));
 	unit_name = strdup(get_wififname(unit));
 	if (!unit_name)
 		return ret;
@@ -579,81 +547,8 @@ static int getSTAInfo(int unit, LANTIQ_WIFI_STA_TABLE *sta_info)
 		subunit = get_wlsubnet(unit, ifname);
 		if (subunit < 0)
 			subunit = 0;
+		ret = get_lantiq_sta_info_by_ifname(ifname, subunit, sta_info);
 
-		doSystem("iw dev %s station dump > %s", ifname, STA_INFO_PATH);
-		fp = fopen(STA_INFO_PATH, "r");
-		if (fp) {
-/* iw dev wlan0 station dump
-	Station b0:48:1a:ce:f2:13 (on wlan0)
-        inactive time:  0 ms
-        rx bytes:       400217
-        rx packets:     4485
-        tx bytes:       4649216
-        tx packets:     4291
-        tx retries:     0
-        tx failed:      0
-        signal:         -40 dBm
-        signal avg:     -36 dBm
-        tx bitrate:     6.0 MBit/s
-        rx duration:    0 us
-        authorized:     yes
-        authenticated:  yes
-        associated:     yes
-        preamble:       long
-        WMM/WME:        yes
-        MFP:            no
-        TDLS peer:      no
-        DTIM period:    3
-        beacon interval:100
-        short slot time:yes
-        connected time: 485 seconds
-*/
-			while ( fgets(line_buf, sizeof(line_buf), fp) ) {
-				if(strstr(line_buf, "Station")) {
-					LANTIQ_WLANCONFIG_LIST *r = &sta_info->Entry[sta_info->Num++];
-					idx++;
-					r->idx = idx;
-					sscanf(line_buf, "%*s%s", r->addr);
-					r->subunit = subunit;
-					while ( fgets(line_buf, sizeof(line_buf), fp) ) {
-						if(strstr(line_buf, "signal")) {
-							sscanf(line_buf, "%*s%d", &r->rssi);
-						}
-						else if(strstr(line_buf, "tx bitrate")) {
-							sscanf(line_buf, "%*s%*s%s", r->txrate);
-							if(!isnumber(r->txrate, &tTx))
-								memset(r->txrate, 0x00, sizeof(r->txrate));
-							else
-								snprintf(r->txrate, sizeof(r->txrate), "%0.f", tTx);
-						}
-						else if(strstr(line_buf, "rx bitrate")) {
-							sscanf(line_buf, "%*s%*s%s", r->rxrate);
-							if(!isnumber(r->rxrate, &tRx))
-								memset(r->rxrate, 0x00, sizeof(r->rxrate));
-							else
-								snprintf(r->rxrate, sizeof(r->rxrate), "%0.f", tRx);
-							break;
-						}
-						else if(strstr(line_buf, "connected time")) {
-							sscanf(line_buf, "%*[^:]: %d", &time_val);
-							hr = time_val / 3600;
-							time_val %= 3600;
-							min = time_val / 60;
-							sec = time_val % 60;
-							snprintf(r->conn_time, sizeof(r->conn_time), "%02d:%02d:%02d", hr, min, sec);
-						}
-					}
-					convert_mac_string(r->addr);
-#if 0
-					dbg("[%s][%s][%s][%d]\n",
-						r->addr, r->txrate, r->rxrate, r->rssi);
-#endif
-				}
-			}
-
-			fclose(fp);
-			unlink(STA_INFO_PATH);
-		}
 	}
 	free(wl_ifnames);
 	free(unit_name);
@@ -783,7 +678,7 @@ static int
 wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
 	int ret = 0, wl_mode_x, i;
-	LANTIQ_WIFI_STA_TABLE *sta_info;
+	WIFI_STA_TABLE *sta_info;
 	char tmp[128], prefix[] = "wlXXXXXXXXXX_", *ifname, *op_mode;
 	char subunit_str[8];
 
@@ -857,18 +752,18 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		ret += show_wliface_info(wp, unit, ifname, op_mode);
 		ret += websWrite(wp, "\nStations List\n");
 		ret += websWrite(wp, "----------------------------------------------------------------\n");
-		ret += websWrite(wp, "%-3s %-17s %-4s %-6s %-6s %-12s\n",
-			"idx", "MAC", "RSSI", "TXRATE", "RXRATE", "Connect Time");
+		ret += websWrite(wp, "%-3s %-17s %-8s %-4s %-6s %-6s %-12s\n",
+			"idx", "MAC", "PhyMode", "RSSI", "TXRATE", "RXRATE", "Connect Time");
 
 		if ((sta_info = malloc(sizeof(*sta_info))) != NULL) {
 			getSTAInfo(unit, sta_info);
 			for(i = 0; i < sta_info->Num; i++) {
 				*subunit_str = '\0';
-				if (sta_info->Entry[i].idx)
-					snprintf(subunit_str, sizeof(subunit_str), "%d", sta_info->Entry[i].subunit);
-				ret += websWrite(wp, "%-3s %-17s %d %-6s %-6s %-12s\n",
+				snprintf(subunit_str, sizeof(subunit_str), "%d", i);
+				ret += websWrite(wp, "%-3s %-17s %-8s %4d %-6s %-6s %-12s\n",
 					subunit_str,
 					sta_info->Entry[i].addr,
+					sta_info->Entry[i].mode,
 					sta_info->Entry[i].rssi,
 					sta_info->Entry[i].txrate,
 					sta_info->Entry[i].rxrate,
@@ -886,7 +781,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 
 static int ej_wl_sta_list(int unit, webs_t wp)
 {
-	LANTIQ_WIFI_STA_TABLE *sta_info;
+	WIFI_STA_TABLE *sta_info;
 	char *value;
 	int firstRow = 1;
 	int i;
@@ -980,8 +875,8 @@ int ej_wl_sta_list_5g_2(int eid, webs_t wp, int argc, char_t **argv)
  */
 static int wl_stainfo_list(int unit, webs_t wp)
 {
-	LANTIQ_WIFI_STA_TABLE *sta_info;
-	LANTIQ_WLANCONFIG_LIST *r;
+	WIFI_STA_TABLE *sta_info;
+	WLANCONFIG_LIST *r;
 	char idx_str[8];
 	int i, s, firstRow = 1;
 
@@ -1006,7 +901,7 @@ static int wl_stainfo_list(int unit, webs_t wp)
 		websWrite(wp, ", \"%s\"", r->txrate);
 		websWrite(wp, ", \"%s\"", r->rxrate);
 		websWrite(wp, ", \"%s\"", r->conn_time);
-		s = r->subunit;
+		s = r->subunit_id;
 		if (s < 0 || s > 7)
 			s = 0;
 		if (!s)
@@ -1050,8 +945,8 @@ int ej_get_wlstainfo_list(int eid, webs_t wp, int argc, char_t **argv)
 	websWrite(wp, "{");
 
 	foreach (word, nvram_safe_get("wl_ifnames"), next) {
-		LANTIQ_WIFI_STA_TABLE *sta_info;
-		LANTIQ_WLANCONFIG_LIST *r;
+		WIFI_STA_TABLE *sta_info;
+		WLANCONFIG_LIST *r;
 		int i, j, s;
 		char alias[16];
 
@@ -1345,7 +1240,7 @@ ej_wps_info_6g_2(int eid, webs_t wp, int argc, char_t **argv)
 
 int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv)
 {
-	LANTIQ_WLANCONFIG_LIST *result;
+	WLANCONFIG_LIST *result;
 	#define AUTH_INFO_PATH "/tmp/auth_athX_list"
 	FILE *fp;
 	int ret = 0;
@@ -1354,8 +1249,8 @@ int ej_wl_auth_list(int eid, webs_t wp, int argc, char_t **argv)
 	char line_buf[300]; // max 14x
 	char *value;
 	int firstRow;
-	result = (LANTIQ_WLANCONFIG_LIST *)malloc(sizeof(LANTIQ_WLANCONFIG_LIST));
-	memset(result, 0, sizeof(LANTIQ_WLANCONFIG_LIST));
+	result = (WLANCONFIG_LIST *)malloc(sizeof(WLANCONFIG_LIST));
+	memset(result, 0, sizeof(WLANCONFIG_LIST));
 
 	wl_ifnames = strdup(nvram_safe_get("wl_ifnames"));
 	if (!wl_ifnames) 

@@ -5829,6 +5829,26 @@ mtlk_df_on_rcvry_restore (mtlk_df_t *df)
  * Transactions with Core
  **************************************************************/
 
+#if defined(SWRT_PATCH)
+static char *mtlk_get_sta_phymode(uint8 phymode)
+{
+	int i;
+	static char *operating_standard[]={"11A","11B","11G","11N","11AC","11AX"};
+	for(i = ARRAY_SIZE(operating_standard)-1; i >= 0; i--){
+		if(MTLK_BIT_GET(phymode, i)){
+			/* sta_net_modes - bit 0 - 802.11a  */
+			/* sta_net_modes - bit 1 - 802.11b  */
+			/* sta_net_modes - bit 2 - 802.11g  */
+			/* sta_net_modes - bit 3 - 802.11n  */
+			/* sta_net_modes - bit 4 - 802.11ac */
+			/* sta_net_modes - bit 5 - 802.11ax */
+			return operating_standard[i];
+		}
+	}
+	return "unknown";
+}
+#endif
+
 static int mtlk_df_ui_sta_list(mtlk_seq_entry_t *s, void *data)
 {
   int res = MTLK_ERR_NOT_SUPPORTED;
@@ -5847,14 +5867,21 @@ static int mtlk_df_ui_sta_list(mtlk_seq_entry_t *s, void *data)
   if (MTLK_ERR_OK != res) {
     goto err_ret;
   }
-
+#if defined(SWRT_PATCH)
+  mtlk_aux_seq_printf(s, "\n"
+      "Driver Statistics\n"
+      "\n"
+      "------------------+-----+-----+-----------------------------\n"
+      "MAC               | AID | VAP | AUTH | 4 ADDR | NSS | MODE |\n"
+      "------------------+-----+-----+------|--------|-------------\n");
+#else
   mtlk_aux_seq_printf(s, "\n"
       "Driver Statistics\n"
       "\n"
       "------------------+-----+-----+----------------------\n"
       "MAC               | AID | VAP | AUTH | 4 ADDR | NSS |\n"
       "------------------+-----+-----+------|--------|------\n");
-
+#endif
 
   /* enumerate sta entries */
   while(NULL != (stadb_stat = mtlk_clpb_enum_get_next(clpb, &size))) {
@@ -5864,7 +5891,16 @@ static int mtlk_df_ui_sta_list(mtlk_seq_entry_t *s, void *data)
     }
 
     if (STAT_ID_STADB == stadb_stat->type) {
-
+#if defined(SWRT_PATCH)
+      mtlk_aux_seq_printf(s, MAC_PRINTF_FMT " | %-3u | %-3u | %-3u  | %-3u    | %-3u | %-4s |\n",
+                          MAC_PRINTF_ARG(stadb_stat->u.general_stat.addr.au8Addr),
+                          stadb_stat->u.general_stat.aid,
+                          stadb_stat->u.general_stat.vap,
+                          stadb_stat->u.general_stat.is_sta_auth,
+                          stadb_stat->u.general_stat.is_four_addr,
+                          stadb_stat->u.general_stat.nss,
+                          mtlk_get_sta_phymode(stadb_stat->u.general_stat.network_mode));
+#else
       mtlk_aux_seq_printf(s, MAC_PRINTF_FMT " | %-3u | %-3u | %-3u  | %-3u    | %-3u |\n",
                           MAC_PRINTF_ARG(stadb_stat->u.general_stat.addr.au8Addr),
                           stadb_stat->u.general_stat.aid,
@@ -5872,6 +5908,7 @@ static int mtlk_df_ui_sta_list(mtlk_seq_entry_t *s, void *data)
                           stadb_stat->u.general_stat.is_sta_auth,
                           stadb_stat->u.general_stat.is_four_addr,
                           stadb_stat->u.general_stat.nss);
+#endif
     }
     else if (STAT_ID_HSTDB == stadb_stat->type) {
       if (mtlk_df_is_ap(df)) {

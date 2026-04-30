@@ -133,6 +133,7 @@ struct bandx_defval_s bandx_defval[] = {
 struct bandx_defval_s *wldefval_tbl[] = { bandx_defval, bandx_defval, NULL };
 #endif
 
+#if defined(RAX40)
 struct ntgr_tcode_s {
 	int id;
 	char *ntgr_tcode;
@@ -154,6 +155,25 @@ struct ntgr_tcode_s ntgr_tcode_tbl[] = {
 	{0x000c, "US", "US"},
 	{0xffff, "NA", "CN"},
 };
+
+void convert_ntgr_tcode(int id, char *ntgr_tcode, char *swrt_tcode, size_t len)
+{
+	struct ntgr_tcode_s *pt;
+
+	memset(swrt_tcode, 0, len);
+	for(pt = &ntgr_tcode_tbl[0]; pt->id < 0xffff; pt++){
+		if(ntgr_tcode && !strcmp(pt->ntgr_tcode, ntgr_tcode)){
+			strlcpy(swrt_tcode, pt->swrt_tcode, len);
+			break;
+		}else if(id && pt->id == id){
+			strlcpy(swrt_tcode, pt->swrt_tcode, len);
+			break;
+		}
+	}
+	if(*swrt_tcode == '\0')
+		strlcpy(swrt_tcode, "CN", len);
+}
+#endif
 
 char *get_vap_bridge()
 {
@@ -3653,11 +3673,6 @@ int get_usb_mode()
 		pclose(fp);
 	}
 	return ret;
-}
-
-void gen_config_sh(void)
-{
-//	system("cp -f /rom/opt/lantiq/etc/rc.d/config.sh /etc/; cd /etc/rc.d; ln -s ../config.sh config.sh");
 }
 
 void usb_pwr_ctl(int onoff)
