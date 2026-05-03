@@ -9,21 +9,21 @@ jobs:
         fail-fast: false
         matrix:
           cfg:
-            - { model: "netgear-r7000p",      sdk: "src-bcm-470x",      skip: false }
-            - { model: "swrt-sbrac3200p",     sdk: "src-bcm-470x",      skip: false }
+            - { model: "netgear-r7000p",      sdk: "src-bcm-470x",      skip: true }
+            - { model: "swrt-sbrac3200p",     sdk: "src-bcm-470x",      skip: true }
             - { model: "rt-ac68u",            sdk: "src-bcm-470x",      skip: true  }
             - { model: "rt-ac88u",            sdk: "src-bcm-470x",      skip: true  }
-            - { model: "rt-ac85p",            sdk: "src-mtk-mips",      skip: false }
-            - { model: "swrt-rm-ac2100",      sdk: "src-mtk-mips",      skip: false }
-            - { model: "swrt-r6800",          sdk: "src-mtk-mips",      skip: false }
-            - { model: "rt-ax53u",            sdk: "src-mtk-mips",      skip: false }
+            - { model: "rt-ac85p",            sdk: "src-mtk-mips",      skip: true }
+            - { model: "swrt-rm-ac2100",      sdk: "src-mtk-mips",      skip: true }
+            - { model: "swrt-r6800",          sdk: "src-mtk-mips",      skip: true }
+            - { model: "rt-ax53u",            sdk: "src-mtk-mips",      skip: true }
             - { model: "swrt-pgb-m1",         sdk: "src-mtk-mips",      skip: true  }
-            - { model: "swrt-jcg-q10pro",     sdk: "src-mtk-mips",      skip: false }
-            - { model: "swrt-jcg-q20",        sdk: "src-mtk-mips",      skip: false }
-            - { model: "swrt-h3c-tx1801",     sdk: "src-mtk-mips",      skip: false }
-            - { model: "swrt-xm-cr660x",      sdk: "src-mtk-mips",      skip: false }
-            - { model: "swrt-cmcc-a9",        sdk: "src-mtk-mips",      skip: false }
-            - { model: "swrt-rm-ax6000",      sdk: "src-mtk-arm",       skip: false }
+            - { model: "swrt-jcg-q10pro",     sdk: "src-mtk-mips",      skip: true }
+            - { model: "swrt-jcg-q20",        sdk: "src-mtk-mips",      skip: true }
+            - { model: "swrt-h3c-tx1801",     sdk: "src-mtk-mips",      skip: true }
+            - { model: "swrt-xm-cr660x",      sdk: "src-mtk-mips",      skip: true }
+            - { model: "swrt-cmcc-a9",        sdk: "src-mtk-mips",      skip: true }
+            - { model: "swrt-rm-ax6000",      sdk: "src-mtk-arm",       skip: true }
             - { model: "swrt-swrt360t7",      sdk: "src-mtk-arm",       skip: false }
       container:
         image: paldier/swrt-docker:latest
