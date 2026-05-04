@@ -1,0 +1,20 @@
+Description: Require CMake 3.24 in Debian
+ Bump the minimum required CMake version to the one that puts
+ the generated files into a per-build directory as expected by
+ our debian/*.install files.
+Bug-Debian: https://bugs.debian.org/1031384
+Forwarded: not-needed
+Author: Peter Pentchev <roam@ringlet.net>
+Last-Update: 2024-06-13
+
+--- a/build/cmake/CMakeLists.txt
++++ b/build/cmake/CMakeLists.txt
+@@ -7,7 +7,7 @@
+ # in the COPYING file in the root directory of this source tree).
+ # ################################################################
+ 
+-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
++cmake_minimum_required(VERSION 3.24.0 FATAL_ERROR)
+ 
+ # As of 2018-12-26 ZSTD has been validated to build with cmake version 3.13.2 new policies.
+ # Set and use the newest cmake policies that are validated to work

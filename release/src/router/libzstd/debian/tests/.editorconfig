@@ -1,0 +1,36 @@
+# https://editorconfig.org/
+
+root = true
+
+[*]
+end_of_line = lf
+insert_final_newline = true
+charset = utf-8
+
+[*.md]
+indent_style = space
+indent_size = 2
+
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.pyi]
+indent_style = space
+indent_size = 4
+
+[*.sh]
+indent_style = tab
+tab_size = 8
+
+[*.toml]
+indent_style = space
+indent_size = 2
+
+[setup.cfg]
+indent_style = space
+indent_size = 4
+
+[tox.ini]
+indent_style = space
+indent_size = 2

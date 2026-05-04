@@ -1,0 +1,155 @@
+# This file was written by Steve Fink <sphink@gmail.com>.
+# Based on main.c by Yao Qi <qiyao@cn.ibm.com>.
+
+set testfile "parameters"
+set srcfile ${testfile}.c
+set binfile ${testfile}
+set libfile "parameters-lib"
+set libsrc $srcdir/$subdir/$libfile.c
+set lib_sl $objdir/$subdir/lib$testfile.so
+
+
+if [get_compiler_info $binfile] {
+  return -1
+}
+
+verbose "compiling source file now....."
+if { [ltrace_compile_shlib $libsrc $lib_sl debug ] != "" 
+  || [ltrace_compile $srcdir/$subdir/$srcfile $objdir/$subdir/$binfile executable [list debug shlib=$lib_sl] ] != ""} {
+  send_user "Testcase compile failed, so all tests in this file will automatically fail.\n"
+}
+
+# set options for ltrace.
+ltrace_options "-l" "libparameters.so" "-F" "$srcdir/$subdir/parameters.conf"
+
+# Run PUT for ltrace.
+set exec_output [ltrace_runtest $objdir/$subdir $objdir/$subdir/$binfile]
+
+# Check the output of this program.
+verbose "ltrace runtest output: $exec_output\n"
+if [regexp {ELF from incompatible architecture} $exec_output] {
+	fail "32-bit ltrace can not perform on 64-bit PUTs and rebuild ltrace in 64 bit mode!"
+	return 
+} elseif [ regexp {Couldn't get .hash data} $exec_output ] {
+	fail "Couldn't get .hash data!"
+	return
+}
+
+# Verify the output
+set pattern "func_intptr(17)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_intptr_ret(42)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_strlen(\\\"Hello world\\\") *= *11"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_arg0(\\\"Hello another world!\\\") *= *20"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_strfixed(\\\"Hell\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_ppp(80)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_stringp(\\\"Dude\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_string(\\\"zero\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_enum(BLUE)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_short(-8, -9)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_ushort(33, 34)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_float(3.40*, -3.40*).*= 3.40*"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_double(3.40*, -3.40*).*= -3.40*"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_typedef(BLUE)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_arrayi(. 10, 11, 12, 13\\.\\.\\. ., 8)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_arrayi(. 10, 11 ., 2)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_arrayf(. 10.10*, 11.10*, 12.10*, 13.10*\\.\\.\\. ., 8)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_arrayf(. 10.10*, 11.10* ., 2)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "exited (status 0)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_struct({ 89, 2, 3, . { 1, 10 }, { 3, 30 } ., . { 4, 40 }, { 5, 50 }, { 6, 60 } ., \\\"123\\\" })"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_call( <unfinished ...>"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_work(\\\"x\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "func_struct_2(17, { \\\"ABCDE\\\\\\\\0\\\", 0.250* }, 0.50*).*= { 0.250*, 'B', 'C' }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+set pattern "<... func_call resumed> \\\"x\\\", \\\"y\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_large({ 1, 2, 3, 4 }, { 5, 6, 7, 8 }).*= { 6, 8, 10, 12 }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_large2({ '0', '1', 3, 4 }, { '2', '3', 7, 8 }).*= { 'b', 'd', 10, 12 }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_large3({ 3, 4, '0', '1' }, { 7, 8, '2', '3' }).*= { 10, 12, 'b', 'd' }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_many_args(1, 2, 3, 4.00*, '5', 6, 7.00*, '8', 9, 10.00*, 11, 12.00*, 'A', 14, 15, 16, 'B', 18.00*, 19.00*, 20.00*, 21, 22.00*, 23.00*, 24.00*, 25.00*)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_printf(\\\"sotnuh %d %ld %g %c.n\\\", 5, 6, 1.500*, 'X')"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_printf(\\\"sotnuh1 %d %ld %hd.n\\\", 5, 6, 7)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_printf(\\\"sotnuh2 %s %10s %10s.n\\\", \\\"a string\\\", \\\"a trimmed \\\", \\\"short\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_printf(\\\"sotnuh3 %.s.n\\\", 4, \\\"a tr\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_printf(\\\"many_args%d %d %ld %g %c %d %g .*, 1, 2, 3, 4.00*, '5', 6, 7.00*, '8', 9, 10.00*, 11, 12.00*, 'A', 14, 15, 16, 'B', 18.00*, 19.00*, 20.00*, 21, 22.00*, 23.00*, 24.00*, 25.00*)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_sprintf(nil, \\\"test %d %d %d %d.n\\\", 1, 2, 3, 4)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_lens(026, 027, 0x18, 0x19)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_bool(1, true).*= false"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_bool(2, false).*= true"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_hide(2, 5, 7)"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_hide_struct({ 2, 5, 7 })"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_short_enums(. A, B, A, A .).*= . A, B, A, A ."
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_negative_enum(A, A, A, A, A, A).*= A"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_charp_string(\\\"null-terminated string\\\")"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_empty({ *}).*= { *}"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_size1({ '5' }).*= { '5' }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_size2({ 5 }).*= { 5 }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_size4({ 5 }).*= { 5 }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern "func_struct_size8({ 5, 6 }).*= { 5, 6 }"
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1

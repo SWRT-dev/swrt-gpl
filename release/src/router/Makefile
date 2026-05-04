@@ -923,7 +923,6 @@ obj-y += libnl-tiny-0.1
 
 ifeq ($(RTCONFIG_SOC_IPQ40XX),y)
 obj-y += jansson-2.7 lldpd-0.9.8
-#obj-y += libnl-bf
 endif
 
 # IPQ8064.ILQ 1.3, IPQ8064.ILQ 3.0, IPQ8074.ILQ 7.0
@@ -1070,7 +1069,6 @@ ifeq ($(RTCONFIG_RALINK),y)
 else ifeq ($(RTCONFIG_QCA),y)
 else ifeq ($(RTCONFIG_LANTIQ),y)
 obj-$(RTCONFIG_BT_CONN) += btconfig
-obj-y += libnl-bf
 obj-y += libnl
 obj-y += taskset
 else
@@ -1127,9 +1125,6 @@ endif
 ifeq ($(RTCONFIG_QCA_LBD),y)
 obj-y  += jansson-2.7
 endif
-
-obj-$(RTCONFIG_BATMAN_ADV) += libnl-bf
-obj-$(RTCONFIG_BATMAN_ADV) += batctl-2016.0
 
 .PHONY: emf$(BCMEX) igs$(BCMEX) hspot_ap$(BCMEX) wps$(BCMEX)
 
@@ -1486,7 +1481,7 @@ obj-y += phddns
 endif
 
 ifeq ($(RTCONFIG_MUSL_LIBC),y)
-obj-$(RTCONFIG_STRACE) += strace-4.8
+obj-$(RTCONFIG_STRACE) += strace-4.8 ltrace libelf libzstd
 else
 obj-$(RTCONFIG_STRACE) += strace
 endif
@@ -2383,10 +2378,8 @@ else ifeq ($(or $(MUSL_LIBC),$(RTCONFIG_MUSL_LIBC)),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libgcc_s.so.1 libgcc_s.so
 	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGETDIR)/lib/libc.so)
 	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGETDIR)/lib/libgcc_s.so.1)
-ifeq ($(or $(RTCONFIG_MT798X),$(RTCONFIG_MT799X),$(RTCONFIG_QCA)),y)
 	install -D $(shell dirname $(shell which $(CXX)))/../lib/libstdc++.so.6 $(TARGETDIR)/lib/libstdc++.so.6
-	$(STRIP) $(TARGETDIR)/lib/libstdc++.so.6
-endif
+	$(if $(RTCONFIG_DEBUG),,$(STRIP) $(TARGETDIR)/lib/libstdc++.so.6)
 ifeq ($(MUSL64),y)
 	@cd $(TARGETDIR)/lib/ && ln -sf libc.so ld-musl-aarch64.so.1
 else ifeq ($(IPQ53XX),y)
@@ -4151,6 +4144,13 @@ shared: openssl $(if $(RTCONFIG_SW_HW_AUTH),sw-hw-auth) $(if $(BCM_502L07P2),eth
 	@-cp -f shared/prebuild/$(BUILD_NAME)/* shared/prebuild/
 ifeq ($(RTCONFIG_RALINK)$(RTCONFIG_QCA)$(RTCONFIG_LANTIQ),y)
 	make -C wireless_tools$(WTOOL_SUFFIX) wireless.h
+endif
+ifeq ($(RTCONFIG_LANTIQ),y)
+ifeq ($(RAX40),y)
+	ln -sf ../../../../../src-lantiq/grx500/iwlwav-hostap-8.4/source/src/common/ltq-vendor.h shared/sysdeps/lantiq/vendor_cmds_copy.h
+else
+	ln -sf ../../../../../src-lantiq/grx500/iwlwav-hostap/source/src/common/vendor_cmds_copy.h shared/sysdeps/lantiq/vendor_cmds_copy.h
+endif
 endif
 	if [ ! -f $@/stamp-h1 ];then \
 		$(MAKE) -C shared && touch $@/stamp-h1 ; \
@@ -7961,17 +7961,6 @@ rtk_wifi_eventd: $(if $(RTCONFIG_CFGSYNC), cfg_mnt)
 
 cfg_mnt: $(if $(RTCONFIG_NOTIFICATION_CENTER),nt_center sqlite wlc_nt) $(if $(RTCONFIG_AMAS),$(LLDPD) amas-utils) $(if $(RTCONFIG_LANTIQ),libfapi-0.1) libasuslog
 
-batctl-2016.0: libnl-bf
-	CFLAGS="-Os -ffunction-sections -fdata-sections $(CFLAGS)" \
-	LDFLAGS="-Wl,--gc-sections $(LDFLAGS)" \
-	$(MAKE) -C $@ CC=$(CC) \
-		LIBNL_CFLAGS="-I$(STAGEDIR)/usr/include/libnl3" \
-		LIBNL_LDLIBS="-L$(STAGEDIR)/usr/lib -lnl-3 -pthread"
-
-batctl-2016.0-install:
-	install -D batctl-2016.0/batctl $(INSTALLDIR)/batctl-2016.0/usr/sbin/batctl
-	$(STRIP) $(INSTALLDIR)/batctl-2016.0/usr/sbin/batctl
-
 ethtool-6.2/configure:
 	cd ethtool-6.2 && ./autogen.sh \
 
@@ -8053,21 +8042,6 @@ i2c-tools-3.1.2-install: i2c-tools-3.1.2
 	# cd $(INSTALLDIR)/i2c-tools-3.1.2/lib && \
 	#	ln -sf libi2c.so.0.1.0 libi2c.so.0 && \
 	#	ln -sf libi2c.so.0.1.0 libi2c.so
-
-hostapd-2.6: libnl-bf openssl
-	cd hostapd-2.6/hostapd;	make clean; make hostapd; make hostapd_cli
-	cd hostapd-2.6/wpa_supplicant; make clean; make wpa_supplicant; make wpa_cli
-
-hostapd-2.6-install:
-	mkdir -p $(TARGETDIR)/bin
-	install -D hostapd-2.6/hostapd/hostapd $(TARGETDIR)/bin/
-	install -D hostapd-2.6/hostapd/hostapd_cli $(TARGETDIR)/bin/
-	install -D hostapd-2.6/wpa_supplicant/wpa_supplicant $(TARGETDIR)/bin/
-	install -D hostapd-2.6/wpa_supplicant/wpa_cli $(TARGETDIR)/bin/
-
-hostapd-2.6-clean:
-	cd hostapd-2.6/hostapd;	make clean	
-	cd hostapd-2.6/wpa_supplicant; make clean
 
 btconfig:
 ifeq ($(HND_ROUTER_AX),y)

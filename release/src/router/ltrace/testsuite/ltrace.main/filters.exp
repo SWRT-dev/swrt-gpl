@@ -1,0 +1,86 @@
+# This file is part of ltrace.
+# Copyright (C) 2012 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+set libfilt1 [ltraceCompile libfilt1.so [ltraceSource c {
+    void func2(void);
+    void func1(void) { func2(); }
+}]]
+
+set libfilt2 [ltraceCompile libfilt2.so [ltraceSource c {
+    #include <stdio.h>
+    void func2(void) { puts("func2"); }
+}]]
+
+foreach ext {{} .pie} {
+    set filt [ltraceCompile filt$ext $libfilt1 $libfilt2 [ltraceSource c {
+	void func1(void);
+	int main(int argc, char *argv[]) { func1(); return 0; }
+    }]]
+
+    ltraceMatch [ltraceRun -e* $filt] {
+	{{filt(\.pie)?->func1} == 1}
+	{{libfilt1.so->func2} == 1}
+	{{libfilt2.so->puts} == 1}
+	{{func2 resumed} == 1}
+	{{func1 resumed} == 1}
+    }
+
+    ltraceMatch1 [ltraceRun $filt] \
+	{^func1\(.*\)} == 1
+
+    ltraceMatch1 [ltraceRun -e@MAIN $filt] \
+	{filt(\.pie)?->func1\(.*\)} == 1
+
+    ltraceMatch1 [ltraceRun -e@libfilt1.so $filt] \
+	{libfilt1.so->func2\(.*\)} == 1
+
+    ltraceMatch1 [ltraceRun -e@libfilt2.so $filt] \
+	{libfilt2.so->puts\(.*\)} == 1
+
+    ltraceMatch [ltraceRun -e@libfilt* $filt] {
+	{{libfilt1.so->func2\(} == 1}
+	{{libfilt2.so->puts\(.*\)} == 1}
+	{{func2 resumed} == 1}
+    }
+
+    ltraceMatch [ltraceRun -efunc* $filt] {
+	{{filt(\.pie)?->func1\(} == 1}
+	{{libfilt1.so->func2\(.*\)} == 1}
+	{{func1 resumed} == 1}
+    }
+
+    # Check that we handle breakpoint on both PLT entry and entry point
+    ltraceMatch [ltraceRun -efunc1 -xfunc1 $filt] {
+	{{filt(\.pie)?->func1\(} == 1}
+	{{func1@libfilt1.so\(.*\)} == 1}
+	{{func1 resumed} == 1}
+    }
+
+    # Check that when given -l, we don't trace symbols from other
+    # libraries.
+    ltraceMatch1 [ltraceRun -llibfilt1.so -- $filt] \
+	{filt(\.pie)?->func1\(.*\)} == 1
+
+    ltraceMatch [ltraceRun -llibfilt1.so -llibfilt2.so $filt] {
+	{{filt(\.pie)?->func1\(} == 1}
+	{{libfilt1.so->func2\(.*\)} == 1}
+	{{func1 resumed} == 1}
+    }
+}
+
+ltraceDone

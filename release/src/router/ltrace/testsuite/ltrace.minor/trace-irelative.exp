@@ -1,0 +1,68 @@
+# This file is part of ltrace.
+# Copyright (C) 2013 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+proc do_tests {bin appendage} {
+    ltraceMatch1 [ltraceRun -e *xyz -- $bin] {xyz\(} == 2
+
+    # If the actual entry point that xyz resolves to is not traced, it
+    # should get xyz's name.  But we don't mind if somebody implements
+    # the late lookup and actually names the symbol properly.
+
+    set log [ltraceRun -L -x xyz -- $bin]
+    ltraceMatch1 $log [format {xyz\.IFUNC%s\(\)} $appendage] == 1
+    ltraceMatch1 $log [format {(xyz|abc)%s\(} $appendage] == 2
+
+    # If we request abc's tracing explicitly, than it definitely needs
+    # to be presented as abc, not as xyz.
+
+    set log [ltraceRun -L -x xyz+abc -- $bin]
+    ltraceMatch1 $log [format {xyz\.IFUNC%s\(\)} $appendage] == 1
+    ltraceMatch1 $log [format {abc%s\(} $appendage] == 2
+}
+
+set src [ltraceSource c {
+    int abc (int a) { return a + 1; }
+
+    __asm__(".type xyz, \%gnu_indirect_function");
+
+    int xyz (int a);
+    extern void *xyz_ifunc(void) __asm__("xyz");
+    extern void *xyz_ifunc(void) {
+	return &abc;
+    }
+
+    int
+    main(int argc, char *argv[])
+    {
+      return xyz (xyz (argc));
+    }
+}]
+
+foreach ext {{} .pie} {
+	set bin1 [ltraceCompile $ext $src]
+	do_tests $bin1 ""
+}
+
+set lib [ltraceCompile lib.so $src]
+
+foreach ext {{} .pie} {
+    set bin2 [ltraceCompile $ext $lib [ltraceSource c {/* Empty.  */}]]
+    do_tests $bin2 @lib.so
+}
+
+ltraceDone

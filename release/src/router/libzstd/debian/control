@@ -1,0 +1,58 @@
+Source: libzstd
+Maintainer: RPM packaging team <team+pkg-rpm@tracker.debian.org>
+Uploaders: Peter Pentchev <roam@debian.org>
+Section: libs
+Priority: optional
+Build-Depends: cmake (>= 3.24~),
+               debhelper (>> 13.15.2~),
+               dh-package-notes,
+               dpkg-build-api (= 1),
+               help2man,
+               liblz4-dev,
+               liblzma-dev,
+               zlib1g-dev,
+               less <!nocheck>,
+               python3 <!nocheck>,
+X-DH-Compat: 14
+Standards-Version: 4.7.0
+Vcs-Browser: https://salsa.debian.org/pkg-rpm-team/libzstd
+Vcs-Git: https://salsa.debian.org/pkg-rpm-team/libzstd.git
+Homepage: https://github.com/facebook/zstd
+
+Package: libzstd-dev
+Architecture: any
+Multi-Arch: same
+Section: libdevel
+Depends: libzstd1 (= ${binary:Version}),
+Description: fast lossless compression algorithm -- development files
+ Zstd, short for Zstandard, is a fast lossless compression algorithm, targeting
+ real-time compression scenarios at zlib-level compression ratio.
+ .
+ This package contains the headers and static library.
+
+Package: libzstd1
+Architecture: any
+Multi-Arch: same
+Section: libs
+Description: fast lossless compression algorithm
+ Zstd, short for Zstandard, is a fast lossless compression algorithm, targeting
+ real-time compression scenarios at zlib-level compression ratio.
+ .
+ This package contains the shared library.
+
+Package: zstd
+Architecture: any
+Multi-Arch: foreign
+Section: utils
+Description: fast lossless compression algorithm -- CLI tool
+ Zstd, short for Zstandard, is a fast lossless compression algorithm, targeting
+ real-time compression scenarios at zlib-level compression ratio.
+ .
+ This package contains the CLI program implementing zstd.
+
+Package: libzstd1-udeb
+Architecture: any
+Section: debian-installer
+Package-Type: udeb
+Build-Profiles: <!noudeb>
+Description: fast lossless compression algorithm library for debian-installer

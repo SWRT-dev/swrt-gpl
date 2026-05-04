@@ -1,0 +1,21 @@
+#include <cstdint>
+#include "dwarflib_cxx.hh"
+
+enum class Colors1 : std::int8_t  { RED1 = 1, GREEN1 = 2, BLUE1 = 3 };
+enum class Colors2 : std::uint8_t { RED2 = 1, GREEN2 = 2, BLUE2 = 200 };
+enum class Colors3 : char         { RED3 = 1, GREEN3 = 2, BLUE3 = 3 };
+enum class Colors4                { RED4,     GREEN4,     BLUE4 };
+enum       Colors5                { RED5,     GREEN5,     BLUE5 };
+
+
+Colors1 f12(Colors2 x) { return Colors1::RED1; }
+Colors3 f34(Colors4 x) { return Colors3::RED3; }
+Colors5 f55(Colors5 x) { return RED5; }
+
+
+extern "C" void enum_cxx_test(void)
+{
+    f12( Colors2::GREEN2 );
+    f34( Colors4::BLUE4 );
+    f55( RED5 );
+}

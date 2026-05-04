@@ -162,7 +162,7 @@ static char *defenv[] = {
 	"HOME=/",
 	//"PATH=/usr/bin:/bin:/usr/sbin:/sbin",
 #ifdef RTCONFIG_LANTIQ
-	"PATH=/opt/usr/bin:/opt/bin:/opt/usr/sbin:/opt/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/rom/opt/lantiq/bin:/rom/opt/lantiq/usr/sbin",
+//	"PATH=/opt/usr/bin:/opt/bin:/opt/usr/sbin:/opt/sbin:/usr/bin:/bin:/usr/sbin:/sbin:/rom/opt/lantiq/bin:/rom/opt/lantiq/usr/sbin",
 #else
 	"PATH=/opt/usr/bin:/opt/bin:/opt/usr/sbin:/opt/sbin:/usr/bin:/bin:/usr/sbin:/sbin",
 #endif
@@ -173,7 +173,7 @@ static char *defenv[] = {
 	"PS1=# ",
 #endif
 #ifdef RTCONFIG_LANTIQ
-	"LD_LIBRARY_PATH=/lib:/usr/lib:/opt/lantiq/usr/lib:/opt/lantiq/usr/sbin/:/tmp/wireless/lantiq/usr/lib/",
+//	"LD_LIBRARY_PATH=/lib:/usr/lib:/opt/intel/usr/lib:/opt/intel/usr/sbin/:/tmp/wireless/lantiq/usr/lib/",
 #endif
 	"SHELL=" SHELL,
 	"TMOUT=0",

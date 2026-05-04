@@ -5,7 +5,6 @@ CFLAGS += -I$(STAGEDIR)/usr/include -I$(STAGEDIR)/usr/include/libnl3 -I$(STAGEDI
 LDFLAGS += -L$(STAGEDIR)/usr/lib
 
 #CFLAGS += -O2 -Wall -g -fvisibility=hidden
-
 LIBEASY_CFLAGS = -fvisibility=hidden -Werror
 
 LIBS += -lnl-3 -lnl-route-3 -lnl-genl-3

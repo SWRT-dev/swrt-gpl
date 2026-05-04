@@ -1,0 +1,163 @@
+# This file was written by Dima Kogan <dima@secretsauce.net>
+#
+# Copyright (C) 2014 Dima Kogan
+#
+# Same license as ltrace itself: GPL version 2 or later
+
+# This test requires ltrace to be built with elfutils support (and not
+# libunwind). The Makefile is set up to skip this test in 'make check' if we
+# built without elfutils. You'll still be able to run this test directly (with
+# runtest) and see it fail
+
+
+proc run_dwarf_test {ref_output ltrace_opts} {
+
+    global srcdir subdir objdir
+
+    set srcfile dwarf.c
+    set binfile dwarf
+    set libsrc "$srcdir/$subdir/dwarflib.c $srcdir/$subdir/dwarflib_cxx.cc11"
+    set lib_so_basename libdwarftest.so
+    set lib_so $objdir/$subdir/$lib_so_basename
+
+    if [get_compiler_info $binfile] {
+	return -1
+    }
+
+    verbose "compiling source file now....."
+    if { [ltrace_compile_shlib $libsrc $lib_so debug ] != "" 
+	 || [ltrace_compile $srcdir/$subdir/$srcfile $objdir/$subdir/$binfile executable [list debug shlib=$lib_so] ] != ""} {
+	send_user "Build failed!\n"
+    } else {
+	ltrace_options "-F" "$srcdir/$subdir/dwarf.conf" {*}$ltrace_opts
+	set exec_output [ltrace_runtest $objdir/$subdir $objdir/$subdir/$binfile]
+
+	# Check the output of this program.
+	verbose "ltrace runtest output: $exec_output\n"
+	if [regexp {ELF from incompatible architecture} $exec_output] {
+	    fail "32-bit ltrace can not perform on 64-bit PUTs and rebuild ltrace in 64 bit mode!"
+	    return 
+	} elseif [ regexp {Couldn't get .hash data} $exec_output ] {
+	    fail "Couldn't get .hash data!"
+	    return
+	}
+
+	foreach pattern_line [ split $ref_output "\n"] {
+	    ltrace_verify_output ${objdir}/${subdir}/${binfile}.ltrace $pattern_line 1
+	}
+    }
+}
+
+
+
+
+
+set ltrace_opts_l {"-A5" "-l" "libdwarftest.so"}
+set ref_output_l [subst -nocommands -novariables {
+dwarf->linkedlisttest({ 5, nil }) * = <void>
+dwarf->treetest({ 1, { 2, nil, nil }, { 3, nil, { 4, nil, nil } } } <unfinished ...>
+libdwarftest.so->treetest({ 2, nil, nil }) * = nil
+libdwarftest.so->treetest({ 3, nil, { 4, nil, nil } } <unfinished ...>
+libdwarftest.so->treetest({ 4, nil, nil }) * = nil
+<... treetest resumed> ) * = { 5, nil, nil }
+<... treetest resumed> ) * = { 2, { 3, nil, nil }, { 4, nil, { 5, nil, nil } } }
+dwarf->looptest({ { recurse^, 6 }, 5 }) * = <void>
+dwarf->enumtest(A, B) * = 0
+dwarf->arraytest(.* 1.000000, 2.000000, 1.000000, 2.000000, 1.000000 [^\\\.]* * = 1.000000
+dwarf->enum_cxx_test( <unfinished ...>
+libdwarftest.so->_Z3f127Colors2(GREEN2) * = RED1
+libdwarftest.so->_Z3f347Colors4(BLUE4) * = RED3
+libdwarftest.so->_Z3f557Colors5(RED5) * = RED5
+<... enum_cxx_test resumed> ) * = <void>
+dwarf->stringtest('t') * = 4
+dwarf->stringtest(nil) * = -1
+dwarf->FILEtest(0x[0-9a-z]*, 0x[0-9a-z]*) * = <void>
+dwarf->voidfunc() * = <void>
+} ]
+run_dwarf_test $ref_output_l $ltrace_opts_l
+
+set ltrace_opts_demangling {"-C" "-l" "libdwarftest.so"}
+set ref_output_demangling [subst -nocommands -novariables {
+libdwarftest.so->f12(Colors2)(GREEN2) * = RED1
+libdwarftest.so->f34(Colors4)(BLUE4) * = RED3
+libdwarftest.so->f55(Colors5)(RED5) * = RED5
+} ]
+run_dwarf_test $ref_output_demangling $ltrace_opts_demangling
+
+set ltrace_opts_x {"-A5" "-L" "-x" "@libdwarftest.so"}
+set ref_output_x [subst -nocommands -novariables {
+linkedlisttest@libdwarftest.so({ 5, nil }) * = <void>
+treetest@libdwarftest.so({ 1, { 2, nil, nil }, { 3, nil, { 4, nil, nil } } } <unfinished ...>
+treetest@libdwarftest.so({ 2, nil, nil }) * = nil
+treetest@libdwarftest.so({ 3, nil, { 4, nil, nil } } <unfinished ...>
+treetest@libdwarftest.so({ 4, nil, nil }) * = nil
+<... treetest resumed> ) * = { 5, nil, nil }
+<... treetest resumed> ) * = { 2, { 3, nil, nil }, { 4, nil, { 5, nil, nil } } }
+looptest@libdwarftest.so({ { recurse^, 6 }, 5 }) * = <void>
+enumtest@libdwarftest.so(A, B) * = 0
+arraytest@libdwarftest.so(.* 1.000000, 2.000000, 1.000000, 2.000000, 1.000000 [^\\\.*]* * = 1.000000
+enum_cxx_test@libdwarftest.so( <unfinished ...>
+_Z3f127Colors2@libdwarftest.so(GREEN2) * = RED1
+_Z3f347Colors4@libdwarftest.so(BLUE4) * = RED3
+_Z3f557Colors5@libdwarftest.so(RED5) * = RED5
+<... enum_cxx_test resumed> ) * = <void>
+stringtest@libdwarftest.so('t') * = 4
+stringtest@libdwarftest.so(nil) * = -1
+FILEtest@libdwarftest.so(0x[0-9a-z]*, 0x[0-9a-z]*) * = <void>
+voidfunc@libdwarftest.so() * = <void>
+} ]
+run_dwarf_test $ref_output_x $ltrace_opts_x
+
+set ltrace_opts_e {"-A5" "-e" "@libdwarftest.so"}
+set ref_output_e [subst -nocommands -novariables {
+libdwarftest.so->treetest({ 2, nil, nil }) * = nil
+libdwarftest.so->treetest({ 3, nil, { 4, nil, nil } } <unfinished ...>
+libdwarftest.so->treetest({ 4, nil, nil }) * = nil
+<... treetest resumed> ) * = { 5, nil, nil }
+libdwarftest.so->_Z3f127Colors2(GREEN2) * = RED1
+libdwarftest.so->_Z3f347Colors4(BLUE4) * = RED3
+libdwarftest.so->_Z3f557Colors5(RED5) * = RED5
+} ]
+run_dwarf_test $ref_output_e $ltrace_opts_e
+
+
+
+# Now some tests that look at libc. This requires that the libc debug symbols be
+# available. Furthermore, different versions of glibc define their functions
+# differently and thus generate different debug symbols. In particular, sometime
+# between glibc 2.19 and 2.22 a number of function definitions were changed to
+# be generated by a preprocessor macro. This causes the full prototype of these
+# functions to not be available. From the below functions this affects
+# nanosleep() and strlen(). Thus for these tests I only check that the function
+# was called and not anything particular about the arguments
+set ltrace_opts_e {"-l" "libc.so*"}
+set ref_output_e [subst -nocommands -novariables {
+dwarf->usleep(33) * = 0
+dwarf->nanosleep(.*
+} ]
+run_dwarf_test $ref_output_e $ltrace_opts_e
+
+set ltrace_opts_e {"-L" "-x" "@libc.so*-__nanosleep_nocancel@libc.so.6"}
+set ref_output_e [subst -nocommands -novariables {
+ftell@libc.so.6(0x[0-9a-z]*
+strlen@libc.so.6(.*
+usleep@libc.so.6(33 <unfinished ...>
+nanosleep@libc.so.6(.*
+<... usleep resumed> ) * = 0
+nanosleep@libc.so.6(.*
+} ]
+run_dwarf_test $ref_output_e $ltrace_opts_e
+
+
+# Make sure the DWARF filtering and the alias finding work well together
+set ltrace_opts_e {"-L" "-x" "ftell@libc.so*"}
+set ref_output_e [subst -nocommands -novariables {
+ftell@libc.so.6(0x[0-9a-z]*) * = -1
+} ]
+run_dwarf_test $ref_output_e $ltrace_opts_e
+
+set ltrace_opts_e {"-L" "-x" "*ftell@libc.so*"}
+set ref_output_e [subst -nocommands -novariables {
+ftell@libc.so.6(0x[0-9a-z]*) * = -1
+} ]
+run_dwarf_test $ref_output_e $ltrace_opts_e

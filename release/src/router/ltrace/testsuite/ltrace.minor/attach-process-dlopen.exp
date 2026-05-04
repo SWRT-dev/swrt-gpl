@@ -1,0 +1,49 @@
+# This file is part of ltrace.
+# Copyright (C) 2012, 2013 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+set libll [ltraceCompile libll.so [ltraceSource c {
+    #include <unistd.h>
+    void sym(void) {
+	sleep(1);
+    }
+}]]
+
+spawn [ltraceCompile exe -ldl [ltraceSource c {
+    #include <unistd.h>
+    #include <dlfcn.h>
+    #include <assert.h>
+    #include <stdio.h>
+    #include <string.h>
+    int main(int argc, char **argv) {
+	assert(argc == 2);
+    #define FN "libll.so"
+	char buf[strlen(argv[1]) + 1 + sizeof FN];
+	sprintf(buf, "%s/%s", argv[1], FN);
+	void *libll = dlopen(buf, RTLD_LAZY | RTLD_LOCAL);
+	assert(libll != NULL);
+	sleep(1);
+	void (*sym)(void) = dlsym(libll, "sym");
+	assert(sym != NULL);
+	sym();
+	return 0;
+    }
+}]] $objdir/$subdir
+
+ltraceMatch1 [ltraceRun -e* -p [exp_pid]] {libll.so->sleep} == 1
+
+ltraceDone

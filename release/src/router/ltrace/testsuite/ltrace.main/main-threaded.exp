@@ -1,0 +1,65 @@
+# This file is part of ltrace.
+# Copyright (C) 2011, 2015 Petr Machata, Red Hat Inc.
+# Copyright (C) 2006 Yao Qi <qiyao@cn.ibm.com>.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+set libprint [ltraceCompile libprint.so [ltraceSource c {
+    #include<stdio.h>
+
+    void
+    print(char* s)
+    {
+	printf("%s\n",s);
+    }
+}]]
+
+set bin [ltraceCompile {} $libprint -lpthread [ltraceSource c {
+    #include <pthread.h>
+
+    extern void print (char *);
+
+    #define	PRINT_LOOP	10
+
+    void *
+    th_main (void *arg)
+    {
+	int i;
+	for (i=0; i<PRINT_LOOP; i++)
+	print (arg);
+	return NULL;
+    }
+
+    int
+    main (void)
+    {
+	pthread_t thread1;
+	pthread_t thread2;
+	pthread_t thread3;
+	pthread_create (&thread1, NULL, th_main, "aaa");
+	pthread_create (&thread2, NULL, th_main, "bbb");
+	pthread_create (&thread3, NULL, th_main, "ccc");
+	pthread_join (thread1, NULL);
+	pthread_join (thread2, NULL);
+	pthread_join (thread3, NULL);
+	return 0;
+    }
+}]]
+
+ltraceMatch1 [ltraceRun -f -l libprint.so -- $bin] {print\(} == 30
+ltraceMatch1 [ltraceRun -L -- $bin] exited == 1
+
+ltraceDone

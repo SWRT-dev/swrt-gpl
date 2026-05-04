@@ -1,0 +1,36 @@
+Description: Skip test failing on GNU/Hurd when writing on /dev/zero or
+ /dev/random. On different GNU/Hurd installations writing to either one or
+ another would fail. Currently writing to /dev/random results in the message
+ "Computer bought the farm" and exit status 1
+ See also: https://github.com/facebook/zstd/issues/1116
+From: Alex Mestiashvili <mestia@debian.org>
+--- a/tests/playTests.sh
++++ b/tests/playTests.sh
+@@ -498,14 +498,19 @@
+ zstd -v --rm tmp2 -o tmp2.zst -c > tmp3.zst
+ test -f tmp2
+ test -f tmp3.zst
+-println "test : should quietly not remove non-regular file"
+-println hello > tmp
+-zstd tmp -f -o "$DEVDEVICE" 2>tmplog > "$INTOVOID"
+-$GREP "Refusing to remove non-regular file" tmplog && die
+-rm -f tmplog
+-zstd tmp -f -o "$INTOVOID" 2>&1 | $GREP "Refusing to remove non-regular file" && die
+-println "test : --rm on stdin"
+-println a | zstd --rm > $INTOVOID   # --rm should remain silent
++if [ "$(dpkg-architecture -qDEB_HOST_ARCH)" != 'hurd-i386' ]
++then
++    println "test : should quietly not remove non-regular file"
++    println hello > tmp
++    zstd tmp -f -o "$DEVDEVICE" 2>tmplog > "$INTOVOID"
++    $GREP "Refusing to remove non-regular file" tmplog && die
++    rm -f tmplog
++    zstd tmp -f -o "$INTOVOID" 2>&1 | $GREP "Refusing to remove non-regular file" && die
++    println "test : --rm on stdin"
++    println a | zstd --rm > $INTOVOID   # --rm should remain silent
++else
++    println "\n**** This test on $DEBARCH fails with \"Computer bought the farm\" **** "
++fi
+ rm -f tmp
+ zstd -f tmp && die "tmp not present : should have failed"
+ test ! -f tmp.zst  # tmp.zst should not be created

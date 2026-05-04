@@ -1,0 +1,12 @@
+name: backup to gitlab
+on: [push]
+
+concurrency:
+  group: ${{ github.workflow }}
+  cancel-in-progress: true
+
+jobs:
+  backup-to-gitlabwh:
+    uses: deepin-community/.github/.github/workflows/backup-to-gitlabwh.yml@master
+    secrets:
+      BRIDGETOKEN: ${{ secrets.BRIDGETOKEN }}

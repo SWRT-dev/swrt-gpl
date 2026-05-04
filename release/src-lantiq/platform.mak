@@ -1,7 +1,7 @@
 export LINUXDIR := $(SRCBASE)/linux/linux-4.9.x
 
 ifeq ($(EXTRACFLAGS),)
-EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -DLINUX30 -mno-branch-likely -march=mips32r2 -mtune=24kc -fPIC -mabicalls
+EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -DLINUX30 -mno-branch-likely -march=mips32r2 -mtune=24kc -DPIC -fpic -mabicalls
 endif
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux
@@ -44,7 +44,7 @@ EXTRA_BLUEZ_LDFLAGS += -L$(TOP)/nvram -lnvram -L$(TOP)/shared -lshared
 export CONFIG_LINUX30=y
 
 # not for ALPINE EXTRA_CFLAGS := -DLINUX26 -DCONFIG_BCMWL5 -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -DTTEST
-EXTRA_CFLAGS := -DLINUX26 -DCONFIG_LANTIQ -DCONFIG_INTEL -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -fPIC -mabicalls
+EXTRA_CFLAGS := -DLINUX26 -DCONFIG_LANTIQ -DCONFIG_INTEL -pipe -DDEBUG_NOISY -DDEBUG_RCTEST -DPIC -fpic -mabicalls
 EXTRACFLAGS += -DLINUX26
 EXTRA_CFLAGS += -D_GNU_SOURCE -D_BSD_SOURCE
 

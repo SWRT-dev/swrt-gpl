@@ -1,0 +1,146 @@
+# This file is part of ltrace.
+# Copyright (C) 2014 Petr Machata, Red Hat Inc.
+# Copyright (C) 2006 Yao Qi <qiyao@cn.ibm.com>, IBM Corporation
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+# Objectives: Verify that Ltrace can trace all the system calls in
+# execution.  Note that this test is necessarily noisy.  Dynamic
+# linker adds a bunch of system calls of its own.
+
+set empty [ltraceCompile {} [ltraceSource c {
+    int main (void) { return 0; }
+}]]
+
+set bin [ltraceCompile {} [ltraceSource c {
+    #include <stdio.h>
+    #include <unistd.h>
+    #include <sys/syscall.h>
+    #include <sys/stat.h>
+    #include <errno.h>
+    #include <stdlib.h>
+
+    int
+    main ()
+    {
+      FILE* fp;
+      char s[]="system_calls";
+      char buffer[1024];
+      struct stat state;
+
+      fp = fopen ("system_calls.tmp", "w");
+      if (fp == NULL)
+	{
+	  printf("Can not create system_calls.tmp\n");
+	  exit (0);
+	}
+      fwrite(s, sizeof(s), 1, fp);
+      fseek (fp, 0, SEEK_CUR);
+      fread(buffer, sizeof(s), 1, fp);
+      fclose(fp);
+
+      getcwd (buffer, sizeof buffer);
+      chdir (".");
+      symlink ("system_calls.tmp", "system_calls.link");
+      remove("system_calls.link");
+      rename ("system_calls.tmp", "system_calls.tmp1");
+      stat ("system_calls.tmp", &state);
+      access ("system_calls.tmp", R_OK);
+      remove("system_calls.tmp1");
+
+      mkdir ("system_call_mkdir", 0777);
+      rmdir ("system_call_mkdir");
+
+      return 0;
+    }
+}]]
+
+proc Calls {logfile} {
+    set fp [open $logfile]
+    set ret {}
+
+    while {[gets $fp line] >= 0} {
+	if [regexp -- {^[a-zA-Z0-9]*@SYS} $line] {
+	    set call [lindex [split $line @] 0]
+	    dict incr ret $call
+	}
+    }
+
+    close $fp
+    return $ret
+}
+
+proc GetDefault {d key def} {
+    if {[dict exists $d $key]} {
+	return [dict get $d $key]
+    } else {
+	return $def
+    }
+}
+
+proc Diff {d1 d2} {
+    set keys [lsort -unique [concat [dict keys $d1] [dict keys $d2]]]
+    set ret {}
+    foreach key $keys {
+	set n1 [GetDefault $d1 $key 0]
+	set n2 [GetDefault $d2 $key 0]
+	set sum [expr $n1 - $n2]
+	if {[expr $sum != 0]} {
+		dict set ret $key $sum
+	}
+    }
+    return $ret
+}
+
+proc Match {d patterns} {
+    foreach line $patterns {
+	set pattern [lindex $line 0]
+	set op [lindex $line 1]
+	set expect [lindex $line 2]
+
+	set count 0
+	foreach key [dict keys $d] {
+	    if [regexp -- $pattern $key] {
+		incr count [dict get $d $key]
+	    }
+	}
+
+	set msgMain "$pattern was recorded $count times"
+
+	if {[eval expr $count $op $expect]} {
+	    pass $msgMain
+	} else {
+	    fail "$msgMain, expected $op $expect"
+	}
+    }
+}
+
+Match [Diff [Calls [ltraceRun -L -S -- $bin]] \
+	   [Calls [ltraceRun -L -S -- $empty]]] {
+    { {^write$} == 1 }
+    { {^unlink(at)?$} >= 2 }
+    { {^open(at)?$} == 1 }
+    { {^(new|f)?stat(64)?$} >= 1 }
+    { {^close$} == 1 }
+    { {^getcwd$} == 1 }
+    { {^chdir$} == 1 }
+    { {^symlink(at)?$} == 1 }
+    { {^f?access(at)?$} == 1 }
+    { {^rename(at)?$} == 1 }
+    { {^mkdir(at)?$} == 1 }
+}
+
+ltraceDone

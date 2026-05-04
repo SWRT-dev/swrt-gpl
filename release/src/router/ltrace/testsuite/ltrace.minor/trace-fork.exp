@@ -1,0 +1,45 @@
+# This file was written by Yao Qi <qiyao@cn.ibm.com>.
+
+set testfile "trace-fork"
+set srcfile ${testfile}.c
+set binfile ${testfile}
+
+
+verbose "compiling source file now....."
+# Build the shared libraries this test case needs.
+if  { [ ltrace_compile "${srcdir}/${subdir}/${testfile}.c" "${objdir}/${subdir}/${binfile}" executable {debug} ] != "" } {
+     send_user "Testcase compile failed, so all tests in this file will automatically fail.\n"
+}
+
+ltrace_options "-f"
+set exec_output [ltrace_runtest $objdir/$subdir $objdir/$subdir/$binfile]
+
+#check the output of this program.
+verbose "ltrace runtest output: $exec_output\n"
+if [regexp {ELF from incompatible architecture} $exec_output] {
+	fail "32-bit ltrace can not perform on 64-bit PUTs and rebuild ltrace in 64 bit mode!"
+	return
+} elseif [ regexp {Couldn't get .hash data} $exec_output ] {
+	fail "Couldn't get .hash data!"
+	return
+}
+
+if [ regexp {Cannot attach} $exec_output ] {
+	fail "Couldn't attach to forked process!"
+	return
+}
+
+set pattern {^[0-9]* fork}
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern {^[0-9]* printf}
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern {^[0-9]* puts}
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern {^[0-9]* wait}
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1
+
+set pattern {^[0-9]* sleep}
+ltrace_verify_output ${objdir}/${subdir}/${testfile}.ltrace $pattern 1

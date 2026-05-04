@@ -8,11 +8,21 @@ PROG_CFLAGS = $(CFLAGS) -Wall -Werror -fstrict-aliasing -ggdb
 #CFLAGS += -Wno-address-of-packed-member
 CFLAGS += $(TARGET_CFLAGS) -Wall -I./
 CFLAGS += -I$(STAGEDIR)/usr/include -I$(STAGEDIR)/usr/include/libnl3 -I$(STAGEDIR)/usr/include/openssl -I$(TOP)/shared -I$(SRCBASE)/include
-LDFLAGS += -L$(STAGEDIR)/usr/lib -lnl-route-3 -L$(TOP)/shared -L$(TOP)/nvram -lshared -lnvram
+LDFLAGS += -L$(STAGEDIR)/usr/lib -L$(TOP)/shared -L$(TOP)/nvram -lshared -lnvram
+ifeq ($(RTCONFIG_LANTIQ),y)
+# built into libshared.so
+else
+LDFLAGS += -lnl-route-3
+endif
 
 PROG_LDFLAGS = $(LDFLAGS)
 PROG_LIBS = -lssl -lcrypto -leasy -lwifi-7 -latomic
-PROG_LIBS += -luci -lubus -lubox -ljson-c -lblobmsg_json -lnl-genl-3 -lnl-3 -lgcov
+PROG_LIBS += -luci -lubus -lubox -ljson-c -lblobmsg_json -lgcov
+ifeq ($(RTCONFIG_LANTIQ),y)
+# built into libshared.so
+else
+PROG_LIBS += -lnl-genl-3 -lnl-3
+endif
 GCOV = gcov
 CODECOVERAGE_SRC = wifimngr.c
 

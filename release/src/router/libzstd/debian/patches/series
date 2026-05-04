@@ -1,0 +1,10 @@
+0006-Use-bash-for-test-script-portablitity.patch
+0008-Address-embedded-zlib.patch
+0013-skip-memory-greedy-tests.patch
+0014-Reproducible-build.patch
+0015-Skip-dev-random-tests-on-hurd.patch
+0017-alpha-fbfs-st_mtime.patch
+0018-kfreebsd-ftbfs-utime-now.patch
+0022-tests-timeout.patch
+0023-cmake-min-3.13.patch
+0024-no-lessopen-test.patch

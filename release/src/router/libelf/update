@@ -1,0 +1,57 @@
+#!/bin/bash
+
+set -e -o pipefail
+shopt -s dotglob extglob nullglob
+cd -- "$(git -C "${0%/*}" rev-parse --show-toplevel)"
+
+if [[ $@ != +([0-9])*(.+([0-9])) ]]; then
+  echo "Usage: ${0##*/} UPSTREAM-VERSION"
+  echo "Update upstream branch then merge changes into master."
+  echo "This maintainer script does not attempt to be portable."
+  exit 64
+elif ! git diff --exit-code --quiet; then
+  echo "Uncommitted changes in the working directory"
+  exit 1
+elif ! git diff --cached --exit-code --quiet; then
+  echo "Uncommitted changes in the index"
+  exit 1
+fi >&2
+
+TMP=$(mktemp -d tmp-XXXXXX)
+trap 'rm -r $TMP' EXIT
+
+echo "Downloading upstream files for version $1:"
+URL=https://sourceware.org/elfutils/ftp/$1/elfutils-$1.tar.bz2
+COLUMNS=64 curl -L -# "$URL" | tar -x -f - -C $TMP --strip-components=1
+
+git checkout upstream
+git rm -q -r include src
+mkdir -p include src
+
+for FILE in $TMP/libelf/*.[ch] $TMP/lib/{crc32,eu-search,next_prime}.c \
+    $TMP/lib/{eu-config,eu-search,fixedsizehash,locks,system}.h; do
+  sed ':a;s/[ \t]*$//;/^\n*$/{$d;N;ba}' "$FILE" >"src/${FILE##*/}"
+  git add "src/${FILE##*/}"
+done
+
+git mv src/gelf.h src/libelf.h src/nlist.h include
+
+cp $TMP/COPYING-GPLV2 $TMP/COPYING-LGPLV3 .
+git add COPYING-GPLV2 COPYING-LGPLV3
+
+if git diff --cached --exit-code --quiet; then
+  echo "No upstream changes to merge"
+  git checkout master
+else
+  git commit -m "Update upstream files from elfutils $1"
+  git checkout master
+  git merge --no-commit upstream
+
+  sed -i "s/^MINOR *=.*/MINOR = $1/" Makefile
+  git add Makefile
+  git commit -m "Merge from upstream libelf $1"
+
+  echo "Merged libelf ready to review, build and test"
+  echo "Sign: git tag -m v$1 -s v$1"
+  echo "Push: git push --tags origin upstream master"
+fi

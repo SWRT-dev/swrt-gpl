@@ -1173,9 +1173,9 @@ OBJS += wpa_ctrl.o
 OBJS += os_unix.o
 else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += $(if $(wildcard sysdeps/lantiq/swrtmesh-lantiq.c),swrtmesh-lantiq.o,prebuild/swrtmesh-lantiq.o)
-CFLAGS += -I$(TOP)/hostapd-2.6/src/utils/ -I$(TOP)/hostapd-2.6/src/common/
-vpath %.c $(TOP)/hostapd-2.6/src/common
-vpath %.c $(TOP)/hostapd-2.6/src/utils
+CFLAGS += -I$(TOP)/hostapd/src/utils/ -I$(TOP)/hostapd/src/common/
+vpath %.c $(TOP)/hostapd/src/common
+vpath %.c $(TOP)/hostapd/src/utils
 OBJS += wpa_ctrl.o
 OBJS += os_unix.o
 else ifeq ($(RTCONFIG_BCMARM),y)

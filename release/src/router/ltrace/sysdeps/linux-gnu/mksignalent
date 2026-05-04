@@ -1,0 +1,50 @@
+#!/usr/bin/awk -f
+# This file is part of ltrace.
+# Copyright (C) 1999 Juan Cespedes
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+# hack expression to generate arch/signalent.h from <asm/signal.h>
+# It reads from stdin and writes to stdout
+
+BEGIN {
+	max=0;
+}
+
+{
+	if (($1 ~ /^#define$/) && (!SIGNAL[$3]) && ($2 ~ /^SIG[A-Z]/) \
+	    && ($2 !~ /^SIGRTMIN$/) && ($2 !~ /^SIGRTMAX$/) && ($2 !~ /^SIGSTKSZ$/) \
+	    && ($3>=0) && ($3<=1000)) {
+		SIGNAL[$3]=$2;
+		if ($3 > max) {
+			max=$3;
+		}
+	}
+}
+
+END {
+	for(i=0; i<=max; i++) {
+		if (!SIGNAL[i]) {
+			SIGNAL[i] = "SIG_" i;
+		}
+		pad = 16 - length(SIGNAL[i]);
+		if (pad<1) {
+			pad=1;
+		}
+		printf("\t\"%s\",%*s/* %d */\n", SIGNAL[i], pad, "", i);
+	}
+}
+

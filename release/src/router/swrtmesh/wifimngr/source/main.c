@@ -176,7 +176,7 @@ static void gen_evmap_file(const char *path)
 #elif defined(RTCONFIG_QCA)
 	json_object_object_add(tmpobj, "ifname", json_object_new_string("ath*"));
 #elif defined(RTCONFIG_LANTIQ)
-	json_object_object_add(tmpobj, "ifname", json_object_new_string("wlan*"));
+	json_object_object_add(tmpobj, "ifname", json_object_new_string("wifi*"));
 #elif defined(RTCONFIG_BCMARM)
 	json_object_object_add(tmpobj, "ifname", json_object_new_string("wl*"));
 #endif

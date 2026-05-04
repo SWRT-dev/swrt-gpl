@@ -92,6 +92,10 @@ ifeq ($(RTCONFIG_BUSINESS), y)
 	rm -rf $(INSTALLDIR)/www/images/New_ui/networkmap/white_04.gif
 endif
 
+ifeq ($(RTCONFIG_SWRT_UI), y)
+	cp -rfL $(TOP)/www/sysdep/FUNCTION/SWRT_UI/* $(INSTALLDIR)/www/
+endif
+
 ifneq ($(BUILD_NAME),DSL-AX82U)
 	rm -rf $(INSTALLDIR)/www/mobile/js/jstz.min.js
 	rm -rf $(INSTALLDIR)/www/mobile/pages/bridge_cfg_tmp_page.html
@@ -124,6 +128,8 @@ ifeq ($(RTCONFIG_MULTILAN_CFG), y)
 	cp $(TOP)/www/sysdep/FUNCTION/SDN/ajax/freewifi_tos.json $(INSTALLDIR)/www/ajax/freewifi_tos.json
 	rm -rf $(INSTALLDIR)/www/js/qrcode/MIT-LICENSE.txt
 ifeq ($(RTCONFIG_BUSINESS), y)
+	rm -rf $(INSTALLDIR)/www/SDN/Captive_Portal/MessageBoard_template.json
+else ifeq ($(RTCONFIG_SWRT_UI), y)
 	rm -rf $(INSTALLDIR)/www/SDN/Captive_Portal/MessageBoard_template.json
 endif
 ifeq ($(RTCONFIG_SMART_HOME_MASTER_UI), y)
@@ -796,6 +802,8 @@ else ifeq ($(RTCONFIG_BUSINESS),y)
 	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree_BUSINESS.js modules/menuTree.js
 else ifeq ($(RTCONFIG_TUF_UI),y)
 	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree_TUF.js modules/menuTree.js	
+else ifeq ($(RTCONFIG_SWRT_UI), y)
+	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree_SWRT.js modules/menuTree.js
 else
 	cd $(INSTALLDIR)/www/require && mv menuTrees/menuTree.js modules/menuTree.js
 endif

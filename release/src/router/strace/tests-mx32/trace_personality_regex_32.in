@@ -1,3 +1,0 @@
-clock_adjtime	-a37
-clock_nanosleep
-clock_xettime	-a36

@@ -1,0 +1,19 @@
+[format.version]
+major = 0
+minor = 1
+
+[program.pkg-make]
+executable = "ztest"
+
+[program.pkg-make.commands]
+clean = [["make", "clean"]]
+build = [["make"]]
+test = [["make", "test"]]
+
+[program.cmake]
+executable = "ztest"
+
+[program.cmake.commands]
+clean = [["make", "clean"]]
+build = [["cmake", "."], ["make"]]
+test = [["./ztest"]]

@@ -911,7 +911,7 @@ next_mrate:
 		fprintf(fp, "rc rc_service restart_mcast &\n");
 	else
 		fprintf(fp2, "rc rc_service restart_mcast &\n");
-#if defined(LANTIQ_BSD)
+#if defined(LANTIQ_BSD) && !defined(RTCONFIG_SWRTMESH)
 	if(nvram_match("smart_connect_x", "1") && !repeater_mode())
 		fprintf(fp2, "rc rc_service restart_bsd &\n");
 #endif
@@ -2946,7 +2946,7 @@ int gen_lantiq_config(int band, int subnet)
 	fprintf(fp, "acs_smart_info_file=/tmp/acs_smart_info_%s.txt\n", wif);
 	fprintf(fp, "acs_history_file=/tmp/acs_history_%s.txt\n", wif);
 	fprintf(fp, "sae_require_mfp=%d\n", nvram_pf_get_int(prefix2, "mfp") ? 1 : 0);
-#if defined(RTCONFIG_SWRTMESH)
+#if 0 //defined(RTCONFIG_SWRTMESH)
 	fprintf(fp, "multi_ap_backhaul_ssid=%s\n", nvram_pf_safe_get(prefix, "ssid"));
 	if(strlen(wpa_key_mgmt) == 64)
 		fprintf(fp, "multi_ap_backhaul_wpa_psk=%s\n", wpa_key_mgmt);

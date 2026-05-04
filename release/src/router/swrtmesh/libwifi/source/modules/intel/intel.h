@@ -2,6 +2,10 @@
 #define INTEL_H
 
 #include <stdint.h>
+typedef uint8_t u8;
+#ifndef os_strcmp
+#define os_strcmp	strcmp
+#endif
 
 /* The following structs are used in the '/src/drivers/driver.h' file
  * of the hostapd package by Intel.

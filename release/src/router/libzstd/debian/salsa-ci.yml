@@ -1,0 +1,10 @@
+---
+include:
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/salsa-ci.yml
+  - https://salsa.debian.org/salsa-ci-team/pipeline/raw/master/pipeline-jobs.yml
+
+# No 'Architecture: all' targets for this package.
+# 1.1.2-1: oldest version in active repos.
+variables:
+  SALSA_CI_DISABLE_BUILD_PACKAGE_ALL: '1'
+  DB_BUILD_PARAM: '-v1.1.2-1'

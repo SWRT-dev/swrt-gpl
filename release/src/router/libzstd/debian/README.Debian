@@ -1,0 +1,6 @@
+1.2.0-1
+-------
+
+some patches have been removed, makefile had a lot of changes,
+the long running tests skip patch has been removed but may need
+further investigation to see if it is still needed.

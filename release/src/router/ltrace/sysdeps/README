@@ -1,0 +1,11 @@
+Each operating system must have a subdir here, with a Makefile
+The first target of that Makefile must build a file "sysdep.o" in this
+directory.
+The "clean" target of that Makefile must undo all the efects of the
+first target, and must remove "sysdep.o" in this dir.
+
+Files "sysdep.h", "signalent.h" and "syscallent.h" must be present
+inside the directory after invoking the first target of the Makefile.
+
+See the file "backend.h" for description of backend interfaces, which
+have to be provided by "sysdep.o".

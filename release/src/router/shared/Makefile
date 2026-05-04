@@ -264,10 +264,10 @@ OBJS += rtl8370mb.o mdio.o
 endif
 else ifeq ($(RTCONFIG_LANTIQ),y)
 OBJS += flash_mtd.o
-LDFLAGS += -L$(STAGEDIR)/usr/lib
+LDFLAGS += -L$(STAGEDIR)/usr/lib -ffunction-sections -fdata-sections -Wl,--gc-sections
 LDFLAGS += -Wl,--whole-archive $(STAGEDIR)/usr/lib/libnl-3.a $(STAGEDIR)/usr/lib/libnl-genl-3.a \
 			 $(STAGEDIR)/usr/lib/libnl-route-3.a -Wl,--no-whole-archive
-CFLAGS += -I$(STAGEDIR)/usr/include/libnl3
+CFLAGS += -I$(STAGEDIR)/usr/include/libnl3 -ffunction-sections -fdata-sections
 else
 # Broadcom
 OBJS += wl.o wl_linux.o

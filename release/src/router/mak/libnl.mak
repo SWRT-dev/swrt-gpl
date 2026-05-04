@@ -1,10 +1,13 @@
 ifneq ($(HND_ROUTER_AX),y)
 libnl/configure:
-	cd libnl && ./autogen.sh
+	cd libnl && autoreconf -fi
 
 libnl/Makefile: libnl/configure
 	cd libnl && $(CONFIGURE) \
-		--prefix=/usr --bindir=/usr/sbin --libdir=/usr/lib
+		--prefix=/usr --bindir=/usr/sbin --libdir=/usr/lib --host=$(ARCH)-linux \
+		--enable-cli=no $(if $(RTCONFIG_LANTIQ),--with-pic,) \
+		 CFLAGS="-Os -Wall $(EXTRACFLAGS) -D_GNU_SOURCE -Drpl_malloc=malloc -ffunction-sections -fdata-sections -Wl,--gc-sections" \
+		LDFLAGS=" -ffunction-sections -fdata-sections -Wl,--gc-sections" \
 
 libnl: libdaemon libnl/Makefile
 	if [ ! -f $@/stamp-h1 ];then \

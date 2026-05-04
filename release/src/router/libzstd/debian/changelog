@@ -1,0 +1,647 @@
+libzstd (1.5.6+dfsg-1) unstable; urgency=medium
+
+  * Add the 0024-no-lessopen-test patch to skip a test until
+    #1073071 is fixed. Closes: #1042737
+  * Add the year 2024 to my debian/* copyright notice.
+  * Declare compliance with Policy 4.7.0 with no changes.
+  * Use X-DH-Compat instead of debian/compat.
+  * Let debhelper add some default dependencies automatically.
+  * New upstream version:
+    - Closes: #1072590
+    - stop excluding two files that were removed
+    - add the upstream OpenPGP key
+    - reset the repack suffix from dfsg2 to dfsg
+    - update some patches to catch up with upstream changes:
+      - 0015-Skip-dev-random-tests-on-hurd
+      - 0017-alpha-fbfs-st_mtime
+      - 0018-kfreebsd-ftbfs-utime-now
+      - 0023-cmake-min-3.13
+    - refresh the line numbers in some patches:
+      - 0006-Use-bash-for-test-script-portablitity
+      - 0013-skip-memory-greedy-tests
+
+ -- Peter Pentchev <roam@debian.org>  Thu, 13 Jun 2024 16:32:12 +0300
+
+libzstd (1.5.5+dfsg2-2) unstable; urgency=medium
+
+  * Clean up a directory of symlinks created by the test suite.
+    Closes: #1049066
+  * Bump the CMake version requirement to 3.24. Closes: #1031384
+  * Fix the nodoc build: do not tweak non-existent manpages. Closes: #1037088
+  * Declare version 1 of the dpkg-build API:
+    - drop the implied Root-Requires-Root: true
+    - use dpkg's default.mk instead of including buildtools.mk directly
+  * Use the DEB_HOST_MULTIARCH variable provided by default.mk.
+  * Use dh-package-notes to record ELF package metadata.
+  * Update the bundled copy of the check-build Python library in
+    the autopkgtest tree:
+    - remove the non-runtime check-build files
+    - import check-build 0.1.0
+
+ -- Peter Pentchev <roam@debian.org>  Sun, 17 Sep 2023 16:48:35 +0300
+
+libzstd (1.5.5+dfsg2-1) unstable; urgency=medium
+
+  * Do not detect -win64 versions in the watch file.
+  * New upstream release:
+    - Closes: #1038728
+    - drop the 0019-upstream-fix-cli-tests, 0020-upstream-fix-block-splitter,
+      and 0021-tests-newline patches, they were taken from upstream
+    - adapt the 0022-tests-timeout patch to the new upstream default
+      timeout (which was raised, but not enough)
+    - update the required version in the dh_makeshlibs invocation
+  * Add the 0023-cmake-min-3.13 Debian-specific patch to bump the minimum
+    required CMake version to 3.13.4.
+
+ -- Peter Pentchev <roam@debian.org>  Sun, 25 Jun 2023 00:37:36 +0300
+
+libzstd (1.5.4+dfsg2-5) unstable; urgency=medium
+
+  * Add the 0021-tests-newline patch to fix a very rarely occurring bug in
+    the test suite when it splits a program's output into lines.
+  * Add the 0022-tests-timeout patch to try once again to fix a FTBFS
+    related to the window-size test; on some platforms it can now complete,
+    but it takes more than the expected one minute to do so.
+    Closes: #1032592
+
+ -- Peter Pentchev <roam@debian.org>  Sat, 18 Mar 2023 22:58:30 +0200
+
+libzstd (1.5.4+dfsg2-4) unstable; urgency=medium
+
+  * Replace the 0019-disable-window-resize-test patch with
+    the 0019-upstream-fix-cli-tests one which should hopefully fix
+    the issues that made it necessary to skip those tests.
+  * Add the 0020-upstream-fix-block-splitter to fix a rare problem.
+  * Explicitly override the no-versioned-debhelper-prerequisite
+    Lintian tag as suggested in its description.
+
+ -- Peter Pentchev <roam@debian.org>  Wed, 08 Mar 2023 23:54:45 +0200
+
+libzstd (1.5.4+dfsg2-3) unstable; urgency=medium
+
+  * Temporary disable the window-resize CLI test until I can figure out
+    why does it seem to randomly fail on some of the Debian buildds.
+
+ -- Peter Pentchev <roam@debian.org>  Mon, 13 Feb 2023 12:56:34 +0200
+
+libzstd (1.5.4+dfsg2-2) unstable; urgency=medium
+
+  * Fix FTBFS: add python3 and less as build-time dependencies for
+    the test suite.
+
+ -- Peter Pentchev <roam@debian.org>  Mon, 13 Feb 2023 03:55:11 +0200
+
+libzstd (1.5.4+dfsg2-1) unstable; urgency=medium
+
+  * Add autopkgtests that build simple programs that link to libzstd
+    using the pkg-config and CMake build systems.
+  * New upstream release:
+    - update the upstream copyright notices
+    - drop the 0019-hurd-unused patch, integrated upstream
+    - refresh the patches
+  * Add the year 2023 to my debian/* copyright notice.
+
+ -- Peter Pentchev <roam@debian.org>  Mon, 13 Feb 2023 01:37:54 +0200
+
+libzstd (1.5.2+dfsg2-3) unstable; urgency=medium
+
+  * Add the 0019-hurd-unused patch to fix a FTBFS on the GNU Hurd:
+    silence an unused parameter warning.
+  * Fix FTCBFS: Export build tools for all targets. Closes: #1027126
+
+ -- Peter Pentchev <roam@debian.org>  Thu, 29 Dec 2022 18:08:51 +0200
+
+libzstd (1.5.2+dfsg2-2) unstable; urgency=medium
+
+  * Fix a FTBFS on i386 (and on any arch where DEB_HOST_MULTIARCH is not
+    the same as DEB_HOST_GNU_TYPE).
+  * Correctly point the debhelper cmake tools to build/cmake/ as
+    the source directory instead of passing it as a positional argument
+    that is not expected by Buildsystem::cmake.
+
+ -- Peter Pentchev <roam@debian.org>  Tue, 27 Dec 2022 22:54:45 +0200
+
+libzstd (1.5.2+dfsg2-1) unstable; urgency=medium
+
+  * Declare compliance with Policy 4.6.2 with no changes.
+  * Use the GitHub API in the watch file.
+  * Build and distribute the CMake build glue files:
+    - Closes: #1020403
+    - repack with the build/cmake/ and build/meson/ directories
+    - add an explicit "build" target to the rules file that invokes
+      `dh build` to make sure that make(1) does not mistake the existence of
+      the build/ directory for "nothing to do"
+    - run an additional `dh_auto_configure` with `--buildsystem-cmake` to
+      generate the zstdConfig*.cmake and zstdTarget*.cmake files used by
+      other projects to link against libzstd
+    - use debhelper compat level 14 for the CMake support
+    - install the CMake build glue files
+    - enable the ZSTD_LEGACY_SUPPORT CMake config option so that
+      the CMake build does not differ in behavior from the Makefile one
+  * Add Rules-Requires-Root: no to the source package stanza.
+  * Do not use d-shlibs, debhelper's tools can do the job.
+  * Use `execute_after_dh_installman` instead of overriding the full target.
+  * Improve the pzstd manual page's title ("parallelised" -> "parallelized",
+    "al la" -> "a la").
+  * Pass V=1 to `make` unless the "terse" build option is set. Closes: #1009746
+  * Fix the source licensing: BSD *or* GPL-2, not "and". Closes: #1012003
+  * Mark the zstd binary package as Multi-Arch: foreign. Closes: #1014438
+  * Support the noudeb build profile. Closes: #1024937
+
+ -- Peter Pentchev <roam@debian.org>  Tue, 27 Dec 2022 19:47:09 +0200
+
+libzstd (1.5.2+dfsg-1) unstable; urgency=medium
+
+  * New upstream release (Closes: #1008165):
+    - refresh some patches:
+      - 0013-skip-memory-greedy-tests
+      - 0015-Skip-dev-random-tests-on-hurd
+      - 0017-alpha-fbfs-st_mtime
+      - 0018-kfreebsd-ftbfs-utime-now
+    - update the required version in the dh_makeshlibs invocation
+
+ -- Peter Pentchev <roam@debian.org>  Mon, 11 Apr 2022 17:50:14 +0300
+
+libzstd (1.4.10+dfsg-1) unstable; urgency=medium
+
+  * Point the Vcs-* fields to the pkg-rpm-team repository.
+  * New upstream release (Closes: #1008078):
+    - remove the years from the main upstream copyright notice
+    - refresh patch line numbers
+
+ -- Peter Pentchev <roam@debian.org>  Sat, 02 Apr 2022 22:44:53 +0300
+
+libzstd (1.4.9+dfsg-1) unstable; urgency=medium
+
+  * New maintainer, bring libzstd under the RPM packaging team's umbrella.
+    Many thanks to the Debian Med Team and everyone else for their work!
+  * Add my debian/* copyright notice.
+  * Catch up with a renamed Lintian tag in an override.
+  * Correct the upstream copyright years.
+  * Add a trivial git-buildpackage config file.
+  * New upstream release:
+    - update the upstream copyright years
+    - adapt the 0008-Address-embedded-zlib patch
+    - refresh patch line numbers
+  * Fix a kFreeBSD FTBFS - UTIME_NOW is not defined.
+
+ -- Peter Pentchev <roam@debian.org>  Sun, 20 Mar 2022 18:25:50 +0200
+
+libzstd (1.4.8+dfsg-3) unstable; urgency=medium
+
+  * Team upload.
+  * Fix watchfile to detect new versions on github
+  * Standards-Version: 4.6.0
+
+ -- Andreas Tille <tille@debian.org>  Wed, 06 Oct 2021 09:27:47 +0200
+
+libzstd (1.4.8+dfsg-2.1) unstable; urgency=medium
+
+  * Non-maintainer upload.
+  * Drop the symbols file: the symbols in the library aren’t all intended
+    for public consumption, but they can’t be hidden (yet) either, see
+    https://github.com/facebook/zstd/pull/2501 for the discussion. We’ll
+    rely on the shlibs file for now, with a relaxed version (1.4.0, as
+    discussed with upstream). Closes: #969597.
+
+ -- Stephen Kitt <skitt@debian.org>  Mon, 01 Mar 2021 18:23:52 +0100
+
+libzstd (1.4.8+dfsg-2) unstable; urgency=high
+
+  * Team upload.
+  * When a file with restricted permissions is compressed, the resulting file
+    inherits the umask of the user for the time of the compression.  This was
+    partially mitigated previously by running a change of permissions after a
+    `chmod`, but left a small but exploitable window just after the `fopen`.
+    This update adds 0018-fix-file-permissions-on-compression.patch to make
+    sure the compressed file is not group nor world readable for the _entire_
+    duration of the compression.
+    Closes: #982519
+
+ -- Étienne Mollier <etienne.mollier@mailoo.org>  Thu, 18 Feb 2021 09:52:53 +0100
+
+libzstd (1.4.8+dfsg-1) unstable; urgency=medium
+
+  * New upstream version 1.4.8+dfsg, Closes: #977829
+  * Refresh and remove patch applied by upstream
+  * Update d/libzstd1.symbols, getSequences() got renamed
+    to generateSequences(), no reverse deps use ZSTD_getSequences
+  * d/rules, remove export DEB_CFLAGS_MAINT_APPEND = -fno-strict-aliasing,
+    fixed by upstream, Closes: #957487
+    Call dh_makeshlibs with -V 'libzstd1 (>= 1.4.8)', new public symbols
+  * d/copyright, drop contrib/linux-kernel/fs/squashfs/*
+  * d/control: bump Policy to 4.5.1
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Fri, 25 Dec 2020 19:28:35 +0100
+
+libzstd (1.4.5+dfsg-4) unstable; urgency=medium
+
+  [ Andreas Tille ]
+  * Team upload.
+  * debhelper-compat 13 (routine-update)
+
+  [ Sudip Mukherjee ]
+  * Disable strict-aliasing to work around bug #957487
+    Intentionally not closing bug but decreasing severity for the moment.
+    The bug should be closed by a proper upstream fix and
+    strict-aliasing should be re-enabled.
+
+ -- Andreas Tille <tille@debian.org>  Fri, 07 Aug 2020 20:47:29 +0200
+
+libzstd (1.4.5+dfsg-3) unstable; urgency=medium
+
+  [ Paul Menzel ]
+  * debian/changelog: Fix typo in 1.4.5+dfsg-2 changelog
+
+  [ Alexandre Mestiashvili ]
+  * Add patch fixing FTBFS on Alpha, Closes: #962676
+    thanks to Helmut Grohne <helmut@subdivi.de>
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Mon, 29 Jun 2020 16:10:31 +0200
+
+libzstd (1.4.5+dfsg-2) unstable; urgency=medium
+
+  * Drop ZSTD_LEGACY_MULTITHREADED_API, since nothing in Debian seems to use it
+  * Fix FTCBFS: Don't build the shared library during dh_auto_install,
+    Closes: #962367, thanks to Helmut Grohne <helmut@subdivi.de>
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Sun, 07 Jun 2020 09:31:18 +0200
+
+libzstd (1.4.5+dfsg-1) unstable; urgency=medium
+
+  * New upstream version 1.4.5+dfsg
+  * Refresh patches, remove 0019-blhc-workarounds.patch from series
+  * Update symbols file, add ZDICT_getDictHeaderSize and remove all
+    ZSTDMT_* symbols, also remove renamed ZSTD_CCtxParam_getParameter and
+    ZSTD_CCtxParam_setParameter, no reverse dependencies use any of the
+    removed symbols
+  * Remove 0018-Alias-renamed-API-symbols.patch since no rdeps use the old
+    symbols
+  * Add patch fixing spelling typos
+  * d/rules: call dh_makeshlibs with -V 'libzstd1 (>= 1.4.5)', since this
+    version introduces new public symbols
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Fri, 05 Jun 2020 10:47:12 +0200
+
+libzstd (1.4.4+dfsg-3) unstable; urgency=medium
+
+  * Team upload.
+  * Source only upload.
+
+ -- Michael R. Crusoe <michael.crusoe@gmail.com>  Thu, 13 Feb 2020 10:40:13 +0100
+
+libzstd (1.4.4+dfsg-2) unstable; urgency=medium
+
+  * Team upload.
+  * Install all the man pages.
+  * Standards-Version: 4.5.0 (routine-update)
+  * debhelper-compat 12 (routine-update)
+
+ -- Michael R. Crusoe <michael.crusoe@gmail.com>  Thu, 13 Feb 2020 09:10:22 +0100
+
+libzstd (1.4.4+dfsg-1) unstable; urgency=medium
+
+  [ Justin Aplin ]
+  * New upstream version 1.4.4+dfsg
+  * Refresh patches
+  * Call Salsa CI with variable DB_BUILD_PARAM: '-v1.1.2-1', since this is the
+    oldest version in active repositories
+  * Add Rules-Requires-Root: binary-targets to debian/control to comply with
+    current DPM
+  * Bump Standards-Version to 4.4.1, changes noted above
+  * Update symbols file for libzstd1
+  * Call dh_makeshlibs with -V 'libzstd1 (>= 1.4.4)', since this version
+    introduced new public symbols
+  * Add an entry in debian/source/lintian-overrides to prevent libzstd1's
+    Section entry from triggering binary-control-field-duplicates-source,
+    since this field is necessary for the build
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Fri, 15 Nov 2019 17:15:40 +0100
+
+libzstd (1.4.3+dfsg-1) unstable; urgency=medium
+
+  [ Alexandre Mestiashvili ]
+  * Fix a typo causing test failures on mips(el) architectures in
+    d/patches/0013-skip-memory-greedy-tests.patch
+  * Remove circle.yml from Files-Excluded section in d/copyright
+  * New upstream version 1.4.3+dfsg
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Tue, 20 Aug 2019 13:33:51 +0200
+
+libzstd (1.4.2+dfsg-1) unstable; urgency=medium
+
+  [ Justin Aplin ]
+  * New upstream version 1.4.2+dfsg
+  * Refresh and drop applied by upstream patches
+  * Add patch aliasing two renamed but unchanged symbols to maintain backwards
+    compatibility
+  * Build with ZSTD_LEGACY_MULTITHREADED_API=1 to maintain backwards
+    compatibility
+  * Update symbols file for libzstd1
+  * Call dh_makeshlibs with -V 'libzstd1 (>= 1.4.0)', since this version
+    introduced new public symbols
+  * Bump debhelper compat level to 12.
+  * Bump Standards-Version to 4.4.0, no changes needed.
+  * Salsa-CI integration
+
+  [ Alexandre Mestiashvili ]
+  * Add .cirrus.yml to Files-Excluded list in d/copyright
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Mon, 19 Aug 2019 15:14:31 +0200
+
+libzstd (1.3.8+dfsg-3) unstable; urgency=medium
+
+  * Add patch fixing zstdgrep exit code when operating on files
+    Closes: #918390, thanks to Jörg-Volker Peetz <jvpeetz@web.de>
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Sat, 05 Jan 2019 23:42:20 +0100
+
+libzstd (1.3.8+dfsg-2) unstable; urgency=medium
+
+  * Add patch skipping tests failing on GNU/Hurd when writing to special files
+    such as /dev/zero or /dev/random
+  * Upload to unstable
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Thu, 03 Jan 2019 14:47:31 +0100
+
+libzstd (1.3.8+dfsg-1) experimental; urgency=medium
+
+  * Add .circleci to Files-Excluded
+  * New upstream version 1.3.8+dfsg
+  * Update docs, install all md files and CHANGELOG
+  * Bumpt Policy to 4.3.0
+  * Refresh and drop applied by upstream patches
+  * Update symbols file for libzstd1,
+    removed! 6 symbols from experimental API, but no reverse dependencies
+    of libzstd1 seem to use any of the removed symbols
+    See also: https://github.com/facebook/zstd/issues/1111
+  * Call dh_makeshlibs with -V 'libzstd1 (>= 1.3.8)', since this version
+    introduced new public symbols
+  * Update zstd.lintian-overrides, zstd{grep,less} got man pages
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Mon, 31 Dec 2018 15:19:12 +0100
+
+libzstd (1.3.5+dfsg-2) unstable; urgency=medium
+
+  * Add udeb package for libzstd1, Closes: #908834
+  * Bump Policy to 4.2.1
+  * Call dh_makeshlibs with -V 'libzstd1 (>= 1.3.5)', since this version
+    introduced new public symbols
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Fri, 12 Oct 2018 08:00:27 +0000
+
+libzstd (1.3.5+dfsg-1) unstable; urgency=medium
+
+  [ Alexandre Mestiashvili ]
+  * Add attribuition for the patch
+  * Fix varying number of threads in pzstd man page, making build reproducible
+  * New upstream version 1.3.5+dfsg
+  * Refresh and drop patches applied by upstream
+  * Update d/zstd.lintian-overrides
+
+  [ Balint Reczey ]
+  * Update symbols file
+  * Allow Invoking `zstd --list` When `stdin` is not a `tty`
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Fri, 21 Sep 2018 18:46:28 +0000
+
+libzstd (1.3.4+dfsg-3) unstable; urgency=medium
+
+  * Add patch provided by Chris Lamb making build reproducible,
+    Closes: #897904
+  * Update patch skipping heavy tests on mips(el) and hurd
+  * Add patch fixing tests on GNU/Hurd
+  * Drop not needed override_dh_auto_test
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Wed, 09 May 2018 19:25:10 +0200
+
+libzstd (1.3.4+dfsg-2) unstable; urgency=medium
+
+  * Add liblzma-dev and liblz4-dev to build-depends to enable xz and lz4
+    support
+  * Patch tests to avoid FTBFS on mips(el) architectures
+  * Use help2man for pzstd man page, drop patches providing obsolete man pages
+  * Update zstd.lintian-overrides, add more binaries without man pages
+  * Add override for dh_auto_test, on hurd run only simple tests
+  * Update 0012-typos.patch, forward to upstream
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Wed, 02 May 2018 15:43:16 +0200
+
+libzstd (1.3.4+dfsg-1) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Alexandre Mestiashvili ]
+  * New upstream version 1.3.4+dfsg
+  * Refresh patches, remove indexes
+  * Update d/libzstd1.symbols fixing minimal-version
+  * Update d/copyright, starting from 1.3.1 patent claim is removed
+  * Add comments to unstable symbols
+
+  [ Mattia Rizzolo ]
+  * Update copyright after the new upstream release.
+
+  [ Sascha Steinbiss ]
+  * Remove obsolete patch.
+  * Reword patch description.
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Wed, 25 Apr 2018 10:39:39 +0200
+
+libzstd (1.3.3+dfsg-2) unstable; urgency=medium
+
+  * Team upload.
+
+  [ Dimitri John Ledkov ]
+  * Mark -dev and library packages Multi-Arch same.
+  * Update Vcs fields for salsa.
+  * Cleanup unused patches.
+
+  [ Andreas Hasenack ]
+  * d/rules: also run the clean Makefile target in the pzstd directory.
+
+  [ Alexandre Mestiashvili ]
+  * d/control: Update my email address.
+  * d/rules:
+    + Disable tests if DEB_BUILD_OPTIONS set to nocheck.
+    + Use dh_auto_build instead of $(MAKE) to avoid cross build failures.
+      Thanks to Helmut Grohne for the patch.  Closes: #895925
+    + Use dh_auto_clean instead of $(MAKE).
+
+  [ Adam Borowski ]
+  * Enable build on riscv64.  Closes: #895259
+
+  [ Mattia Rizzolo ]
+  * Bump debhelper compat level to 11.
+  * Bump Standards-Version to 4.1.4, no changes needed.
+  * Remove patch skipping a test on hurd-i386: allegedly the underlying issue
+    has been fixed instead.
+
+ -- Mattia Rizzolo <mattia@debian.org>  Sat, 21 Apr 2018 11:26:59 +0200
+
+libzstd (1.3.3+dfsg-1) unstable; urgency=medium
+
+  * Update File-Excluded list in d/copyright
+  * New upstream version 1.3.3+dfsg, Closes: #883816
+  * Refresh patches
+  * Add zlib1g-dev to Build-Deps to enable gzip support in zstd,
+    Closes: #883827
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Thu, 21 Dec 2017 14:25:26 +0100
+
+libzstd (1.3.2+dfsg2-2) unstable; urgency=medium
+
+  * Team upload.
+  * Do not depend libzstd in zstd package since static linking seems
+    to be the preferred way to create the executable
+    Closes: #884876
+  * Standards-Version: 4.1.2
+
+ -- Andreas Tille <tille@debian.org>  Thu, 21 Dec 2017 11:43:12 +0100
+
+libzstd (1.3.2+dfsg2-1) unstable; urgency=medium
+
+  * Update d/copyright:
+    - don't strip examples from source tarball
+    - note BSD and GPL-2 license for examples
+  * New upstream version 1.3.2+dfsg2
+    Closes: #883271
+  * Drop override_dh_auto_clean in d/rules as examples are back
+  * Drop 0010-do_not_make_examples.patch as examples are back
+  * Remove ruby-ronn from Build-Depends, as it renders libzstd package
+    not installable on many architectures.
+    Use man page shipped by upstream
+  * Apply cme fix dpkg, reformat 0010-do-not.. patch header,
+    fix VCS-Browser field
+  * Add override for manpage-has-errors-from-man lintian warning
+  * Install examples with libzstd-dev
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Fri, 01 Dec 2017 17:18:39 +0100
+
+libzstd (1.3.2+dfsg1-1) unstable; urgency=medium
+
+  [ Alexandre Mestiashvili ]
+  * Update Files-Excluded section in d/copyright
+  * New upstream version 1.3.2+dfsg1
+  * Update d/rules:
+    - trick dh_auto_clean with empty exmaples dir
+    - force man page generation
+  * Add symbols file for libzstd1
+  * Add 0011-skip-long-running-tests_on_hurd.patch fixing tests on gnu hurd
+  * Add d/patches/0012-typos.patch fixing a typo
+  * Enable autopkgtests via d/tests/control
+  * Override lintian's complain about missing man pages
+  * Add myself to uploaders
+  * Add ruby-ronn to build-deps, needed for man page generation
+
+  [ Andreas Tille ]
+  * d/watch: Fix version mangling
+
+ -- Alexandre Mestiashvili <mestia@debian.org>  Thu, 30 Nov 2017 23:32:41 +0100
+
+libzstd (1.3.2+dfsg-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version
+    Closes: #881187
+  * Standards-Version: 4.1.1
+
+ -- Andreas Tille <tille@debian.org>  Thu, 09 Nov 2017 07:55:32 +0100
+
+libzstd (1.3.1+dfsg-2) unstable; urgency=medium
+
+  * Team upload
+  * Follow hint given by James Cowgill to recude number of threads
+    on 32Bit MIPS architecture
+    Closes: #876416
+
+ -- Andreas Tille <tille@debian.org>  Fri, 22 Sep 2017 15:29:35 +0200
+
+libzstd (1.3.1+dfsg-1) unstable; urgency=medium
+
+  * Team upload
+  * New upstream version
+  * Exclude examples from upstream tarball
+    Closes: #869581
+  * debhelper 10
+  * cme fix dpkg-control
+  * Standards-Version: 4.1.0 (no changes needed)
+  * Fix copyright
+
+ -- Andreas Tille <tille@debian.org>  Wed, 06 Sep 2017 15:29:29 +0200
+
+libzstd (1.2.0-1) unstable; urgency=medium
+
+  * New upstream release (Closes: #863159).
+
+ -- Olivier Sallou <osallou@debian.org>  Wed, 24 May 2017 11:28:27 +0000
+
+libzstd (1.1.2-1) unstable; urgency=medium
+
+  * Team upload.
+  * New upstream version 1.1.2
+
+ -- Sascha Steinbiss <satta@debian.org>  Sun, 15 Jan 2017 08:08:53 +0000
+
+libzstd (1.1.1-1) unstable; urgency=medium
+
+  * New upstream version 1.1.1 (Closes: #844248)
+  * Whitespace fix to d/control
+  * Ensure hardening flags pass through to compiler by appending to CPPFLAGS
+
+ -- Kevin Murray <kdmfoss@gmail.com>  Sun, 20 Nov 2016 16:12:58 +0100
+
+libzstd (1.1.0-1) unstable; urgency=medium
+
+  * New upstream version 1.1.0 (Closes: #839960)
+  * Change uploader email
+  * Build new pzstd binary, including manpage
+  * Fix miscellaneous issues with d/rules and d/*.install
+  * Move docs from libzstd-dev to the zstd binary
+
+ -- Kevin Murray <kdmfoss@gmail.com>  Sun, 13 Nov 2016 11:23:03 +0000
+
+libzstd (1.0.0-1) unstable; urgency=medium
+
+  * Imported Upstream version 1.0.0 (Closes: #836574)
+  * Bump library package name to libzstd1
+  * Changed project URLs, copyrights after move to facebook.
+  * d/rules: hardening=+all
+
+ -- Kevin Murray <kdmfoss@gmail.com>  Sun, 04 Sep 2016 14:45:24 +1000
+
+libzstd (0.8.0-1) unstable; urgency=medium
+
+  [ Kevin Murray ]
+  * New upstream version (Closes: #834114)
+
+  [ Andreas Tille ]
+  * hardening=+bindnow
+
+ -- Kevin Murray <kdmfoss@gmail.com>  Thu, 21 Jul 2016 10:56:02 +1000
+
+libzstd (0.5.1-1) unstable; urgency=medium
+
+  [ Kevin Murray ]
+  * New upstream version (fixes a FTBFS)
+  * Package pkgconfig file (Closes: #813854)
+  * Fix path to tagged archives in d/watch
+  * Add vcs URLs
+  * Bump to standards version 3.9.7
+
+  [ Mattia Rizzolo ]
+  * debian/rules: Remove a lot of uneeded comments and lines
+
+ -- Kevin Murray <kdmfoss@gmail.com>  Thu, 17 Mar 2016 12:59:04 +0000
+
+libzstd (0.4.7-1) unstable; urgency=low
+
+  * New upstream version
+  * Remove build date encoding to enable reproducible build
+
+ -- Kevin Murray <kdmfoss@gmail.com>  Wed, 03 Feb 2016 11:26:21 +0200
+
+libzstd (0.4.5-1) unstable; urgency=low
+
+  * Initial release (Closes: #806767)
+
+ -- Kevin Murray <kdmfoss@gmail.com>  Tue, 01 Dec 2015 13:54:36 +1100

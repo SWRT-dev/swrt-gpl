@@ -1046,6 +1046,11 @@ int get_vport_info(unsigned int vport, unsigned int *link, unsigned int *speed, 
 }
 
 #ifdef RTCONFIG_NEW_PHYMAP
+int get_trunk_port_mapping(int trunk_port_value)
+{
+	return trunk_port_value;
+}
+
 void get_phy_port_mapping(phy_port_mapping *port_mapping)
 {
 	int i, id;

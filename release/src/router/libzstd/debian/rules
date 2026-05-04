@@ -1,0 +1,77 @@
+#!/usr/bin/make -f
+
+# Export build tools for all targets to avoid build hash changes.
+DPKG_EXPORT_BUILDTOOLS=1
+
+include /usr/share/dpkg/default.mk
+
+include /usr/share/debhelper/dh_package_notes/package-notes.mk
+
+export DH_VERBOSE=1
+
+export DEB_BUILD_MAINT_OPTIONS=hardening=+all
+
+# Upstream's makefiles will respect PREFIX, and this means we avoid a patch
+export PREFIX=/usr
+
+HELP2MAN = help2man --no-info --help-option="'-h'" --no-discard-stderr
+mandir := $(CURDIR)/debian/zstd/usr/share/man/man1
+
+DH_AUTO_CONFIGURE_OPTS := \
+	-DCMAKE_LIBRARY_ARCHITECTURE=${DEB_HOST_MULTIARCH} \
+	-DZSTD_LEGACY_SUPPORT:BOOL=ON \
+
+ifneq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+	DH_AUTO_CONFIGURE_OPTS += -DBUILD_TESTING:BOOL=OFF
+else
+	DH_AUTO_CONFIGURE_OPTS += -DBUILD_TESTING:BOOL=ON
+endif
+
+ifeq (,$(filter terse,$(DEB_BUILD_OPTIONS)))
+# Verbose output for the default 'make' build system
+export V=1
+endif
+
+%:
+	dh '$@'
+
+execute_after_dh_auto_clean:
+	dh_auto_clean -D contrib/pzstd
+	dh_auto_clean -D doc/educational_decoder
+	dh_auto_clean \
+		--buildsystem=cmake \
+		--sourcedir=$(CURDIR)/build/cmake
+
+execute_after_dh_auto_configure:
+	dh_auto_configure \
+		--buildsystem=cmake \
+		--sourcedir=$(CURDIR)/build/cmake \
+		-- \
+		$(DH_CMAKE_CONFIGURE_OPTS)
+
+execute_after_dh_auto_build:
+	dh_auto_build -D contrib/pzstd
+
+override_dh_auto_install:
+	dh_auto_install -- libdir=/usr/lib/${DEB_HOST_MULTIARCH}
+	dh_auto_install -D contrib/pzstd
+
+ifeq (,$(filter noudeb,$(DEB_BUILD_PROFILES)))
+execute_after_dh_install:
+	cp -r debian/libzstd1/usr debian/libzstd1-udeb/
+endif
+
+override_dh_makeshlibs:
+	dh_makeshlibs -plibzstd1 -V'libzstd1 (>= 1.5.5)' --add-udeb=libzstd1-udeb
+
+ifeq (,$(filter nodoc,$(DEB_BUILD_OPTIONS)))
+execute_after_dh_installman:
+	cp $(mandir)/zstd.1 $(mandir)/zstdmt.1
+	$(HELP2MAN) --name='parallelized Zstandard compression, a la pigz' contrib/pzstd/pzstd \
+	| perl -pe 's/(\(de\)compression\s\(default:)(\d+)(\))/$$1 All$$3/g' >$(mandir)/pzstd.1
+endif
+
+build:
+	dh $@
+
+.PHONY: build

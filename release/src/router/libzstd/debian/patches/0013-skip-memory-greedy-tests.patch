@@ -1,0 +1,38 @@
+Subject: Skip memory heavy tests causing FTBFS on mips(el) and hurd buildds
+From: Alex Mestiashvili <mestia@debian.org>
+--- a/tests/playTests.sh
++++ b/tests/playTests.sh
+@@ -1857,8 +1857,13 @@
+ roundTripTest -g5000000000 -P99 "1 --zstd=wlog=25"
+ roundTripTest -g3700000000 -P0 "1 --zstd=strategy=6,wlog=25"   # ensure btlazy2 can survive an overflow rescale
+ 
+-fileRoundTripTest -g4193M -P99 1
+-
++DEBARCH=$(dpkg-architecture -qDEB_HOST_ARCH)
++if [ "$DEBARCH" != 'hurd-i386' ]
++then
++    fileRoundTripTest -g4193M -P99 1
++else
++    println "\n**** skip memory greedy tests on $DEBARCH **** "
++fi
+ 
+ println "\n===>   zstd long, long distance matching round-trip tests "
+ roundTripTest -g270000000 "1 --single-thread --long"
+@@ -1875,9 +1880,14 @@
+     println "\n===>   zstdmt long round-trip tests "
+     roundTripTest -g80000000 -P99 "19 -T2" " "
+     roundTripTest -g5000000000 -P99 "1 -T2" " "
+-    roundTripTest -g500000000 -P97 "1 -T999" " "
+-    fileRoundTripTest -g4103M -P98 " -T0" " "
+-    roundTripTest -g400000000 -P97 "1 --long=24 -T2" " "
++    if [ "$DEBARCH" != 'mips' -a "$DEBARCH" != 'mipsel' -a "$DEBARCH" != 'hurd-i386' ]
++    then
++        roundTripTest -g500000000 -P97 "1 -T999" " "
++        fileRoundTripTest -g4103M -P98 " -T0" " "
++        roundTripTest -g400000000 -P97 "1 --long=24 -T2" " "
++    else
++        println "\n**** skip memory greedy tests on $DEBARCH **** "
++    fi
+     # Exposes the bug in https://github.com/facebook/zstd/pull/1678
+     # This test fails on 4 different travis builds at the time of writing
+     # because it needs to allocate 8 GB of memory.

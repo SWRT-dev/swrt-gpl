@@ -1,3 +1,0 @@
-exit_group(42)                          = -1 ENOSYS (Function not implemented) (INJECTED)
-exit(42)                                = ?
-+++ exited with 42 +++

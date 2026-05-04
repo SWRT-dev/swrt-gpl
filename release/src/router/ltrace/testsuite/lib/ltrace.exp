@@ -1,0 +1,848 @@
+# This file is part of ltrace.
+# Copyright (C) 2012, 2013 Petr Machata, Red Hat Inc.
+# Copyright (C) 2006 Yao Qi, IBM Corporation
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+# Generic ltrace test subroutines that should work for any target.  If these
+# need to be modified for any target, it can be done with a variable
+# or by passing arguments.
+
+source $objdir/env.exp
+
+if [info exists TOOL_EXECUTABLE] {
+	set LTRACE [list $TOOL_EXECUTABLE]
+} else {
+	set LTRACE [list $objdir/../ltrace]
+}
+
+if {[info exists VALGRIND] && ![string equal $VALGRIND {}]} {
+	verbose "Running under valgrind command: `$VALGRIND'"
+	set LTRACE [concat $VALGRIND $LTRACE]
+}
+
+set LTRACE_OPTIONS {}
+set LTRACE_ARGS {}
+set LTRACE_TEMP_FILES {}
+
+# Pre-8.5 TCL doesn't have lreverse.  The following is taken from:
+#  http://www2.tcl.tk/17188
+
+if {[info command lreverse] == ""} {
+    proc lreverse l {
+        set r {}
+        set i [llength $l]
+        while {[incr i -1]} {lappend r [lindex $l $i]}
+        lappend r [lindex $l 0]
+    }
+}
+
+# ltrace_compile SOURCE DEST TYPE OPTIONS 
+#
+# Compile PUT(program under test) by native compiler.   ltrace_compile runs 
+# the right compiler, and TCL captures the output, and I evaluate the output.
+#
+# SOURCE is the name of program under test, with full directory.
+# DEST is the name of output of compilation, with full directory.
+# TYPE is an enum-like variable to affect the format or result of compiler
+#   output.  Values:
+#   executable   if output is an executable.
+#   object       if output is an object.
+# OPTIONS is option to compiler in this compilation.
+proc ltrace_compile {source dest type options} {
+    global LTRACE_TESTCASE_OPTIONS;
+
+    if {![string equal "object" $type]} {
+	# Add platform-specific options if a shared library was specified using
+	# "shlib=librarypath" in OPTIONS.
+	set new_options ""
+	set shlib_found 0
+
+	foreach opt $options {
+	    if [regexp {^shlib=(.*)} $opt dummy_var shlib_name] {
+		if [test_compiler_info "xlc*"] {
+		    # IBM xlc compiler doesn't accept shared library named other
+		    # than .so: use "-Wl," to bypass this
+		    lappend source "-Wl,$shlib_name"
+		} else {
+		    lappend source $shlib_name
+		}
+
+		if {$shlib_found == 0} {
+		    set shlib_found 1
+
+		    if { ([test_compiler_info "gcc-*"]&& ([istarget "powerpc*-*-aix*"]|| [istarget "rs6000*-*-aix*"] ))} {
+			lappend options "additional_flags=-L${objdir}/${subdir}"
+		    } elseif { [istarget "mips-sgi-irix*"] } {
+			lappend options "additional_flags=-rpath ${objdir}/${subdir}"
+		    }
+		}
+
+	    } else {
+		lappend new_options $opt
+	    }
+	}
+
+	#end of for loop
+	set options $new_options
+    }
+
+    # .c11 is C-11
+    # .cc and .cpp is C++
+    # .cc11 is C++-11
+    if {[string match "*.c11"  $source]} {
+	lappend options "additional_flags=-x c -std=gnu11"
+    }
+    if {[string match "*.cc"  $source] ||
+	[string match "*.cpp" $source]} {
+	lappend options c++
+    }
+    if {[string match "*.cc11"  $source]} {
+	lappend options c++ "additional_flags=-x c++ -std=gnu++11"
+    }
+
+    # dump some information for debug purpose.
+    verbose "options are $options"
+    verbose "source is $source $dest $type $options"
+
+    # Wipe the DEST file, so that we don't end up running an obsolete
+    # version of the binary.
+    exec rm -f $dest
+
+    set result [target_compile $source $dest $type $options];
+    verbose "result is $result"
+    regsub ".* note: .*$" "$result" "" result;
+    regsub "\[\r\n\]*$" "$result" "" result;
+    regsub "^\[\r\n\]*" "$result" "" result;
+    if { $result != "" && [lsearch $options quiet] == -1} {
+	clone_output "compile failed for ltrace test, $result"
+    }
+    return $result;
+}
+
+proc get_compiler_info {binfile args} {
+    # For compiler.c and compiler.cc
+    global srcdir
+
+    # I am going to play with the log to keep noise out.
+    global outdir
+    global tool
+
+    # These come from compiler.c or compiler.cc
+    global compiler_info
+
+    # Legacy global data symbols.
+    #global gcc_compiled
+
+    # Choose which file to preprocess.
+    set ifile "${srcdir}/lib/compiler.c"
+    if { [llength $args] > 0 && [lindex $args 0] == "c++" } {
+	    set ifile "${srcdir}/lib/compiler.cc"
+    }
+
+    # Run $ifile through the right preprocessor.
+    # Toggle ltrace.log to keep the compiler output out of the log.
+    #log_file
+    set cppout [ ltrace_compile "${ifile}" "" preprocess [list "$args" quiet] ]
+    #log_file -a "$outdir/$tool.log" 
+
+    # Eval the output.
+    set unknown 0
+    foreach cppline [ split "$cppout" "\n" ] {
+	    if { [ regexp "^#" "$cppline" ] } {
+	      # line marker
+	    } elseif { [ regexp "^\[\n\r\t \]*$" "$cppline" ] } {
+	      # blank line
+	    } elseif { [ regexp "^\[\n\r\t \]*set\[\n\r\t \]" "$cppline" ] } {
+	    # eval this line
+	      verbose "get_compiler_info: $cppline" 2
+	      eval "$cppline"
+	  } else {
+	    # unknown line
+	    verbose "get_compiler_info: $cppline"
+	    set unknown 1
+	  }
+      }
+
+    # Reset to unknown compiler if any diagnostics happened.
+    if { $unknown } {
+	    set compiler_info "unknown"
+    }
+  return 0
+}
+
+proc test_compiler_info { {compiler ""} } {
+    global compiler_info
+
+     if [string match "" $compiler] {
+         if [info exists compiler_info] {
+	     verbose "compiler_info=$compiler_info"
+	     # if no arg, return the compiler_info string
+             return $compiler_info
+         } else {
+             perror "No compiler info found."
+         }
+     }
+
+    return [string match $compiler $compiler_info]
+}
+
+proc ltrace_compile_shlib {sources dest options} {
+    set obj_options $options
+    verbose "+++++++ [test_compiler_info]" 
+    switch -glob [test_compiler_info] {
+	"xlc-*" {
+	    lappend obj_options "additional_flags=-qpic"
+	}
+	"gcc-*" {
+	    if { !([istarget "powerpc*-*-aix*"]
+		   || [istarget "rs6000*-*-aix*"]) } {
+                lappend obj_options "additional_flags=-fpic"
+	    }
+          }
+  "xlc++-*" {
+      lappend obj_options "additional_flags=-qpic"
+  }
+
+	default {
+	    fail "Bad compiler!"
+            }
+    }
+
+    if {![LtraceCompileObjects $sources $obj_options objects]} {
+	return -1
+    }
+
+    set link_options $options
+    if { [test_compiler_info "xlc-*"] || [test_compiler_info "xlc++-*"]} {
+	lappend link_options "additional_flags=-qmkshrobj"
+    } else {
+	lappend link_options "additional_flags=-shared"
+    }
+    if {[ltrace_compile "${objects}" "${dest}" executable $link_options] != ""} {
+	return -1
+    }
+
+    return
+}
+
+# WipeFiles --
+#
+#	Delete each file in the list.
+#
+# Arguments:
+#	files	List of files to delete.
+#
+# Results:
+#	Each of the files is deleted.  Files are deleted in reverse
+#	order, so that directories are emptied and can be deleted
+#	without using -force.  Returns nothing.
+
+proc WipeFiles {files} {
+    verbose "WipeFiles: $files\n"
+    foreach f [lreverse $files] {
+	file delete $f
+    }
+}
+
+# LtraceTmpDir --
+#
+#	Guess what directory to use for temporary files.
+#	This was adapted from http://wiki.tcl.tk/772
+#
+# Results:
+#	A temporary directory to use.  The current directory if no
+#	other seems to be available.
+
+proc LtraceTmpDir {} {
+    set tmpdir [pwd]
+
+    if {[file exists "/tmp"]} {
+	set tmpdir "/tmp"
+    }
+
+    catch {set tmpdir $::env(TMP)}
+    catch {set tmpdir $::env(TEMP)}
+    catch {set tmpdir $::env(TMPDIR)}
+
+    return $tmpdir
+}
+
+set LTRACE_TEMP_DIR [LtraceTmpDir]
+
+# LtraceTempFile --
+#
+#	Create a temporary file according to a pattern, and return its
+#	name.  This behaves similar to mktemp.  We don't use mktemp
+#	directly, because on older systems, mktemp requires that the
+#	array of X's be at the very end of the string, while ltrace
+#	temporary files need to have suffixes.
+#
+# Arguments:
+#	pat	Pattern to use.  See mktemp for description of its format.
+#
+# Results:
+#	Creates the temporary file and returns its name.  The name is
+#	also appended to LTRACE_TEMP_FILES.
+
+proc LtraceTempFile {pat} {
+    global LTRACE_TEMP_FILES
+    global LTRACE_TEMP_DIR
+
+    set letters "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+    set numLetters [string length $letters]
+
+    if {![regexp -indices {(X{3,})} $pat m]} {
+	send_error -- "Pattern $pat contains insufficient number of X's."
+	return {}
+    }
+
+    set start [lindex $m 0]
+    set end [lindex $m 1]
+    set len [expr {$end - $start + 1}]
+
+    for {set j 0} {$j < 10} {incr j} {
+
+	# First, generate a random name.
+
+	set randstr {}
+	for {set i 0} {$i < $len} {incr i} {
+	    set r [expr {int(rand() * $numLetters)}]
+	    append randstr [string index $letters $r]
+	}
+	set prefix [string range $pat 0 [expr {$start - 1}]]
+	set suffix [string range $pat [expr {$end + 1}] end]
+	set name [file join $LTRACE_TEMP_DIR "$prefix$randstr$suffix"]
+
+	# Now check that it's free.  This is of course racy, but this
+	# is a test suite, not anything used in actual production.
+
+	if {[file exists $name]} {
+	    continue
+	}
+
+	# We don't bother attempting to open the file.  Downstream
+	# code can do it itself.
+
+	lappend LTRACE_TEMP_FILES $name
+	return $name
+    }
+
+    send_error -- "Couldn't create a temporary file for pattern $pat."
+    return
+}
+
+# ltraceNamedSource --
+#
+#	Create a file named FILENAME, and prime it with TEXT.  If
+#	REMEMBERTEMP, add the file into LTRACE_TEMP_FILES, so that
+#	ltraceDone (or rather WipeFiles) erases it later.
+#
+# Arguments:
+#	filename	Name of the file to create.
+#
+#	text	Contents of the new file.
+#
+#	rememberTemp	Whether to add filename to LTRACE_TEMP_FILES.
+#
+# Results:
+#	Returns $filename, which now refers to a file with contents
+#	given by TEXT.
+
+proc ltraceNamedSource {filename text {rememberTemp 1}} {
+    global LTRACE_TEMP_FILES
+
+    set chan [open $filename w]
+    puts $chan $text
+    close $chan
+
+    if $rememberTemp {
+	lappend LTRACE_TEMP_FILES $filename
+    }
+
+    return $filename
+}
+
+# ltraceSource --
+#
+#	Create a temporary file with a given suffix and prime it with
+#	contents given in text.
+#
+# Arguments:
+#	suffix	Suffix of the temp file to be created.
+#
+#	text	Contents of the new file.
+#
+# Results:
+#	Returns file name of created file.
+
+proc ltraceSource {suffix text} {
+    return [ltraceNamedSource \
+		[LtraceTempFile "lt-XXXXXXXXXX.$suffix"] $text 0]
+}
+
+# ltraceDir --
+#
+#	Create a temporary directory.
+#
+# Arguments:
+#
+# Results:
+#	Returns name of created directory.
+
+proc ltraceDir {} {
+    set ret [LtraceTempFile "lt-XXXXXXXXXX.dir"]
+    file mkdir $ret
+    return $ret
+}
+
+# LtraceCompileObjects --
+#
+#	Compile each source file into an object file.  ltrace_compile
+#	is called to perform actual compilation.
+#
+# Arguments:
+#	sources	List of source files.
+#
+#	options	Options for ltrace_compile.
+#
+#	retName Variable where the resulting list of object names is
+#		to be placed.
+# Results:
+#	Returns true or false depending on whether there were any
+#	errors.  If it returns true, then variable referenced by
+#	retName contains list of object files, produced by compiling
+#	files in sources list.
+
+proc LtraceCompileObjects {sources options retName} {
+    global LTRACE_TEMP_FILES
+    upvar $retName ret
+    set ret {}
+
+    foreach source $sources {
+	set sourcebase [file tail $source]
+	set dest $source.o
+	lappend LTRACE_TEMP_FILES $dest
+	verbose "LtraceCompileObjects: $source -> $dest"
+	if {[ltrace_compile $source $dest object $options] != ""} {
+	    return false
+	}
+	lappend ret $dest
+    }
+
+    return true
+}
+
+# ltraceCompile --
+#
+#	This attempts to compile a binary from sources given in ARGS.
+#
+# Arguments:
+#	dest	A binary to be produced.  If this is called lib*.so, then
+#		the resulting binary will be a library, if *.pie, it
+#		will be a PIE, otherwise it will be an executable.  In
+#		theory this could also be *.o for "object" and *.i for
+#		"preprocess" for cases with one source file, but that
+#		is not supported at the moment.  The binary will be
+#		placed in $objdir/$subdir.
+#
+#	args	List of options and source files.
+#
+#		Options are arguments that start with a dash.  Options
+#		(sans the dash) are passed to ltrace_compile.
+#
+#		Source files named lib*.so are libraries.  Those are
+#		passed to ltrace_compile as options shlib=X.  Source
+#		files named *.o are objects.  The remaining source
+#		files are first compiled (by LtraceCompileObjects) and
+#		then together with other objects passed to
+#		ltrace_compile to produce resulting binary.
+#
+#		Any argument that is empty string prompts the function
+#		to fail.  This is done so that errors caused by
+#		ltraceSource (or similar) distribute naturally
+#		upwards.
+#
+# Results:
+#	This compiles given source files into a binary.  Full file name
+#	of that binary is returned.  Empty string is returned in case
+#	of a failure.
+
+proc ltraceCompile {dest args} {
+    global objdir
+    global subdir
+
+    get_compiler_info {} c
+    get_compiler_info {} c++
+
+    if {[string match "lib*.so" $dest]} {
+	set type "library"
+	set extraObjOptions "additional_flags=-fpic"
+	set extraOptions "additional_flags=-shared"
+    } elseif {[string match "*.pie" $dest]} {
+	set type "executable"
+	set extraObjOptions "additional_flags=-fpic"
+	set extraOptions "additional_flags=-pie"
+    } else {
+	set type "executable"
+	set extraObjOptions {}
+	set extraOptions {}
+    }
+
+    set options {}
+    set sources {}
+    set objects {}
+    foreach a $args {
+	if {[string match "-l*" $a]} {
+	    lappend options "shlib=$a"
+	} elseif {[string match "-?*" $a]} {
+	    lappend options [string range $a 1 end]
+	} elseif {[string match "*.so" $a]} {
+	    lappend options "shlib=$a"
+	} elseif {[string match "*.o" $a]} {
+	    lappend objects $a
+	} else {
+	    lappend sources $a
+	}
+    }
+
+    if {[string equal $dest {}]} {
+	set dest [LtraceTempFile "exe-XXXXXXXXXX"]
+    } elseif {[string equal $dest ".pie"]} {
+	set dest [LtraceTempFile "pie-XXXXXXXXXX"]
+    } else {
+	set dest $objdir/$subdir/$dest
+    }
+
+    verbose "ltraceCompile: dest $dest"
+    verbose "             : options $options"
+    verbose "             : sources $sources"
+    verbose "             : objects $objects"
+
+    if {![LtraceCompileObjects $sources \
+	      [concat $options $extraObjOptions] newObjects]} {
+	return {}
+    }
+    set objects [concat $objects $newObjects]
+
+    verbose "ltraceCompile: objects $objects"
+
+    if {[ltrace_compile $objects $dest $type \
+	     [concat $options $extraOptions]] != ""} {
+	return {}
+    }
+
+    return $dest
+}
+
+# ltraceRun --
+#
+#	Invoke command identified by LTRACE global variable with given
+#	ARGS.  A logfile redirection is automatically ordered by
+#	passing -o and a temporary file name.
+#
+# Arguments:
+#	args	Arguments to ltrace binary.
+#
+# Results:
+#	Returns name of logfile.  The "exec" command that it uses
+#	under the hood fails loudly if the process exits with a
+#	non-zero exit status, or uses stderr in any way.
+
+proc ltraceRun {args} {
+    global LTRACE
+    global objdir
+    global subdir
+
+    set LdPath [ld_library_path $objdir/$subdir]
+    set logfile [ltraceSource ltrace {}]
+
+    # Run ltrace.  expect will show an error if this doesn't exit with
+    # zero exit status (i.e. ltrace fails, valgrind finds errors,
+    # etc.).
+
+    set command [list exec env LD_LIBRARY_PATH=$LdPath {*}$LTRACE -o $logfile {*}$args]
+    verbose $command
+    if {[catch {eval $command}] } {
+	fail "test case execution failed"
+	send_error -- $command
+	send_error -- $::errorInfo
+    }
+
+    return $logfile
+}
+
+# ltraceDone --
+#
+#	Wipes or dumps all temporary files after a test suite has
+#	finished.
+#
+# Results:
+#	Doesn't return anything.  Wipes all files gathered in
+#	LTRACE_TEMP_FILES.  If SAVE_TEMPS is defined and true, the
+#	temporary files are not wiped, but their names are dumped
+#	instead.  Contents of LTRACE_TEMP_FILES are deleted in any
+#	case.
+
+proc ltraceDone {} {
+    global SAVE_TEMPS
+    global LTRACE_TEMP_FILES
+
+    if {[info exists SAVE_TEMPS] && $SAVE_TEMPS} {
+	foreach tmp $LTRACE_TEMP_FILES {
+	    send_user "$tmp\n"
+	}
+    } else {
+	WipeFiles $LTRACE_TEMP_FILES
+    }
+
+    set LTRACE_TEMP_FILES {}
+    return
+}
+
+# Grep --
+#
+#	Return number of lines in a given file, matching a given
+#	regular expression.
+#
+# Arguments:
+#	logfile	File to search through.
+#
+#	re	Regular expression to match.
+#
+# Results:
+#	Returns number of matching lines.
+
+proc Grep {logfile re} {
+    set count 0
+    set fp [open $logfile]
+    while {[gets $fp line] >= 0} {
+	if [regexp -- $re $line] {
+	    incr count
+	}
+    }
+    close $fp
+    return $count
+}
+
+# ltraceMatch1 --
+#
+#	Look for a pattern in a given logfile, comparing number of
+#	occurences of the pattern with expectation.
+#
+# Arguments:
+#	logfile	The name of file where to look for patterns.
+#
+#	pattern	Regular expression pattern to look for.
+#
+#	op	Operator to compare number of occurences.
+#
+#	expect	Second operand to op, the first being number of
+#		occurences of pattern.
+#
+# Results:
+#	Doesn't return anything, but calls fail or pass depending on
+#	whether the patterns matches expectation.
+
+proc ltraceMatch1 {logfile pattern {op ==} {expect 1}} {
+    set count [Grep $logfile $pattern]
+    set msgMain "$pattern appears in $logfile $count times"
+    set msgExpect ", expected $op $expect"
+
+    if {[eval expr $count $op $expect]} {
+	pass $msgMain
+    } else {
+	fail $msgMain$msgExpect
+    }
+    return
+}
+
+# ltraceMatch --
+#
+#	Look for series of patterns in a given logfile, comparing
+#	number of occurences of each pattern with expectations.
+#
+# Arguments:
+#	logfile	The name of file where to look for patterns.
+#
+#	patterns List of patterns to look for.  ltraceMatch1 is called
+#		on each of these in turn.
+#
+# Results:
+#
+#	Doesn't return anything, but calls fail or pass depending on
+#	whether each of the patterns holds.
+
+proc ltraceMatch {logfile patterns} {
+    foreach pat $patterns {
+	eval ltraceMatch1 [linsert $pat 0 $logfile]
+    }
+    return
+}
+
+# ltraceLibTest --
+#
+#	Generate a binary, a library (liblib.so) and a config file.
+#	Run the binary using ltraceRun, passing it -F to load the
+#	config file.
+#
+# Arguments:
+#	conf	Contents of ltrace config file.
+#
+#	cdecl	Contents of header file.
+#
+#	libcode	Contents of library implementation file.
+#
+#	maincode	Contents of function "main".
+#
+#	params	Additional parameters to pass to ltraceRun.
+#
+# Results:
+#
+#	Returns whatever ltraceRun returns.
+
+proc ltraceLibTest {conf cdecl libcode maincode {params ""}} {
+    set conffile [ltraceSource conf $conf]
+    set lib [ltraceCompile liblib.so [ltraceSource c [concat $cdecl $libcode]]]
+    set bin [ltraceCompile {} $lib \
+		 [ltraceSource c \
+		      [concat $cdecl "int main(void) {" $maincode "}"]]]
+
+    return [eval [concat "ltraceRun -F $conffile " $params "-- $bin"]]
+}
+
+#
+# ltrace_options OPTIONS_LIST
+# Pass ltrace commandline options.
+# 
+proc ltrace_options { args } {
+	
+	global LTRACE_OPTIONS
+	set LTRACE_OPTIONS $args
+}
+
+#
+# ltrace_args ARGS_LIST
+# Pass ltrace'd program its own commandline options.
+#
+proc ltrace_args { args } {
+
+	global LTRACE_ARGS
+	set LTRACE_ARGS $args
+}
+
+#
+# handle run-time library paths
+#
+proc ld_library_path { args } {
+
+	set ALL_LIBRARY_PATHS { }
+	if [info exists LD_LIBRARY_PATH] {
+		lappend ALL_LIBRARY_PATHS $LD_LIBRARY_PATH
+	}
+	global libelf_LD_LIBRARY_PATH
+	if {[string length $libelf_LD_LIBRARY_PATH] > 0} {
+		lappend ALL_LIBRARY_PATHS $libelf_LD_LIBRARY_PATH
+	}
+	global elfutils_LD_LIBRARY_PATH
+	if {[string length $elfutils_LD_LIBRARY_PATH] > 0} {
+		lappend ALL_LIBRARY_PATHS $elfutils_LD_LIBRARY_PATH
+	}
+	global libunwind_LD_LIBRARY_PATH
+	if {[string length $libunwind_LD_LIBRARY_PATH] > 0} {
+		lappend ALL_LIBRARY_PATHS $libunwind_LD_LIBRARY_PATH
+	}
+	lappend ALL_LIBRARY_PATHS {*}$args
+	join $ALL_LIBRARY_PATHS ":"
+}
+
+#
+# ltrace_runtest LD_LIBRARY_PATH BIN FILE
+# Trace the execution of BIN and return result.
+#
+# BIN is program-under-test.
+# LD_LIBRARY_PATH is the env for program-under-test to run.
+# FILE is to save the output from ltrace with default name $BIN.ltrace.
+# Retrun output from ltrace.
+#
+proc ltrace_runtest { args } {
+
+	global LTRACE
+	global LTRACE_OPTIONS
+	global LTRACE_ARGS
+
+	verbose "LTRACE = $LTRACE"
+	
+	set LD_LIBRARY_PATH_ [ld_library_path [lindex $args 0]]
+	set BIN [lindex $args 1]
+
+	# specify the output file, the default one is $BIN.ltrace
+	if [llength $args]==3 then {
+		set file [lindex $args 2]
+	} else {
+		set file $BIN.ltrace
+	}
+
+	# Remove the file first.  If ltrace fails to overwrite it, we
+	# would be comparing output to an obsolete run.
+	exec rm -f $file
+
+	# append this option to LTRACE_OPTIONS.
+	lappend LTRACE_OPTIONS "-o"
+	lappend LTRACE_OPTIONS "$file"
+	verbose "LTRACE_OPTIONS = $LTRACE_OPTIONS"
+	set command {exec env LD_LIBRARY_PATH=$LD_LIBRARY_PATH_ \
+		{*}$LTRACE {*}$LTRACE_OPTIONS $BIN {*}$LTRACE_ARGS}
+	#ltrace the PUT.
+	if {[catch $command output]} {
+	    fail "test case execution failed"
+	    send_error -- $command
+	    send_error -- $::errorInfo
+	}
+
+	# return output from ltrace.
+	return $output
+}
+
+#
+# ltrace_verify_output FILE_TO_SEARCH PATTERN MAX_LINE
+# Verify the ltrace output by comparing the number of PATTERN in 
+# FILE_TO_SEARCH with INSTANCE_NO.  Do not specify INSTANCE_NO if
+# instance number is ignored in this test.
+# Reutrn:
+#      0 = number of PATTERN in FILE_TO_SEARCH inqual to INSTANCE_NO.
+#      1 = number of PATTERN in FILE_TO_SEARCH qual to INSTANCE_NO.
+#
+proc ltrace_verify_output { file_to_search pattern {instance_no 0} {grep_command "grep"}} {
+
+	# compute the number of PATTERN in FILE_TO_SEARCH by grep and wc.
+	catch "exec sh -c {$grep_command \"$pattern\" $file_to_search | wc -l ;exit}" output
+	verbose "output = $output"
+
+	if [ regexp "syntax error" $output ] then {
+		fail "Invalid regular expression $pattern"
+        } elseif { $instance_no == 0 } then {
+		if { $output == 0 } then {
+			fail "Fail to find $pattern in $file_to_search"
+		} else {
+			pass "$pattern in $file_to_search"
+		}
+	} elseif { $output >= $instance_no } then {
+		pass "$pattern in $file_to_search for $output times"
+	} else {
+		fail "$pattern in $file_to_search for $output times, should be $instance_no"
+	}
+}

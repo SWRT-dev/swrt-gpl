@@ -1,4 +1,0 @@
-osf_utimes	-a21
-pkey_alloc	-a17
-pkey_free	-a13
-pkey_mprotect	-a37

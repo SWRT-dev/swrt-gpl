@@ -65,6 +65,16 @@ KEY_PATH= $(SRC_ROOT)/../../../key
 endif
 
 all:
+#fix ldd for musl
+ifeq ($(RTCONFIG_LANTIQ),y)
+	sed -i 's#LD_TRACE_LOADED_OBJECTS=1#/lib/ld-musl-mips-sf.so.1 --list#' rom/etc/profile
+else ifeq ($(RTCONFIG_RALINK_MT7621),y)
+	sed -i 's#LD_TRACE_LOADED_OBJECTS=1#/lib/ld-musl-mipsel-sf.so.1 --list#' rom/etc/profile
+else ifeq ($(MUSL64),y)
+	sed -i 's#LD_TRACE_LOADED_OBJECTS=1#/lib/ld-musl-aarch64.so.1 --list#' rom/etc/profile
+else
+	sed -i 's#LD_TRACE_LOADED_OBJECTS=1#/lib/ld-musl-arm.so.1 --list#' rom/etc/profile
+endif
 #	@echo "" >rom/etc/motd
 #	@echo "" >>rom/etc/motd
 #	@echo "ASUSWRT `cat ../shared/version`" >>rom/etc/motd

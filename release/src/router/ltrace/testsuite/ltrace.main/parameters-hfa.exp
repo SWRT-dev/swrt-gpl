@@ -1,0 +1,474 @@
+# This file is part of ltrace.
+# Copyright (C) 2014 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+# Test for a number of ways that HFA can be passed.
+
+ltraceMatch [ltraceLibTest {
+    struct(double) func_dbl_eqv(struct(double), struct(struct(double)), struct(struct(struct(double))), struct(struct(struct(struct(double)))));
+    struct(float) func_flt_eqv(struct(float), struct(struct(float)), struct(struct(struct(float))), struct(struct(struct(struct(float)))));
+
+    struct(float,struct(float)) func_hfa_f2(struct(float,struct(float)));
+    struct(float,struct(float,struct(float))) func_hfa_f3(struct(float,struct(float,struct(float))));
+    struct(float,struct(float,struct(float,struct(float)))) func_hfa_f4(struct(float,struct(float,struct(float,struct(float)))));
+    struct(float,struct(float,struct(float,struct(float,struct(float))))) func_hfa_f5(struct(float,struct(float,struct(float,struct(float,struct(float))))));
+    struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))) func_hfa_f6(struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))));
+    struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float))))))) func_hfa_f7(struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float))))))));
+    struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))))) func_hfa_f8(struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))))));
+    struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float))))))))) func_hfa_f9(struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float))))))))));
+    struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))))))) func_hfa_f10(struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))))))));
+    struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float))))))))))) func_hfa_f11(struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float))))))))))));
+    struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))))))))) func_hfa_f12(struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float,struct(float)))))))))))));
+
+    struct(double,struct(double)) func_hfa_d2(struct(double,struct(double)));
+    struct(double,struct(double,struct(double))) func_hfa_d3(struct(double,struct(double,struct(double))));
+    struct(double,struct(double,struct(double,struct(double)))) func_hfa_d4(struct(double,struct(double,struct(double,struct(double)))));
+    struct(double,struct(double,struct(double,struct(double,struct(double))))) func_hfa_d5(struct(double,struct(double,struct(double,struct(double,struct(double))))));
+    struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))) func_hfa_d6(struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))));
+    struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double))))))) func_hfa_d7(struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double))))))));
+    struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))))) func_hfa_d8(struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))))));
+    struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double))))))))) func_hfa_d9(struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double))))))))));
+    struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))))))) func_hfa_d10(struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))))))));
+    struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double))))))))))) func_hfa_d11(struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double))))))))))));
+    struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))))))))) func_hfa_d12(struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double,struct(double)))))))))))));
+} {
+    struct dbl_eqv1 { double d; };
+    struct dbl_eqv2 { struct dbl_eqv1 d; };
+    struct dbl_eqv3 { struct dbl_eqv2 d; };
+    struct dbl_eqv4 { struct dbl_eqv3 d; };
+
+    struct flt_eqv1 { float d; };
+    struct flt_eqv2 { struct flt_eqv1 d; };
+    struct flt_eqv3 { struct flt_eqv2 d; };
+    struct flt_eqv4 { struct flt_eqv3 d; };
+
+    struct struct_hfa_f2 { float a; struct flt_eqv1 b; };
+    struct struct_hfa_f3 { float a; struct struct_hfa_f2 b; };
+    struct struct_hfa_f4 { float a; struct struct_hfa_f3 b; };
+    struct struct_hfa_f5 { float a; struct struct_hfa_f4 b; };
+    struct struct_hfa_f6 { float a; struct struct_hfa_f5 b; };
+    struct struct_hfa_f7 { float a; struct struct_hfa_f6 b; };
+    struct struct_hfa_f8 { float a; struct struct_hfa_f7 b; };
+    struct struct_hfa_f9 { float a; struct struct_hfa_f8 b; };
+    struct struct_hfa_f10 { float a; struct struct_hfa_f9 b; };
+    struct struct_hfa_f11 { float a; struct struct_hfa_f10 b; };
+    struct struct_hfa_f12 { float a; struct struct_hfa_f11 b; };
+
+    struct struct_hfa_d2 { double a; struct dbl_eqv1 b; };
+    struct struct_hfa_d3 { double a; struct struct_hfa_d2 b; };
+    struct struct_hfa_d4 { double a; struct struct_hfa_d3 b; };
+    struct struct_hfa_d5 { double a; struct struct_hfa_d4 b; };
+    struct struct_hfa_d6 { double a; struct struct_hfa_d5 b; };
+    struct struct_hfa_d7 { double a; struct struct_hfa_d6 b; };
+    struct struct_hfa_d8 { double a; struct struct_hfa_d7 b; };
+    struct struct_hfa_d9 { double a; struct struct_hfa_d8 b; };
+    struct struct_hfa_d10 { double a; struct struct_hfa_d9 b; };
+    struct struct_hfa_d11 { double a; struct struct_hfa_d10 b; };
+    struct struct_hfa_d12 { double a; struct struct_hfa_d11 b; };
+
+    struct dbl_eqv1 func_dbl_eqv(struct dbl_eqv1 a, struct dbl_eqv2 b, struct dbl_eqv3 c, struct dbl_eqv4 d);
+    struct flt_eqv1 func_flt_eqv(struct flt_eqv1 a, struct flt_eqv2 b, struct flt_eqv3 c, struct flt_eqv4 d);
+
+    struct struct_hfa_f2 func_hfa_f2(struct struct_hfa_f2 e);
+    struct struct_hfa_f3 func_hfa_f3(struct struct_hfa_f3 e);
+    struct struct_hfa_f4 func_hfa_f4(struct struct_hfa_f4 e);
+    struct struct_hfa_f5 func_hfa_f5(struct struct_hfa_f5 e);
+    struct struct_hfa_f6 func_hfa_f6(struct struct_hfa_f6 e);
+    struct struct_hfa_f7 func_hfa_f7(struct struct_hfa_f7 e);
+    struct struct_hfa_f8 func_hfa_f8(struct struct_hfa_f8 e);
+    struct struct_hfa_f9 func_hfa_f9(struct struct_hfa_f9 e);
+    struct struct_hfa_f10 func_hfa_f10(struct struct_hfa_f10 e);
+    struct struct_hfa_f11 func_hfa_f11(struct struct_hfa_f11 e);
+    struct struct_hfa_f12 func_hfa_f12(struct struct_hfa_f12 e);
+    struct struct_hfa_d2 func_hfa_d2(struct struct_hfa_d2 e);
+    struct struct_hfa_d3 func_hfa_d3(struct struct_hfa_d3 e);
+    struct struct_hfa_d4 func_hfa_d4(struct struct_hfa_d4 e);
+    struct struct_hfa_d5 func_hfa_d5(struct struct_hfa_d5 e);
+    struct struct_hfa_d6 func_hfa_d6(struct struct_hfa_d6 e);
+    struct struct_hfa_d7 func_hfa_d7(struct struct_hfa_d7 e);
+    struct struct_hfa_d8 func_hfa_d8(struct struct_hfa_d8 e);
+    struct struct_hfa_d9 func_hfa_d9(struct struct_hfa_d9 e);
+    struct struct_hfa_d10 func_hfa_d10(struct struct_hfa_d10 e);
+    struct struct_hfa_d11 func_hfa_d11(struct struct_hfa_d11 e);
+    struct struct_hfa_d12 func_hfa_d12(struct struct_hfa_d12 e);
+} {
+    struct dbl_eqv1 func_dbl_eqv(struct dbl_eqv1 a, struct dbl_eqv2 b, struct dbl_eqv3 c, struct dbl_eqv4 d)
+    { return (struct dbl_eqv1){ a.d + b.d.d + c.d.d.d + d.d.d.d.d }; }
+
+    struct flt_eqv1 func_flt_eqv(struct flt_eqv1 a, struct flt_eqv2 b, struct flt_eqv3 c, struct flt_eqv4 d)
+    { return (struct flt_eqv1){ a.d + b.d.d + c.d.d.d + d.d.d.d.d }; }
+
+    struct struct_hfa_f2 func_hfa_f2(struct struct_hfa_f2 e) { return e; }
+    struct struct_hfa_f3 func_hfa_f3(struct struct_hfa_f3 e) { return e; }
+    struct struct_hfa_f4 func_hfa_f4(struct struct_hfa_f4 e) { return e; }
+    struct struct_hfa_f5 func_hfa_f5(struct struct_hfa_f5 e) { return e; }
+    struct struct_hfa_f6 func_hfa_f6(struct struct_hfa_f6 e) { return e; }
+    struct struct_hfa_f7 func_hfa_f7(struct struct_hfa_f7 e) { return e; }
+    struct struct_hfa_f8 func_hfa_f8(struct struct_hfa_f8 e) { return e; }
+    struct struct_hfa_f9 func_hfa_f9(struct struct_hfa_f9 e) { return e; }
+    struct struct_hfa_f10 func_hfa_f10(struct struct_hfa_f10 e) { return e; }
+    struct struct_hfa_f11 func_hfa_f11(struct struct_hfa_f11 e) { return e; }
+    struct struct_hfa_f12 func_hfa_f12(struct struct_hfa_f12 e) { return e; }
+    struct struct_hfa_d2 func_hfa_d2(struct struct_hfa_d2 e) { return e; }
+    struct struct_hfa_d3 func_hfa_d3(struct struct_hfa_d3 e) { return e; }
+    struct struct_hfa_d4 func_hfa_d4(struct struct_hfa_d4 e) { return e; }
+    struct struct_hfa_d5 func_hfa_d5(struct struct_hfa_d5 e) { return e; }
+    struct struct_hfa_d6 func_hfa_d6(struct struct_hfa_d6 e) { return e; }
+    struct struct_hfa_d7 func_hfa_d7(struct struct_hfa_d7 e) { return e; }
+    struct struct_hfa_d8 func_hfa_d8(struct struct_hfa_d8 e) { return e; }
+    struct struct_hfa_d9 func_hfa_d9(struct struct_hfa_d9 e) { return e; }
+    struct struct_hfa_d10 func_hfa_d10(struct struct_hfa_d10 e) { return e; }
+    struct struct_hfa_d11 func_hfa_d11(struct struct_hfa_d11 e) { return e; }
+    struct struct_hfa_d12 func_hfa_d12(struct struct_hfa_d12 e) { return e; }
+} {
+    func_dbl_eqv((struct dbl_eqv1){ 2.5 },
+		 (struct dbl_eqv2){ { 1.5 } },
+		 (struct dbl_eqv3){ { { 0.5 } } },
+		 (struct dbl_eqv4){ { { { -0.5 } } } });
+
+    func_flt_eqv((struct flt_eqv1){ 2.5 },
+		 (struct flt_eqv2){ { 1.5 } },
+		 (struct flt_eqv3){ { { 0.5 } } },
+		 (struct flt_eqv4){ { { { -0.5 } } } });
+
+    struct struct_hfa_f2 arg_func_hfa_f2 = { 1, { 2 } };
+    func_hfa_f2(arg_func_hfa_f2);
+    struct struct_hfa_f3 arg_func_hfa_f3 = { 3, { 1, { 2 } } };
+    func_hfa_f3(arg_func_hfa_f3);
+    struct struct_hfa_f4 arg_func_hfa_f4 = { 4, { 3, { 1, { 2 } } } };
+    func_hfa_f4(arg_func_hfa_f4);
+    struct struct_hfa_f5 arg_func_hfa_f5 = { 5, { 4, { 3, { 1, { 2 } } } } };
+    func_hfa_f5(arg_func_hfa_f5);
+    struct struct_hfa_f6 arg_func_hfa_f6 = { 6, { 5, { 4, { 3, { 1, { 2 } } } } } };
+    func_hfa_f6(arg_func_hfa_f6);
+    struct struct_hfa_f7 arg_func_hfa_f7 = { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } };
+    func_hfa_f7(arg_func_hfa_f7);
+    struct struct_hfa_f8 arg_func_hfa_f8 = { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } };
+    func_hfa_f8(arg_func_hfa_f8);
+    struct struct_hfa_f9 arg_func_hfa_f9 = { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } };
+    func_hfa_f9(arg_func_hfa_f9);
+    struct struct_hfa_f10 arg_func_hfa_f10 = { 10, { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } } };
+    func_hfa_f10(arg_func_hfa_f10);
+    struct struct_hfa_f11 arg_func_hfa_f11 = { 11, { 10, { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } } } };
+    func_hfa_f11(arg_func_hfa_f11);
+    struct struct_hfa_f12 arg_func_hfa_f12 = { 12, { 11, { 10, { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } } } } };
+    func_hfa_f12(arg_func_hfa_f12);
+
+    struct struct_hfa_d2 arg_func_hfa_d2 = { 1, { 2 } };
+    func_hfa_d2(arg_func_hfa_d2);
+    struct struct_hfa_d3 arg_func_hfa_d3 = { 3, { 1, { 2 } } };
+    func_hfa_d3(arg_func_hfa_d3);
+    struct struct_hfa_d4 arg_func_hfa_d4 = { 4, { 3, { 1, { 2 } } } };
+    func_hfa_d4(arg_func_hfa_d4);
+    struct struct_hfa_d5 arg_func_hfa_d5 = { 5, { 4, { 3, { 1, { 2 } } } } };
+    func_hfa_d5(arg_func_hfa_d5);
+    struct struct_hfa_d6 arg_func_hfa_d6 = { 6, { 5, { 4, { 3, { 1, { 2 } } } } } };
+    func_hfa_d6(arg_func_hfa_d6);
+    struct struct_hfa_d7 arg_func_hfa_d7 = { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } };
+    func_hfa_d7(arg_func_hfa_d7);
+    struct struct_hfa_d8 arg_func_hfa_d8 = { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } };
+    func_hfa_d8(arg_func_hfa_d8);
+    struct struct_hfa_d9 arg_func_hfa_d9 = { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } };
+    func_hfa_d9(arg_func_hfa_d9);
+    struct struct_hfa_d10 arg_func_hfa_d10 = { 10, { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } } };
+    func_hfa_d10(arg_func_hfa_d10);
+    struct struct_hfa_d11 arg_func_hfa_d11 = { 11, { 10, { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } } } };
+    func_hfa_d11(arg_func_hfa_d11);
+    struct struct_hfa_d12 arg_func_hfa_d12 = { 12, { 11, { 10, { 9, { 8, { 7, { 6, { 5, { 4, { 3, { 1, { 2 } } } } } } } } } } } };
+    func_hfa_d12(arg_func_hfa_d12);
+}] {
+    { {func_dbl_eqv\({ 2.500* }, { { 1.50* } }, { { { 0.50* } } }, { { { { -0.50* } } } }\).*= { 4.00* }} == 1 }
+    { {func_flt_eqv\({ 2.500* }, { { 1.50* } }, { { { 0.50* } } }, { { { { -0.50* } } } }\).*= { 4.00* }} == 1 }
+
+    { {func_hfa_f2\({ 1.000*, { 2.000* } }\).*= { 1.000*, { 2.000* } }} == 1 }
+    { {func_hfa_f3\({ 3.000*, { 1.000*, { 2.000* } } }\).*= { 3.000*, { 1.000*, { 2.000* } } }} == 1 }
+    { {func_hfa_f4\({ 4.000*, { 3.000*, { 1.000*, { 2.000* } } } }\).*= { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } }} == 1 }
+    { {func_hfa_f5\({ 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } }\).*= { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } }} == 1 }
+    { {func_hfa_f6\({ 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } }\).*= { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } }} == 1 }
+    { {func_hfa_f7\({ 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } }\).*= { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } }} == 1 }
+    { {func_hfa_f8\({ 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } }\).*= { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } }} == 1 }
+    { {func_hfa_f9\({ 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } }\).*= { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } }} == 1 }
+    { {func_hfa_f10\({ 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } }\).*= { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } }} == 1 }
+    { {func_hfa_f11\({ 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } }\).*= { 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } }} == 1 }
+    { {func_hfa_f12\({ 12.000*, { 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } } }\).*= { 12.000*, { 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } } }} == 1 }
+
+    { {func_hfa_d2\({ 1.000*, { 2.000* } }\).*= { 1.000*, { 2.000* } }} == 1 }
+    { {func_hfa_d3\({ 3.000*, { 1.000*, { 2.000* } } }\).*= { 3.000*, { 1.000*, { 2.000* } } }} == 1 }
+    { {func_hfa_d4\({ 4.000*, { 3.000*, { 1.000*, { 2.000* } } } }\).*= { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } }} == 1 }
+    { {func_hfa_d5\({ 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } }\).*= { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } }} == 1 }
+    { {func_hfa_d6\({ 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } }\).*= { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } }} == 1 }
+    { {func_hfa_d7\({ 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } }\).*= { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } }} == 1 }
+    { {func_hfa_d8\({ 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } }\).*= { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } }} == 1 }
+    { {func_hfa_d9\({ 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } }\).*= { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } }} == 1 }
+    { {func_hfa_d10\({ 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } }\).*= { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } }} == 1 }
+    { {func_hfa_d11\({ 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } }\).*= { 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } }} == 1 }
+    { {func_hfa_d12\({ 12.000*, { 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } } }\).*= { 12.000*, { 11.000*, { 10.000*, { 9.000*, { 8.000*, { 7.000*, { 6.000*, { 5.000*, { 4.000*, { 3.000*, { 1.000*, { 2.000* } } } } } } } } } } } }} == 1 }
+}
+
+ltraceMatch [ltraceLibTest {
+    typedef hfa2_t = struct(float, float);
+    typedef hda2_t = struct(double, double);
+
+    void hfa2_n(hfa2_t, hfa2_t, hfa2_t, hfa2_t);
+    void hda2_n(hda2_t, hda2_t, hda2_t, hda2_t);
+    void hfa2_0(float, hfa2_t, hfa2_t, hfa2_t, hfa2_t);
+    void hda2_0(double, hda2_t, hda2_t, hda2_t, hda2_t);
+    void hfa2_1(hfa2_t, float, hfa2_t, hfa2_t, hfa2_t);
+    void hda2_1(hda2_t, double, hda2_t, hda2_t, hda2_t);
+    void hfa2_2(hfa2_t, hfa2_t, float, hfa2_t, hfa2_t);
+    void hda2_2(hda2_t, hda2_t, double, hda2_t, hda2_t);
+    void hfa2_3(hfa2_t, hfa2_t, hfa2_t, float, hfa2_t);
+    void hda2_3(hda2_t, hda2_t, hda2_t, double, hda2_t);
+    void hfa2_4(hfa2_t, hfa2_t, hfa2_t, hfa2_t, float);
+    void hda2_4(hda2_t, hda2_t, hda2_t, hda2_t, double);
+
+    typedef hfa3_t = struct(float, float, float);
+    typedef hda3_t = struct(double, double, double);
+
+    void hfa3_n(hfa3_t, hfa3_t, hfa3_t, hfa3_t);
+    void hda3_n(hda3_t, hda3_t, hda3_t, hda3_t);
+    void hfa3_0(float, hfa3_t, hfa3_t, hfa3_t, hfa3_t);
+    void hda3_0(double, hda3_t, hda3_t, hda3_t, hda3_t);
+    void hfa3_1(hfa3_t, float, hfa3_t, hfa3_t, hfa3_t);
+    void hda3_1(hda3_t, double, hda3_t, hda3_t, hda3_t);
+    void hfa3_2(hfa3_t, hfa3_t, float, hfa3_t, hfa3_t);
+    void hda3_2(hda3_t, hda3_t, double, hda3_t, hda3_t);
+    void hfa3_3(hfa3_t, hfa3_t, hfa3_t, float, hfa3_t);
+    void hda3_3(hda3_t, hda3_t, hda3_t, double, hda3_t);
+    void hfa3_4(hfa3_t, hfa3_t, hfa3_t, hfa3_t, float);
+    void hda3_4(hda3_t, hda3_t, hda3_t, hda3_t, double);
+
+    typedef hfa4_t = struct(float, float, float, float);
+    typedef hda4_t = struct(double, double, double, double);
+
+    void hfa4_n(hfa4_t, hfa4_t, hfa4_t, hfa4_t);
+    void hda4_n(hda4_t, hda4_t, hda4_t, hda4_t);
+    void hfa4_0(float, hfa4_t, hfa4_t, hfa4_t, hfa4_t);
+    void hda4_0(double, hda4_t, hda4_t, hda4_t, hda4_t);
+    void hfa4_1(hfa4_t, float, hfa4_t, hfa4_t, hfa4_t);
+    void hda4_1(hda4_t, double, hda4_t, hda4_t, hda4_t);
+    void hfa4_2(hfa4_t, hfa4_t, float, hfa4_t, hfa4_t);
+    void hda4_2(hda4_t, hda4_t, double, hda4_t, hda4_t);
+    void hfa4_3(hfa4_t, hfa4_t, hfa4_t, float, hfa4_t);
+    void hda4_3(hda4_t, hda4_t, hda4_t, double, hda4_t);
+    void hfa4_4(hfa4_t, hfa4_t, hfa4_t, hfa4_t, float);
+    void hda4_4(hda4_t, hda4_t, hda4_t, hda4_t, double);
+} {
+    typedef struct { float a; float b; } hfa2_t;
+    typedef struct { double a; double b; } hda2_t;
+
+    void hfa2_n(hfa2_t i, hfa2_t j, hfa2_t k, hfa2_t l);
+    void hda2_n(hda2_t i, hda2_t j, hda2_t k, hda2_t l);
+    void hfa2_0(float x, hfa2_t i, hfa2_t j, hfa2_t k, hfa2_t l);
+    void hda2_0(double x, hda2_t i, hda2_t j, hda2_t k, hda2_t l);
+    void hfa2_1(hfa2_t i, float x, hfa2_t j, hfa2_t k, hfa2_t l);
+    void hda2_1(hda2_t i, double x, hda2_t j, hda2_t k, hda2_t l);
+    void hfa2_2(hfa2_t i, hfa2_t j, float x, hfa2_t k, hfa2_t l);
+    void hda2_2(hda2_t i, hda2_t j, double x, hda2_t k, hda2_t l);
+    void hfa2_3(hfa2_t i, hfa2_t j, hfa2_t k, float x, hfa2_t l);
+    void hda2_3(hda2_t i, hda2_t j, hda2_t k, double x, hda2_t l);
+    void hfa2_4(hfa2_t i, hfa2_t j, hfa2_t k, hfa2_t l, float x);
+    void hda2_4(hda2_t i, hda2_t j, hda2_t k, hda2_t l, double x);
+
+    typedef struct { float a; float b; float c; } hfa3_t;
+    typedef struct { double a; double b; double c; } hda3_t;
+
+    void hfa3_n(hfa3_t i, hfa3_t j, hfa3_t k, hfa3_t l);
+    void hda3_n(hda3_t i, hda3_t j, hda3_t k, hda3_t l);
+    void hfa3_0(float x, hfa3_t i, hfa3_t j, hfa3_t k, hfa3_t l);
+    void hda3_0(double x, hda3_t i, hda3_t j, hda3_t k, hda3_t l);
+    void hfa3_1(hfa3_t i, float x, hfa3_t j, hfa3_t k, hfa3_t l);
+    void hda3_1(hda3_t i, double x, hda3_t j, hda3_t k, hda3_t l);
+    void hfa3_2(hfa3_t i, hfa3_t j, float x, hfa3_t k, hfa3_t l);
+    void hda3_2(hda3_t i, hda3_t j, double x, hda3_t k, hda3_t l);
+    void hfa3_3(hfa3_t i, hfa3_t j, hfa3_t k, float x, hfa3_t l);
+    void hda3_3(hda3_t i, hda3_t j, hda3_t k, double x, hda3_t l);
+    void hfa3_4(hfa3_t i, hfa3_t j, hfa3_t k, hfa3_t l, float x);
+    void hda3_4(hda3_t i, hda3_t j, hda3_t k, hda3_t l, double x);
+
+    typedef struct { float a; float b; float c; float d; } hfa4_t;
+    typedef struct { double a; double b; double c; double d; } hda4_t;
+
+    void hfa4_n(hfa4_t i, hfa4_t j, hfa4_t k, hfa4_t l);
+    void hda4_n(hda4_t i, hda4_t j, hda4_t k, hda4_t l);
+    void hfa4_0(float x, hfa4_t i, hfa4_t j, hfa4_t k, hfa4_t l);
+    void hda4_0(double x, hda4_t i, hda4_t j, hda4_t k, hda4_t l);
+    void hfa4_1(hfa4_t i, float x, hfa4_t j, hfa4_t k, hfa4_t l);
+    void hda4_1(hda4_t i, double x, hda4_t j, hda4_t k, hda4_t l);
+    void hfa4_2(hfa4_t i, hfa4_t j, float x, hfa4_t k, hfa4_t l);
+    void hda4_2(hda4_t i, hda4_t j, double x, hda4_t k, hda4_t l);
+    void hfa4_3(hfa4_t i, hfa4_t j, hfa4_t k, float x, hfa4_t l);
+    void hda4_3(hda4_t i, hda4_t j, hda4_t k, double x, hda4_t l);
+    void hfa4_4(hfa4_t i, hfa4_t j, hfa4_t k, hfa4_t l, float x);
+    void hda4_4(hda4_t i, hda4_t j, hda4_t k, hda4_t l, double x);
+} {
+    void hfa2_n(hfa2_t i, hfa2_t j, hfa2_t k, hfa2_t l) {}
+    void hda2_n(hda2_t i, hda2_t j, hda2_t k, hda2_t l) {}
+    void hfa2_0(float x, hfa2_t i, hfa2_t j, hfa2_t k, hfa2_t l) {}
+    void hda2_0(double x, hda2_t i, hda2_t j, hda2_t k, hda2_t l) {}
+    void hfa2_1(hfa2_t i, float x, hfa2_t j, hfa2_t k, hfa2_t l) {}
+    void hda2_1(hda2_t i, double x, hda2_t j, hda2_t k, hda2_t l) {}
+    void hfa2_2(hfa2_t i, hfa2_t j, float x, hfa2_t k, hfa2_t l) {}
+    void hda2_2(hda2_t i, hda2_t j, double x, hda2_t k, hda2_t l) {}
+    void hfa2_3(hfa2_t i, hfa2_t j, hfa2_t k, float x, hfa2_t l) {}
+    void hda2_3(hda2_t i, hda2_t j, hda2_t k, double x, hda2_t l) {}
+    void hfa2_4(hfa2_t i, hfa2_t j, hfa2_t k, hfa2_t l, float x) {}
+    void hda2_4(hda2_t i, hda2_t j, hda2_t k, hda2_t l, double x) {}
+
+    void hfa3_n(hfa3_t i, hfa3_t j, hfa3_t k, hfa3_t l) {}
+    void hda3_n(hda3_t i, hda3_t j, hda3_t k, hda3_t l) {}
+    void hfa3_0(float x, hfa3_t i, hfa3_t j, hfa3_t k, hfa3_t l) {}
+    void hda3_0(double x, hda3_t i, hda3_t j, hda3_t k, hda3_t l) {}
+    void hfa3_1(hfa3_t i, float x, hfa3_t j, hfa3_t k, hfa3_t l) {}
+    void hda3_1(hda3_t i, double x, hda3_t j, hda3_t k, hda3_t l) {}
+    void hfa3_2(hfa3_t i, hfa3_t j, float x, hfa3_t k, hfa3_t l) {}
+    void hda3_2(hda3_t i, hda3_t j, double x, hda3_t k, hda3_t l) {}
+    void hfa3_3(hfa3_t i, hfa3_t j, hfa3_t k, float x, hfa3_t l) {}
+    void hda3_3(hda3_t i, hda3_t j, hda3_t k, double x, hda3_t l) {}
+    void hfa3_4(hfa3_t i, hfa3_t j, hfa3_t k, hfa3_t l, float x) {}
+    void hda3_4(hda3_t i, hda3_t j, hda3_t k, hda3_t l, double x) {}
+
+    void hfa4_n(hfa4_t i, hfa4_t j, hfa4_t k, hfa4_t l) {}
+    void hda4_n(hda4_t i, hda4_t j, hda4_t k, hda4_t l) {}
+    void hfa4_0(float x, hfa4_t i, hfa4_t j, hfa4_t k, hfa4_t l) {}
+    void hda4_0(double x, hda4_t i, hda4_t j, hda4_t k, hda4_t l) {}
+    void hfa4_1(hfa4_t i, float x, hfa4_t j, hfa4_t k, hfa4_t l) {}
+    void hda4_1(hda4_t i, double x, hda4_t j, hda4_t k, hda4_t l) {}
+    void hfa4_2(hfa4_t i, hfa4_t j, float x, hfa4_t k, hfa4_t l) {}
+    void hda4_2(hda4_t i, hda4_t j, double x, hda4_t k, hda4_t l) {}
+    void hfa4_3(hfa4_t i, hfa4_t j, hfa4_t k, float x, hfa4_t l) {}
+    void hda4_3(hda4_t i, hda4_t j, hda4_t k, double x, hda4_t l) {}
+    void hfa4_4(hfa4_t i, hfa4_t j, hfa4_t k, hfa4_t l, float x) {}
+    void hda4_4(hda4_t i, hda4_t j, hda4_t k, hda4_t l, double x) {}
+} {
+    {
+	hfa2_t hfa1 = { 1, 2 };
+	hfa2_t hfa2 = { 5, 6 };
+	hfa2_t hfa3 = { 9, 10 };
+	hfa2_t hfa4 = { 13, 14 };
+
+	hda2_t hda1 = { 1, 2 };
+	hda2_t hda2 = { 5, 6 };
+	hda2_t hda3 = { 9, 10 };
+	hda2_t hda4 = { 13, 14 };
+
+	hfa2_n(hfa1, hfa2, hfa3, hfa4);
+	hda2_n(hda1, hda2, hda3, hda4);
+	hfa2_0(-1, hfa1, hfa2, hfa3, hfa4);
+	hda2_0(-1, hda1, hda2, hda3, hda4);
+	hfa2_1(hfa1, -1, hfa2, hfa3, hfa4);
+	hda2_1(hda1, -1, hda2, hda3, hda4);
+	hfa2_2(hfa1, hfa2, -1, hfa3, hfa4);
+	hda2_2(hda1, hda2, -1, hda3, hda4);
+	hfa2_3(hfa1, hfa2, hfa3, -1, hfa4);
+	hda2_3(hda1, hda2, hda3, -1, hda4);
+	hfa2_4(hfa1, hfa2, hfa3, hfa4, -1);
+	hda2_4(hda1, hda2, hda3, hda4, -1);
+    }
+
+    {
+	hfa3_t hfa1 = { 1, 2, 3 };
+	hfa3_t hfa2 = { 5, 6, 7 };
+	hfa3_t hfa3 = { 9, 10, 11 };
+	hfa3_t hfa4 = { 13, 14, 15 };
+
+	hda3_t hda1 = { 1, 2, 3 };
+	hda3_t hda2 = { 5, 6, 7 };
+	hda3_t hda3 = { 9, 10, 11 };
+	hda3_t hda4 = { 13, 14, 15 };
+
+	hfa3_n(hfa1, hfa2, hfa3, hfa4);
+	hda3_n(hda1, hda2, hda3, hda4);
+	hfa3_0(-1, hfa1, hfa2, hfa3, hfa4);
+	hda3_0(-1, hda1, hda2, hda3, hda4);
+	hfa3_1(hfa1, -1, hfa2, hfa3, hfa4);
+	hda3_1(hda1, -1, hda2, hda3, hda4);
+	hfa3_2(hfa1, hfa2, -1, hfa3, hfa4);
+	hda3_2(hda1, hda2, -1, hda3, hda4);
+	hfa3_3(hfa1, hfa2, hfa3, -1, hfa4);
+	hda3_3(hda1, hda2, hda3, -1, hda4);
+	hfa3_4(hfa1, hfa2, hfa3, hfa4, -1);
+	hda3_4(hda1, hda2, hda3, hda4, -1);
+    }
+
+    {
+	hfa4_t hfa1 = { 1, 2, 3, 4 };
+	hfa4_t hfa2 = { 5, 6, 7, 8 };
+	hfa4_t hfa3 = { 9, 10, 11, 12 };
+	hfa4_t hfa4 = { 13, 14, 15, 16 };
+
+	hda4_t hda1 = { 1, 2, 3, 4 };
+	hda4_t hda2 = { 5, 6, 7, 8 };
+	hda4_t hda3 = { 9, 10, 11, 12 };
+	hda4_t hda4 = { 13, 14, 15, 16 };
+
+	hfa4_n(hfa1, hfa2, hfa3, hfa4);
+	hda4_n(hda1, hda2, hda3, hda4);
+	hfa4_0(-1, hfa1, hfa2, hfa3, hfa4);
+	hda4_0(-1, hda1, hda2, hda3, hda4);
+	hfa4_1(hfa1, -1, hfa2, hfa3, hfa4);
+	hda4_1(hda1, -1, hda2, hda3, hda4);
+	hfa4_2(hfa1, hfa2, -1, hfa3, hfa4);
+	hda4_2(hda1, hda2, -1, hda3, hda4);
+	hfa4_3(hfa1, hfa2, hfa3, -1, hfa4);
+	hda4_3(hda1, hda2, hda3, -1, hda4);
+	hfa4_4(hfa1, hfa2, hfa3, hfa4, -1);
+	hda4_4(hda1, hda2, hda3, hda4, -1);
+    }
+
+}] {
+    { {hfa2_n\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hda2_n\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hfa2_0\(-1.00*, { 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hda2_0\(-1.00*, { 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hfa2_1\({ 1.00*, 2.00* }, -1.00*, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hda2_1\({ 1.00*, 2.00* }, -1.00*, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hfa2_2\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, -1.00*, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hda2_2\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, -1.00*, { 9.00*, 10.00* }, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hfa2_3\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, -1.00*, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hda2_3\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, -1.00*, { 13.00*, 14.00* }\).*= <void>} == 1}
+    { {hfa2_4\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }, -1.00*\).*= <void>} == 1}
+    { {hda2_4\({ 1.00*, 2.00* }, { 5.00*, 6.00* }, { 9.00*, 10.00* }, { 13.00*, 14.00* }, -1.00*\).*= <void>} == 1}
+
+    { {hfa3_n\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hda3_n\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hfa3_0\(-1.00*, { 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hda3_0\(-1.00*, { 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hfa3_1\({ 1.00*, 2.00*, 3.00* }, -1.00*, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hda3_1\({ 1.00*, 2.00*, 3.00* }, -1.00*, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hfa3_2\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, -1.00*, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hda3_2\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, -1.00*, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hfa3_3\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, -1.00*, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hda3_3\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, -1.00*, { 13.00*, 14.00*, 15.00* }\).*= <void>} == 1}
+    { {hfa3_4\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }, -1.00*\).*= <void>} == 1}
+    { {hda3_4\({ 1.00*, 2.00*, 3.00* }, { 5.00*, 6.00*, 7.00* }, { 9.00*, 10.00*, 11.00* }, { 13.00*, 14.00*, 15.00* }, -1.00*\).*= <void>} == 1}
+
+    { {hfa4_n\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hda4_n\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hfa4_0\(-1.00*, { 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hda4_0\(-1.00*, { 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hfa4_1\({ 1.00*, 2.00*, 3.00*, 4.00* }, -1.00*, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hda4_1\({ 1.00*, 2.00*, 3.00*, 4.00* }, -1.00*, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hfa4_2\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, -1.00*, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hda4_2\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, -1.00*, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hfa4_3\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, -1.00*, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hda4_3\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, -1.00*, { 13.00*, 14.00*, 15.00*, 16.00* }\).*= <void>} == 1}
+    { {hfa4_4\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }, -1.00*\).*= <void>} == 1}
+    { {hda4_4\({ 1.00*, 2.00*, 3.00*, 4.00* }, { 5.00*, 6.00*, 7.00*, 8.00* }, { 9.00*, 10.00*, 11.00*, 12.00* }, { 13.00*, 14.00*, 15.00*, 16.00* }, -1.00*\).*= <void>} == 1}
+}
+
+ltraceDone

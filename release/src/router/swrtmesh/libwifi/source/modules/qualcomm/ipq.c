@@ -579,7 +579,7 @@ static int radio_add_iface(const char *name, enum wifi_mode m, char *argv[])
 		chrCmd(buf, sizeof(buf), "iw %s interface add %s type managed", name, ifname);
 		break;
 	case WIFI_MODE_AP:
-		chrCmd(buf, sizeof(buf), "iw %s interface add %s type ap", name, ifname);
+		chrCmd(buf, sizeof(buf), "iw %s interface add %s type __ap", name, ifname);
 		break;
 	case WIFI_MODE_MONITOR:
 		chrCmd(buf, sizeof(buf), "iw %s interface add %s type monitor", name, ifname);
@@ -896,7 +896,11 @@ static int iface_unsubscribe_frame(const char *ifname, uint8_t type, uint8_t sty
 
 static int iface_set_4addr(const char *ifname, bool enable)
 {
+	char sbuf[64];
 	libwifi_dbg("[%s] %s called\n", ifname, __func__);
+	memset(sbuf, 0, sizeof(sbuf));
+	chrCmd(sbuf, sizeof(sbuf), "iw dev %s set 4ddr %s", ifname, enable ? "on" : "off");
+
 	return -1;
 }
 

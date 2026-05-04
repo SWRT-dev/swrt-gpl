@@ -1,0 +1,75 @@
+# This file is part of ltrace.
+# Copyright (C) 2012, 2014 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+# This tests lookup of per-library configure files.
+
+set dir [ltraceDir]
+
+ltraceNamedSource "$dir/liba.so.conf" {
+    void fun();
+}
+
+set liba [ltraceCompile liba.so [ltraceSource c {
+    void fun(void) {}
+}]]
+
+set bin [ltraceCompile {} $liba [ltraceSource c {
+    extern void fun(void);
+    int main(void) {
+	fun();
+	return 0;
+    }
+}]]
+
+ltraceMatch1 [ltraceRun -F $dir -L -x fun -- $bin] {fun@liba.so\(\)} == 1
+ltraceMatch1 [ltraceRun -F $dir -e fun -- $bin] {fun\(\)} == 1
+
+# This tests lookup of prototypes from non-leader threads.
+
+set bin [ltraceCompile {} $liba -lpthread [ltraceSource c {
+    #include <pthread.h>
+    #include <assert.h>
+
+    void fun();
+
+    void *
+    start(void *arg)
+    {
+	fun();
+	return NULL;
+    }
+
+    int
+    main(int argc, char *argv[])
+    {
+	pthread_t thr;
+	int rc = pthread_create(&thr, NULL, &start, NULL);
+	assert(rc == 0);
+
+	void *retval;
+	rc = pthread_join(thr, &retval);
+	assert(rc == 0);
+
+	return 0;
+    }
+}]]
+
+ltraceMatch1 [ltraceRun -F $dir -f -L -x fun -- $bin] {fun@liba.so\(\)} == 1
+ltraceMatch1 [ltraceRun -F $dir -f -e fun -- $bin] {fun\(\)} == 1
+
+ltraceDone

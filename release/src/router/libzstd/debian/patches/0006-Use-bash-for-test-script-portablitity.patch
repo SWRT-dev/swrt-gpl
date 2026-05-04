@@ -1,0 +1,16 @@
+From: Kevin Murray <spam@kdmurray.id.au>
+Date: Mon, 14 Nov 2016 11:54:32 +1100
+Subject: Use bash for test script portablitity
+
+---
+ tests/playTests.sh | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+--- a/tests/playTests.sh
++++ b/tests/playTests.sh
+@@ -1,4 +1,4 @@
+-#!/bin/sh
++#!/bin/bash
+ 
+ set -e # exit immediately on error
+ # set -x # print commands before execution (debug)

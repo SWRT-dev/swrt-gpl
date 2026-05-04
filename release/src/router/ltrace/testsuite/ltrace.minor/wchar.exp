@@ -1,0 +1,216 @@
+# This file is part of ltrace.
+# Copyright (C) 2013, 2015 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+set bin [ltraceCompile {} [ltraceSource c {
+    #define _XOPEN_SOURCE
+    #include <sys/time.h>
+    #include <assert.h>
+    #include <locale.h>
+    #include <stdio.h>
+    #include <stdlib.h>
+    #include <string.h>
+    #include <time.h>
+    #include <wchar.h>
+    #include <wctype.h>
+    #include <unistd.h>
+
+    int main(int argc, char *argv[])
+    {
+      setlocale(LC_ALL, "");
+
+      FILE *rd_stream, *wr_stream, *wr_stream_2;
+      {
+	int fds[2];
+	pipe (fds);
+	rd_stream = fdopen (fds[0], "r");
+	wr_stream = fdopen (fds[1], "w");
+	wr_stream_2 = fdopen (fds[1], "w");
+      }
+
+      wcslen(L"Вот это да!");
+
+      fprintf(wr_stream_2, "something %s\n", "something");
+      fprintf(wr_stream_2, "something %ls\n", L"что-то");
+
+      fputwc(L'Ф', wr_stream);
+      putwc(L'Д', wr_stream);
+      fflush(wr_stream);
+      fgetwc(rd_stream);
+      ungetwc(getwc(rd_stream), rd_stream);
+
+      fputws(L"Что-то.\n", wr_stream);
+      fflush(wr_stream);
+      wchar_t wbuf[64];
+      fgetws(wbuf, 64, rd_stream);
+
+      fwprintf(wr_stream, L"Какое-то %ls %s.\n", L"что-то", "something");
+      swprintf(wbuf, 64, L"zwölf große %ls %zd", L"Boxkämpfe", wcslen(wbuf));
+
+      int i = iswalnum(L'1');
+      assert(!!i);
+      i = iswalpha(L'A');
+      assert(!!i);
+      i = iswcntrl(L'\t');
+      assert(!!i);
+      i = iswdigit(L'1');
+      assert(!!i);
+      i = iswgraph(L'=');
+      assert(!!i);
+      i = iswlower(L'ц');
+      assert(!!i);
+      i = iswupper(L'Ц');
+      assert(!!i);
+      i = iswprint(L'☻');
+      assert(!!i);
+      i = iswpunct(L'•');
+      assert(!!i);
+      i = iswspace(L'\t');
+      assert(!!i);
+      i = iswxdigit(L'A');
+      assert(!!i);
+
+      i = mbrlen("что", sizeof "что", NULL);
+      assert(i == 2);
+      wchar_t wc;
+      i = mbrtowc(&wc, "что", sizeof "что", NULL);
+
+      const char *str = "что";
+      i = mbsrtowcs(wbuf, &str, 64, NULL);
+      assert(i >= 0);
+
+      i = towlower(towupper(L'ы')) == L'ы';
+      assert(!!i);
+
+      char buf[64] = {};
+      wctomb(buf, L'ư');
+      wcrtomb(buf, L'ơ', NULL);
+
+      wbuf[0] = 0;
+      i = wcscmp(wcschr(wcsncat(wcscat(wbuf, L"žluťoučký "),
+				L"kůň", 64), L'ů'), L"ůň");
+      assert(i == 0);
+      i = wcsncmp(wbuf, L"žluťák", 4);
+      assert(i == 0);
+
+      i = wcscoll(wcscpy(wbuf, L"/ˈɪŋɡlɪʃ/"), L"/dɔɪ̯ʧ/");
+      assert(i != 0);
+      i = wcsspn(wbuf, L"/");
+      assert(i == 1);
+      i = wcscspn(wbuf, L"ˈ");
+      assert(i == 1);
+      *wcsrchr(wcspbrk(wbuf, L"ɪ"), L'ɪ') = L'i';
+
+      struct timeval tv;
+      gettimeofday(&tv, NULL);
+      struct tm *tm = gmtime(&tv.tv_sec);
+      wbuf[0] = L'\0';
+      wcsftime(wbuf, 64, L"«%F • %T»", tm);
+      { const wchar_t *ptr = wbuf; wcsrtombs(buf, &ptr, 64, NULL); }
+      { wchar_t *ptr = NULL; wcstod(wcsstr(wbuf, L"•") + 2, &ptr); }
+      wcsncpy(wbuf, L"1234•", 64);
+      { wchar_t *ptr = NULL; wcstof(wbuf, &ptr); }
+      { wchar_t *ptr = NULL; wcstold(wbuf, &ptr); }
+      { wchar_t *ptr = NULL; wcstol(wbuf, &ptr, 10); }
+      { wchar_t *ptr = NULL; wcstoll(wbuf, &ptr, 10); }
+      { wchar_t *ptr = NULL; wcstoul(wbuf, &ptr, 10); }
+      { wchar_t *ptr = NULL; wcstoull(wbuf, &ptr, 10); }
+      i = wmemcmp(wmemchr(wbuf, L'•', 64), L"•", 2);
+      assert(i == 0);
+
+      i = wcswidth(L"你好", 9999) + wcwidth(L'你') + wctob(L'1');;
+      assert(i == 6 + '1');
+
+      i = iswctype(L'Ш', wctype("alpha"));
+      assert(!!i);
+
+      wmemcpy(wbuf, L"Dobrý den", 6);
+      wmemmove(wbuf, L"  ", 2);
+      { wchar_t *ptr = NULL; wmemset(wcstok(wbuf, L" ", &ptr), L'я', 5); }
+
+      return 0;
+    }
+}]]
+
+ltraceMatch [ltraceRun -F $srcdir/../etc/ -- $bin] {
+    {{^fprintf\(.*, "something %s\\n", "something"\)} == 1}
+    {{^fprintf\(.*, "something %ls\\n", "что-то"\)} == 1}
+    {{^fputwc\('Ф', .*\).*= 'Ф'} == 1}
+    {{^putwc\('Д', .*\).*= 'Д'} == 1}
+    {{^fgetwc\(.*\).*= 'Ф'} == 1}
+    {{^getwc\(.*\).*= 'Д'} == 1}
+    {{^ungetwc\('Д', .*\).*= 'Д'} == 1}
+    {{^fputws\("Что-то.\\n", .*\)} == 1}
+    {{^fgetws\("ДЧто-то.\\n", 64, .*\).*= "ДЧто-то.\\n"} == 1}
+    {{^fwprintf\(.*, "Какое-то %ls %s.\\n", "что-то", "something"\).*= 27} == 1}
+    {{^wcslen\("ДЧто-то.\\n"\).*= 9} == 1}
+    {{^swprintf\("zwölf große Boxkämpfe 9", 64, "zwölf große %ls %zd", "Boxkämpfe", 9\).*= 23} == 1}
+    {{^iswalnum\('1'\).*= 8} == 1}
+    {{^iswalpha\('A'\).*= 1024} == 1}
+    {{^iswcntrl\('\\t'\).*= 2} == 1}
+    {{^iswdigit\('1'\).*= 1} == 1}
+    {{^iswgraph\('='\).*= 32768} == 1}
+    {{^iswlower\('ц'\).*= 1} == 1}
+    {{^iswupper\('Ц'\).*= 1} == 1}
+    {{^iswprint\('☻'\).*= 1} == 1}
+    {{^iswpunct\('•'\).*= 1} == 1}
+    {{^iswspace\('\\t'\).*= 8192} == 1}
+    {{^iswxdigit\('A'\).*= 4096} == 1}
+    {{^mbrtowc\('ч', ".*", 7, nil\)} == 1}
+    {{^mbsrtowcs\("что", nil, 64, nil\).*= 3} == 1}
+    {{^towupper\('ы'\).*= 'Ы'} == 1}
+    {{^towlower\('Ы'\).*= 'ы'} == 1}
+    {{^wctomb\(".*", 'ư'\)} == 1}
+    {{^wcrtomb\(".*", 'ơ', nil\)} == 1}
+    {{^wcscat\("", "žluťoučký "\).*= "žluťoučký "} == 1}
+    {{^wcsncat\("žluťoučký ", "kůň", 64\).*= "žluťoučký kůň"} == 1}
+    {{^wcschr\("žluťoučký kůň", 'ů'\).*= "ůň"} == 1}
+    {{^wcscmp\("ůň", "ůň"\).*= 0} == 1}
+    {{^wcsncmp\("žluť", "žluť", 4\).*= 0} == 1}
+    {{^wcscpy\(.*, "/ˈɪŋɡlɪʃ/"\).*= .*} == 1}
+    {{^wcscoll\("/ˈɪŋɡlɪʃ/", "/dɔɪ̯ʧ/"\).*= 10} == 1}
+    {{^wcsspn\("/ˈɪŋɡlɪʃ/", "/"\).*= 1} == 1}
+    {{^wcscspn\("/ˈɪŋɡlɪʃ/", "ˈ"\).*= 1} == 1}
+    {{^wcspbrk\("/ˈɪŋɡlɪʃ/", "ɪ"\).*= "ɪŋɡlɪʃ/"} == 1}
+    {{^wcsrchr\("ɪŋɡlɪʃ/", 'ɪ'\).*= "ɪʃ/"} == 1}
+    {{^gettimeofday\(.*, nil\).*= 0} == 1}
+    {{^gmtime\(.*\).*= .*} == 1}
+    {{^wcsftime\("«.* • .*»", 64, "«%F • %T»", .*\)} == 1}
+    {{^wcsrtombs\(".*", nil, 64, nil\)} == 1}
+    {{^wcsstr\("«.* • .*»", "•"\).*= "• .*»"} == 1}
+    {{^wcstod\(".*»", ".*»"\).*= [0-9]+} == 1}
+    {{^wcsncpy\(.*, "1234•", 64\).*= .*} == 1}
+    {{^wcstof\("1234•", "•"\).*= 1234} == 1}
+    {{^wcstold\("1234•", "•"\).*= 1234} == 1}
+    {{^wcstol\("1234•", "•", 10\).*= 1234} == 1}
+    {{^wcstoll\("1234•", "•", 10\).*= 1234} == 1}
+    {{^wcstoul\("1234•", "•", 10\).*= 1234} == 1}
+    {{^wcstoull\("1234•", "•", 10\).*= 1234} == 1}
+    {{^wmemchr\("1234•", '•', 64\).*= "•"} == 1}
+    {{^wmemcmp\("•", "•", 2\).*= 0} == 1}
+    {{^wcswidth\("你好", .*\).*= 4} == 1}
+    {{^wcwidth\('你'\).*= 2} == 1}
+    {{^wctob\('1'\).*= 49} == 1}
+    {{^wctype\("alpha"\).*= .*} == 1}
+    {{^iswctype\('Ш', .*\).*= 1} == 1}
+    {{^wmemcpy\(.*, "Dobrý ", 6\).*= "Dobrý "} == 1}
+    {{^wmemmove\(.*, "  ", 2\).*= "  "} == 1}
+    {{^wcstok\("  brý ", " ", ""\).*= "brý"} == 1}
+    {{^wmemset\(.*, 'я', 5\).*= "яяяяя"} == 1}
+}
+
+ltraceDone

@@ -1,0 +1,16 @@
+Description: Make the build reproducible
+Author: Chris Lamb <lamby@debian.org>
+Last-Update: 2018-05-04
+Applied-Upstream: https://github.com/facebook/zstd/commit/ef1abd3c071ce42a457404ee2bca6d5bebb87f62
+
+--- a/contrib/pzstd/Options.cpp
++++ b/contrib/pzstd/Options.cpp
+@@ -77,7 +77,7 @@
+   std::fprintf(stderr, "  -p, --processes   #    : number of threads to use for (de)compression (default:<numcpus>)\n");
+ 
+   std::fprintf(stderr, "ZSTD options:\n");
+-  std::fprintf(stderr, "  -#                     : # compression level (1-%d, default:%d)\n", kMaxNonUltraCompressionLevel, kDefaultCompressionLevel);
++  std::fprintf(stderr, "  -#                     : # compression level (1-%d, default:<numcpus>)\n", kMaxNonUltraCompressionLevel);
+   std::fprintf(stderr, "  -d, --decompress       : decompression\n");
+   std::fprintf(stderr, "  -o                file : result stored into `file` (only if 1 input file)\n");
+   std::fprintf(stderr, "  -f, --force            : overwrite output without prompting, (de)compress links\n");

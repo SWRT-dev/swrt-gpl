@@ -19,7 +19,11 @@ CFLAGS += -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -DWE_NOLIBM
 LIBWIFI_CFLAGS += -I.
 LIBWIFI_LDFLAGS += -L.
 
+ifeq ($(RTCONFIG_LANTIQ),y)
+# built into libshared.so
+else
 LIBS += -lnl-3 -lnl-route-3 -lnl-genl-3
+endif
 LIBS += -leasy
 
 ver=$(shell ./genversion.sh)
@@ -84,8 +88,9 @@ endif
 
 ifneq (,$(findstring INTEL,$(WIFI_TYPE)))
 objs_dir += intel
-LIBWIFI_CFLAGS += -Imodules/nlwifi -Imodules/wext -DWIFI_INTEL
-objs_lib += modules/wext/wext.o \
+objs_dir += wpactrl nlwifi
+LIBWIFI_CFLAGS += -Imodules/wpactrl -Imodules/nlwifi -Imodules/wext -DWIFI_INTEL
+objs_lib += modules/wpactrl/wpactrl_util.o \
 	    modules/nlwifi/nlwifi.o \
 	    modules/intel/intel.o
 endif

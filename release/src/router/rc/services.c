@@ -21988,6 +21988,22 @@ void stop_bsd(void)
 int start_bsd(void)
 {
 	int ret = 0;
+#if defined(RTCONFIG_SWRTMESH)
+	if (!nvram_get_int("smart_connect_x")){
+		ret = -1;
+		stop_bandsteer();
+	}else{
+		if(repeater_mode || wisp_mode() || mediabridge_mode()){
+			nvram_set("smart_connect_x", "0");
+			stop_bandsteer();
+		}else
+			start_bandsteer();
+	}
+	if(pids("ieee1905d")){
+		stop_swrtmesh();
+		start_swrtmesh();
+	}
+#else
 	pid_t bsd_pid = 0;
 	char bsd_argv[64] = {"/usr/lib/fapi_wlan_beerock_cli"};
 	stop_bsd();
@@ -21997,13 +22013,15 @@ int start_bsd(void)
 	else{
 		system("taskset -c 2 /usr/lib/fapi_wlan_beerock_cli BAND_STEERING -50 -70 3 10 10&");
 	}
-
+#endif
 	return ret;
 }
 
 void stop_bsd(void)
 {
+#if !defined(RTCONFIG_SWRTMESH)
 	system("kill -9 `pidof fapi_wlan_beerock_cli`");
+#endif
 }
 #endif /* LANTIQ_BSD */
 

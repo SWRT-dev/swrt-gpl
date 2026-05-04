@@ -1,0 +1,16 @@
+Description: Skip the zstdless test until #1073071 is fixed
+Bug-Debian: https://bugs.debian.org/1042737
+Forwarded: not-needed
+Author: Peter Pentchev <roam@ringlet.net>
+Last-Update: 2024-06-12
+
+--- a/tests/cli-tests/run.py
++++ b/tests/cli-tests/run.py
+@@ -54,6 +54,7 @@
+     "README.md",
+     "run.py",
+     ".gitignore",
++    "zstdless.sh",
+ }
+ 
+ EXCLUDED_SUFFIXES = [

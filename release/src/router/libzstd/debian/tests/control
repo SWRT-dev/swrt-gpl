@@ -1,0 +1,24 @@
+Test-Command: zstd -b1 >/dev/null 2>&1
+Features: test-name=zstd-selftest
+
+Test-Command: env PYTHONPATH="$(pwd)/debian/tests/python" python3 -B -u -m check_build -c debian/tests/ztest/programs.toml -v -- pkg-make
+Depends:
+ @,
+ build-essential,
+ pkgconf,
+ python3,
+ python3-click,
+ python3-typedload,
+Restrictions: allow-stderr
+Features: test-name=build-pkg-config
+
+Test-Command: env PYTHONPATH="$(pwd)/debian/tests/python" python3 -B -u -m check_build -c debian/tests/ztest/programs.toml -v -- cmake
+Depends:
+ @,
+ build-essential,
+ cmake,
+ python3,
+ python3-click,
+ python3-typedload,
+Restrictions: allow-stderr
+Features: test-name=build-cmake

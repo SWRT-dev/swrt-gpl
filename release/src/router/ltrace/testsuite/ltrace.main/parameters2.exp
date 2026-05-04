@@ -1,0 +1,321 @@
+# This file is part of ltrace.
+# Copyright (C) 2012, 2013, 2014, 2015 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+set trivial [ltraceCompile {} [ltraceSource c {
+    int main(void) {return 0;}
+}]]
+
+ltraceMatch1 [ltraceRun -L -F [ltraceSource conf {
+    typedef aa = int;
+    typedef aaa = int;
+    typedef bbb = struct(aa);
+}] -- $trivial] "error" == 0
+
+ltraceMatch1 [ltraceRun -L -F [ltraceSource conf {
+    typedef char_blah = char;
+    void blah(char_blah);
+}] -- $trivial] "error" == 0
+
+ltraceMatch1 [ltraceRun -L -F [ltraceSource conf {
+    typedef aa = int;
+    typedef aa = int;
+}] -- $trivial] "error" != 0
+
+ltraceMatch1 [ltraceRun -L -F [ltraceSource conf {
+    typedef aa = struct;
+    typedef aa = int;
+}] -- $trivial] "error" != 0
+
+ltraceMatch1 [ltraceRun -L -F [ltraceSource conf {
+    typedef aa = struct;
+    typedef aa = struct(int);
+    typedef aa = struct(int);
+}] -- $trivial] "error" != 0
+
+ltraceMatch1 [ltraceRun -L -F [ltraceSource conf {
+    typedef aa = struct;
+    typedef aa = struct();
+    typedef aa = struct();
+}] -- $trivial] "error" != 0
+
+ltraceMatch1 [ltraceRun -L -F [ltraceSource conf {
+    typedef aa = struct(int, struct;);
+}] -- $trivial] "error" != 0
+
+set libll [ltraceCompile libll.so [ltraceSource c {
+    struct xxx;
+    void ll(struct xxx *xxx) {}
+}]]
+
+set conf [ltraceSource conf {
+    typedef xxx = struct;
+    typedef xxx = struct(int, xxx*);
+    void ll(xxx*);
+}]
+
+ltraceMatch [ltraceRun -F $conf -e ll [ltraceCompile {} $libll [ltraceSource c {
+    struct xxx {
+	int i;
+	struct xxx *next;
+    };
+
+    void ll (struct xxx *xxx);
+    int main (int argc, char *argv[])
+    {
+	struct xxx a = { 1, 0 };
+	struct xxx b = { 2, &a };
+	struct xxx c = { 3, &b };
+	struct xxx d = { 4, &c };
+	ll (&d);
+
+	struct xxx e = { 1, 0 };
+	struct xxx f = { 2, &e };
+	e.next = &f;
+	ll (&f);
+
+	struct xxx g = { 1, &g };
+	ll (&g);
+
+	return 0;
+    }
+}]]] {
+    {{->ll\({ 4, { 3, { 2, { 1, nil } } } }\) *= <void>} == 1}
+    {{->ll\({ 2, { 1, recurse\^ } }\) *= <void>} == 1}
+    {{->ll\({ 1, recurse }\) *= <void>} == 1}
+}
+
+ltraceMatch1 [ltraceRun -F $conf -e ll -A 5 \
+-- [ltraceCompile ll $libll [ltraceSource c {
+    #include <stdlib.h>
+    struct ble {
+	int i;
+	struct ble *next;
+    };
+
+    void ll (struct ble *ble);
+    int main (int argc, char *argv[])
+    {
+	struct ble *b = NULL;
+	int i;
+	for (i = 0; i < 10; ++i) {
+	    struct ble *n = malloc(sizeof(*n));
+	    n->i = i;
+	    n->next = b;
+	    b = n;
+	}
+	ll (b);
+
+	return 0;
+    }
+}]]] {->ll\({ 9, { 8, { 7, { 6, { 5, \.\.\. } } } } }\) *= <void>} == 1
+
+# Test using lens in typedef.
+
+ltraceMatch1 [ltraceLibTest {
+    typedef hexptr = hex(uint*);
+    void fun(hexptr);
+} {
+    void fun(unsigned *arg);
+} {
+    void fun(unsigned *arg) {}
+} {
+    unsigned u = 0x123;
+    fun(&u);
+}] {fun\(0x123\) *= <void>} == 1
+
+# Test support for bitvec lens.
+
+ltraceMatch [ltraceLibTest {
+    void fun(bitvec(uint));
+    void fun2(bitvec(array(char, 32)*));
+} {
+    void fun(unsigned i);
+    void fun2(unsigned char *arr);
+} {
+    void fun(unsigned i) {}
+    void fun2(unsigned char *arr) {}
+} {
+    fun(0);
+    fun(0x123);
+    fun(0xfffffffe);
+    fun(0xffffffff);
+
+    unsigned char bytes[32] = {0x00};
+    bytes[1] = 0xff;
+    bytes[31] = 0x80;
+    fun2(bytes);
+}] {
+    {{fun\(<>\) *= <void>} == 1}
+    {{fun\(<0-1,5,8>\) *= <void>} == 1}
+    {{fun\(~<0>\) *= <void>} == 1}
+    {{fun\(~<>\) *= <void>} == 1}
+    {{fun2\(<8-15,255>\) *= <void>} == 1}
+}
+
+# Test support for hex(float), hex(double).
+
+ltraceMatch [ltraceLibTest {
+    hex(float) hex_float(hex(float));
+    hex(double) hex_double(hex(double));
+} {
+    float hex_float(float f);
+    double hex_double(double d);
+} {
+    float hex_float(float f) { return f + 1; }
+    double hex_double(double d) { return d + 1; }
+} {
+    hex_float(1.5);
+    hex_double(1.5);
+}] {
+    {{hex_float\(0x1.8p\+0\) *= 0x1.4p\+1} == 1}
+    {{hex_double\(0x1.8p\+0\) *= 0x1.4p\+1} == 1}
+}
+
+# Test that "addr" is recognized.
+
+ltraceMatch1 [ltraceLibTest {
+    void fun(addr);
+} {
+    #include <stdint.h>
+    void fun(uintptr_t u);
+} {
+    void fun(uintptr_t u) {}
+} {
+    fun(0x1234);
+}] {fun\(0x1234\) *= <void>} == 1
+
+# Test that -x fun can find "fun" prototype even if "fun" is in a
+# library.
+
+ltraceMatch1 [ltraceLibTest {
+    void fun();
+} {
+    void libfun(void);
+} {
+    void fun(void) {}
+    void libfun(void) { fun(); }
+} {
+    libfun();
+} {
+    -L -x fun
+}] {fun@.*\(\)} == 1
+
+
+# Test that %p format specifier does not crash
+
+ltraceMatch1 [ltraceLibTest {
+    void print_ptr(format);
+} {
+    void print_ptr(const char *format, ...);
+} {
+    void print_ptr(const char *format, ...) { }
+} {
+    void *addr = (void *)0x42;
+    print_ptr("%p\n", addr);
+}] {print_ptr\("%p\\n", 0x42\) *= <void>} == 1
+
+
+# Test that zero(EXPR) does not leak memory (needs valgrind)
+
+ltraceMatch1 [ltraceLibTest {
+    typedef String = string(array(char, zero(256)));
+    String *get_string();
+} {
+    char *get_string();
+} {
+    char *get_string() {
+        return "FOO";
+    }
+} {
+    get_string();
+}] {get_string\(\) *= "FOO"} == 1
+
+# Test that void* NULL's are displayed as "nil" as well.
+
+ltraceMatch1 [ltraceLibTest {
+    addr somefunc();
+} {
+    void *somefunc(void);
+} {
+    void *somefunc(void) {
+        return 0;
+    }
+} {
+    somefunc();
+}] {somefunc\(\) *= nil} == 1
+
+# Test that spaces in function name make no difference.
+
+ltraceMatch1 [ltraceLibTest {
+    void somefunc ();
+} {
+    void somefunc(void);
+} {
+    void somefunc(void) {}
+} {
+    somefunc();
+}] {somefunc\(\)} == 1
+
+# Test that a return type can start with a "typedef".
+
+ltraceMatch1 [ltraceLibTest {
+    typedef typedef1 = int;
+    typedef1 somefunc();
+} {
+    int somefunc(void);
+} {
+    int somefunc(void) { return 7; }
+} {
+    somefunc();
+}] {somefunc\(\)} == 1
+
+# Test that tab characters are considered whitespace.
+
+ltraceMatch1 [ltraceLibTest {
+	void	somefunc	(	)	;
+} {
+ void somefunc(void);
+} {
+ void somefunc(void) {}
+} {
+ somefunc();
+}] {somefunc\(\)} == 1
+
+# Test that the function keyword works
+
+ltraceMatch [ltraceLibTest {
+    typedef function = int;
+    typedef import = int;
+    typedef typedef = int;
+
+    function function f();
+    function import i();
+    function typedef t();
+} {
+    int f(void);
+    int i(void);
+    int t(void);
+} {
+    int f(void) { return 1; }
+    int i(void) { return 2; }
+    int t(void) { return 3; }
+} {
+    f(); i(); t();
+}] [list [list {f\(\)}] [list {i\(\)}] [list {t\(\)}]]
+
+ltraceDone

@@ -1,5 +1,0 @@
-statfs	-a17
-statfs64	-a23
-fstatfs	-a18
-fstatfs64	-a24
-ustat	-a33

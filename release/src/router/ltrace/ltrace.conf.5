@@ -1,0 +1,431 @@
+.\" -*-nroff-*-
+.\" Copyright (c) 2012, 2013 Petr Machata, Red Hat Inc.
+.\" Copyright (c) 1997-2005 Juan Cespedes <cespedes@debian.org>
+.\"
+.\" This program is free software; you can redistribute it and/or
+.\" modify it under the terms of the GNU General Public License as
+.\" published by the Free Software Foundation; either version 2 of the
+.\" License, or (at your option) any later version.
+.\"
+.\" This program is distributed in the hope that it will be useful, but
+.\" WITHOUT ANY WARRANTY; without even the implied warranty of
+.\" MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+.\" General Public License for more details.
+.\"
+.\" You should have received a copy of the GNU General Public License
+.\" along with this program; if not, write to the Free Software
+.\" Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+.\" 02110-1301 USA
+.\"
+.TH ltrace.conf "5" "October 2012" "" "ltrace configuration file"
+.SH "NAME"
+.LP
+\fBltrace.conf\fR \- Configuration file for \fBltrace(1)\fR.
+
+.SH DESCRIPTION
+
+This manual page describes \fBltrace.conf\fR, a file that describes
+prototypes of functions in binaries for \fBltrace(1)\fR to use.
+Ltrace needs this information to display function call arguments.
+
+Each line of a configuration file describes at most a single item.
+Lines composed entirely of white space are ignored, as are lines
+starting with semicolon or hash characters (comment lines).  Described
+items can be either function prototypes, or definitions of type
+aliases.
+
+.SH PROTOTYPES
+
+A prototype describes return type and parameter types of a single
+function.  The syntax is as follows:
+
+.RS
+[\fBfunction\fR] \fILENS\fR \fINAME\fR \fB(\fR[\fILENS\fR{,\fILENS\fR}]\fB);\fR
+.RE
+
+\fINAME\fR is the (mangled) name of a symbol.  In the elementary case,
+\fILENS\fR is simply a type.  Both lenses and types are described
+below.  The \fBfunction\fR keyword, if present, has no effect.  It can be
+used to force a line to be interpreted as a function prototype when the
+return type is a keyword that would start a different type of line
+(such as \fBimport\fR).
+
+For example, a simple function prototype might look like this:
+
+.RS
+.B int\fR kill\fB(int,int);
+.RE
+
+Despite the apparent similarity with C, \fBltrace.conf\fR is really
+its own language that's only somewhat inspired by C.
+
+.SH TYPES
+
+Ltrace understands a range of primitive types.  Those are interpreted
+according to C convention native on a given architecture.
+E.g. \fBulong\fR is interpreted as 4-byte unsigned integer on 32-bit
+GNU/Linux machine, but 8-byte unsigned integer on 64-bit GNU/Linux
+machine.
+
+.TP
+.B void
+Denotes that a function does not return anything.  Can be also used to
+construct a generic pointer, i.e. pointer-sized number formatted in
+hexadecimal format.
+.TP
+.B char
+8-bit quantity rendered as a character
+.TP
+.B ushort,short
+Denotes unsigned or signed short integer.
+.TP
+.B uint,int
+Denotes unsigned or signed integer.
+.TP
+.B ulong,long
+Denotes unsigned or signed long integer.
+.TP
+.B float
+Denotes floating point number with single precision.
+.TP
+.B double
+Denotes floating point number with double precision.
+.PP
+
+Besides primitive types, the following composed types are possible:
+
+.TP
+.B struct(\fR[\fILENS\fR{,\fILENS\fR}]\fB)\fR
+Describes a structure with given types as fields,
+e.g. \fBstruct(int,int,float)\fR.
+
+Alignment is computed as customary on the architecture.  Custom
+alignment (e.g. packed structs) and bit-fields are not supported.
+It's also not possible to differentiate between structs and non-POD
+C++ classes, for arches where it makes a difference.
+
+.TP
+.B array(\fR\fILENS\fR\fB,\fIEXPR\fR\fB)
+Describes array of length \fIEXPR\fR, which is composed of types
+described by \fILENS\fR, e.g. \fBarray(int, \fR6\fB)\fR.
+
+Note that in C, arrays in role of function argument decay into
+pointers.  Ltrace currently handles this automatically, but for full
+formal correctness, any such arguments should be described as pointers
+to arrays.
+
+.TP
+.I LENS\fR\fB*
+Describes a pointer to a given type, e.g. \fBchar*\fR or \fBint***\fR.
+Note that the former example actually describes a pointer to a
+character, not a string.  See below for \fBstring\fR lens, which is
+applicable to these cases.
+
+.SH LENSES
+
+Lenses change the way that types are described.  In the simplest case,
+a lens is directly a type.  Otherwise a type is decorated by the lens.
+Ltrace understands the following lenses:
+
+.TP
+.B oct(\fITYPE\fB)
+The argument, which should be an integer type, is formatted in base-8.
+
+.TP
+.B hex(\fITYPE\fB)
+The argument, which should be an integer or floating point type, is
+formatted in base-16.  Floating point arguments are converted to
+double and then displayed using the \fB%a\fR fprintf modifier.
+
+.TP
+.B hide(\fITYPE\fB)
+The argument is not shown in argument list.
+
+.TP
+.B bool(\fITYPE\fB)
+Arguments with zero value are shown as "false", others are shown as
+"true".
+
+.TP
+.B bitvec(\fITYPE\fB)
+Underlying argument is interpreted as a bit vector and a summary of
+bits set in the vector is displayed.  For example if bits 3,4,5 and 7
+of the bit vector are set, ltrace shows <3-5,7>.  Empty bit vector is
+displayed as <>.  If there are more bits set than unset, inverse is
+shown instead: e.g. ~<0> when a number 0xfffffffe is displayed.  Full
+set is thus displayed ~<>.
+
+If the underlying type is integral, then bits are shown in their
+natural big-endian order, with LSB being bit 0.
+E.g. \fBbitvec(ushort)\fR with value 0x0102 would be displayed as
+<1,8>, irrespective of underlying byte order.
+
+For other data types (notably structures and arrays), the underlying
+data is interpreted byte after byte.  Bit 0 of first byte has number
+0, bit 0 of second byte number 8, and so on.  Thus
+\fBbitvec(struct(int))\fR is endian sensitive, and will show bytes
+comprising the integer in their memory order.  Pointers are first
+dereferenced, thus \fBbitvec(array(char, \fR32\fB)*)\fR is actually a
+pointer to 256-bit bit vector.
+
+.PP
+.B string(\fITYPE\fB)
+.br
+.B string[\fIEXPR\fB]
+.br
+.B string
+.RS
+The first form of the argument is canonical, the latter two are
+syntactic sugar.  In the canonical form, the function argument is
+formatted as string.  The \fITYPE\fR can have either of the following
+forms: \fIX\fB*\fR, or \fBarray(\fIX\fB,\fIEXPR\fB)\fR, or
+\fBarray(\fIX\fB,\fIEXPR\fB)*\fR.  \fIX\fR is either \fBchar\fR for
+normal strings, or an integer type for wide-character strings.
+
+If an array is given, the length will typically be a \fBzero\fR
+expression (but doesn't have to be).  Using argument that is plain
+array (i.e. not a pointer to array) makes sense e.g. in C structs, in
+cases like \fBstruct(string(array(char, \fR6\fB)))\fR, which describes
+the C type \fBstruct {char \fRs\fB[\fR6\fB];}\fR.
+
+Because simple C-like strings are pretty common, there are two
+shorthand forms.  The first shorthand form (with brackets) means the
+same as \fBstring(array(char, \fIEXPR\fB)*)\fR.  Plain \fBstring\fR
+without an argument is then taken to mean the same as
+\fBstring[zero]\fR.
+
+Note that \fBchar*\fR by itself describes a pointer to a char.  Ltrace
+will dereference the pointer, and read and display the single
+character that it points to.
+.RE
+
+.B enum(\fINAME\fR[\fB=\fIVALUE\fR]{,\fINAME\fR[\fB=\fIVALUE\fR]}\fB)
+.br
+.B enum[\fITYPE\fB]\fB(\fINAME\fR[\fB=\fIVALUE\fR]{,\fINAME\fR[\fB=\fIVALUE\fR]}\fB)
+.RS
+This describes an enumeration lens.  If an argument has any of the
+given values, it is instead shown as the corresponding \fINAME\fR.  If
+a \fIVALUE\fR is omitted, the next consecutive value following after
+the previous \fIVALUE\fR is taken instead.  If the first \fIVALUE\fR
+is omitted, it's \fB0\fR by default.
+
+\fITYPE\fR, if given, is the underlying type.  It is thus possible to
+create enums over shorts or longs\(emarguments that are themselves
+plain, non-enum types in C, but whose values can be meaningfully
+described as enumerations.  If omitted, \fITYPE\fR is taken to be
+\fBint\fR.
+.RE
+
+.SH TYPE ALIASES
+
+A line in config file can, instead of describing a prototype, create a
+type alias.  Instead of writing the same enum or struct on many places
+(and possibly updating when it changes), one can introduce a name for
+such type, and later just use that name:
+
+.RS
+\fBtypedef \fINAME\fB = \fILENS\fB;\fR
+.RE
+
+.SH IMPORT DIRECTIVES
+
+It's possible for config files to import definitions from other config
+files.  A line of the form:
+
+.RS
+\fBimport "\fIFILENAME\fB";\fR
+.RE
+
+will make all definitions from \fIFILENAME\fR.conf available in the current
+file.  The imported file is searched for in the same directories as when
+looking up a config file corresponding to a library; see \fBltrace(1)\fR
+for details.
+
+.SH RECURSIVE STRUCTURES
+
+Ltrace allows you to express recursive structures.  Such structures
+are expanded to the depth described by the parameter \-A.  To declare a
+recursive type, you first have to introduce the type to ltrace by
+using forward declaration.  Then you can use the type in other type
+definitions in the usual way:
+
+.RS
+.B typedef \fINAME\fB = struct;
+.br
+.B typedef \fINAME\fB = struct(\fINAME\fR can be used here\fB)
+.RE
+
+For example, consider the following singy-linked structure and a
+function that takes such list as an argument:
+
+.RS
+.B typedef\fR int_list \fB= struct;
+.br
+.B typedef\fR int_list \fB= struct(int,\fR int_list\fB*);
+.br
+.B void\fR ll\fB(\fRint_list\fB*);
+.RE
+
+Such declarations might lead to an output like the following:
+
+.RS
+ll({ 9, { 8, { 7, { 6, ... } } } }) = <void>
+.RE
+
+Ltrace detects recursion and will not expand already-expanded
+structures.  Thus a doubly-linked list would look like the following:
+
+.RS
+.B typedef\fR int_list \fB= struct;
+.br
+.B typedef\fR int_list \fB= struct(int,\fR int_list\fB*,\fR int_list\fB*);
+.RE
+
+With output e.g. like:
+
+.RS
+ll({ 9, { 8, { 7, { 6, ..., ... }, recurse^ }, recurse^ }, nil })
+.RE
+
+The "recurse^" tokens mean that given pointer points to a structure
+that was expanded in the previous layer.  Simple "recurse" would mean
+that it points back to this object.  E.g. "recurse^^^" means it points
+to a structure three layers up.  For doubly-linked list, the pointer
+to the previous element is of course the one that has been just
+expanded in the previous round, and therefore all of them are either
+recurse^, or nil.  If the next and previous pointers are swapped, the
+output adjusts correspondingly:
+
+.RS
+ll({ 9, nil, { 8, recurse^, { 7, recurse^, { 6, ..., ... } } } })
+.RE
+
+
+.SH EXPRESSIONS
+
+Ltrace has support for some elementary expressions.  Each expression
+can be either of the following:
+
+.TP
+.I NUM
+An integer number.
+
+.TP
+.B arg\fINUM
+Value of \fINUM\fR-th argument.  The expression has the same value as
+the corresponding argument.  \fBarg1\fR refers to the first argument,
+\fBarg0\fR to the return value of the given function.
+
+.TP
+.B retval
+Return value of function, same as \fBarg0\fR.
+
+.TP
+.B elt\fINUM
+Value of \fINUM\fR-th element of the surrounding structure type.  E.g.
+\fBstruct(ulong,array(int,elt1))\fR describes a structure whose first
+element is a length, and second element an array of ints of that
+length.
+
+.PP
+.B zero
+.br
+.B zero(\fIEXPR\fB)
+.RS
+Describes array which extends until the first element, whose each byte
+is 0.  If an expression is given, that is the maximum length of the
+array.  If NUL terminator is not found earlier, that's where the array
+ends.
+.RE
+
+.SH PARAMETER PACKS
+
+Sometimes the actual function prototype varies slightly depending on
+the exact parameters given.  For example, the number and types of
+printf parameters are not known in advance, but ltrace might be able
+to determine them in runtime.  This feature has wider applicability,
+but currently the only parameter pack that ltrace supports is
+printf-style format string itself:
+
+.TP
+.B format
+When \fBformat\fR is seen in the parameter list, the underlying string
+argument is parsed, and GNU-style format specifiers are used to
+determine what the following actual arguments are.  E.g. if the format
+string is "%s %d\\n", it's as if the \fBformat\fR was replaced by
+\fBstring, string, int\fR.
+
+.SH RETURN ARGUMENTS
+
+C functions often use one or more arguments for returning values back
+to the caller.  The caller provides a pointer to storage, which the
+called function initializes.  Ltrace has some support for this idiom.
+
+When a traced binary hits a function call, ltrace first fetches all
+arguments.  It then displays \fIleft\fR portion of the argument list.
+Only when the function returns does ltrace display \fIright\fR portion
+as well.  Typically, left portion takes up all the arguments, and
+right portion only contains return value.  But ltrace allows you to
+configure where exactly to put the dividing line by means of a \fB+\fR
+operator placed in front of an argument:
+
+.RS
+.B int\fR asprintf\fB(+string*, format);
+.RE
+
+Here, the first argument to asprintf is denoted as return argument,
+which means that displaying the whole argument list is delayed until
+the function returns:
+
+.RS
+a.out->asprintf( <unfinished ...>
+.br
+libc.so.6->malloc(100)                   = 0x245b010
+.br
+[... more calls here ...]
+.br
+<... asprintf resumed> "X=1", "X=%d", 1) = 5
+.RE
+
+It is currently not possible to have an "inout" argument that passes
+information in both directions.
+
+.SH EXAMPLES
+
+In the following, the first is the C prototype, and following that is
+ltrace configuration line.
+
+.TP
+.B void\fR func_charp_string\fB(char\fR str\fB[]);
+.B void\fR func_charp_string\fB(string);
+
+.PP
+.B enum\fR e_foo \fB{\fRRED\fB, \fRGREEN\fB, \fRBLUE\fB};
+.br
+.B void\fR func_enum\fB(enum\fR e_foo bar\fB);\fR
+.RS
+.B void\fR func_enum\fB(enum(\fRRED\fB,\fRGREEN\fB,\fRBLUE\fB));\fR
+.RS
+- or -
+.RE
+.B typedef\fR e_foo \fB= enum(\fRRED\fB,\fRGREEN\fB,\fRBLUE\fB);\fR
+.br
+.B void\fR func_enum\fB(\fRe_foo\fB);\fR
+.RE
+
+.TP
+.B void\fR func_arrayi\fB(int\fR arr\fB[],\fR int len\fB);
+.B void\fR func_arrayi\fB(array(int,arg2)*,int);
+
+.PP
+.B struct\fR S1 \fB{float\fR f\fB; char\fR a\fB; char \fRb\fB;};
+.br
+.B struct\fR S2 \fB{char\fR str\fB[\fR6\fB]; float\fR f\fB;};
+.br
+.B struct\fR S1 func_struct\fB(int \fRa\fB, struct \fRS2\fB, double \fRd\fB);
+.RS
+.B struct(float,char,char)\fR func_struct\fB(int, struct(string(array(char, \fR6\fB)),float), double);
+.RE
+
+.SH AUTHOR
+Petr Machata <pmachata@redhat.com>

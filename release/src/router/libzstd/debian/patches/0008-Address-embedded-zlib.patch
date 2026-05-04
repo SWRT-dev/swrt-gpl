@@ -1,0 +1,43 @@
+Description: Do not build zlibWrapper examples against embedded code copies.
+Author: Sascha Steinbiss <satta@debian.org>
+--- a/zlibWrapper/Makefile
++++ b/zlibWrapper/Makefile
+@@ -13,7 +13,7 @@
+ ZSTDLIBDIR = ../lib
+ ZSTDLIBRARY = $(ZSTDLIBDIR)/libzstd.a
+ ZLIBWRAPPER_PATH = .
+-GZFILES = gzclose.o gzlib.o gzread.o gzwrite.o
++#GZFILES = gzclose.o gzlib.o gzread.o gzwrite.o
+ EXAMPLE_PATH = examples
+ PROGRAMS_PATH = ../programs
+ TEST_FILE = ../doc/zstd_compression_format.md
+@@ -83,14 +83,14 @@
+ #.c.o:
+ #	$(CC) $(CFLAGS) $(CPPFLAGS) -c $< -o $@
+ 
+-minigzip: minigzip.o zstd_zlibwrapper.o $(GZFILES) $(ZSTDLIBRARY)
++minigzip: minigzip.o zstd_zlibwrapper.o $(ZSTDLIBRARY)
+ 
+-minigzip_zstd: minigzip.o zstdTurnedOn_zlibwrapper.o $(GZFILES) $(ZSTDLIBRARY)
++minigzip_zstd: minigzip.o zstdTurnedOn_zlibwrapper.o $(ZSTDLIBRARY)
+ 	$(LINK.o) $^ $(LDLIBS) $(OUTPUT_OPTION)
+ 
+-example: example.o zstd_zlibwrapper.o $(GZFILES) $(ZSTDLIBRARY)
++example: example.o zstd_zlibwrapper.o $(ZSTDLIBRARY)
+ 
+-example_zstd: example.o zstdTurnedOn_zlibwrapper.o $(GZFILES) $(ZSTDLIBRARY)
++example_zstd: example.o zstdTurnedOn_zlibwrapper.o $(ZSTDLIBRARY)
+ 	$(LINK.o) $^ $(LDLIBS) $(OUTPUT_OPTION)
+ 
+ fitblk: fitblk.o zstd_zlibwrapper.o $(ZSTDLIBRARY)
+--- a/zlibWrapper/examples/example.c
++++ b/zlibWrapper/examples/example.c
+@@ -27,7 +27,7 @@
+ 
+ /* @(#) $Id$ */
+ 
+-#include "zstd_zlibwrapper.h"
++#include "zlib.h"
+ #include <stdio.h>
+ 
+ #ifdef STDC

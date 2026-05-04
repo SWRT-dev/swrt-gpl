@@ -1,0 +1,102 @@
+# This file is part of ltrace.
+# Copyright (C) 2013, 2014, 2015 Petr Machata, Red Hat Inc.
+#
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License as
+# published by the Free Software Foundation; either version 2 of the
+# License, or (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful, but
+# WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+# General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA
+# 02110-1301 USA
+
+set bin [ltraceCompile {} [ltraceSource c {
+    #ifndef _GNU_SOURCE
+    #define _GNU_SOURCE
+    #endif
+    #include <sys/types.h>
+    #include <sys/stat.h>
+    #include <fcntl.h>
+    #include <unistd.h>
+    #include <sys/syscall.h>   /* For SYS_xxx definitions */
+    #include <sys/mount.h>
+
+    #ifndef SYS_open
+    # if defined(__aarch64__)
+    #  /* Linux doesn't actually implement SYS_open on AArch64, but for merely
+    #   * recording the syscall, it's fine.  */
+    #  define SYS_open 1024
+    # else
+    #  error SYS_open not available.
+    # endif
+    #endif
+
+    int main(void) {
+	syscall(SYS_open, "/some/path", O_RDONLY);
+	write(1, "something", 10);
+	mount("source", "target", "filesystemtype", 0, 0);
+	return 0;
+    }
+}]]
+
+set dir [ltraceDir]
+set conf [ltraceNamedSource "$dir/syscalls.conf" {
+    int open(string, int);
+    long write(int, string[arg3], ulong);
+    int mount(string, string, string, ulong, addr);
+}]
+
+# When given the file directly via -F, ltrace should not use it for
+# formatting system calls.  The reason is that libraries are generally
+# allowed to have functions with the same names as system calls
+# (there's no interference between those two).  In particular,
+# readdir@SYS has a different prototype from readdir@libc.  If a -F
+# somelib.conf is passed, and syscalls.conf is not available, or
+# doesn't list readdir, that would be taken from somelib.conf with a
+# wrong prototype.
+#
+# This test relies on the fact that there is no global config file
+# that would provide legitimate system call prototype.  But that
+# doesn't have to be true, maybe ltrace is already installed on the
+# system with the right prefix.  So first compile a wrapper that we
+# use to redirect fopen calls.
+
+set libfopen_so [ltraceCompile libfopen.so -ldl \
+		     [ltraceSource c [string map [list "@PREFIX@" "$PREFIX"] {
+    #define _GNU_SOURCE
+    #include <dlfcn.h>
+    #include <stdio.h>
+    #include <string.h>
+
+    FILE *
+    fopen(const char *path, const char *mode)
+    {
+	#define PATH "@PREFIX@/share"
+	if (strncmp(path, PATH, sizeof(PATH) - 1) == 0)
+	    path = "/dev/null";
+
+	return ((FILE *(*)(const char *, const char *))
+		dlsym(RTLD_NEXT, "fopen")) (path, mode);
+    }
+}]]]
+
+setenv LD_PRELOAD $libfopen_so
+ltraceMatch1 [ltraceRun -L -S -F $conf -- $bin] {^open@SYS\("/some/path"} == 0
+unsetenv LD_PRELOAD
+
+# On the other hand, if -F somedir/ is given, we want to accept
+# syscalls.conf found there.
+
+ltraceMatch [ltraceRun -L -S -F $dir -- $bin] {
+    {{^open@SYS\("/some/path"} == 1}
+    {{^write@SYS\(1, "something", 10\)} == 1}
+    {{^mount@SYS\("source", "target", "filesystemtype"} == 1}
+}
+
+ltraceDone
