@@ -98,13 +98,16 @@
                         } else {
                             scriptElement.textContent = item.innerText;
                         }
-
+                        let type = item.getAttribute("type");
+                        if (type) {
+                            scriptElement.setAttribute("type", type);
+                        }
                         target.removeChild(item); // remove previous script tag
                         target.appendChild(scriptElement);
 
-                        // scriptElement.onload = () => {
-                        //     console.log(scriptElement);
-                        // };
+                         scriptElement.onload = () => {
+                             //console.log(scriptElement);
+                         };
                     }
 
                     // set link tag

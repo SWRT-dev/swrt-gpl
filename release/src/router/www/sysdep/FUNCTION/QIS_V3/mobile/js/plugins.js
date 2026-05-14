@@ -1381,7 +1381,7 @@ function handleSysDep(){
 		systemVariable.forceChangePw = false;
 		systemVariable.forceChangePwInTheEnd = true;
 
-		if(isSupport("BUSINESS") || isSupport("sdn_mwl")){
+		if(isSupport("swrt_ui") || isSupport("sdn_mwl")){
 			systemVariable.forceChangePw = true;
 			systemVariable.forceChangePwInTheEnd = false;
 		}
@@ -2129,14 +2129,14 @@ var isSupport = function(_ptn){
 			break;
 		case "SDN_Scenario":
 			matchingResult = (
-				isSupport("mtlancfg") && isSupport("BUSINESS") && !isSupport("mlo") &&
+				isSupport("mtlancfg") && isSupport("swrt_ui") && !isSupport("mlo") &&
 				systemVariable.isDefault && systemVariable.productid.indexOf('EBG') == -1 &&
 				isSwMode("RT")
 			) ? true : false;
 			break;
 		case "SDN_White_Theme":
 			matchingResult = false;
-			if(isSupport("mtlancfg") && isSupport("BUSINESS")){
+			if(isSupport("mtlancfg") && isSupport("swrt_ui")){
 				matchingResult = true;
 			}
 			break;

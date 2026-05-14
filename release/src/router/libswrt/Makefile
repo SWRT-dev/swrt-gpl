@@ -42,6 +42,14 @@ LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl
 LDFLAGS += -L$(TOP)/sqlite/.libs -lsqlite3
 LDFLAGS += -L$(TOP)/libdisk -ldisk
 
+ifeq ($(RTCONFIG_LANTIQ),y)
+CFLAGS += -I$(TOP)/shared/sysdeps/lantiq -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
+else ifeq ($(RTCONFIG_QCA),y)
+CFLAGS += -I$(TOP)/shared/sysdeps/qca -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
+else ifeq ($(RTCONFIG_RALINK),y)
+CFLAGS += -I$(TOP)/shared/sysdeps/ralink -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)
+endif
+
 TARGET = libswrt.so
 
 

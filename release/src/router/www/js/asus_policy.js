@@ -957,7 +957,7 @@ class PolicyModalComponent {
             return "ROG";
         } else if (isSupport("tuf")) {
             return "TUF";
-        } else if (isSupport("BUSINESS")) {
+        } else if (isSupport("swrt_ui")) {
             return "";
         } else {
             return theme;
@@ -1049,7 +1049,7 @@ class PolicyModalComponent {
                     let yearChecked = this.ageCheckbox.checked;
                     if (!yearChecked) {
                         alert(ASUS_POLICY.Dict.AgeConfirm);
-                        this.ageLabel.style.color = top.businessWrapper ? "red" : "#ff5722";
+                        this.ageLabel.style.color = top.swrtWrapper ? "red" : "#ff5722";
                         return false;
                     } else {
                         this.agreeBtn.classList.add("disabled");
@@ -1361,11 +1361,11 @@ class QisPolicyPageComponent {
             <style>
                 :host {
                     --rt-primary: #006CE1;
-                    --business-primary: #006CE1;
+                    --swrt-primary: #006CE1;
                     --rog-primary: #FF1929;
                     --tuf-primary: #FFAA32;                    
                     
-                    --business-notice: #B42D18;
+                    --swrt-notice: #B42D18;
                     --rt-notice: #E75B4B;
                     --rog-notice: #00D5FF;
                     --tuf-notice: #00D5FF;
@@ -1392,7 +1392,7 @@ class QisPolicyPageComponent {
                     display: none;
                 }
                 .icon-logo {
-                    --logo-svg: url('/mobile.customize/logo_asus_business.svg');
+                    --logo-svg: url('/mobile.customize/logo_swrt.svg');
                     width: 260px;
                     min-width: 150px;
                     height: 100%;
@@ -1423,7 +1423,7 @@ class QisPolicyPageComponent {
                     font-size: 2em;
                     text-align: left;
                     font-weight: bold;
-                    color: var(--business-primary);
+                    color: var(--swrt-primary);
                     word-break: break-word;
                     display: flex;
                     flex-direction: row;
@@ -1441,7 +1441,7 @@ class QisPolicyPageComponent {
                 }
                 .scroll-info {
                     font-weight: bold;
-                    color: var(--business-notice);
+                    color: var(--swrt-notice);
                     padding: 5px 10px;
                     border-radius: 5px;
                     margin: 1em;
@@ -1475,13 +1475,13 @@ class QisPolicyPageComponent {
                 }
                 
                 .btn.disagree {
-                    border: 1px solid var(--business-primary);
-                    color: var(--business-primary);
+                    border: 1px solid var(--swrt-primary);
+                    color: var(--swrt-primary);
                     background-color: #FFF;
                 }
                 
                 .btn.agree {
-                    border: 1px solid var(--business-primary);
+                    border: 1px solid var(--swrt-primary);
                 }
 
                 .btn.disabled {
@@ -1514,7 +1514,7 @@ class QisPolicyPageComponent {
                 }
                 
                 .checkbox-wrapper-40 {
-                    --borderColor: var(--business-primary);
+                    --borderColor: var(--swrt-primary);
                     --borderWidth: .125em;
                 }
                 
@@ -2099,7 +2099,7 @@ class QisPolicyPageComponent {
 
                     if (!yearChecked) {
                         alert(`${ASUS_POLICY.Dict.AgeConfirm}`);
-                        shadowRoot.querySelector(".checkbox-wrapper-40").style.color = top.businessWrapper ? "red" : "#ff5722";
+                        shadowRoot.querySelector(".checkbox-wrapper-40").style.color = top.swrtWrapper ? "red" : "#ff5722";
                         return false;
                     }
                     applyBtn.innerHTML = Get_Component_btnLoading();
@@ -2252,7 +2252,7 @@ class QisPolicyPageComponent {
             return "ROG";
         } else if (isSupport("tuf")) {
             return "TUF";
-        } else if (isSupport("BUSINESS")) {
+        } else if (isSupport("swrt_ui")) {
             return "";
         } else {
             return theme;

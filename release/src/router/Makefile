@@ -834,7 +834,6 @@ obj-y += pstree
 
 # add the library 'ipaddr' to check IP addr is private or public
 obj-y += ipaddr
-obj-y += libcodb
 
 # soc/feature packages
 obj-$(RTCONFIG_INADYN) += libconfuse inadyn
@@ -5216,13 +5215,18 @@ pstree-clean:
 libcodb: sqlite
 	@$(SEP)
 	if [ ! -f $@/stamp-h1 ];then \
-		$(MAKE) -C libcodb CC=$(CC) && touch $@/stamp-h1 ; \
+		$(MAKE) -C libcodb CC=$(CC) && $(MAKE) libcodb-stage && touch $@/stamp-h1 ; \
 	fi
 
 libcodb-install:
 	@echo INSTALLDIR=$(INSTALLDIR)
 	install -D libcodb/libcodb.so $(INSTALLDIR)/libcodb/usr/lib/libcodb.so
 	$(STRIP) $(INSTALLDIR)/libcodb/usr/lib/libcodb.so
+
+libcodb-stage:
+	install -D libcodb/libcodb.so $(STAGEDIR)/usr/lib/libcodb.so
+	install -D libcodb/codb_utils.h $(STAGEDIR)/usr/include/codb_utils.h
+	install -D libcodb/cosql_utils.h $(STAGEDIR)/usr/include/cosql_utils.h
 
 libcodb-clean:
 	@$(SEP)

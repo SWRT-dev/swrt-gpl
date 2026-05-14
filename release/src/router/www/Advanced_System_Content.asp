@@ -2147,7 +2147,7 @@ function check_password_length(obj){
 		<td>
 			<input type="password" autocomplete="off" id="http_passwd_new" tabindex="2" onkeydown="" onKeyPress="return validator.isString(this, event);" onkeyup="chkPass(this.value, 'http_passwd'); check_password_length(this);" onblur="check_password_length(this);" onpaste="setTimeout('paste_password();', 10)" class="input_18_table" style="width:200px;" maxlength="33" onBlur="clean_scorebar(this);" autocorrect="off" autocapitalize="off"/>
 			<div id="scorebarBorder" class="busiess_scorebarBorder" style="margin-left:224px; margin-top:-25px; display:none;" title="<#LANHostConfig_x_Password_itemSecur#>">
-				<div id="score" class="business_score" style="margin-top: 5px;"></div>
+				<div id="score" class="swrt_score" style="margin-top: 5px;"></div>
 				<div id="scorebar">&nbsp;</div>
 			</div>
 		</td>
@@ -2177,7 +2177,7 @@ function check_password_length(obj){
 		</td>
 	</tr>
 </table>
-<div style="padding-bottom:10px;width:100%;text-align:center;" class="change_pass_business">
+<div style="padding-bottom:10px;width:100%;text-align:center;" class="change_pass_swrt">
 	<input class="button_gen" type="button" onclick="close_chpass();" value="<#CTL_Cancel#>">
 	<input id="apply_chpass" class="button_gen" type="button" onclick="" value="<#CTL_ok#>">
 	<img id="loadingIcon_sim" style="margin-left:10px; display:none;" src="/images/InternetScan.gif">

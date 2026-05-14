@@ -45,7 +45,7 @@ function genLogoModelName() {
     code += `
 		<div class="d-flex align-items-center me-auto">
 			<div role="icon" class="d-block d-md-none icon-size-24 icon-menu ms-3" id='mobile_menu'></div>
-			<div role="icon" class="d-none d-md-block icon-size-logo-business icon-logo-business ms-3"></div>
+			<div role="icon" class="d-none d-md-block icon-size-logo-swrt icon-logo-swrt ms-3"></div>
 			<div class="model-name mx-3"><#Web_Title2#></div>
 			<div role="time-banner" class="d-none px-2 py-1 d-lg-flex flex-row" onclick="goToSystem()">
 				<div class="ps-1 banner-title d-flex flex-column me-2">
@@ -124,6 +124,11 @@ function genLanguageList() {
     return code;
 }
 
+function isMultisiteApp() {
+    let urlParameter = new URLSearchParams(window.location.search);
+    return urlParameter.get("mapp") == "true";
+}
+
 var menuList = [
 /*
 	{
@@ -197,14 +202,35 @@ var menuList = [
 		url: "trafficmonitor",
 		clicked: false,
 		divide: false,
-	},        
+	},
 	{
 		name: "<#Settings#>",
 		icon: "icon-advancedsettings",
 		url: "settings",
 		clicked: false,
 		divide: false,
-	}     
+	},
+	{
+		name: "<#Softcenter_tool#>",
+		icon: "icon-advancedsettings",
+		url: "toolbox",
+		clicked: false,
+		divide: false,
+	},
+	{
+		name: "Entware",
+		icon: "icon-advancedsettings",
+		url: "entware",
+		clicked: false,
+		divide: false,
+	},
+	{
+		name: "<#Softcenter#>",
+		icon: "icon-advancedsettings",
+		url: "softcenter",
+		clicked: false,
+		divide: false,
+	}
 	// {
 	//     name: "Help & Support",
 	//     icon: "icon-help",
@@ -213,6 +239,10 @@ var menuList = [
 	//     divide: true,
 	// },
 ];
+
+if (isMultisiteApp()) {
+    menuList = menuList.filter(item => item.url !== "QIS_wizard.htm");
+}
 
 let urlParameter = new URLSearchParams(window.location.search);
 /* DECIDE THEME */
@@ -223,14 +253,14 @@ let theme = (function () {
             return "rog";
         else if(isSupport("tuf")) 
             return "tuf";
-        else if(isSupport("BUSINESS")) 
+        else if(isSupport("swrt_ui")) 
             return "white";
         else
             return "dark";
     })();
 
     let theme_string = (urlParameter.get("current_theme") || "").toLowerCase(); // handle null without parameter
-    if(theme_string == "business") theme_string = "white";
+    if(theme_string == "swrt_ui") theme_string = "white";
 
     let matched = array.find((element) => element === theme_string);
     return matched === undefined ? default_theme : matched;
@@ -242,13 +272,29 @@ if (!urlParameter.get("url")){
     location.href = "/index.html?url=dashboard&current_theme=" + theme;
 }
 
-if (isSupport("BUSINESS") && theme != "white"){
+if (isSupport("swrt_ui") && theme != "white"){
     location.href = "/index.html?url=dashboard&current_theme=white";
 }
 
-if(!isSupport("BUSINESS") || theme != "white"){
+if(!isSupport("swrt_ui") || theme != "white"){
     menuList = menuList.filter(function(item, index, array){
         return (item.url != "settings") && (item.url != "QIS_wizard.htm");
+    });
+}
+
+if (!isSupport('softcenter') || '<% nvram_get("sc_installed"); %>' != '1'){
+    menuList = menuList.filter(function(item, index, array){
+        return (item.url != "softcenter");
+    });
+}
+if (!isSupport('entware')){
+    menuList = menuList.filter(function(item, index, array){
+        return (item.url != "entware");
+    });
+}
+if (!isSupport('amas')){
+    menuList = menuList.filter(function(item, index, array){
+        return (item.url != "aimesh");
     });
 }
 
@@ -321,10 +367,6 @@ if(system.currentOPMode.id != "RT"){
 			return (item.url != "aimesh");
 		});
 	}
-}
-
-if (navigator.userAgent.match(/ASUSMultiSiteManager/)) {
-    menuList = menuList.filter(item => item.url !== "QIS_wizard.htm");
 }
 
 function genNavMenu() {
@@ -539,6 +581,9 @@ function pageRedirect(target) {
     else if (target == "QIS_wizard.htm") {
         location.href = "/QIS_wizard.htm";
     }
+    else if (urlParameter.get("mapp") === "true") {
+        location.href = `/index.html?url=${target}&current_theme=${theme}&mapp=true`;
+    }
     else {
         location.href = "/index.html?url=" + target + "&current_theme=" + theme;
     }
@@ -591,7 +636,7 @@ if (http_autologout != 0) {
         clearTimeout(oInactivityTimerId);
         oInactivityTimerId = setTimeout(() => {
             location.href = '/Logout.asp';
-        }, http_autologout * 10 * 1000);
+        }, http_autologout * 60 * 1000);
     }
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -606,4 +651,3 @@ if (http_autologout != 0) {
         }
     });
 }
-

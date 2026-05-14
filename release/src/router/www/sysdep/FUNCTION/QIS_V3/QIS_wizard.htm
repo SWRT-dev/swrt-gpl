@@ -101,9 +101,9 @@
 					systemVariable.historyPage = [];
 					systemVariable.restart_wan_if = false;//flag used to record excution of "restart_wan_if"
 
-					if(isSupport("BUSINESS")){
+					if(isSupport("swrt_ui")){
 						$('<script />', { type : 'text/javascript', src : "./js/qrcode/jquery.qrcode.min.js"}).appendTo('head');
-						$("#welcome").load("/mobile/pages/welcome_business.html");
+						$("#welcome").load("/mobile/pages/welcome_swrt.html");
 					}
 
 					var ethWan = initNvram.wans_dualwan.split(" ").indexOf("wan");
@@ -347,7 +347,7 @@
 		<div id="policy_page" data-role="page" class="qisBackground"></div>
 
 		<!-- Welcome Page -->
-		<div id="welcome" data-role="page" class="qisBackgroundIndex NotInBusiness">
+		<div id="welcome" data-role="page" class="qisBackgroundIndex NotInSWRT">
 			<div class="headerBarIndex">
 				<table style="width:100%">
 					<tr>

@@ -104,7 +104,7 @@ body{
 	height: 100%;
 }
 
-.businessInput{
+.swrtInput{
 	background-color: #CCC;
 }
 /*for mobile device*/
@@ -211,14 +211,14 @@ var gobi_support = isSupport("gobi");
 function initial(){
 	top.name = "";/* reset cache of state.js win.name */
 
-	if(isSupport("BUSINESS")){
+	if(isSupport("swrt_ui")){
 		$(".title_name").css({"color": "#000"})
 		$(".sub_title_name").css({"color": "#000"})
 		$(".form_input").css({
 			"color": "#000",
 			"border": "1px solid #ccc"
 		})
-		$(".businessStyle").css({"color": "#000"})
+		$(".swrtStyle").css({"color": "#000"})
 	}
 
 	if(is_KR_sku || is_SG_sku || is_AA_sku)
@@ -635,7 +635,7 @@ function showError(str){
 				<div>
 					<input type="password" autocapitalize="off" autocomplete="off" value="" name="http_passwd_2_x" tabindex="3" class="form_input" maxlength="33" onkeyup="" onpaste="return false;"/ onBlur="" placeholder="<#Confirmpassword#>">
 				</div>
-				<div style="font-size: 16pt; display:none" class="businessStyle">
+				<div style="font-size: 16pt; display:none" class="swrtStyle">
 					<input id="defpassCheckbox" type="checkbox" style="height:30px;width:30px;vertical-align: middle;">Use the default settings
 				</div>
 				<script>
@@ -652,8 +652,8 @@ function showError(str){
 								.prop('disabled', true)
 								.css({opacity: "0.3"})
 
-							$("[name='http_passwd_x']").addClass("businessInput")
-							$("[name='http_passwd_2_x']").addClass("businessInput")
+							$("[name='http_passwd_x']").addClass("swrtInput")
+							$("[name='http_passwd_2_x']").addClass("swrtInput")
 						}
 						else{
 							$("[name='http_passwd_x']")
@@ -664,8 +664,8 @@ function showError(str){
 								.prop('disabled', false)
 								.css({opacity: "1"})						
 
-							$("[name='http_passwd_x']").removeClass("businessInput")
-							$("[name='http_passwd_2_x']").removeClass("businessInput")
+							$("[name='http_passwd_x']").removeClass("swrtInput")
+							$("[name='http_passwd_2_x']").removeClass("swrtInput")
 						}
 					})
 

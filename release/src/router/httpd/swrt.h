@@ -48,7 +48,7 @@ extern void do_entware_cgi(char *url, FILE *stream);
 #if defined(RTCONFIG_NLBWMON)
 extern void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retval, webs_t wp);
 #endif
-#if defined(RTCONFIG_MULTILAN_CFG)
+#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
 extern int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv);
 #endif
 #endif

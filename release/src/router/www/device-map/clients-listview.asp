@@ -4,7 +4,7 @@
 		<link href="/form_style.css" rel="stylesheet" type="text/css" />
 		<link href="/NM_style.css" rel="stylesheet" type="text/css" />
 		<link href="/device-map/device-map.css" rel="stylesheet" type="text/css" />
-		<link href="/css/business-white.css" rel="stylesheet" type="text/css" />
+		<link href="/css/swrt-white.css" rel="stylesheet" type="text/css" />
 		<script type="text/javascript" src="/js/jquery.js"></script>
 		<script type="text/javascript" src="/js/httpApi.js"></script>
 		<script type="text/javascript" src="/help.js"></script>

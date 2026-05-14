@@ -6095,7 +6095,7 @@ goTo.SDN_IoT = function(){
 };
 
 goTo.SDN_Scenarios = function(){
-	$("#SDN_Scenarios_page .titleMain").html(((isSupport("mtlancfg") && isSupport("BUSINESS")) ? "<#GuestNetwork_SDN_title#>": "<#GuestNetwork_PRO_title#>"));
+	$("#SDN_Scenarios_page .titleMain").html(((isSupport("mtlancfg") && isSupport("swrt_ui")) ? "<#GuestNetwork_SDN_title#>": "<#GuestNetwork_PRO_title#>"));
 	$("#SDN_Scenarios_page #rwd_container").empty().append(Get_Component_Type_Scenarios());
 	$("#SDN_Scenarios_page .btn_SDN_apply").html(`<#Maybe_Later#>`);
 	goTo.loadPage("SDN_Scenarios_page", false);

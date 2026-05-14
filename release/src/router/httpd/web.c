@@ -319,7 +319,6 @@ extern int ej_wl_rate_5g_2(int eid, webs_t wp, int argc, char_t **argv);
 extern int ej_wl_rate_6g(int eid, webs_t wp, int argc, char_t **argv);
 extern int ej_wl_rate_6g_2(int eid, webs_t wp, int argc, char_t **argv);
 #endif
-#ifdef CONFIG_BCMWL5
 extern int ej_wl_cap_2g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_cap_5g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_cap_5g_2(int eid, webs_t wp, int argc, char **argv);
@@ -327,6 +326,7 @@ extern int ej_wl_cap_5g_2(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_cap_6g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_cap_6g_2(int eid, webs_t wp, int argc, char **argv);
 #endif
+#ifdef CONFIG_BCMWL5
 extern int ej_wl_chipnum_2g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_chipnum_5g(int eid, webs_t wp, int argc, char **argv);
 extern int ej_wl_chipnum_5g_2(int eid, webs_t wp, int argc, char **argv);
@@ -25944,7 +25944,7 @@ FINISH:
 }
 #endif
 
-#if defined(RTCONFIG_LIB_CODB) && defined(RTCONFIG_CONNDIAG)
+#if defined(RTCONFIG_LIB_CODB)
 static void do_get_diag_avg_data(char *url, FILE *stream) {
 
     int ret = HTTP_OK;
@@ -25961,7 +25961,7 @@ static void do_get_diag_avg_data(char *url, FILE *stream) {
     char *duration = safe_get_cgi_json("duration", root);
     char *point = safe_get_cgi_json("point", root);
 
-    if(strcmp(db, "") == 0 || strcmp(content, "") == 0 || strcmp(ts, "") == 0 || strcmp(duration, "") == 0 || strcmp(point, "") == 0) {
+    if(strcmp(db, "") == 0 || strlen(db) > 125 || strcmp(content, "") == 0 || strcmp(ts, "") == 0 || strcmp(duration, "") == 0 || strcmp(point, "") == 0) {
         ret = HTTP_INVALID_INPUT;
         goto FINISH;
     }
@@ -26051,6 +26051,7 @@ static void do_get_diag_content_data(char *url, FILE *stream) {
     char *limit = safe_get_cgi_json("limit", root);
     char *point = safe_get_cgi_json("point", root);
     char *filter_data = safe_get_cgi_json("filter", root);
+	char *order_by = safe_get_cgi_json("order_by", root);
 
     if (strcmp(db, "") == 0 || (strlen(db) >= 32) || strcmp(content, "") == 0) {
         ret = HTTP_INVALID_INPUT;
@@ -26113,7 +26114,7 @@ static void do_get_diag_content_data(char *url, FILE *stream) {
         res = codb_content_query_duration_json_field(db, column_count, content, filter_count, filter_data, query_start_time, query_end_time, query_duration, &retObj);
     }
     else {
-        res = codb_content_query_json_field(db, column_count, content, filter_count, filter_data, query_start_time, query_end_time, qyery_limit, &retObj);
+        res = codb_content_query_json_field(db, column_count, content, filter_count, filter_data, query_start_time, query_end_time, order_by, qyery_limit, &retObj);
     }
 
 FINISH:
@@ -26178,11 +26179,24 @@ FINISH:
 }
 #endif
 
-#if defined(RTCONFIG_LIB_CODB) && defined(RTCONFIG_CONNDIAG) && defined(RTCONFIG_DNS_PING)
+#if defined(RTCONFIG_LIB_CODB) && defined(RTCONFIG_DNS_PING)
 static void do_dns_ping(char *url, FILE *stream) {
-    system("killall -9 dns_ping");
-    system("dns_ping &");
-    websWrite(stream, "success");
+	char cmdbuf[1024] = {0};
+	char *dns_ping_list = NULL;
+	struct json_object *root = json_object_new_object();
+	do_json_decode(root);
+	dns_ping_list = safe_get_cgi_json("dns_ping_list", root);
+	system("killall -9 dns_ping");
+	if(strlen(dns_ping_list) > 0){
+		snprintf(cmdbuf, sizeof(cmdbuf), "dns_ping \"%s\" &", dns_ping_list);
+	}
+	else{
+		snprintf(cmdbuf, sizeof(cmdbuf), "dns_ping &");
+	}
+	system(cmdbuf);
+	if(root)
+		json_object_put(root);
+	websWrite(stream, "{\"statusCode\": \"success\"}");
 }
 #endif
 
@@ -27312,7 +27326,7 @@ struct mime_handler mime_handlers[] =
 	{ "**.zip", "application/octet-stream", NULL, NULL, do_file, NULL },
 	{ "**.ipk", "application/octet-stream", NULL, NULL, do_file, NULL },
 	{ "RWD_UI/rwd_component.css", "text/css", cache_object, do_html_post_and_get, do_file, NULL },
-#ifdef RTCONFIG_MULTILAN_CFG
+#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
 	{ "SDN/sdn.css", "text/css", cache_object, do_html_post_and_get, do_file, NULL },
 #endif
 	{ "**.css", "text/css", cache_object, NULL, do_file, NULL },
@@ -27589,13 +27603,13 @@ struct mime_handler mime_handlers[] =
 	{ "get_diag_eth_traffic.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_eth_traffic_cgi, do_auth },
 	{ "get_diag_sta_traffic.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_sta_traffic_cgi, do_auth },
 #endif
-#if defined(RTCONFIG_CONNDIAG) && defined(RTCONFIG_LIB_CODB)
+#if defined(RTCONFIG_LIB_CODB)
     { "get_diag_avg_data.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_avg_data, do_auth },
     { "get_diag_active_client.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_active_client, do_auth },
     { "get_diag_content_data.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_content_data, do_auth },
     { "get_diag_eth_traffic_data.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_eth_traffic_data, do_auth },
 #endif
-#if defined(RTCONFIG_CONNDIAG) && defined(RTCONFIG_LIB_CODB) && defined(RTCONFIG_DNS_PING)
+#if defined(RTCONFIG_LIB_CODB) && defined(RTCONFIG_DNS_PING)
     { "dns_ping.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_dns_ping, do_auth},
 #endif
 #if defined(RTCONFIG_CD_IPERF)
@@ -31324,7 +31338,7 @@ static int ej_netdev(int eid, webs_t wp, int argc, char_t **argv)
 	if(from_app == 0 && hook_get_json == 1)
 		ret += websWrite(wp, "{");
 
-#ifdef RTCONFIG_LANTIQ
+#if 0 //def RTCONFIG_LANTIQ
 	if ((nvram_get_int("switch_stb_x") == 0 || nvram_get_int("switch_stb_x") > 6) && ppa_support(WAN_UNIT_FIRST)) {
 		doSystem("ppacmd getwan > %s", PPACMD_WAN_PATH);
 		doSystem("ppacmd getlan > %s", PPACMD_LAN_PATH);
@@ -31336,7 +31350,7 @@ static int ej_netdev(int eid, webs_t wp, int argc, char_t **argv)
 		fp = fopen("/proc/net/dev", "r");
 
 	if (fp) {
-#ifdef RTCONFIG_LANTIQ
+#if 0 //def RTCONFIG_LANTIQ
 		if ((nvram_get_int("switch_stb_x") > 0 && nvram_get_int("switch_stb_x") <= 6) || !ppa_support(WAN_UNIT_FIRST))
 #endif
 		{
@@ -31345,7 +31359,7 @@ static int ej_netdev(int eid, webs_t wp, int argc, char_t **argv)
 		}
 		comma = ' ';
 			while (fgets(buf, sizeof(buf), fp)) {
-#ifdef RTCONFIG_LANTIQ
+#if 0 //def RTCONFIG_LANTIQ
 				if ((nvram_get_int("switch_stb_x") > 0 && nvram_get_int("switch_stb_x") <= 6) || !ppa_support(WAN_UNIT_FIRST)) {
 #endif
 					if ((p = strchr(buf, ':')) == NULL) continue;
@@ -31364,7 +31378,7 @@ static int ej_netdev(int eid, webs_t wp, int argc, char_t **argv)
 						}
 					}
 #endif
-#ifdef RTCONFIG_LANTIQ
+#if 0 //def RTCONFIG_LANTIQ
 				}
 				else
 				{
@@ -31460,12 +31474,12 @@ loopagain:
 
 				if (!sum) {
 					if(from_app == 0 && hook_get_json == 0){
-#ifdef RTCONFIG_LANTIQ
+#if 0 //def RTCONFIG_LANTIQ
 						if ((nvram_get_int("switch_stb_x") > 0 && !strstr(ifname, "eth1.") && !strstr(ifname, "br1")) || (nvram_get_int("switch_stb_x") == 0))
 #endif
 						ret += websWrite(wp, "%c'%s':{rx:0x%llx,tx:0x%llx}\n", comma, ifname_desc, rx, tx);
 					}else{
-#ifdef RTCONFIG_LANTIQ
+#if 0 //def RTCONFIG_LANTIQ
 						if ((nvram_get_int("switch_stb_x") > 0 && !strstr(ifname, "eth1.") && !strstr(ifname, "br1")) || (nvram_get_int("switch_stb_x") == 0))
 #endif
 						ret += websWrite(wp, "%c\"%s_rx\":\"0x%llx\",\"%s_tx\":\"0x%llx\"", comma, ifname_desc, rx, ifname_desc, tx);
@@ -31528,7 +31542,7 @@ loopagain:
 		comma = ',';
 	}
 #endif
-#ifdef RTCONFIG_LANTIQ
+#if 0 //def RTCONFIG_LANTIQ
 		if ((nvram_get_int("switch_stb_x") == 0 || nvram_get_int("switch_stb_x") > 6) && ppa_support(WAN_UNIT_FIRST)) {
 			unlink(PPACMD_WAN_PATH);
 			unlink(PPACMD_LAN_PATH);
@@ -40812,7 +40826,6 @@ struct ej_handler ej_handlers[] = {
 	{ "wl_rate_6g", ej_wl_rate_6g},
 	{ "wl_rate_6g_2", ej_wl_rate_6g_2},
 #endif
-#ifdef CONFIG_BCMWL5
 	{ "wl_cap_2g", ej_wl_cap_2g },
 	{ "wl_cap_5g", ej_wl_cap_5g },
 	{ "wl_cap_5g_2", ej_wl_cap_5g_2 },
@@ -40820,6 +40833,7 @@ struct ej_handler ej_handlers[] = {
 	{ "wl_cap_6g", ej_wl_cap_6g },
 	{ "wl_cap_6g_2", ej_wl_cap_6g_2 },
 #endif	
+#ifdef CONFIG_BCMWL5
 	{ "wl_chipnum_2g", ej_wl_chipnum_2g },
 	{ "wl_chipnum_5g", ej_wl_chipnum_5g },
 	{ "wl_chipnum_5g_2", ej_wl_chipnum_5g_2 },
@@ -40954,6 +40968,8 @@ struct ej_handler ej_handlers[] = {
 #ifdef RTCONFIG_AMAS_CENTRAL_OPTMZ
 	{ "get_opt_status", ej_get_opt_status},
 #endif
+#elif defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
+	{ "get_cfg_clientlist", ej_get_cfg_clientlist},
 #endif
 #ifdef RTCONFIG_NOTIFICATION_CENTER
 	{ "get_nt_db", ej_get_nt_db},

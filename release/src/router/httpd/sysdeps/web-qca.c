@@ -3021,3 +3021,59 @@ const char *syslog_msg_filter[] = {
 	NULL
 };
 
+
+static int ej_wl_cap(int eid, webs_t wp, int argc, char_t **argv, int unit)
+{
+	int retval = 0;
+	char ifname[IFNAMSIZ];
+	char word[256], *next;
+	int unit_max = 0, unit_cur = -1;
+	char caps[128];
+	char wl_ifnames[32];
+
+	memset(caps, 0, sizeof(caps));
+	strlcat(caps, "ap sta", sizeof(caps));
+	strlcat(caps, " wme", sizeof(caps));
+	strlcat(caps, " cac", sizeof(caps));
+	strlcat(caps, " ampdu", sizeof(caps));
+#if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_WIFI_IPQ53XX_QCN6274) || defined(RTCONFIG_WIFI_IPQ53XX_QCN64XX) || defined(RTCONFIG_QCA_AXCHIP)
+	strlcat(caps, " 11ax", sizeof(caps));
+#endif
+	if(hook_get_json == 1)
+		retval += websWrite(wp, "\"%s\"", caps);
+	else
+		retval += websWrite(wp, "%s", caps);
+	return retval;
+}
+
+int
+ej_wl_cap_2g(int eid, webs_t wp, int argc, char **argv)
+{
+	return ej_wl_cap(eid, wp, argc, argv, 0);
+}
+
+int
+ej_wl_cap_5g(int eid, webs_t wp, int argc, char **argv)
+{
+	return ej_wl_cap(eid, wp, argc, argv, 1);
+}
+
+int
+ej_wl_cap_5g_2(int eid, webs_t wp, int argc, char **argv)
+{
+	return ej_wl_cap(eid, wp, argc, argv, 2);
+}
+
+#if defined(RTCONFIG_WIFI6E) || defined(RTCONFIG_WIFI7)
+int
+ej_wl_cap_6g(int eid, webs_t wp, int argc, char **argv)
+{
+	return ej_wl_cap(eid, wp, argc, argv, 2);
+}
+
+int
+ej_wl_cap_6g_2(int eid, webs_t wp, int argc, char **argv)
+{
+	return ej_wl_cap(eid, wp, argc, argv, 2);
+}
+#endif

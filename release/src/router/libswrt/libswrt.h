@@ -63,6 +63,10 @@ struct stainfo {
 	double rx_rate;
 	int conn_time;
 	int inactive_flag;
+	char conn_if[16];
+	int conn_if_idx;
+	int conn_if_vidx;
+	int rssi;
 	//time_t last_update;
 	struct stainfo *next;
 };
@@ -202,4 +206,13 @@ void get_usb_devices(usb_device_info_t **device_list);
 void free_usb_devices(usb_device_info_t **device_list);
 #endif
 #endif
+extern int libswrt_get_cpu_temp();
+extern int libswrt_get_wifi_temp(int unit);
+extern void get_sys_detect();
+extern void libswrt_get_stainfo();
+extern void libswrt_eth_detect();
+extern int lantiq_getSTAInfo(int unit, struct stainfo **sta_info);
+extern int qca_getSTAInfo(int unit, struct stainfo **sta_info);
+extern int mtk_getSTAInfo(int unit, struct stainfo **sta_info);
+extern int brcm_getSTAInfo(int unit, struct stainfo **sta_info);
 #endif

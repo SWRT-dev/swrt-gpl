@@ -14,8 +14,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2024, SWRTdev.
- * Copyright 2018-2024, paldier <paldier@hotmail.com>.
+ * Copyright 2018-2026, SWRTdev.
+ * Copyright 2018-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  * 
  */
@@ -38,7 +38,7 @@
 #include <httpd.h>
 #include <swrt.h>
 #include <shared.h>
-#if defined(RTCONFIG_MULTILAN_CFG)
+#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
 #include <amas_apg_shared.h>
 #endif
 #if defined(RTCONFIG_SOFTCENTER)
@@ -943,7 +943,7 @@ void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retva
 }
 #endif
 
-#if defined(RTCONFIG_MULTILAN_CFG)
+#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
 void escape_json_char(char *orig, char *conv, int percent_only)
 {
 	int i = 0, j = 0;
@@ -1105,7 +1105,11 @@ int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv)
 	escape_json_char(ap5g1_ssid_buf, ap5g1_ssid_conv_buf, 0);
 	escape_json_char(ap6g_ssid_buf, ap6g_ssid_conv_buf, 0);
 	strlcpy(ip_buf, nvram_safe_get("lan_ipaddr"), sizeof(ip_buf));
+#if defined(RTCONFIG_MULTILAN_CFG)
 	strlcpy(rmac_buf, get_own_mac(), sizeof(rmac_buf));
+#else
+	strlcpy(rmac_buf, get_lan_hwaddr(), sizeof(rmac_buf));
+#endif
 
 	/* get capability */
 	memset(capability_buf, 0, sizeof(capability_buf));

@@ -2434,6 +2434,10 @@ config RTCONFIG_CONNDIAG
 	bool "enable conn_diag in AiMesh"
 	default n
 
+config RTCONFIG_DASHBOARD
+	bool "enable Dashboard UI"
+	default n
+
 config RTCONFIG_REPEATER_STAALLBAND
 	bool "select one of tri band to connect P-AP"
 	default n
@@ -3101,6 +3105,10 @@ config RTCONFIG_SWRT_I2CLED
 
 config RTCONFIG_SWRT_FASTPATH
 	bool "Q-Path Mass Storage accelerater"
+	default n
+
+config RTCONFIG_SWRT_UI
+	bool "SWRT theme support"
 	default n
 
 config RTCONFIG_SWRT_KVR

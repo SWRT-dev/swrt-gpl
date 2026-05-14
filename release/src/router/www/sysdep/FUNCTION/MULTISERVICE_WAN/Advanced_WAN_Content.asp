@@ -85,7 +85,7 @@
 	display:block;
 	overflow: auto;
 }
-.dnslist_viewlist_business{
+.dnslist_viewlist_swrt{
 	position: absolute;
 	width: 70%;
     margin-left: 100px;
@@ -190,7 +190,7 @@
 
 </style>
 <script>
-if(isSupport("BUSINESS")){
+if(isSupport("swrt_ui")){
 	$('link').last().after('<link group="extend_css" rel="stylesheet" type="text/css" href="/RWD_UI/rwd_component_WHITE.css">');
 }
 else if(isSupport("ROG_UI")){
@@ -3076,7 +3076,7 @@ function Assign_DNS_service(){
 	var divObj = document.createElement("div");
 	divObj.setAttribute("id","dns_list_Block");
 	if(parent.webWrapper){
-		divObj.className = "dnslist_viewlist_business";
+		divObj.className = "dnslist_viewlist_swrt";
 		document.body.appendChild(divObj);
 		// cal_panel_block("dns_list_Block", 0.045);
 		

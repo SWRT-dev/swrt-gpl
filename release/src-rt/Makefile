@@ -4842,6 +4842,12 @@ define RouterOptions
 		sed -i "/RTCONFIG_SWRT_FASTPATH/d" $(1); \
 		echo "RTCONFIG_SWRT_FASTPATH=y" >>$(1); \
 	fi;
+	if [ "$(SWRT_UI)" = "y" ]; then \
+		sed -i "/RTCONFIG_SWRT_UI/d" $(1); \
+		echo "RTCONFIG_SWRT_UI=y" >>$(1); \
+		sed -i "/RTCONFIG_DASHBOARD/d" $(1); \
+		echo "RTCONFIG_DASHBOARD=y" >>$(1); \
+	fi;
 	if [ "$(SWRT_KVR)" = "y" ]; then \
 		sed -i "/RTCONFIG_SWRT_KVR/d" $(1); \
 		echo "RTCONFIG_SWRT_KVR=y" >>$(1); \
@@ -4901,6 +4907,10 @@ define RouterOptions
 	if [ "$(SFE)" = "y" ]; then \
 		sed -i "/RTCONFIG_SFE/d" $(1); \
 		echo "RTCONFIG_SFE=y" >>$(1); \
+	fi;
+	if [ "$(DNS_PING)" = "y" ]; then \
+		sed -i "/RTCONFIG_DNS_PING/d" $(1); \
+		echo "RTCONFIG_DNS_PING=y" >>$(1); \
 	fi;
 	$(call platformRouterOptions, $(1))
 endef

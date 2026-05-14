@@ -454,11 +454,15 @@ struct RWD_MAPPING_TABLE rwd_mapping_t[] =
 #endif
 	{"VPN_Fusion", "VPN/vpnc.html", "<rt><gt>VPN/vpncGT.css<tuf>VPN/vpncTUF.css<white>VPN/vpncWHITE.css"},
 	{"VPN_Server", "VPN/vpns.html", "<rt><gt>VPN/vpnsGT.css<tuf>VPN/vpnsTUF.css<white>VPN/vpnsWHITE.css"},
-#ifdef RTCONFIG_MULTILAN_CFG
+#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
 	{"SDN", "SDN/sdn.html", "<rt><gt>SDN/sdn_ROG.css<tuf>SDN/sdn_TUF.css<white>SDN/sdn_WHITE.css"},
 #endif
 #ifdef RTCONFIG_DASHBOARD
+#if defined(RTCONFIG_SWRT_UI)
+	{"Dashboard", "index.html?url=dashboard", "<white>css/swrt-white.css"},
+#else
 	{"Dashboard", "index.html?url=dashboard", "<white>css/business-white.css"},
+#endif
 #endif
 #ifdef RTCONFIG_SW_BTN
 	{"MultiFuncBtn", "multifuncbtn/mfb.html", "<rt><white>multifuncbtn/mfb_WHITE.css"},

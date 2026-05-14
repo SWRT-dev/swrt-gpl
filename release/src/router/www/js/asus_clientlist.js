@@ -372,7 +372,7 @@ const ASUS_CLIENTLIST = {
             return "ROG";
         } else if (isSupport("tuf")) {
             return "TUF";
-        } else if (isSupport("BUSINESS")) {
+        } else if (isSupport("swrt_ui")) {
             return "";
         } else {
             return theme;

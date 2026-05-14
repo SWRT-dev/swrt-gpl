@@ -22599,6 +22599,13 @@ NO_USB_CAP:
 	add_rc_support("tuf");
 #endif
 
+#ifdef RTCONFIG_SWRT_UI
+	add_rc_support("swrt_ui");
+#ifdef RTCONFIG_DASHBOARD
+	add_rc_support("dashboard");
+#endif
+#endif
+
 #ifdef RTCONFIG_VISUALIZATION
 	add_rc_support("wifiradar");
 #endif

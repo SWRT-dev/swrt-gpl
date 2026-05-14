@@ -121,7 +121,7 @@ function initial(){
 	}
 
 	//short term solution for brt-ac828
-	if(based_modelid == "BRT-AC828" || isSupport("BUSINESS")) {
+	if(based_modelid == "BRT-AC828" || isSupport("swrt_ui")) {
 		document.getElementById("returnBtn").style.display = "none";
 	}
 

@@ -14,7 +14,7 @@
     width: 78px;
     height: 16px;
 }
-.icon-size-logo-business {
+.icon-size-logo-swrt {
     width: 200px;
     height: 48px;
 }
@@ -53,12 +53,12 @@
     -webkit-mask-image: url("../images/logo_asus.svg");
     mask-image: url("../images/logo_asus.svg");
 }
-.icon-logo-business {
-    background-image: url("../images/asus_logo_business.svg");
+.icon-logo-swrt {
+    background-image: url("../images/logo_swrt.svg");
     background-repeat: no-repeat;
     background-color: transparent;
 }
-[role~="icon"].icon-logo-business:hover {
+[role~="icon"].icon-logo-swrt:hover {
     background-color: transparent;
 }
 .icon-menu {

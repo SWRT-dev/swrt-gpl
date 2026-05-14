@@ -14,10 +14,9 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2018-2025, SWRT.
- * Copyright 2018-2025, paldier <paldier@hotmail.com>.
- * Copyright 2018-2025, lostlonger<lostlonger.g@gmail.com>.
- * All Rights Reserved.
+ * Copyright 2018-2026, SWRT.
+ * Copyright 2018-2026, paldier <paldier@hotmail.com>.
+ * Copyright 2018-20256
  *
  */
 #include <stdio.h>
@@ -112,6 +111,8 @@ void swrt_init_pre()
 	nvram_set("swrt_skin", "gs");
 #elif defined(RTCONFIG_TS_UI)
 	nvram_set("swrt_skin", "ts");
+#elif defined(RTCONFIG_SWRT_UI)
+	nvram_set("swrt_skin", "swrt");
 #endif
 	if(!nvram_get("modelname"))
 #if defined(SWRT360V6)

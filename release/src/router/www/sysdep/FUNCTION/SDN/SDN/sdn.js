@@ -361,7 +361,7 @@ var cp_type_rl_json = (function(){
 			cp_text_map.push({"id":"1", "text":"<#Captive_Portal#> WiFi"});
 		if(isSupport("captivePortal") && isSupport("cp_freewifi")){
 			cp_text_map.push({"id":"2", "text":"Free WiFi"});
-			if(!isSupport("BUSINESS"))
+			if(!isSupport("swrt_ui"))
 				cp_text_map.push({"id":"4", "text":`<#Message_Board#>`});
 		}
 	}
@@ -451,7 +451,7 @@ let wizard_type_text = [
 	{"type":"MLO", "text":`<#WiFi_mlo_title#>`, "desc":`<#WiFi_mlo_Desc1#>`},
 	{"type":"Gaming", "text":`<#Adaptive_Game#> <#Network#>`, "desc":`<#GuestNetwork_Gaming_desc2#>`}
 ];
-if(isSupport("BUSINESS")){
+if(isSupport("swrt_ui")){
 	var specific_wizard_type = wizard_type_text.filter(function(item, index, array){
 		return (item.type == "Kids");
 	})[0];
@@ -1801,7 +1801,7 @@ function show_feature_desc(){
 				return (item.type == "Employee" || item.type == "Guest" || item.type == "Kids" || item.type == "MLO");
 			});
 		}
-		if(isSupport("BUSINESS")){
+		if(isSupport("swrt_ui")){
 			var specific_wizard_type = wizard_type_list.filter(function(item, index, array){
 				return (item.type == "Kids");
 			})[0];
@@ -1896,7 +1896,7 @@ function show_Get_Start(view_mode){
 	let specific_wizard_type = "";
 	let $employee_comp = "", $portal_comp = "", $guest_comp = "", $kids_sched_comp = "", $iot_comp = "", $vpn_comp = "",
 		$scenario_comp = "", $customized_comp = "", $mlo_comp = "", $gaming_comp = "";
-	if(isSupport("BUSINESS")){
+	if(isSupport("swrt_ui")){
 		let employee_parm = {"type":"Employee", "title":"", "desc":""};
 		specific_wizard_type = wizard_type_text.filter(function(item, index, array){
 			return (item.type == "Employee");
@@ -1932,7 +1932,7 @@ function show_Get_Start(view_mode){
 	$guest_comp = Get_Component_Wizard_Item(guest_parm);
 
 	let kids_sched_parm = {"type":"Kids", "title":"", "desc":""};
-	if(isSupport("BUSINESS")){
+	if(isSupport("swrt_ui")){
 		kids_sched_parm = {"type":"Sched", "title":"", "desc":""};
 	}
 	specific_wizard_type = wizard_type_text.filter(function(item, index, array){
@@ -1965,7 +1965,7 @@ function show_Get_Start(view_mode){
 		}
 		$vpn_comp = Get_Component_Wizard_Item(vpn_parm);
 
-		if(isSupport("BUSINESS")){
+		if(isSupport("swrt_ui")){
 			var $scenario_list_bg = $("<div>").addClass("wizard_list_bg").appendTo($content_container);
 			$scenario_comp = Get_Component_Wizard_Item_Scenario()
 			$scenario_comp.unbind("click").click(function(e){
@@ -2961,7 +2961,7 @@ function show_popup_Wizard_Setting(_type){
 
 		var $container = $("<div>").addClass("setting_content_container");
 
-		var profile_title = ((isSupport("BUSINESS")) ? "<#GuestNetwork_Sche_network#>" : "<#GuestNetwork_Kid#>");
+		var profile_title = ((isSupport("swrt_ui")) ? "<#GuestNetwork_Sche_network#>" : "<#GuestNetwork_Kid#>");
 		if(view_mode == "popup"){
 			Get_Component_Popup_Profile_Title(profile_title).appendTo($container)
 				.find("#title_close_btn").unbind("click").click(function(e){
@@ -2995,7 +2995,7 @@ function show_popup_Wizard_Setting(_type){
 			});
 		$("<div>").attr({"id":"sdn_pwd_strength"}).attr({"data-group":"wifi_settings"}).append(Get_Component_PWD_Strength_Meter()).appendTo($content_container).hide();
 
-		const wizard_type = (isSupport("BUSINESS") ? "Sched" : "Kids");
+		const wizard_type = (isSupport("swrt_ui") ? "Sched" : "Kids");
 		if(support_ledg_sdn && wizard_type == "Kids"){
 			const ledg_sdn_parm = {"title":`<#GuestNetwork_Kid#> LED`, "type":"switch", "id":"ledg_sdn", "set_value":"on"};
 			let $ledg_sdn = Get_Component_Switch(ledg_sdn_parm).appendTo($content_container);
@@ -10329,13 +10329,13 @@ var scenarios_list = [
 		"idx": 6
 	},
 	{
-		"type":(isSupport("BUSINESS") ? "Sched" : "Kids"),
+		"type":(isSupport("swrt_ui") ? "Sched" : "Kids"),
 		"text":str_Scenario_Study,
 		"scenes":"remote_study",
 		"idx": 9
 	},
 	{
-		"type":(isSupport("BUSINESS") ? "Sched" : "Kids"),
+		"type":(isSupport("swrt_ui") ? "Sched" : "Kids"),
 		"text":str_Scenario_Classroom,
 		"scenes":"classroom",
 		"idx": 10
@@ -10372,7 +10372,7 @@ function Get_Scenarios_List(){
 	setTimeout(function(){
 		$.getJSON("https://nw-dlcdnet.asus.com/plugin/js/extend_sdn_scenarios.json", function(data){
 			$.each(data, function(index, item){
-				if(item["type"] == "Kids" && isSupport("BUSINESS")){
+				if(item["type"] == "Kids" && isSupport("swrt_ui")){
 					item["type"] = "Sched";
 				}
 				item["source"] = "Cloud";

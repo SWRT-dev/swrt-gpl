@@ -152,14 +152,14 @@ function initial(){
 		if(isSwMode("rt")){
 			Get_DNS_List_DB();
 			if(app_control.type == ""){
-				if(isSupport("BUSINESS")){
+				if(isSupport("swrt_ui")){
 					Get_Scenarios_List();
 				}
 			}
 
 			if(isSupport("captivePortal") && isSupport("cp_freewifi")){
 				Get_FreeWiFi_template();
-				if(!isSupport("BUSINESS"))
+				if(!isSupport("swrt_ui"))
 					Get_MessageBoard_template();
 			}
 			if(app_control.type != "Gaming" && isSupport("open_nat") && isSupport("SDN_PRIORITY")){

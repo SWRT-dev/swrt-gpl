@@ -14,8 +14,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston,
  * MA 02111-1307 USA
  *
- * Copyright 2023-2024, SWRTdev.
- * Copyright 2023-2024, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2026, SWRTdev.
+ * Copyright 2023-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  * 
  */

@@ -139,11 +139,11 @@ class NoticePopupModalComponent {
             <style>
                 :host {
                     --rt-primary: #006CE1;
-                    --business-primary: #006CE1;
+                    --swrt-primary: #006CE1;
                     --rog-primary: #FF1929;
                     --tuf-primary: #FFAA32;                    
                     
-                    --business-notice: #B42D18;
+                    --swrt-notice: #B42D18;
                     --rt-notice: #E75B4B;
                     --rog-notice: #00D5FF;
                     --tuf-notice: #00D5FF;
@@ -219,7 +219,7 @@ class NoticePopupModalComponent {
                 }
             
                 .modal-title {
-                    color: var(--business-primary);
+                    color: var(--swrt-primary);
                     font-weight: bold;
                     font-size: 2em;
                     margin: 0;
@@ -558,7 +558,7 @@ class NoticePopupModalComponent {
                 }
                 
                 .checkbox-wrapper-40 {
-                    --borderColor: var(--business-primary);
+                    --borderColor: var(--swrt-primary);
                     --borderWidth: .125em;
                     color: #000;
                 }
@@ -676,7 +676,7 @@ class NoticePopupModalComponent {
             return "ROG";
         } else if (isSupport("tuf")) {
             return "TUF";
-        } else if (isSupport("BUSINESS")) {
+        } else if (isSupport("swrt_ui")) {
             return "";
         } else {
             return theme;

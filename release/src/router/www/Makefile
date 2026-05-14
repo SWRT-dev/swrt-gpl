@@ -129,8 +129,6 @@ ifeq ($(RTCONFIG_MULTILAN_CFG), y)
 	rm -rf $(INSTALLDIR)/www/js/qrcode/MIT-LICENSE.txt
 ifeq ($(RTCONFIG_BUSINESS), y)
 	rm -rf $(INSTALLDIR)/www/SDN/Captive_Portal/MessageBoard_template.json
-else ifeq ($(RTCONFIG_SWRT_UI), y)
-	rm -rf $(INSTALLDIR)/www/SDN/Captive_Portal/MessageBoard_template.json
 endif
 ifeq ($(RTCONFIG_SMART_HOME_MASTER_UI), y)
 	rm -rf $(INSTALLDIR)/www/Advanced_VLAN_Profile_Content.asp
@@ -156,7 +154,27 @@ ifneq ($(and $(RTCONFIG_OPEN_NAT),$(RTCONFIG_SDN_PRIORITY)),y)
 	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/white_theme/Category/ic-gaming.svg
 endif
 else
+ifeq ($(RTCONFIG_SWRT_UI), y)
+	cp $(TOP)/www/sysdep/FUNCTION/RWD_UI $(INSTALLDIR)/www/ -rf
+	cp $(TOP)/www/sysdep/FUNCTION/SDN/images/New_ui/SDN $(INSTALLDIR)/www/images/New_ui/ -rf
+	cp $(TOP)/www/sysdep/FUNCTION/SDN/SDN $(INSTALLDIR)/www/ -rf
+	cp $(TOP)/www/sysdep/FUNCTION/SDN/SDN.asp $(INSTALLDIR)/www/SDN.asp
+	cp $(TOP)/www/sysdep/FUNCTION/SDN/ajax/freewifi_tos.json $(INSTALLDIR)/www/ajax/freewifi_tos.json
+	rm -rf $(INSTALLDIR)/www/js/qrcode/MIT-LICENSE.txt
+	rm -rf $(INSTALLDIR)/www/SDN/Captive_Portal/MessageBoard_template.json
+	rm -rf $(INSTALLDIR)/www/SDN/mlo*
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/dark_theme/Image/mlo_desc.svg
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/dark_theme/Notification/wifi_mlo.svg
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/dark_theme/Notification/wifi_mlo_lock.svg
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/white_theme/Image/mlo_desc.svg
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/white_theme/Notification/wifi_mlo.svg
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/white_theme/Notification/wifi_mlo_lock.svg
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/gaming
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/dark_theme/Category/ic-gaming.svg
+	rm -rf $(INSTALLDIR)/www/images/New_ui/SDN/white_theme/Category/ic-gaming.svg
+else
 	rm -rf $(INSTALLDIR)/www/js/qrcode
+endif
 endif
 
 ifeq ($(RTCONFIG_SW_BTN), y)
@@ -570,9 +588,11 @@ ifneq ($(RTCONFIG_DNSQUERY_INTERCEPT),y)
 	rm -rf $(INSTALLDIR)/www/images/save.svg
 	rm -rf $(INSTALLDIR)/www/images/save_hover.svg
 	rm -rf $(INSTALLDIR)/www/images/save_active.svg
+ifneq ($(RTCONFIG_SWRT_UI),y)
 	rm -rf $(INSTALLDIR)/www/images/delete.svg
 	rm -rf $(INSTALLDIR)/www/images/delete_hover.svg
 	rm -rf $(INSTALLDIR)/www/images/delete_active.svg
+endif
 	rm -rf $(INSTALLDIR)/www/images/edit.svg
 	rm -rf $(INSTALLDIR)/www/images/edit_hover.svg
 	rm -rf $(INSTALLDIR)/www/images/edit_active.svg
@@ -889,8 +909,10 @@ endif
 
 ifneq ($(RTCONFIG_ROG_UI),y)
 ifneq ($(RTCONFIG_TUF_UI),y)
+ifneq ($(RTCONFIG_SWRT_UI), y)
 	rm -rf $(INSTALLDIR)/www/fonts/xolonium.regular.otf
 	rm -rf $(INSTALLDIR)/www/fonts/xolonium.regular.woff
+endif
 endif
 	rm -rf $(INSTALLDIR)/www/images/triLvGameAcceleration
 	rm -rf $(INSTALLDIR)/www/css/triLvGameAcceleration.css
@@ -981,7 +1003,9 @@ endif
 
 ifneq ($(BUILD_NAME),$(filter $(BUILD_NAME), GT-AC2900 GT-AC5300 GT-AX11000 GT-AXE11000 GT-AXY16000 RT-AX82U RT-AX82U_V2 DSL-AX82U GS-AX3000 GS-AX5400 TUF-AX5400 TUF-AX5400_V2 GT-AX11000_PRO GT-AXE16000 GT-BE98 GT-BE98_PRO GT-AX6000 GT10 GT-BE96))
 ifneq ($(RTCONFIG_AMAS),y)
+ifneq ($(RTCONFIG_SWRT_UI), y)
 	rm -rf $(INSTALLDIR)/www/fonts
+endif
 endif
 endif
 

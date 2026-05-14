@@ -9,6 +9,13 @@
 #include <json.h>
 #include <disk_initial.h>
 #include "libswrt.h"
+#if defined(RTCONFIG_LANTIQ)
+#include <lantiq.h>
+#elif defined(RTCONFIG_QCA)
+#include <qca.h>
+#elif defined(RTCONFIG_RALINK)
+#include <ralink.h>
+#endif
 
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)
 extern int ext_rtk_phyState(int verbose, char* BCMPorts, phy_info_list *list);
@@ -650,4 +657,13 @@ void free_usb_devices(usb_device_info_t **device_list) {
 	}
 }
 #endif
+#endif
+#if defined(RTCONFIG_LANTIQ)
+#include "lantiq.c"
+#elif defined(RTCONFIG_QCA)
+#include "qca.c"
+#elif defined(RTCONFIG_RALINK)
+#include "mtk.c"
+#else
+#include "bcm.c"
 #endif

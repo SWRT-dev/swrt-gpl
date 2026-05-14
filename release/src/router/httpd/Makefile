@@ -319,12 +319,12 @@ LIBS += -L$(TOP)/libqcsapi_client_10g -lqcsapi_client
 endif
 
 ifeq ($(RTCONFIG_CONNDIAG),y)
-ifeq ($(RTCONFIG_LIB_CODB),y)
-CFLAGS += -I$(TOP)/libcodb
-LIBS += -L$(TOP)/libcodb -lcodb
-endif
 CFLAGS += -I$(TOP)/rc
 LIBS += -L$(TOP)/rc -lconn_diag
+endif
+ifeq ($(RTCONFIG_LIB_CODB),y)
+CFLAGS += -I$(STAGEDIR)/usr/include
+LIBS += -L$(STAGEDIR)/usr/lib -ljson-c -lcodb
 endif
 
 ifeq ($(RTCONFIG_DNSQUERY_INTERCEPT),y)

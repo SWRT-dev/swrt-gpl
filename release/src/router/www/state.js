@@ -1,4 +1,4 @@
-if(parent.webWrapper) document.write('<link rel="stylesheet" type="text/css" href="/css/business-white.css"></link>');
+if(parent.webWrapper) document.write('<link rel="stylesheet" type="text/css" href="/css/swrt-white.css"></link>');
 document.write('<script type="text/javascript" src="/require/require.min.js"></script>');
 document.write('<script type="text/javascript" src="/js/support_site.js"></script>');
 
@@ -480,7 +480,7 @@ function isSupport(_ptn){
 	return (ui_support[_ptn]) ? ui_support[_ptn] : 0;
 }
 
-if(isSupport("BUSINESS") && !parent.webWrapper){
+if(isSupport("swrt_ui") && !parent.webWrapper){
 	var noWrapper = (location.search.indexOf("noWrapper") != -1 || CoBrand == "99");
 	var rwdPageSupport = [<% get_rwd_mapping_table(); %>][0];
 	var currentPath = location.pathname.replace("/", "");
@@ -983,7 +983,7 @@ var IOS_QR = "images/New_ui/asus_router_ios_qr.png";
 
 var Guest_Network_naming = (()=>{
 	if(isSupport("mtlancfg")){
-		if(isSupport("BUSINESS"))
+		if(isSupport("swrt_ui"))
 			return `<#GuestNetwork_SDN_title#>`;
 		else if(isSupport("SMART_HOME_MASTER_UI"))
 			return `<#Guest_Network#>`;
@@ -1670,7 +1670,7 @@ function show_menu(){
 			Session.set("menuList." + ui_lang, menuList);
 			Session.set("menuExclude", menuExclude);
 			showMenuTree(menuList, menuExclude);
-			if(parent.webWrapper) setTimeout(parent.setupBusinessUI, 100)
+			if(parent.webWrapper) setTimeout(parent.setupSWRTUI, 100)
 		});
 	}
 
@@ -1718,7 +1718,7 @@ function show_menu(){
 		}
 	}
 
-	if(parent.webWrapper) parent.setupBusinessUI();
+	if(parent.webWrapper) parent.setupSWRTUI();
 }
 
 function create_wireless_notice(){

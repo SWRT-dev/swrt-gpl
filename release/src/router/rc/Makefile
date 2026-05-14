@@ -1063,11 +1063,6 @@ CFLAGS += -I$(TOP)/acsd$(BCMEX)$(EX7)
 CFLAGS  += -I$(TOP)/sqlite
 LDFLAGS2 += -L$(TOP)/sqlite/.libs -lsqlite3
 
-ifeq ($(RTCONFIG_LIB_CODB),y)
-CFLAGS += -I$(TOP)/libcodb
-LDFLAGS2 += -L$(TOP)/libcodb -lcodb
-endif
-
 LDFLAGS2 += -L. -lconn_diag
 
 OBJS += conn_diag.o
@@ -1081,6 +1076,10 @@ else ifeq ($(RTCONFIG_RALINK),y)
 OBJS += conn_diag-ralink.o
 endif
 DIAG_OBJS += conn_diag-sql.o
+endif
+ifeq ($(RTCONFIG_LIB_CODB),y)
+CFLAGS += -I$(TOP)/libcodb
+LDFLAGS2 += -L$(TOP)/libcodb -lcodb
 endif
 
 ifeq ($(BUILD_NAME), GT10)
