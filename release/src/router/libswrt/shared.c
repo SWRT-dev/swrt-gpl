@@ -15,6 +15,10 @@
 #include <qca.h>
 #elif defined(RTCONFIG_RALINK)
 #include <ralink.h>
+#elif defined(RTCONFIG_BCMARM)
+#include <wlutils.h>
+#include <wlioctl.h>
+#include <wlscan.h>
 #endif
 
 #if defined(RTCONFIG_EXT_RTL8365MB) || defined(RTCONFIG_EXT_RTL8370MB)

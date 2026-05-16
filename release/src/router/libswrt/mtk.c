@@ -48,7 +48,7 @@ int mtk_getSTAInfo(int unit, struct stainfo **sta_info)
 				rssi = cnt = 0;
 				memset(info, 0, sizeof(struct stainfo));
 				memset(mac, 0, sizeof(mac));
-				ether_etoa(&mp->Entry[i].Addr, mac);
+				ether_etoa(&mp->Entry[i].Addr[0], mac);
 				strlcpy(info->sta_mac, mac, sizeof(info->sta_mac));
 				if(mp->Entry[i].AvgRssi0 && cnt < xTxR){
 					rssi += (signed int)(signed char)mp->Entry[i].AvgRssi0;//fix char = unsigned char on arm64
@@ -64,7 +64,7 @@ int mtk_getSTAInfo(int unit, struct stainfo **sta_info)
 				}
 				if(cnt){
 					rssi = rssi / cnt;
-					sta_info_tab->rssi = (unsigned int)rssi;
+					info->rssi = (unsigned int)rssi;
 				}else
 					info->rssi = 0;
 				tx_ratedata = mp->Entry[i].TxRate.word;
@@ -73,13 +73,13 @@ int mtk_getSTAInfo(int unit, struct stainfo **sta_info)
 				mtk_parse_ratedata(rx_ratedata, &r_phy, &r_mcs, &r_bw, &r_vht_nss, &r_sgi, &r_stbc);
 				info->conn_time = mp->Entry[i].ConnectedTime;
 				if(unit == 0){
-					info->tx_rate = (double)mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 0));
+					info->tx_rate = (double)mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 0);
 					if(rx_ratedata)
-						info->rx_rate = (double)mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 0));
+						info->rx_rate = (double)mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 0);
 				}else{
-					info->tx_rate = (double)mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 1));
+					info->tx_rate = (double)mtk_mcs_to_rate(mcs, phy, bw, sgi, vht_nss, 1);
 					if(rx_ratedata)
-						info->rx_rate = (double)mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 1));
+						info->rx_rate = (double)mtk_mcs_to_rate(r_mcs, r_phy, r_bw, r_sgi, r_vht_nss, 1);
 				}
 				info->inactive_flag = 0;//?
 				strlcpy(info->conn_if, ifname, sizeof(info->conn_if));

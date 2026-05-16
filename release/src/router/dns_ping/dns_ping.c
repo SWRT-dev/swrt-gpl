@@ -111,7 +111,7 @@ static void dbgprint(char *path, const char * format, ...)
 			vfprintf(fp, format, args);
 			fclose(fp);
 		}else{
-			vfprintf(stderr, "%s ", timestamp);
+			fprintf(stderr, "%s ", timestamp);
 			vfprintf(stderr, format, args);
 			if(fd != -1)
 				close(fd);

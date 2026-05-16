@@ -25,7 +25,7 @@ static sta_info_t *wl_sta_info(char *ifname, struct ether_addr *ea)
 
 int brcm_getSTAInfo(int unit, struct stainfo **sta_info)
 {
-	int unit = 0, count;
+	int count;
 	char prefix[] = "wlXXXXXXXXXX_", subifname[] = "wlX.Y_XXXXXXXXXX", tmp[128];
 	char *ifname;
 	struct maclist *clientlist;
