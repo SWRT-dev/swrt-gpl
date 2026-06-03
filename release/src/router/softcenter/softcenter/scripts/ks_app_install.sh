@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright (C) 2021-2023 SWRTdev
+# Copyright (C) 2021-2026 SWRTdev
 #softcenter_installing_name 	#正在安装的插件名
 #softcenter_installing_todo 	#希望安装/卸载的插件
 #softcenter_installing_title 	#希望安装/卸载的插件名
@@ -32,12 +32,35 @@ elif [ "$ARCH_SUFFIX" == "aarch64" ]; then
 	ARCH_SUFFIX="arm64"
 fi
 
-MODEL=$(nvram get productid)
-if [ "${MODEL:0:3}" == "GT-" ] || [ "$(nvram get swrt_rog)" == "1" ];then
-	ROG=1
-elif [ "${MODEL:0:3}" == "TUF" ] || [ "$(nvram get swrt_tuf)" == "1" ];then
-	TUF=1
-fi
+set_skin(){
+	local UI_TYPE=ASUSWRT
+	local SC_SKIN=$(nvram get sc_skin)
+	local SWRT_SKIN=$(nvram get swrt_skin)
+	local TS_FLAG=$(grep -o "2ED9C3" /www/css/difference.css 2>/dev/null|head -n1)
+	local ROG_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|grep -o "2071044")
+	local TUF_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|grep -o "D0982C")
+	if [ -n "${SWRT_SKIN}" ];then
+		if [ "ts" == "${SWRT_SKIN}" ];then
+			UI_TYPE="TS"
+		elif [ "rog" == "${SWRT_SKIN}" ];then
+			UI_TYPE="ROG"
+		elif [ "tuf" == "${SWRT_SKIN}" ];then
+			UI_TYPE="TUF"
+		elif [ "swrt" == "${SWRT_SKIN}" ];then
+			UI_TYPE="SWRT"
+		fi
+	elif [ -n "${TS_FLAG}" ];then
+		UI_TYPE="TS"
+	elif [ -n "${ROG_FLAG}" ];then
+		UI_TYPE="ROG"
+	elif [ -n "${TUF_FLAG}" ];then
+		UI_TYPE="TUF"
+	fi
+	if [ -z "${SC_SKIN}" -o "${SC_SKIN}" != "${UI_TYPE}" ];then
+		nvram set sc_skin="${UI_TYPE}"
+		nvram commit
+	fi
+}
 
 quit_install(){
 	[ "${softcenter_installing_todo}" != "" ] && rm -rf "/tmp/${softcenter_installing_todo}*"
@@ -223,21 +246,25 @@ install_module() {
 		cp -rf /tmp/${softcenter_installing_todo}/uninstall.sh /jffs/sfotcenter/scripts/uninstall_${softcenter_installing_todo}.sh
 	fi
 
-	if [ "$ROG" == "1" ]; then
-		echo_date "为插件【${softcenter_installing_name}】安装ROG风格皮肤..."
-		sed -i '/asuscss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
-		[ -d /tmp/${softcenter_installing_todo}/ROG ] && cp -rf /tmp/${softcenter_installing_todo}/ROG/* /tmp/${softcenter_installing_todo}/
+	set_skin
 
-	elif [ "$TUF" == "1" ]; then
-		echo_date "为插件【${softcenter_installing_name}】安装TUF风格皮肤..."
-		sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
-		sed -i '/asuscss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
-
-		find /tmp/${softcenter_installing_todo}/ROG/ -name "*.css" | xargs sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g'
-		[ -d /tmp/${softcenter_installing_todo}/ROG ] && cp -rf /tmp/${softcenter_installing_todo}/ROG/* /tmp/${softcenter_installing_todo}/
-	else
-		echo_date "为插件【${softcenter_installing_name}】安装ASUSWRT风格皮肤..."
-		sed -i '/rogcss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+	local skin_flag=$(grep -o "skin=" /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp)
+	if [ -z "${skin_flag}" -a "${softcenter_installing_todo}" != "softcenter"  ];then
+		if [ "${UI_TYPE}" == "ROG" ];then
+			echo_date "为插件【${softcenter_installing_name}】安装ROG风格皮肤..."
+			sed -i '/asuscss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+		elif [ "${UI_TYPE}" == "TUF" ];then
+			echo_date "为插件【${softcenter_installing_name}】安装TUF风格皮肤..."
+			sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+			sed -i '/asuscss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+		elif [ "${UI_TYPE}" == "TS" ];then
+			echo_date "为插件【${softcenter_installing_name}】安装天选TS风格皮肤..."
+			sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+			sed -i '/asuscss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+		else
+			echo_date "为插件【${softcenter_installing_name}】安装ASUSWRT风格皮肤..."
+			sed -i '/rogcss/d' /tmp/${softcenter_installing_todo}/webs/Module_${softcenter_installing_todo}.asp >/dev/null 2>&1
+		fi
 	fi
 	echo_date "使用插件【${softcenter_installing_name}】提供的install.sh脚本进行安装..."
 	[ "${softcenter_installing_todo}" != "softcenter" ] && echo_date =========================== step 2 ================================

@@ -4,57 +4,8 @@
 	" src="/Tools_Sysinfo.asp"></iframe>
 
 	<script>
-		var Session = Session || (function(){
-			var win = window.top || window;
-			try{
-				var store = (win.name ? JSON.parse(win.name) : {});
-				function Save() {
-					win.name = JSON.stringify(store);
-				}
-
-				if (window.addEventListener) window.addEventListener("unload", Save, false);
-				else if (window.attachEvent) window.attachEvent("onunload", Save);
-				else window.onunload = Save;
-
-				return {
-					set: function(name, value) {
-						store[name] = value;
-					},
-					get: function(name) {
-						return (store[name] ? store[name] : undefined);
-					},
-					clear: function() { store = {}; },
-					dump: function() { return JSON.stringify(store); }
-				};
-			}
-			catch(e){
-				win.name = ""; /* reset cache */
-				return {
-					set: function(){},
-					get: function(){},
-					clear: function(){},
-					dump: function(){}
-				};
-			}
-		})();
-
 		var webWrapper = true;
-		let targetPage = urlParameter.get("page");
-		if (targetPage === "" || targetPage === undefined || targetPage == null) {
-			let lastPage = Session.get("lastPage") || "";
-			if(lastPage == "index.html") lastPage = "";
-
-			if (lastPage !== "" && lastPage !== undefined) {
-				targetPage = lastPage;
-			} else {
-				targetPage = "Tools_Sysinfo.asp";
-			}
-		} else {
-			Session.set("lastPage", targetPage);
-			location.href = "/index.html?url=toolbox&current_theme=white"
-		}
-		var currentPage = $('#settingsWindow').attr('src').replace("/", "");
-		if (currentPage != targetPage) $('#settingsWindow').attr({'src': "/" + targetPage})
+		$("#settingsWindow").attr({src: "/Tools_Sysinfo.asp?current_theme=" + theme});
 
 		var findColorAndReplace = function(styleSheet, oldColor, newColor){
 			function hexToRgb(hex) {

@@ -210,6 +210,7 @@ static const struct model_s model_list[] = {
 	{ "XM-AX3600", 		MODEL_XMAX3600		},
 	{ "RAX40", 			MODEL_RAX40			},
 	{ "JDC-AX3000", 	MODEL_JDCAX3000		},
+	{ "JDC-AX6600", 	MODEL_JDCAX6600		},
 	{ NULL, 0 },
 };
 
@@ -380,6 +381,8 @@ static const struct model_s modelname_list[] = {
 	{ "XMAX3600", 	SWRT_MODEL_XMAX3600 },
 	{ "RAX40", 		SWRT_MODEL_RAX40 },
 	{ "JDCAX3000", 	SWRT_MODEL_JDCAX3000 },
+	{ "RAXE500", 	SWRT_MODEL_RAXE500 },
+	{ "JDCAX6600", SWRT_MODEL_JDCAX6600 },
 	{ NULL, 0 },
 };
 

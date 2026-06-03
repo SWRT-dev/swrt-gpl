@@ -86,6 +86,7 @@ endif
 	install -m 0755 softcenter/res/softcenter_rog.css $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/softcenter_ts.css $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/softcenter_tuf.css $(INSTALLDIR)/rom/etc/softcenter/res
+	install -m 0755 softcenter/res/softcenter_swrt.css $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/proceding.gif $(INSTALLDIR)/rom/etc/softcenter/res
 	install -m 0755 softcenter/res/layer/layer.js $(INSTALLDIR)/rom/etc/softcenter/res/layer
 	install -m 0755 softcenter/res/layer/mobile/layer.js $(INSTALLDIR)/rom/etc/softcenter/res/layer/mobile

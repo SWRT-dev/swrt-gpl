@@ -541,3 +541,141 @@
 	margin-top:-140px;
 	margin-bottom: -3px;
 }
+/*SWRT*/
+#scapp[skin=SWRT] .input_ss_table{
+	margin-left:2px;
+	padding-left:0.4em;
+	height:21px;
+	width:158.2px;
+	line-height:23px \9;	/*IE*/
+	font-size:13px;
+	font-family: Lucida Console;
+	background-image:none;
+	background-color: #FFF;
+	border:1px solid #cccccc;
+	color:#262626;
+}
+#scapp[skin=SWRT] .splitLine{
+	margin: 4px 0;
+	width: 100%;
+}
+#scapp[skin=SWRT] .show-install-btn, #scapp[skin=SWRT] .show-uninstall-btn {
+	border: 1px solid #006ce1;
+	background: none;
+	color: #262626 !important;
+	padding: 10px 20px;
+	border-radius: 5px 5px 0px 0px;
+}
+#scapp[skin=SWRT] .active {
+	background: #006ce1;
+	border: 1px solid #006ce1;
+	color: #fefefe !important;
+}
+#scapp[skin=SWRT] #soft_log {
+	width:99%;
+	font-family:'Lucida Console';
+	font-size:12px;
+	background:transparent;
+	border:1px solid #006ce1;
+	color:#fefefe;
+}
+#scapp[skin=SWRT] #IconContainer {
+	border: 1px solid #006ce1;
+}
+#scapp[skin=SWRT] .ks_btn {
+	border: 1px solid #006ce1;
+	font-size:12pt;
+	color: #006ce1 !important;
+	padding: 5px 5px 5px 5px;
+	border-radius: 5px 5px 5px 5px;
+	width:14%;
+	vertical-align: middle;
+	background: none;
+	font-weight: bolder;
+}
+#scapp[skin=SWRT] .ks_btn:hover {
+	border: 1px solid #006ce1;
+	font-size:12pt;
+	color: #fefefe !important;
+	padding: 5px 5px 5px 5px;
+	border-radius: 5px 5px 5px 5px;
+	width:14%;
+	vertical-align: middle;
+	background: #006ce1;
+	font-weight: bolder;
+}
+#scapp[skin=SWRT] .soft_setting_log{
+	margin-top:10px;
+	display:block;
+	overflow:hidden;
+	outline: 1px solid #006ce1;
+}
+#scapp[skin=SWRT] .soft_setting_log1{
+	width:97%;
+	padding-top:4px;
+	padding-bottom:4px;
+	padding-left:4px;
+	padding-right:37px;
+	font-family:'Lucida Console';
+	font-size:11px;
+	line-height:1.5;
+	color:#fefefe;
+	outline:none;
+	overflow-x:hidden;
+	margin-top:1px;
+	border:0px solid #006ce1;
+	background:#475A5F;
+	background:transparent;
+}
+#scapp[skin=SWRT] [bgcolor="#4D595D"]{
+	background: rgba(225, 225, 225, 0.3);
+}
+#scapp[skin=SWRT] [bgcolor="#444f53"]{
+	background: transparent;
+}
+#scapp[skin=SWRT] .submenuBlock{
+	margin: 0;
+}
+#scapp[skin=SWRT] .KoolshareBottom, #scapp[skin=SWRT] .SCBottom {
+	color:#006ce1;
+	font-family:'Lucida Console';
+}
+#scapp[skin=SWRT] .icon-desc {
+	background-color:#f1f5f9 !important;
+}
+#scapp[skin=SWRT] .icon-desc .install-btn, #scapp[skin=SWRT] .icon-desc .uninstall-btn, #scapp[skin=SWRT] .icon-desc .update-btn {
+	background: #0ea5e9 !important;
+	color: #ffffff !important;
+	border: 1px solid #e2e8f0 !important;
+}
+#scapp[skin=SWRT] em, #scapp[skin=SWRT] i { 
+	color: #006ce1 !important; 
+}
+#scapp[skin=SWRT] a { 
+	color: #0284c7 !important; 
+	text-decoration: none !important; 
+}
+#scapp[skin=SWRT] a:hover { 
+	color: #0369a1 !important; 
+	text-decoration: underline !important; 
+}
+#scapp[skin=SWRT] [color="1E90FF"]{
+	color: #006ce1;
+}
+#scapp[skin=SWRT] .content_status {
+	background: #fefefe !important;
+	box-shadow: 3px 3px 10px #006ce1;
+}
+#scapp[skin=SWRT] .popup_bar_bg_ks {
+	background: transparent !important;
+}
+#scapp[skin=SWRT] #log_content {
+	color: #006ce1 !important;
+	font-size: 12px;
+}
+#scapp[skin=SWRT] .user_title{
+	color:#006ce1;
+}
+#scapp[skin=SWRT] .icon:hover .icon-desc {
+	opacity: .9;
+}

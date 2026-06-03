@@ -359,12 +359,48 @@ if(system.currentOPMode.id != "RT"){
 			url: "settings",
 			clicked: false,
 			divide: false,
-		}     
+		},
+		{
+			name: "<#Softcenter_tool#>",
+			icon: "icon-advancedsettings",
+			url: "toolbox",
+			clicked: false,
+			divide: false,
+		},
+		{
+			name: "Entware",
+			icon: "icon-advancedsettings",
+			url: "entware",
+			clicked: false,
+			divide: false,
+		},
+		{
+			name: "<#Softcenter#>",
+			icon: "icon-advancedsettings",
+			url: "softcenter",
+			clicked: false,
+			divide: false,
+		}
 	]
 
 	if(system.currentOPMode.id != "AP"){
 		menuList = menuList.filter(function(item, index, array){
 			return (item.url != "aimesh");
+		});
+	}
+	if (!isSupport('amas')){
+		menuList = menuList.filter(function(item, index, array){
+			return (item.url != "aimesh");
+		});
+	}
+	if (!isSupport('softcenter') || '<% nvram_get("sc_installed"); %>' != '1'){
+		menuList = menuList.filter(function(item, index, array){
+			return (item.url != "softcenter");
+		});
+	}
+	if (!isSupport('entware')){
+		menuList = menuList.filter(function(item, index, array){
+			return (item.url != "entware");
 		});
 	}
 }

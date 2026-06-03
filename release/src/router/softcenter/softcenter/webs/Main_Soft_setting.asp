@@ -50,6 +50,10 @@ function set_skin(){
 	if(isEva){
 		$("#scapp").attr("scskin", 'Eva');
 	}
+	var SKN = '<% nvram_get("sc_skin"); %>';
+	if(SKN){
+		$("#scapp").attr("skin", SKN);
+	}
 	if(isEva)
 	$('#github').html('机体编号：<i><u>EVA01</u></i> </a><br/>技术支持： <a href="https://www.right.com.cn" target="_blank"> <i><u>right.com.cn</u></i> </a><br/>Project项目： <a href ="https://github.com/SWRT-dev/softcenter" target="_blank"> <i><u>SWRT补完计划</u></i> </a><br/>Copyright： <a href="https://github.com/SWRT-dev" target="_blank"><i>SWRT补完委员会</i></a>')
 	else
@@ -146,7 +150,7 @@ function get_log(s) {
 }
 </script>
 </head>
-<body id="scapp" scskin="swrt" onload="init();">
+<body id="scapp" scskin="swrt" skin="ASUSWRT" onload="init();">
 	<div id="TopBanner"></div>
 	<div id="Loading" class="popup_bg"></div>
 	<table class="content" align="center" cellpadding="0" cellspacing="0">
@@ -211,3 +215,4 @@ function get_log(s) {
 	<div id="footer"></div>
 </body>
 </html>
+

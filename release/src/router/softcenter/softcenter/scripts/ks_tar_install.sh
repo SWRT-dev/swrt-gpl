@@ -1,6 +1,6 @@
 #!/bin/sh
 
-# Copyright (C) 2021-2023 SWRTdev
+# Copyright (C) 2021-2026 SWRTdev
 
 source /jffs/softcenter/scripts/base.sh
 eval $(dbus export soft)
@@ -11,7 +11,7 @@ MODULE_PREFIX=$(echo "${MODULE_TAR}"|sed 's/.tar.gz//g'|awk -F "_" '{print $1}'|
 MODULE_NAME=${MODULE_PREFIX}
 TARGET_DIR=/tmp/upload
 
-#base model, not odmpid
+#base model, not odmpidset_skin
 MODEL=$(nvram get productid)
 ARCH_SUFFIX=$softcenter_arch
 if [ "$ARCH_SUFFIX" == "armv7l" ]; then
@@ -19,11 +19,36 @@ if [ "$ARCH_SUFFIX" == "armv7l" ]; then
 elif [ "$ARCH_SUFFIX" == "aarch64" ]; then
 	ARCH_SUFFIX="arm64"
 fi
-if [ "${MODEL:0:3}" == "GT-" ] || [ "$(nvram get swrt_rog)" == "1" ];then
-	ROG=1
-elif [ "${MODEL:0:3}" == "TUF" ] || [ "$(nvram get swrt_tuf)" == "1" ];then
-	TUF=1
-fi
+
+set_skin(){
+	local UI_TYPE=ASUSWRT
+	local SC_SKIN=$(nvram get sc_skin)
+	local SWRT_SKIN=$(nvram get swrt_skin)
+	local TS_FLAG=$(grep -o "2ED9C3" /www/css/difference.css 2>/dev/null|head -n1)
+	local ROG_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|grep -o "2071044")
+	local TUF_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|grep -o "D0982C")
+	if [ -n "${SWRT_SKIN}" ];then
+		if [ "ts" == "${SWRT_SKIN}" ];then
+			UI_TYPE="TS"
+		elif [ "rog" == "${SWRT_SKIN}" ];then
+			UI_TYPE="ROG"
+		elif [ "tuf" == "${SWRT_SKIN}" ];then
+			UI_TYPE="TUF"
+		elif [ "swrt" == "${SWRT_SKIN}" ];then
+			UI_TYPE="SWRT"
+		fi
+	elif [ -n "${TS_FLAG}" ];then
+		UI_TYPE="TS"
+	elif [ -n "${ROG_FLAG}" ];then
+		UI_TYPE="ROG"
+	elif [ -n "${TUF_FLAG}" ];then
+		UI_TYPE="TUF"
+	fi
+	if [ -z "${SC_SKIN}" -o "${SC_SKIN}" != "${UI_TYPE}" ];then
+		nvram set sc_skin="${UI_TYPE}"
+		nvram commit
+	fi
+}
 
 clean(){
 	local RET=$1
@@ -170,29 +195,28 @@ install_tar(){
 			echo_date "运行安装脚本..."
 			#install
 			echo_date "====================== step 2 ==========================="
-
-			if [ -d /tmp/${MODULE_NAME}/ROG -a "$ROG" == "1" ]; then
-				echo_date "检测到ROG皮肤，安装中..."
-				cp -rf /tmp/${MODULE_NAME}/ROG/* /tmp/${MODULE_NAME}/
-			elif [ -d /tmp/${MODULE_NAME}/ROG -a "$TUF" == "1" ]; then
-				echo_date "检测到TUF皮肤，安装中..."
-				find /tmp/${MODULE_NAME}/ROG/ -name "*.asp" | xargs sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g'
-				find /tmp/${MODULE_NAME}/ROG/ -name "*.css" | xargs sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g'
-				cp -rf /tmp/${MODULE_NAME}/ROG/* /tmp/${MODULE_NAME}/
-			fi
-			sleep 1
 			start-stop-daemon -S -q -x ${INSTALL_SCRIPT} 2>&1
 			if [ "$?" != "0" ];then
 				echo_date "因为${MODULE_NAME}插件安装失败！退出离线安装！"
 				clean 1 ${MODULE_NAME}
 			fi
-			if [ "$ROG" == "1" ];then
-				continue
-			elif [ "$TUF" == "1" ];then
-				sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
-			else
-				sed -i '/rogcss/d' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
+
+			set_skin
+			skin_flag="$(grep -o "skin=" /jffs/sfotcenter/webs/Module_${MODULE_NAME}.asp)"
+			if [ -z "${skin_flag}" ];then
+				if [ "${UI_TYPE}" == "ROG" ];then
+					sed -i '/asuscss/d' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
+				elif [ "${UI_TYPE}" == "TUF" ];then
+					sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
+					sed -i '/asuscss/d' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
+				elif [ "${UI_TYPE}" == "TS" ];then
+					sed -i 's/3e030d/3e2902/g;s/91071f/92650F/g;s/680516/D0982C/g;s/cf0a2c/c58813/g;s/700618/74500b/g;s/530412/92650F/g' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
+					sed -i '/asuscss/d' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
+				else
+					sed -i '/rogcss/d' /jffs/softcenter/webs/Module_${MODULE_NAME}.asp >/dev/null 2>&1
+				fi
 			fi
+
 			#save module information 
 			echo_date "====================== step 3 ==========================="
 			if [ "${MODULE_NAME}" != "softcenter" ];then

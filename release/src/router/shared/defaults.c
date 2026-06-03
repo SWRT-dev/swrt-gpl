@@ -5028,6 +5028,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "sc_cifs_user", "" , CKN_STR1024 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "sc_cifs_pw", "" , CKN_STR1024 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "sc_installed", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
+	{ "sc_arch", "", CKN_STR10, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 	{ "uu_enable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "led_disable", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
@@ -5036,20 +5037,7 @@ struct nvram_tuple router_defaults[] = {
 	{ "swrt_uu", "1", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 #endif
 #if defined(RTCONFIG_ENTWARE)
-#if defined(BCM4908) || defined(BCM4912) || defined(BCM4915) || defined(BCM4916) \
-	|| defined(RTCONFIG_SOC_IPQ53XX) || defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
-	{ "entware_arch", "aarch64-k3.10", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_RALINK_MT7622)
-	{ "entware_arch", "armv7sf-k3.2", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
-	{ "entware_arch", "armv7sf-k2.6", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTCONFIG_LANTIQ)
-	{ "entware_arch", "mipssf-k3.4", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#elif defined(RTCONFIG_RALINK_MT7621)
-	{ "entware_arch", "mipselsf-k3.4", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
-#else
-#error fix me
-#endif
+	{ "entware_arch", "", CKN_STR16, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "entware_mount", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "entware_disk", "" , CKN_STR128 , CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },
 	{ "entware_installed", "0", CKN_STR1, CKN_TYPE_DEFAULT, CKN_ACC_LEVEL_DEFAULT, CKN_ENC_DEFAULT, 0 },

@@ -16,7 +16,7 @@
  *
  * Copyright 2018-2026, SWRT.
  * Copyright 2018-2026, paldier <paldier@hotmail.com>.
- * Copyright 2018-20256
+ * Copyright 2018-2026, lostlonger<lostlonger.g@gmail.com>.
  *
  */
 #include <stdio.h>
@@ -51,6 +51,36 @@ static void firmware_ver(void)
 	char tmp[6] = {0};
 	strncpy(tmp, RT_FWVER, 5);//5.x.x[beta]
 	doSystem("dbus set softcenter_firmware_version='%s'",tmp);
+}
+#endif
+
+#if defined(RTCONFIG_SOFTCENTER)
+static int update_arch(void)
+{
+	struct utsname uts;
+	
+	if(uname(&uts) == 0){
+		if(!strcmp(uts.machine, "armv7l")){
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+			nvram_set("sc_arch", "arm");
+#else
+			nvram_set("sc_arch", "armng");
+#endif
+		}else if(!strcmp(uts.machine, "mips")){
+#if defined(RTCONFIG_RALINK_MT7621)
+			nvram_set("sc_arch", "mipsle");
+#else
+			nvram_set("sc_arch", "mips");
+#endif
+		}else if(!strcmp(uts.machine, "aarch64")){
+			nvram_set("sc_arch", "arm64");
+		}else{
+			nvram_set("sc_arch", uts.machine);
+		}
+	}else{
+		printf("get kernel version fail\n");
+	}
+	return 0;
 }
 #endif
 
@@ -267,6 +297,9 @@ void enable_4t4r(void)
 
 void swrt_init_post(){
 	_dprintf("############################ SWRT init done #################################\n");
+#if defined(RTCONFIG_SOFTCENTER)
+	update_arch();
+#endif
 #if defined(RTCONFIG_SOFTCENTER)
 //cifs
 	if(nvram_match("sc_mount","2")){
@@ -912,15 +945,17 @@ void gen_arch_conf(void)
 	struct utsname uts;
 	if(nvram_match("entware_arch", "") && uname(&uts) == 0){
 		if(!strncmp(uts.machine, "armv7", 5)){
-//			if(!strcmp(uts.release, "2.6.36.4brcmarm"))
-//				nvram_set("entware_arch", "armv7sf-k2.6");
-//			else
-				nvram_set("entware_arch", "armv7sf-k3.2");
+#if defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
+			nvram_set("entware_arch", "armv7sf-k2.6");
+#else
+			nvram_set("entware_arch", "armv7sf-k3.2");
+#endif
 		}else if(!strcmp(uts.machine, "mips")){
-			if(!strncmp(uts.release, "4.4", 3) || !strncmp(uts.release, "5.4", 3))
-				nvram_set("entware_arch", "mipselsf-k3.4");
-			else
-				nvram_set("entware_arch", "mipssf-k3.4");//lantiq: 3.10/4.9
+#if defined(RTCONFIG_RALINK_MT7621)
+			nvram_set("entware_arch", "mipselsf-k3.4");
+#else
+			nvram_set("entware_arch", "mipssf-k3.4");
+#endif
 		}else if(!strcmp(uts.machine, "aarch64"))
 			nvram_set("entware_arch", "aarch64-k3.10");
 		else if(!strcmp(uts.machine, "x86_64"))

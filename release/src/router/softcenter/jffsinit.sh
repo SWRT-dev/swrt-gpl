@@ -11,23 +11,26 @@ PLUGINS=$(find /jffs/softcenter/webs/ -name 'Module_*.asp' 2>/dev/null)
 set_skin(){
 	local UI_TYPE=ASUSWRT
 	local SC_SKIN=$(nvram get sc_skin)
+	local SWRT_SKIN=$(nvram get swrt_skin)
 	local TS_FLAG=$(grep -o "2ED9C3" /www/css/difference.css 2>/dev/null|head -n1)
-	local ROG_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|sed 's/,//g'|grep -o "2071044")
-	local TUF_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|sed 's/,//g'|grep -o "D0982C")
-	local WRT_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|sed 's/,//g'|grep -o "4F5B5F")
-
-	if [ -n "${TS_FLAG}" ];then
-		UI_TYPE="TS"
-	else
-		if [ -n "${TUF_FLAG}" ];then
-			UI_TYPE="TUF"
-		fi
-		if [ -n "${ROG_FLAG}" ];then
+	local ROG_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|grep -o "2071044")
+	local TUF_FLAG=$(cat /www/form_style.css|grep -A1 ".tab_NW:hover{"|grep "background"|grep -o "D0982C")
+	if [ -n "${SWRT_SKIN}" ];then
+		if [ "ts" == "${SWRT_SKIN}" ];then
+			UI_TYPE="TS"
+		elif [ "rog" == "${SWRT_SKIN}" ];then
 			UI_TYPE="ROG"
+		elif [ "tuf" == "${SWRT_SKIN}" ];then
+			UI_TYPE="TUF"
+		elif [ "swrt" == "${SWRT_SKIN}" ];then
+			UI_TYPE="SWRT"
 		fi
-		if [ -n "${WRT_FLAG}" ];then
-			UI_TYPE="ASUSWRT"
-		fi
+	elif [ -n "${TS_FLAG}" ];then
+		UI_TYPE="TS"
+	elif [ -n "${ROG_FLAG}" ];then
+		UI_TYPE="ROG"
+	elif [ -n "${TUF_FLAG}" ];then
+		UI_TYPE="TUF"
 	fi
 	if [ -z "${SC_SKIN}" -o "${SC_SKIN}" != "${UI_TYPE}" ];then
 		nvram set sc_skin="${UI_TYPE}"
@@ -43,6 +46,8 @@ set_skin(){
 		ln -sf /jffs/softcenter/res/softcenter_tuf.css /jffs/softcenter/res/softcenter.css
 	elif [ "${UI_TYPE}" == "TS" ];then
 		ln -sf /jffs/softcenter/res/softcenter_ts.css /jffs/softcenter/res/softcenter.css
+	elif [ "${UI_TYPE}" == "SWRT" ];then
+		ln -sf /jffs/softcenter/res/softcenter_swrt.css /jffs/softcenter/res/softcenter.css
 	fi
 }
 
@@ -167,13 +172,13 @@ chmod 755 /jffs/softcenter/configs/*.sh
 chmod 755 /jffs/softcenter/bin/*
 chmod 755 /jffs/softcenter/init.d/*
 chmod 755 /jffs/softcenter/automount.sh
-echo 1.5.7 > /jffs/softcenter/.soft_ver
+echo 1.5.8 > /jffs/softcenter/.soft_ver
 dbus set softcenter_api="1.5"
 dbus set softcenter_version=`cat /jffs/softcenter/.soft_ver`
 nvram set sc_installed=1
 nvram commit
 
-/jffs/softcenter/bin/sc_auth arch
+dbus set softcenter_arch=`nvram get sc_arch`
 /jffs/softcenter/bin/sc_auth tcode
 
 mkdir -p /jffs/scripts

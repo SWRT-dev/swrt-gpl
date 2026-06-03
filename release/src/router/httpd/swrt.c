@@ -116,7 +116,7 @@ int ej_dbus_get_def(int eid, webs_t wp, int argc, char_t **argv)
 	dbclient_start(&client);
 	ret = dbclient_get(&client, name, db_buf, sizeof(db_buf));
 	dbclient_end(&client);
-	if(ret == 0)
+	if(ret == 0 && db_buf[0])
 		ret += websWrite(wp, "%s", db_buf);
 	else
 		ret = websWrite(wp, "%s", output);
