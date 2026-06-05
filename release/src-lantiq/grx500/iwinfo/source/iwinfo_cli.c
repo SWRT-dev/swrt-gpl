@@ -675,7 +675,70 @@ static void print_info(const struct iwinfo_ops *iw, const char *ifname)
 		print_phyname(iw, ifname));
 }
 
-
+#if defined(SWRT_PATCH)
+static const char* format_phymode(int band, int phymode)
+{
+	switch (phymode) {
+		case IWINFO_HTMODE_HT20:
+			return "11NG_HT20";
+		case IWINFO_HTMODE_HT40:
+			return "11NG_HT40";
+		case IWINFO_HTMODE_VHT20:
+			if(band == IWINFO_BAND_5)
+				return "11AC_VHT20";
+			else
+				return "11NG_VHT20";
+		case IWINFO_HTMODE_VHT40:
+			if(band == IWINFO_BAND_5)
+				return "11AC_VHT40";
+			else
+				return "11NG_VHT40";
+		case IWINFO_HTMODE_VHT80:
+			return "11AC_VHT80";
+		case IWINFO_HTMODE_VHT80_80:
+			return "11AC_VHT80_80";
+		case IWINFO_HTMODE_VHT160:
+			return "11AC_VHT160";
+		case IWINFO_HTMODE_HE20:
+			if(band == IWINFO_BAND_5)
+				return "11AXA_HE20";
+			else
+				return "11AXG_HE20";
+		case IWINFO_HTMODE_HE40:
+			if(band == IWINFO_BAND_5)
+				return "11AXA_HE40";
+			else
+				return "11AXG_HE40";
+		case IWINFO_HTMODE_HE80:
+			return "11AXA_HE80";
+		case IWINFO_HTMODE_HE80_80:
+			return "11AXA_HE80_80";
+		case IWINFO_HTMODE_HE160:
+			return "11AXA_HE160";
+		case IWINFO_HTMODE_EHT20:
+			if(band == IWINFO_BAND_5)
+				return "11BEA_EHT20";
+			else
+				return "11BEG_EHT20";
+		case IWINFO_HTMODE_EHT40:
+			if(band == IWINFO_BAND_5)
+				return "11BEA_EHT40";
+			else
+				return "11BEG_EHT40";
+		case IWINFO_HTMODE_EHT80:
+			return "11BEA_EHT80";
+		case IWINFO_HTMODE_EHT80_80:
+			return "11BEA_EHT80_80";
+		case IWINFO_HTMODE_EHT160:
+			return "11BEA_EHT160";
+		case IWINFO_HTMODE_EHT320:
+			return "11BEA_EHT320";
+	}
+	if(band == IWINFO_BAND_24)
+		return "11NG_HT20";
+	return "11NA_VHT20";
+}
+#endif
 static void print_scanlist(const struct iwinfo_ops *iw, const char *ifname)
 {
 	int i, x, len;
@@ -752,7 +815,9 @@ static void print_scanlist(const struct iwinfo_ops *iw, const char *ifname)
 			printf("                    Channel Width: %s\n",
 				format_6ghz_chan_width(e->eht_chan_info.chan_width));
 		}
-
+#if defined(SWRT_PATCH)
+		printf("          Phymode: %s\n", format_phymode(e->band, e->phymode));
+#endif
 		printf("\n");
 	}
 }

@@ -2754,6 +2754,12 @@ static void nl80211_get_scanlist_ie(struct nlattr **bss,
 				e->ht_chan_info.primary_chan = ie[2];
 				e->ht_chan_info.secondary_chan_off = ie[3] & 0x3;
 				e->ht_chan_info.chan_width = (ie[4] & 0x4)>>2;
+#if defined(SWRT_PATCH)
+				if(e->ht_chan_info.chan_width == 0)
+					e->phymode = IWINFO_HTMODE_HT20;
+				else
+					e->phymode = IWINFO_HTMODE_HT40;
+#endif
 			}
 			break;
 		case 192: /* VHT operation */
@@ -2761,9 +2767,69 @@ static void nl80211_get_scanlist_ie(struct nlattr **bss,
 				e->vht_chan_info.chan_width = ie[2];
 				e->vht_chan_info.center_chan_1 = ie[3];
 				e->vht_chan_info.center_chan_2 = ie[4];
+#if defined(SWRT_PATCH)
+				if(e->band == IWINFO_BAND_5){
+					if(e->vht_chan_info.chan_width == 0)
+						e->phymode = IWINFO_HTMODE_VHT40;
+					else if(e->vht_chan_info.chan_width == 1)
+						e->phymode = IWINFO_HTMODE_VHT80;
+					else if(e->vht_chan_info.chan_width == 2)
+						e->phymode = IWINFO_HTMODE_VHT160;
+					else if(e->vht_chan_info.chan_width == 3)
+						e->phymode = IWINFO_HTMODE_VHT80_80;
+					else
+						e->phymode = IWINFO_HTMODE_VHT20;
+				}else{
+					if(e->vht_chan_info.chan_width == 0)
+						e->phymode = IWINFO_HTMODE_VHT20;
+					else
+						e->phymode = IWINFO_HTMODE_VHT40;
+				}
+#endif
 			}
 			break;
 		case 255: /* Extension Tag*/
+#if defined(SWRT_PATCH)
+			if (ie[2] == 36 || ie[2] == 106){
+				if(e->band == IWINFO_BAND_5){
+					if(e->vht_chan_info.chan_width == 0)
+						e->phymode = IWINFO_HTMODE_HE40;
+					else if(e->vht_chan_info.chan_width == 1)
+						e->phymode = IWINFO_HTMODE_HE80;
+					else if(e->vht_chan_info.chan_width == 2)
+						e->phymode = IWINFO_HTMODE_HE160;
+					else if(e->vht_chan_info.chan_width == 3)
+						e->phymode = IWINFO_HTMODE_HE80_80;
+					else
+						e->phymode = IWINFO_HTMODE_HE20;
+				}else{
+					if(e->vht_chan_info.chan_width == 0)
+						e->phymode = IWINFO_HTMODE_HE20;
+					else
+						e->phymode = IWINFO_HTMODE_HE40;
+				}
+			}/*else if (ie[2] == 106){
+				if(e->band == IWINFO_BAND_5){
+					if(e->vht_chan_info.chan_width == 0)
+						e->phymode = IWINFO_HTMODE_EHT40;
+					else if(e->vht_chan_info.chan_width == 1)
+						e->phymode = IWINFO_HTMODE_EHT80;
+					else if(e->vht_chan_info.chan_width == 2)
+						e->phymode = IWINFO_HTMODE_EHT160;
+					else if(e->vht_chan_info.chan_width == 3)
+						e->phymode = IWINFO_HTMODE_EHT80_80;
+					else if(e->vht_chan_info.chan_width == 4)
+						e->phymode = IWINFO_HTMODE_EHT320;
+					else
+						e->phymode = IWINFO_HTMODE_EHT20;
+				}else{
+					if(e->vht_chan_info.chan_width == 0)
+						e->phymode = IWINFO_HTMODE_EHT20;
+					else
+						e->phymode = IWINFO_HTMODE_EHT40;
+				}
+			}*/
+#endif
 			nl80211_get_scanlist_extension(ie[1], ie + 2, e);
 			break;
 		}
@@ -3101,7 +3167,17 @@ static int nl80211_get_scanlist(const char *ifname, char *buf, int *len)
 	int rv, mode;
 
 	*len = 0;
-
+#if defined(SWRT_PATCH)
+	if (!strncmp(ifname, "wifi", 4)){
+		if ((res = nl80211_ifname2phy(ifname)) != NULL)
+			return nl80211_get_scanlist(res, buf, len);
+		else if ((res = nl80211_ifadd(ifname)) != NULL){
+			rv = nl80211_get_scanlist(res, buf, len);
+			nl80211_ifdel(res);
+			return rv;
+		}
+	}
+#else
 	/* Got a radioX pseudo interface, find some interface on it or create one */
 	if (!strncmp(ifname, "radio", 5))
 	{
@@ -3119,6 +3195,7 @@ static int nl80211_get_scanlist(const char *ifname, char *buf, int *len)
 			return rv;
 		}
 	}
+#endif
 
 	/* WPA supplicant */
 	if (!nl80211_get_scanlist_wpactl(ifname, buf, len))
@@ -3755,9 +3832,13 @@ static int nl80211_get_hardware_id(const char *ifname, char *buf)
 
 	for (i = 0; i < ARRAY_SIZE(lookup); i++)
 	{
+#if defined(SWRT_PATCH)
+		snprintf(path, sizeof(path), "/sys/class/net/%s/device/%s", ifname, lookup[i].path);
+#else
 		snprintf(path, sizeof(path), "/sys/class/%s/%s/device/%s",
 		         phy ? "ieee80211" : "net",
 		         phy ? phy : ifname, lookup[i].path);
+#endif
 
 		if (nl80211_readstr(path, num, sizeof(num)) > 0)
 			*lookup[i].dest = strtoul(num, NULL, 16);

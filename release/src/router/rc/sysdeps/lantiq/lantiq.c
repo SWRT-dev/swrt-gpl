@@ -3038,7 +3038,7 @@ void platform_start_ate_mode(void)
 	}
 }
 
-/* Run iwlist command to do site-survey.
+/* Run iwinfo command to do site-survey.
  * @ssv_if:
  * @return:
  *     -1:	invalid parameter
@@ -3050,22 +3050,22 @@ static int do_sitesurvey(char *ssv_if)
 {
 	int retry, ssv_ok = 0;
 	char *result, *p;
-	char *iwlist_argv[] = { "iwlist", ssv_if, "scanning", NULL };
+	char *iwinfo_argv[] = { "iwinfo", ssv_if, "scan", NULL };
 
 	if (!ssv_if || *ssv_if == '\0')
 		return -1;
 
 	for (retry = 0, ssv_ok = 0; !ssv_ok && retry < 1; ++retry) {
-		_eval(iwlist_argv, ">/tmp/apscan_wlist", 0, NULL);
+		_eval(iwinfo_argv, ">/tmp/apscan_wlist", 0, NULL);
 
 		if (!f_exists(APSCAN_WLIST) || !(result = file2str(APSCAN_WLIST)))
 			continue;
-		if (!(p = strstr(result, "Scan completed"))) {
+		if (!(p = strstr(result, "ESSID"))) {
 			if ((p = strchr(result, '\n')))
 				*p = '\0';
 			if ((p = strchr(result, '\r')))
 				*p = '\0';
-			_dprintf("%s: iwlist %s scanning fail!! (%s)!\n", __func__, ssv_if, result);
+			_dprintf("%s: iwinfo %s scanning fail!! (%s)!\n", __func__, ssv_if, result);
 			free(result);
 			continue;
 		}
@@ -3077,8 +3077,8 @@ static int do_sitesurvey(char *ssv_if)
 	return ssv_ok;
 }
 
-#define target 9
-char str[target][40]={"Address:","ESSID:","Frequency:","Quality=","Encryption key:","IE:","Authentication Suites","Pairwise Ciphers","phy_mode="};
+#define target 6
+char str[target][40]={"Address:","ESSID:","Frequency:","Quality:","Encryption:","Phymode:"};
 
 int getSiteSurvey(int band, char* ofile)
 {
@@ -3086,14 +3086,13 @@ int getSiteSurvey(int band, char* ofile)
 	char header[128];
 	FILE *fp,*ofp;
 	char buf[target][200],set_flag[target];
-	int i, ssv_ok = 0, radio, is_sta = 0, bitrate;
+	int i, ssv_ok = 0, radio, is_sta = 0, bitrate, a1, a2;
 	char *pt1, *pt2, *pt3;
-	char a1[10],a2[10];
 	char ssid_str[256], ssv_if[10];
 	char ch[4] = "", ssid[33] = "", address[18] = "", enc[9] = "";
-	char auth[16] = "", sig[9] = "", wmode[8] = "";
+	char auth[18] = "", sig[9] = "", wmode[8] = "";
 	int lock, wap_ver = 0;
-	char *staifname = get_staifname(band);
+	char *staifname = get_realphyifname(band);
 #if defined(RTCONFIG_WIRELESSREPEATER)
 	char ure_mac[18];
 	int wl_authorized = 0;
@@ -3118,7 +3117,7 @@ int getSiteSurvey(int band, char* ofile)
 	file_unlock(lock);
 	if (!(fp= fopen(APSCAN_WLIST, "r")))
 		return 0;
-	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
+	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-18s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
 	dbg("\n%s", header);
 	if ((ofp = fopen(ofile, "a")) == NULL)
 	{
@@ -3170,175 +3169,111 @@ int getSiteSurvey(int band, char* ofile)
 		dbg("\napCount=%d\n",apCount);
 		apCount++;
 		//ch
-		pt1 = strstr(buf[2], "Channel ");	
-		if(pt1)
-		{
-
-			pt2 = strstr(pt1,")");
-			memset(ch,0,sizeof(ch));
-			strncpy(ch,pt1+strlen("Channel "),pt2-pt1-strlen("Channel "));
+		pt1 = strstr(buf[2], "Channel: ");	
+		if(pt1){
+			//Channel: 10\n
+			memset(ch, 0, sizeof(ch));
+			sscanf(pt1, "Channel: %s", ch);
 		}
 
 		//ssid
-		pt1 = strstr(buf[1], "ESSID:");	
-		if(pt1)
-		{
-			memset(ssid,0,sizeof(ssid));
-			strncpy(ssid,pt1+strlen("ESSID:")+1,strlen(buf[1])-2-(pt1+strlen("ESSID:")+1-buf[1]));
+		pt1 = strstr(buf[1], "ESSID: ");	
+		if(pt1){
+			//ESSID: unknown = hidden ssid
+			memset(ssid, 0, sizeof(ssid));
+			if(!strstr(pt1, "unknown"))
+				sscanf(pt1, "ESSID: \"%[^\"]\"", ssid);
 		}
-
 
 		//bssid
 		pt1 = strstr(buf[0], "Address: ");	
-		if(pt1)
-		{
+		if(pt1){
 			memset(address,0,sizeof(address));
-			strncpy(address,pt1+strlen("Address: "),strlen(buf[0])-(pt1+strlen("Address: ")-buf[0])-1);
+			sscanf(pt1, "Address: %s", address);
 		}
 
-		//enc
-		pt1=strstr(buf[4],"Encryption key:");
-		if(pt1)
-		{
-			if(strstr(pt1+strlen("Encryption key:"),"on"))
-			{
-				pt2=strstr(buf[7],"Pairwise Ciphers");
-				if(pt2)
-				{
-#if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
-					if(strstr(pt2,"GCMP-256") && strstr(pt2,"CCMP"))
-						strlcpy(enc, "AES+GCMP256", sizeof(enc));
-					else
-#endif
-					if(strstr(pt2,"CCMP TKIP") || strstr(pt2,"TKIP CCMP"))
-						strlcpy(enc, "TKIP+AES", sizeof(enc));
-					else if(strstr(pt2,"CCMP"))
-						strlcpy(enc, "AES", sizeof(enc));
-					else
-						strlcpy(enc, "TKIP", sizeof(enc));
-				}
-				else
-					strlcpy(enc, "WEP", sizeof(enc));
-			}
-			else
-				strlcpy(enc, "NONE", sizeof(enc));
-		}
-
-		//auth
+		pt1=strstr(buf[4],"Encryption: ");
 		memset(auth,0,sizeof(auth));
-		pt1=strstr(buf[5],"IE:");
-		if(pt1 && strstr(buf[5],"Unknown")==NULL)
-		{
-			if(strstr(pt1+strlen("IE:"),"WPA2")!=NULL)
-				wap_ver = 2;
-			else if(strstr(pt1+strlen("IE:"),"WPA")!=NULL) 
-				wap_ver = 1;
+		memset(enc,0,sizeof(enc));
+		if(pt1){
+			//enc
+			pt2=strstr(pt1 + strlen("Encryption: "),"(");
+			if(pt2){
+				if(strstr(pt2,"GCMP-256") && strstr(pt2,"CCMP"))
+					strlcpy(enc, "AES+GCMP256", sizeof(enc));
+				else if(strstr(pt2,"CCMP, TKIP") || strstr(pt2,"TKIP, CCMP"))
+					strlcpy(enc, "TKIP+AES", sizeof(enc));
+				else if(strstr(pt2,"CCMP"))
+					strlcpy(enc, "AES", sizeof(enc));
+				else if(strstr(pt2,"TKIP"))
+					strlcpy(enc, "TKIP", sizeof(enc));
+				else if(strstr(pt2,"WEP"))
+					strlcpy(enc, "WEP", sizeof(enc));
+				else
+					strlcpy(enc, "NONE", sizeof(enc));
+			}else
+				strlcpy(enc, "NONE", sizeof(enc));
+			//auth
+			if(strstr(pt1, "WPA/WPA2 PSK"))
+				strlcpy(auth, "WPA-WPA2-Personal", sizeof(auth));
+			else if(strstr(pt1,"WPA2 PSK/SAE"))
+				strlcpy(auth,"WPA2-WPA3-Personal", sizeof(auth));
+			else if(strstr(pt1,"WPA2 SAE") || strstr(pt1,"WPA SAE"))
+				strlcpy(auth,"WPA3-Personal", sizeof(auth));
+			else if(strstr(pt1,"WPA2 PSK"))
+				strlcpy(auth, "WPA2-Personal", sizeof(auth));
+			else if(strstr(pt1,"WPA PSK"))
+				strlcpy(auth, "WPA-Personal", sizeof(auth));
+			else if(strstr(pt1,"OWE"))
+				strlcpy(auth,"Enhanced Open", sizeof(auth));
+			else if(strstr(pt1,"WPA2 802.1X"))
+				strlcat(auth, "WPA2-Enterprise", sizeof(auth));
+			else if(strstr(pt1,"WPA 802.1X"))
+				strlcat(auth, "WPA-Enterprise", sizeof(auth));
 			else
-				_dprintf("%s:%d WARNING!! unknown AUTH in 1st IE:[%s]\n", __func__, __LINE__, pt1);
-#if 0
-			if(set_flag[6]){
-				pt2=strstr(buf[6],"IE:");
-				if(pt2 && !strstr(buf[6],"Unknown")){
-					if(strstr(pt2+strlen("IE:"),"WPA2")!=NULL)
-						wap_ver |= 2;
-					else if(strstr(pt1+strlen("IE:"),"WPA")!=NULL)
-						wap_ver |= 1;
-					else
-						_dprintf("%s:%d WARNING!! unknown AUTH in 2st IE:[%s]\n", __func__, __LINE__, pt2);
-				}
-			}
-#endif
-			switch(wap_ver){
-				case 2:
-					strlcpy(auth, "WPA2-", sizeof(auth));
-				case 3:
-					strlcpy(auth, "WPA-WPA2-", sizeof(auth));
-				case 1:
-					strlcpy(auth, "WPA-", sizeof(auth));
-					pt2=strstr(buf[6],"Authentication Suites");
-					if(pt2){
-						if(strstr(pt2+strlen("Authentication Suites"),"SAE")!=NULL){
-							if(strstr(pt2+strlen("Authentication Suites"),"PSK")!=NULL)
-								strlcpy(auth,"WPA2-WPA3-Personal", sizeof(auth));
-							else
-								strlcpy(auth,"WPA3-Personal", sizeof(auth));
-						}else if(strstr(pt2+strlen("Authentication Suites"),"PSK")!=NULL){
-							if(strstr(enc, "AES") || strstr(enc, "TKIP"))
-								strlcat(auth, "Personal", sizeof(auth));
-							else
-								dbg("%s: Unknown psk auth. (s [%s] enc [%s])\n", __func__, pt2+strlen("Authentication Suites"), enc);
-						}else if(strstr(pt2+strlen("Authentication Suites"),"OWE")!=NULL){
-							strlcpy(auth,"Enhanced Open", sizeof(auth));
-						}else if(strstr(pt2+strlen("Authentication Suites"),"802.1x")!=NULL){
-							if(strstr(enc, "AES") || strstr(enc, "TKIP"))
-								strlcat(auth, "Enterprise", sizeof(auth));
-							else
-								dbg("%s: Unknown psk auth. (s [%s] enc [%s])\n", __func__, pt2+strlen("Authentication Suites"), enc);
-						}else
-							_dprintf("%s:%d ERROR!! NO AKM TYPE Set!!\n", __func__, __LINE__);
-					}else{//bug!!
-						if(strstr(enc, "AES") || strstr(enc, "TKIP"))
-							strlcat(auth, "Personal", sizeof(auth));
-					}
-				default:
-					_dprintf("%s:%d ERROR!! NO AUTH TYPE Set!!\n", __func__, __LINE__);
-					break;
-			}
-		}
-		else
-		{
-			if(strcmp(enc,"WEP")==0)
-			{
-				strlcpy(auth, "Unknown", sizeof(auth));
-			}else{
 				strlcpy(auth, "Open System", sizeof(auth));
-			}
+		}else{
+			strlcpy(auth, "Open System", sizeof(auth));
+			strlcpy(enc, "NONE", sizeof(enc));
 		}
 
 		//sig
-		pt1 = strstr(buf[3], "Quality=");	
+		pt1 = strstr(buf[3], "Quality: ");	
 		pt2 = NULL;
-		if (pt1 != NULL)
+		if(pt1 != NULL)
 			pt2 = strstr(pt1,"/");
-		if(pt1 && pt2)
-		{
+		if(pt1 && pt2){
 			memset(sig,0,sizeof(sig));
-			memset(a1,0,sizeof(a1));
-			memset(a2,0,sizeof(a2));
-			strncpy(a1,pt1+strlen("Quality="),pt2-pt1-strlen("Quality="));
-			strncpy(a2,pt2+1,strstr(pt2," ")-(pt2+1));
-			snprintf(sig, sizeof(sig), "%d", 100*(atoi(a1)+6)/(atoi(a2)+6));
+			a1 = a2 = 0;
+			sscanf(pt1, "Quality: %d/%d", &a1, &a2);
+			snprintf(sig, sizeof(sig), "%d", 100 * (a1 + 6)/( a2 + 6));
 		}
 
 		//wmode
 		memset(wmode,0,sizeof(wmode));
-		pt1=strstr(buf[8],"phy_mode=");
-		if(pt1)
-		{
-			pt2 = pt1+strlen("phy_mode=");
-			if(strstr(pt2, "11AC_VHT")!=NULL)
+		pt1=strstr(buf[5],"Phymode: ");
+		if(pt1){
+			if(strstr(pt1, "11AC_VHT"))
 				strlcpy(wmode, "ac", sizeof(wmode));
-#if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
-			else if(strstr(pt2,"11AXA_HE")!=NULL || strstr(pt2,"11AXG_HE")!=NULL)
+			else if(strstr(pt1,"11AXA_HE")!=NULL || strstr(pt1,"11AXG_HE")!=NULL)
 				strlcpy(wmode, "ax", sizeof(wmode));
-#endif
-			else if(strstr(pt2,"11A")!=NULL || strstr(pt2,"TURBO_A")!=NULL)
+			else if(strstr(pt1,"11A")!=NULL || strstr(pt1,"TURBO_A")!=NULL)
 				strlcpy(wmode, "a", sizeof(wmode));
-			else if(strstr(pt2,"11B")!=NULL)
+			else if(strstr(pt1,"11B")!=NULL)
 				strlcpy(wmode, "b", sizeof(wmode));
-			else if(strstr(pt2,"11G")!=NULL || strstr(pt2,"TURBO_G")!=NULL)
+			else if(strstr(pt1,"11G")!=NULL || strstr(pt1,"TURBO_G")!=NULL)
 				strlcpy(wmode, "bg", sizeof(wmode));
-			else if(strstr(pt2,"11NA")!=NULL)
+			else if(strstr(pt1,"11NA")!=NULL)
 				strlcpy(wmode, "an", sizeof(wmode));
-			else if(strstr(pt2,"11NG")!=NULL)
+			else if(strstr(pt1,"11NG")!=NULL)
 				strlcpy(wmode, "bgn", sizeof(wmode));
 			else
-				dbg("%s: Unknown phymode [%s]\n", __func__, pt2);
+				dbg("%s: Unknown phymode [%s]\n", __func__, pt1);
 		}
 		else
 			strlcpy(wmode, "unknown", sizeof(wmode));
 
-		dbg("%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",ch,ssid,address,enc,auth,sig,wmode);
+		dbg("%-4s%-33s%-18s%-9s%-18s%-9s%-8s\n",ch,ssid,address,enc,auth,sig,wmode);
 
 		if(safe_atoi(ch)<0)
 			fprintf(ofp, "\"ERR_BAND\",");

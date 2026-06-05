@@ -1310,9 +1310,8 @@ static void convertToUpper(char *str)
 }
 #endif
 
-#if 1
-#define target 7
-char str[target][40]={"Address:","Frequency:","Quality=","Encryption key:","ESSID:","IE:","Authentication Suites"};
+#define target 6
+char str[target][40]={"Address:","ESSID:","Frequency:","Quality:","Encryption:","Phymode:"};
 static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
    	int apCount=0,retval=0;
@@ -1321,9 +1320,8 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	char cmd[300];
 	FILE *fp;
 	char buf[target][200];
-	int i,fp_len;
+	int i,fp_len, a1, a2;
 	char *pt1,*pt2;
-	char a1[10],a2[10];
 	char ssid_str[256];
 	char ch[4],ssid[33],address[18],enc[9],auth[16],sig[9],wmode[8];
 	int  lock;
@@ -1332,12 +1330,12 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	lock = file_lock("nvramcommit");
 	system("rm -f /tmp/wlist");
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	snprintf(cmd, sizeof(cmd),"iwlist %s scanning >> /tmp/wlist",nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
+	snprintf(cmd, sizeof(cmd),"iwinfo %s scan >> /tmp/wlist", nvram_safe_get(strcat_r(prefix, "ifname", tmp)));
 	system(cmd);
 	file_unlock(lock);
 	
 	if((fp= fopen("/tmp/wlist", "r"))==NULL) 
-	   return -1;
+		return -1;
 	
 	memset(header, 0, sizeof(header));
 	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
@@ -1345,79 +1343,60 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	dbg("\n%s", header);
 
 	retval += websWrite(wp, "[");
-	while(1)
-	{
+	while(1){
 		memset(buf,0,sizeof(buf));
-		fp_len=0;
-		for(i=0;i<target;i++)
-		{
-		   	while(fgets(buf[i], sizeof(buf[i]), fp))
-			{
-				fp_len += safe_strlen(buf[i]);  	
-				if(i!=0 && strstr(buf[i],"Cell") && strstr(buf[i],"Address"))
-				{
+		fp_len = 0;
+		for(i = 0; i < target; i++){
+			while(fgets(buf[i], sizeof(buf[i]), fp)){
+				fp_len += safe_strlen(buf[i]);
+				if(i != 0 && strstr(buf[i],"Cell") && strstr(buf[i],"Address")){
 					fseek(fp,-fp_len, SEEK_CUR);
-					fp_len=0;
+					fp_len = 0;
 					break;
-				}
-				else
-			  	{ 	   
-					if(strstr(buf[i],str[i]))
-					{
-					 	fp_len =0;
+				}else{
+					if(strstr(buf[i], str[i])){
+						fp_len = 0;
 						break;
-					}	
-					else
-						memset(buf[i],0,sizeof(buf[i]));
-				}	
-
+					}else
+						memset(buf[i], 0, sizeof(buf[i]));
+				}
 			}
-		        	
-	      		//dbg("buf[%d]=%s\n",i,buf[i]);
+			//dbg("buf[%d]=%s\n",i,buf[i]);
 		}
 
-  		if(feof(fp)) 
-		   break;
+		if(feof(fp)) 
+		break;
 
 		apCount++;
 
 		dbg("\napCount=%d\n",apCount);
 		//ch
-	        pt1 = strstr(buf[1], "Channel ");
-		if(pt1)
-		{
-			pt2 = strstr(pt1,")");
-		   	memset(ch,0,sizeof(ch));
-			strncpy(ch,pt1+safe_strlen("Channel "),pt2-pt1-safe_strlen("Channel "));
-		}   
+		pt1 = strstr(buf[2], "Channel: ");
+		if(pt1){
+			memset(ch, 0, sizeof(ch));
+			sscanf(pt1, "Channel: %s", ch);
+		}
 
 		//ssid
-	        pt1 = strstr(buf[4], "ESSID:");	
-		if(pt1)
-		{
-		   	memset(ssid,0,sizeof(ssid));
-			strncpy(ssid,pt1+safe_strlen("ESSID:")+1,safe_strlen(buf[4])-2-(pt1+safe_strlen("ESSID:")+1-buf[4]));
-		}   
-
+		pt1 = strstr(buf[1], "ESSID: ");	
+		if(pt1){
+			memset(ssid, 0, sizeof(ssid));
+			if(!strstr(pt1, "unknown"))
+				sscanf(pt1, "ESSID: \"%[^\"]\"", ssid);
+		}
 
 		//bssid
-	        pt1 = strstr(buf[0], "Address: ");	
-		if(pt1)
-		{
-		   	memset(address,0,sizeof(address));
-			strncpy(address,pt1+safe_strlen("Address: "),safe_strlen(buf[0])-(pt1+safe_strlen("Address: ")-buf[0])-1);
-		}   
-	
+		pt1 = strstr(buf[0], "Address: ");	
+		if(pt1){
+			memset(address,0,sizeof(address));
+			sscanf(pt1, "Address: %s", address);
+		}
 
 		//enc
-		pt1=strstr(buf[3],"Encryption key:");
-		if(pt1)
-		{   
-			if(strstr(pt1+safe_strlen("Encryption key:"),"on"))
-			{  	
+		pt1=strstr(buf[4],"Encryption: ");
+		if(pt1){
+			if(strstr(pt1,"TKIP") || strstr(pt1,"CCMP") || strstr(pt1,"GCMP"))
 				strlcpy(enc, "ENC", sizeof(enc));
-		
-			} 
 			else
 				strlcpy(enc, "NONE", sizeof(enc));
 		}
@@ -1427,22 +1406,20 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 		strlcpy(auth, "N/A", sizeof(auth));
 
 		//sig
-	        pt1 = strstr(buf[2], "Quality=");	
-		pt2 = strstr(pt1,"/");
-		if(pt1 && pt2)
-		{
+		pt1 = strstr(buf[3], "Quality: ");
+		pt2 = NULL;
+		if(pt1 != NULL)
+			pt2 = strstr(pt1,"/");
+		if(pt1 && pt2){
 			memset(sig,0,sizeof(sig));
-			memset(a1,0,sizeof(a1));
-			memset(a2,0,sizeof(a2));
-			strncpy(a1,pt1+safe_strlen("Quality="),pt2-pt1-safe_strlen("Quality="));
-			strncpy(a2,pt2+1,strstr(pt2," ")-(pt2+1));
-			snprintf(sig, sizeof(sig), "%d", safe_atoi(a1)/safe_atoi(a2));
-		}   
+			a1 = a2 = 0;
+			sscanf(pt1, "Quality: %d/%d", &a1, &a2);
+			snprintf(sig, sizeof(sig), "%d", 100 * (a1 + 6)/( a2 + 6));
+		}
 
 		//wmode
 		memset(wmode,0,sizeof(wmode));
 		strlcpy(wmode, "11b/g/n", sizeof(wmode));
-
 
 #if 1
 		dbg("%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",ch,ssid,address,enc,auth,sig,wmode);
@@ -1461,191 +1438,8 @@ static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	retval += websWrite(wp, "]");
 	fclose(fp);
 	return 0;
-}   
-#else
-static int wl_scan(int eid, webs_t wp, int argc, char_t **argv, int unit)
-{
-	int retval = 0, i = 0, apCount = 0;
-	char data[8192];
-	char ssid_str[256];
-	char header[128];
-	struct iwreq wrq;
-	SSA *ssap;
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_";
-	int lock;
-
-	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-	memset(data, 0x00, 255);
-	strcpy(data, "SiteSurvey=1"); 
-	wrq.u.data.length = strlen(data)+1; 
-	wrq.u.data.pointer = data; 
-	wrq.u.data.flags = 0; 
-
-	lock = file_lock("nvramcommit");
-	if (wl_ioctl(nvram_safe_get(strcat_r(prefix, "ifname", tmp)), RTPRIV_IOCTL_SET, &wrq) < 0)
-	{
-		file_unlock(lock);
-		dbg("Site Survey fails\n");
-		return 0;
-	}
-	file_unlock(lock);
-	dbg("Please wait");
-	sleep(1);
-	dbg(".");
-	sleep(1);
-	dbg(".");
-	sleep(1);
-	dbg(".");
-	sleep(1);
-	dbg(".\n\n");
-	memset(data, 0, 8192);
-	strcpy(data, "");
-	wrq.u.data.length = 8192;
-	wrq.u.data.pointer = data;
-	wrq.u.data.flags = 0;
-	if (wl_ioctl(nvram_safe_get(strcat_r(prefix, "ifname", tmp)), RTPRIV_IOCTL_GSITESURVEY, &wrq) < 0)
-	{
-		dbg("errors in getting site survey result\n");
-		return 0;
-	}
-	memset(header, 0, sizeof(header));
-	//snprintf(header, sizeof(header), "%-3s%-33s%-18s%-8s%-15s%-9s%-8s%-2s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode", "NT");
-#if 0// defined(RTN14U)
-	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s%-4s%-5s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode"," WPS", " DPID");
-#else
-	snprintf(header, sizeof(header), "%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n", "Ch", "SSID", "BSSID", "Enc", "Auth", "Siganl(%)", "W-Mode");
-#endif
-	dbg("\n%s", header);
-	if (wrq.u.data.length > 0)
-	{
-#if defined(RTN65U)
-		if (unit == 0 && get_model() == MODEL_RTN65U)
-		{
-			char *encryption;
-			SITE_SURVEY_RT3352_iNIC *pSsap, *ssAP;
-
-			pSsap = ssAP = (SITE_SURVEY_RT3352_iNIC *) (1 /* '\n' */ + wrq.u.data.pointer +  sizeof(SITE_SURVEY_RT3352_iNIC) /* header */);
-			while(((unsigned int)wrq.u.data.pointer + wrq.u.data.length) > (unsigned int) ssAP)
-			{
-				ssAP->channel   [sizeof(ssAP->channel)    -1] = '\0';
-				ssAP->ssid      [32                         ] = '\0';
-				ssAP->bssid     [17                         ] = '\0';
-				ssAP->encryption[sizeof(ssAP->encryption) -1] = '\0';
-				if((encryption = strchr(ssAP->authmode, '/')) != NULL)
-				{
-					memmove(ssAP->encryption, encryption +1, sizeof(ssAP->encryption) -1);
-					memset(encryption, ' ', sizeof(ssAP->authmode) - (encryption - ssAP->authmode));
-					*encryption = '\0';
-				}
-				ssAP->authmode  [sizeof(ssAP->authmode)   -1] = '\0';
-				ssAP->signal    [sizeof(ssAP->signal)     -1] = '\0';
-				ssAP->wmode     [sizeof(ssAP->wmode)      -1] = '\0';
-				ssAP->extch     [sizeof(ssAP->extch)      -1] = '\0';
-				ssAP->nt        [sizeof(ssAP->nt)         -1] = '\0';
-				ssAP->wps       [sizeof(ssAP->wps)        -1] = '\0';
-				ssAP->dpid      [sizeof(ssAP->dpid)       -1] = '\0';
-
-				convertToUpper(ssAP->bssid);
-				ssAP++;
-				apCount++;
-			}
-
-			if (apCount)
-			{
-				retval += websWrite(wp, "[");
-				for (i = 0; i < apCount; i++)
-				{
-					dbg("%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",
-						pSsap[i].channel,
-						pSsap[i].ssid,
-						pSsap[i].bssid,
-						pSsap[i].encryption,
-						pSsap[i].authmode,
-						pSsap[i].signal,
-						pSsap[i].wmode
-					);
-
-					memset(ssid_str, 0, sizeof(ssid_str));
-					char_to_ascii(ssid_str, trim_r(pSsap[i].ssid));
-
-					if (!i)
-						retval += websWrite(wp, "[\"%s\", \"%s\"]", ssid_str, pSsap[i].bssid);
-					else
-						retval += websWrite(wp, ", [\"%s\", \"%s\"]", ssid_str, pSsap[i].bssid);
-				}
-				retval += websWrite(wp, "]");
-				dbg("\n");
-			}
-			else
-				retval += websWrite(wp, "[]");
-			return retval;
-		}
-#endif
-		ssap=(SSA *)(wrq.u.data.pointer+strlen(header)+1);
-		int len = strlen(wrq.u.data.pointer+strlen(header))-1;
-		char *sp, *op;
- 		op = sp = wrq.u.data.pointer+strlen(header)+1;
-		while (*sp && ((len - (sp-op)) >= 0))
-		{
-			ssap->SiteSurvey[i].channel[3] = '\0';
-			ssap->SiteSurvey[i].ssid[32] = '\0';
-			ssap->SiteSurvey[i].bssid[17] = '\0';
-			ssap->SiteSurvey[i].encryption[8] = '\0';
-			ssap->SiteSurvey[i].authmode[15] = '\0';
-			ssap->SiteSurvey[i].signal[8] = '\0';
-			ssap->SiteSurvey[i].wmode[7] = '\0';
-#if 0//defined(RTN14U)
-			ssap->SiteSurvey[i].wps[3] = '\0';
-			ssap->SiteSurvey[i].dpid[4] = '\0';
-#endif
-			sp+=strlen(header);
-			apCount=++i;
-		}
-		if (apCount)
-		{
-			retval += websWrite(wp, "[");
-			for (i = 0; i < apCount; i++)
-			{
-			   	dbg("\napCount=%d\n",i);
-				dbg(
-#if 0//defined(RTN14U)
-				"%-4s%-33s%-18s%-9s%-16s%-9s%-8s%-4s%-5s\n",
-#else
-				"%-4s%-33s%-18s%-9s%-16s%-9s%-8s\n",
-#endif
-					ssap->SiteSurvey[i].channel,
-					(char*)ssap->SiteSurvey[i].ssid,
-					ssap->SiteSurvey[i].bssid,
-					ssap->SiteSurvey[i].encryption,
-					ssap->SiteSurvey[i].authmode,
-					ssap->SiteSurvey[i].signal,
-					ssap->SiteSurvey[i].wmode
-#if 0//defined(RTN14U)
-					, ssap->SiteSurvey[i].wps
-					, ssap->SiteSurvey[i].dpid
-#endif
-				);
-
-				memset(ssid_str, 0, sizeof(ssid_str));
-				char_to_ascii(ssid_str, trim_r(ssap->SiteSurvey[i].ssid));
-
-				if (!i)
-//					retval += websWrite(wp, "\"%s\"", ssap->SiteSurvey[i].bssid);
-					retval += websWrite(wp, "[\"%s\", \"%s\"]", ssid_str, ssap->SiteSurvey[i].bssid);
-				else
-//					retval += websWrite(wp, ", \"%s\"", ssap->SiteSurvey[i].bssid);
-					retval += websWrite(wp, ", [\"%s\", \"%s\"]", ssid_str, ssap->SiteSurvey[i].bssid);
-			}
-			retval += websWrite(wp, "]");
-			dbg("\n");
-		}
-		else
-			retval += websWrite(wp, "[]");
-	}
-	return retval;
 }
 
-#endif
 int
 ej_wl_scan(int eid, webs_t wp, int argc, char_t **argv)
 {

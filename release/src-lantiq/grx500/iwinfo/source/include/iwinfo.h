@@ -352,6 +352,9 @@ struct iwinfo_scanlist_entry {
 	struct iwinfo_scanlist_vht_chan_entry vht_chan_info;
 	struct iwinfo_scanlist_vht_chan_entry he_chan_info;
 	struct iwinfo_scanlist_vht_chan_entry eht_chan_info;
+#if defined(SWRT_PATCH)
+	uint32_t phymode;
+#endif
 };
 
 struct iwinfo_country_entry {
