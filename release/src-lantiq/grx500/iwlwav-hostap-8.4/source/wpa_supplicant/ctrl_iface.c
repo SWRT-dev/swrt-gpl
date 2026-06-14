@@ -11216,6 +11216,7 @@ static int wpa_supplicant_global_iface_add(struct wpa_global *global,
 		if (pos == NULL)
 			break;
 
+#if !defined(SWRT_PATCH)
 		iface.driver_param = pos;
 		pos = os_strchr(pos, '\t');
 		if (pos)
@@ -11224,6 +11225,7 @@ static int wpa_supplicant_global_iface_add(struct wpa_global *global,
 			iface.driver_param = NULL;
 		if (pos == NULL)
 			break;
+#endif
 
 		iface.bridge_ifname = pos;
 		pos = os_strchr(pos, '\t');

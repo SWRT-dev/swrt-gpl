@@ -21993,7 +21993,7 @@ int start_bsd(void)
 		ret = -1;
 		stop_bandsteer();
 	}else{
-		if(repeater_mode || wisp_mode() || mediabridge_mode()){
+		if(repeater_mode() || wisp_mode() || mediabridge_mode()){
 			nvram_set("smart_connect_x", "0");
 			stop_bandsteer();
 		}else

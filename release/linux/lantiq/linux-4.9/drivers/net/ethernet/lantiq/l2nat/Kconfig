@@ -1,0 +1,11 @@
+#
+# L2NAT configuration
+#
+
+config L2NAT
+	tristate "Layer 2 nat"
+	depends on BRIDGE_NETFILTER
+	default n
+	---help---
+	  Supported Layer 2 network address translation. This configuration is
+	  used in the implementation of a wireless bridged client.

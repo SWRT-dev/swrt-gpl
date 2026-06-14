@@ -714,16 +714,14 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 #endif
 		}
 #endif
-
-		snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+		if(repeater_mode() && unit == nvram_get_int("wlc_band"))
+			snprintf(prefix, sizeof(prefix), "wl%d.1_", unit);
+		else
+			snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 		ifname = nvram_pf_safe_get(prefix, "ifname");
 		if (!get_radio_status(ifname)) {
-#if defined(BAND_2G_ONLY)
-			ret += websWrite(wp, "2.4 GHz radio is disabled\n");
-#else
 			ret += websWrite(wp, "%s radio is disabled\n",
 				wl_nband_name(nvram_pf_get(prefix, "nband")));
-#endif
 			return ret;
 		}
 		if (nvram_get_int("wave_action") != 0) {

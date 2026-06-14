@@ -159,10 +159,6 @@
 	/delete-node/ spi1_cs0;
 };
 
-&eth {
-	/delete-node/ interface@0;
-};
-
 &dect0 {
 	status = "disabled";
 	/delete-property/ gpio-reset;

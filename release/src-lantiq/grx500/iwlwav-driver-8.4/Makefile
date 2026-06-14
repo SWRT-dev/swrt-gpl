@@ -14,10 +14,10 @@ CONFIG_FILE:=GRX350_GRX550_WAVE600_CONFIG
 IFX_CFLAGS += $(TARGET_CFLAGS) -O2 -D_FORTIFY_SOURCE=2 -Wformat -Wformat-security -Werror=format-security -Wall -fPIE -Wl,-strip-debug -DSWRT_PATCH
 
 CONFIG_SUFFIX:=
-ifeq ($(DEBUG),y)
+#ifeq ($(DEBUG),y)
 IFX_CFLAGS += -DCONFIG_WAVE_DEBUG
-CONFIG_SUFFIX:=-debug
-endif
+#CONFIG_SUFFIX:=-debug
+#endif
 
 INSTALLKMODDIR:=$(INSTALLDIR)/lib/modules/$(LINUX_KERNEL)
 

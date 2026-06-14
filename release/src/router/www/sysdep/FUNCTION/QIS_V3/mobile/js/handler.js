@@ -1004,7 +1004,7 @@ apply.wlcKey = function(){
 	if(isManual)
 		systemVariable.multiPAP.wlcStatus["wlc" + unit + "_manual"] = true;
 
-	if((isSupport("concurrep") || isSupport("rawifi") || isSupport("qcawifi")) && isSupport("pre_auth_PAP")){
+	if((isSupport("concurrep") || isSupport("rawifi") || isSupport("qcawifi") || isSupport("lantiq")) && isSupport("pre_auth_PAP")){
 		if(isOriginSwMode("AP")){
 			goTo.lanIP_papList();
 		}
@@ -1037,7 +1037,7 @@ apply.wlcKey = function(){
 		}
 		systemVariable.selectedAP.thekey = $("#wlc_wifiKey").val();
 
-		if(isSupport("rawifi") || isSupport("qcawifi")){
+		if(isSupport("rawifi") || isSupport("qcawifi") || isSupport("lantiq")){
 			if(isManual)
 				goTo.lanIP_papList();
 			else

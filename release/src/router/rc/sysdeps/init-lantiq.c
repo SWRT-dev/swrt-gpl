@@ -267,11 +267,11 @@ void init_others(void)
 #endif
 	nvram_set("wave_action", "1");
 
-//	if (repeater_mode() || mediabridge_mode() || aimesh_re_node())
-//	{
-//		modprobe("l2nat");
+	if (repeater_mode() || mediabridge_mode() || aimesh_re_node())
+	{
+		modprobe("l2nat");
 //		f_write_string("/proc/sys/net/bridge/bridge-nf-call-iptables", "0", 0, 0);
-//	}
+	}
 	if(nvram_get_int("ATEMODE") != 1)
 	{
 		_dprintf("poweroff usb\n");
@@ -484,6 +484,13 @@ int rebuild_main_vap(void)
 	return 0;
 }
 
+static void update_l2nat(int action, char *wif)
+{
+	char cmd[128];
+	snprintf(cmd, sizeof(cmd), "echo \"%s %s\" > /proc/l2nat/dev", action ? "add" : "del", wif);
+	system(cmd);
+}
+
 static int create_node=0;
 void init_wl(void)
 {
@@ -493,6 +500,8 @@ void init_wl(void)
 	char path_wifi[sizeof("/tmp/wifiXXXX.sh")];
 	char prefix[] = "wl1_1xxxxxxx";
 #ifdef RTCONFIG_WIRELESSREPEATER
+	char macaddr[] = "00:11:22:33:44:55";
+	unsigned char mac_binary[6];
 	int wlc_band;
 #endif
 	handle_location_code_for_wl();
@@ -537,17 +546,23 @@ void init_wl(void)
 					set_hwaddr(ifname, nvram_pf_safe_get(prefix, "hwaddr"));
 					eval("ppacmd", "addlan", "-i", ifname);
 					sleep(1);
-
+#ifdef RTCONFIG_WIRELESSREPEATER
 #if defined(RTCONFIG_REPEATER_STAALLBAND)
 					if (sw_mode() == SW_MODE_REPEATER && nvram_get_int("x_Setting")) {
 						dbG("\ncreate a STA node %s from %s\n", get_staifname(unit), get_vphyifname(unit));
-						create_vap(get_staifname(unit), unit, "sta");
-						set_hwaddr(get_staifname(unit), nvram_pf_safe_get(prefix, "hwaddr"));
+						create_vap(get_staifname(wlc_band), unit, "sta");
+						eval("iw", get_staifname(wlc_band), "set", "power_save", "off");
+						strlcpy(macaddr, nvram_pf_safe_get(prefix, "hwaddr"), sizeof(macaddr));
+						ether_atoe(macaddr, mac_binary);
+						mac_binary[5] += 0xb;
+						ether_etoa(mac_binary, macaddr);
+						set_hwaddr(get_staifname(wlc_band), macaddr);
 						eval("ppacmd", "addlan", "-i", get_staifname(wlc_band));
+						//update_l2nat(1, get_staifname(wlc_band));
 						sleep(1);
 					}
 #endif
-
+#endif
 					break;
 				default:
 					if (!strncmp(ifname, "eth", 3))
@@ -563,14 +578,20 @@ void init_wl(void)
 		if ((sw_mode() == SW_MODE_REPEATER || wisp_mode()) && nvram_get_int("x_Setting")) {
 			wlc_band=nvram_get_int("wlc_band");
 			create_vap(get_staifname(wlc_band), wlc_band, "sta");
+			eval("iw", get_staifname(wlc_band), "set", "power_save", "off");
 			snprintf(prefix, sizeof(prefix), "wl%d_", wlc_band);
-			set_hwaddr(get_staifname(wlc_band), nvram_pf_safe_get(prefix, "hwaddr"));
+			strlcpy(macaddr, nvram_pf_safe_get(prefix, "hwaddr"), sizeof(macaddr));
+			ether_atoe(macaddr, mac_binary);
+			mac_binary[5] += 0xb;
+			ether_etoa(mac_binary, macaddr);
+			set_hwaddr(get_staifname(wlc_band), macaddr);
 #if defined(RTCONFIG_WISP)
 			if(wisp_mode())
 				eval("ppacmd", "addwan", "-i", get_staifname(wlc_band));
 			else
 #endif
 				eval("ppacmd", "addlan", "-i", get_staifname(wlc_band));
+			//update_l2nat(1, get_staifname(wlc_band));
 		}
 #endif
 #endif
@@ -624,6 +645,7 @@ void fini_wl(void)
 		else
 #endif
 			eval("ppacmd", "dellan", "-i", ifname);
+		update_l2nat(0, ifname);
 
 		destroy_vap(ifname);
 	}

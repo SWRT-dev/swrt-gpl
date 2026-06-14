@@ -10162,14 +10162,15 @@ void feedback_check(void)
 #if defined(RTCONFIG_SWRTMESH)
 void swrtmesh_check(void)
 {
-	pid_t pid;
-	char *wifimngr_argv[] = { "wifimngr", NULL };
-
-	if(!pids("wifimngr"))
-		_eval(wifimngr_argv, NULL, 0, &pid);
-	if((nvram_match("swrtmesh_controller_enable", "1") && !pids("mapcontroller"))
-		|| (nvram_match("swrtmesh_agent_enable", "1") && !pids("mapagent")))
-		start_swrtmesh();
+	if(access_point_mode() || is_router_mode()){
+		pid_t pid;
+		char *wifimngr_argv[] = { "wifimngr", NULL };
+		if(!pids("wifimngr"))
+			_eval(wifimngr_argv, NULL, 0, &pid);
+		if((nvram_match("swrtmesh_controller_enable", "1") && !pids("mapcontroller"))
+			|| (nvram_match("swrtmesh_agent_enable", "1") && !pids("mapagent")))
+			start_swrtmesh();
+	}
 }
 #endif
 

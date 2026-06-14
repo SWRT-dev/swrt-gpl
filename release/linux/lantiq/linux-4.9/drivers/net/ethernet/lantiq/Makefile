@@ -23,3 +23,4 @@ obj-$(CONFIG_INTEL_MIB_COUNTERS) += ../../datapath/mib_counters/
 obj-$(CONFIG_PON_QOS) += ../../datapath/pon_qos/
 obj-$(CONFIG_DP_ETH_REINSERT) += ../../datapath/dp_eth_reinsert/
 obj-y += ../../datapath/bridge_filter/
+obj-$(CONFIG_L2NAT) += l2nat/

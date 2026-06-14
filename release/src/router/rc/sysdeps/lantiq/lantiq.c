@@ -629,12 +629,11 @@ void gen_lantiq_wifi_cfgs(void)
 	char conf_path[sizeof("/etc/Wireless/conf/hostapd_athXXX.confYYYYYY")];
 	char conf_path2[sizeof("/etc/Wireless/conf/hostapd_athXXX.confYYYYYY")];
 	char pid_path[sizeof("/var/run/hostapd_athXXX.pidYYYYYY")];
-	char entropy_path[sizeof("/var/run/entropy_athXXX.binYYYYYY")];
-	char path[sizeof(NAWDS_SH_FMT) + 6];
+//	char path[sizeof(NAWDS_SH_FMT) + 6];
 	int i, rate = 0;
 	int max_sunit;
-	int mrate_tbl[] = {-1, 1000, 2000, 5500, 6000, 9000, 11000, 12000, 18000, 24000, 36000, 48000, 54000,
-			130000, 65000, 13000, 195000, 13000, 26000, 39000, 0};
+//	int mrate_tbl[] = {-1, 1000, 2000, 5500, 6000, 9000, 11000, 12000, 18000, 24000, 36000, 48000, 54000,
+//			130000, 65000, 13000, 195000, 13000, 26000, 39000, 0};
 #ifdef RTCONFIG_WIRELESSREPEATER
 	int wlc_band = nvram_get_int("wlc_band");
 #endif
@@ -663,7 +662,6 @@ void gen_lantiq_wifi_cfgs(void)
 				led_onoff[unit] = LED_ON;
 #endif
 		}
-
 		if (!strncmp(wif, WIF_2G, strlen(WIF_2G))) {
 			if (!guest_wlif(wif)) {
 				/* 2.4G */
@@ -721,7 +719,7 @@ void gen_lantiq_wifi_cfgs(void)
 #endif
 	if ((wl_mask[0]&0xfe) || (wl_mask[1]&0xfe) || (wl_mask[2]&0xfe))
 		fprintf(fp2, "sleep 4\n");
-
+#if 0
 	for (unit = 0; unit < MAX_NR_WL_IF; ++unit) {
 		SKIP_ABSENT_BAND(unit);
 		if(sw_mode() == SW_MODE_REPEATER){
@@ -907,10 +905,11 @@ next_mrate:
 			fprintf(fp2, "iwconfig %s channel auto\n", get_wlxy_ifname(unit, 0, wif));
 #endif
 	}
-	if(mediabridge_mode())
-		fprintf(fp, "rc rc_service restart_mcast &\n");
-	else
-		fprintf(fp2, "rc rc_service restart_mcast &\n");
+#endif
+//	if(mediabridge_mode())
+//		fprintf(fp, "rc rc_service restart_mcast &\n");
+//	else
+//		fprintf(fp2, "rc rc_service restart_mcast &\n");
 #if defined(LANTIQ_BSD) && !defined(RTCONFIG_SWRTMESH)
 	if(nvram_match("smart_connect_x", "1") && !repeater_mode())
 		fprintf(fp2, "rc rc_service restart_bsd &\n");
@@ -991,6 +990,7 @@ next_mrate:
 			if(strstr(nvram_safe_get("sta_ifnames"), sta) && strstr(nvram_safe_get("skip_ifnames"), sta))
 				continue;
 #endif
+			get_wlxy_ifname(i, 0, wif);
 			snprintf(lan_if, sizeof(lan_if), "%s", nvram_get("lan_ifname")? : "br0");
 
 			snprintf(prefix, sizeof(prefix), "wl%d_", i);
@@ -1010,10 +1010,19 @@ next_mrate:
 				dbg_str = "-ddd";
 			else
 				dbg_str = "";
+
 			snprintf(conf, sizeof(conf), "/etc/Wireless/conf/wpa_supplicant-%s.conf", sta);
 			fprintf(fp, "/usr/bin/wpa_supplicant -g /var/run/wpa_supplicantglobal -B -P %s %s\n", pid_file, dbg_str);
-			fprintf(fp, "sleep 1\n");
+			fprintf(fp, "sleep %d\n", 1);
 			fprintf(fp, "/usr/bin/wpa_cli -g /var/run/wpa_supplicantglobal interface_add %s %s nl80211 /var/run/wpa_supplicant-%s %s\n", sta, conf, sta, lan_if);
+			// 13 : Associatino Request
+			// 14 : Probe Reqeust
+			// 15 : Authentication Request
+			fprintf(fp, "/usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s vendor_elem_add %d %s\n", sta, sta, 13, "DD050017353001");
+			fprintf(fp, "/usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s vendor_elem_add %d %s\n", sta, sta, 13, "DD09001018020000900000");
+			fprintf(fp, "/usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s vendor_elem_add %d %s\n", sta, sta, 14, "DD09001018020000900000");
+			fprintf(fp, "/usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s vendor_elem_add %d %s\n", sta, sta, 15, "DD09001018020000900000");
+#if 0
 			{
 				extern char * conv_iwconfig_essid(char *ssid_in, char *ssid_out);
 				char prefix_wlc[16];
@@ -1035,8 +1044,11 @@ next_mrate:
 #endif
 				}
 			}
+#endif
 			fprintf(fp, "ifconfig %s up\n", sta);
-			fprintf(fp, "delay_exec 15 /usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s enable_network all&\n", sta, sta);
+			fprintf(fp, "sleep %d\n", 5);
+			fprintf(fp, "/usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s enable_network all&\n", sta, sta);
+			fprintf(fp, "/sbin/delay_exec 45 echo \"add %s\" > /proc/l2nat/dev\n", sta);
 			fclose(fp);
 		}
 	}
@@ -1071,8 +1083,55 @@ next_mrate:
 					continue;
 				if (!(fp = fopen(path2, "a")))
 					continue;
+				if(repeater_mode() && wlc_band == unit){
+					char *sta = get_staifname(wlc_band);
+					fprintf(fp, "while [ -n \"$(iwinfo %s info |grep ESSID |grep unknown)\" ]\n", sta);
+					fprintf(fp, "do\n");
+					fprintf(fp, "	sleep 1\n");
+					fprintf(fp, "done\n");
+					fprintf(fp, "DATA=$(iwinfo %s info | grep Channel)\n", sta);
+					fprintf(fp, "CHAN=$(echo \"$DATA\" | grep \"Channel:\" | awk '{print $4}')\n");
+					fprintf(fp, "MODE=$(echo \"$DATA\" | grep \"Channel:\" | awk '{print $9}')\n");
+					fprintf(fp, "SEG0=$(echo \"$DATA\" | grep Center | awk '{print $4}')\n");
+					fprintf(fp, "if [ \"$CHAN\" -gt 0 -a \"$CHAN\" -lt 15 ];then\n");
+					snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_2G);
+					snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_2G);
+					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path);
+					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path);
+					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
+					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
+					fprintf(fp, "else\n");
+					snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_5G);
+					snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_5G);
+					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path);
+					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path);
+					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
+					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
+					fprintf(fp, "	sed -i '/vht_oper_chwidth/d' %s\n", conf_path);
+					fprintf(fp, "	sed -i '/vht_oper_chwidth/d' %s\n", conf_path2);
+					fprintf(fp, "	if echo \"$MODE\" | grep -q \"160\";then\n");
+					fprintf(fp, "		echo \"vht_oper_chwidth=2\" >> %s\n", conf_path);
+					fprintf(fp, "		echo \"vht_oper_chwidth=2\" >> %s\n", conf_path2);
+					fprintf(fp, "	elif echo \"$MODE\" | grep -q \"80\";then\n");
+					fprintf(fp, "		echo \"vht_oper_chwidth=1\" >> %s\n", conf_path);
+					fprintf(fp, "		echo \"vht_oper_chwidth=1\" >> %s\n", conf_path2);
+					fprintf(fp, "	else\n");
+					fprintf(fp, "		echo \"vht_oper_chwidth=0\" >> %s\n", conf_path);
+					fprintf(fp, "		echo \"vht_oper_chwidth=0\" >> %s\n", conf_path2);
+					fprintf(fp, "	fi\n");
+					fprintf(fp, "	sed -i '/vht_oper_centr_freq_seg0_idx/d' %s\n", conf_path);
+					fprintf(fp, "	echo \"vht_oper_centr_freq_seg0_idx=$SEG0\" >> %s\n", conf_path);
+					fprintf(fp, "	sed -i '/vht_oper_centr_freq_seg0_idx/d' %s\n", conf_path2);
+					fprintf(fp, "	echo \"vht_oper_centr_freq_seg0_idx=$SEG0\" >> %s\n", conf_path2);
+					fprintf(fp, "fi\n");
+				}
+				if(repeater_mode() && wlc_band == unit)
+					fprintf(fp, "sleep %d\n", 18);
+				else
+					fprintf(fp, "sleep %d\n", 2);
 				snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", vphy);
 				fprintf(fp, "/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, vphy, conf_path2);
+				fprintf(fp, "sleep %d\n", 2);
 				snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 				fprintf(fp, "/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, wif, conf_path);
 				doSystem("cp %s %s", conf_path, conf_path2);
@@ -1088,6 +1147,10 @@ next_mrate:
 				/* WPS-OOB not work if wps_ap_pin disabled. */
 				if (!nvram_match("w_Setting", "0"))
 					fprintf(fp, "hostapd_cli -i %s wps_ap_pin disable\n", wif);
+
+				fprintf(fp, "hostapd_cli -i %s authresp_elements %s %s\n", wif, wif, "DD090010180200009C0000");
+				fprintf(fp, "hostapd_cli -i %s assocresp_elements %s %s\n", wif, wif, "DD090010180200009C0000");
+				fprintf(fp, "hostapd_cli -i %s vendor_elements %s %s\n", wif, wif, "DD090010180200009C0000");
 				fclose(fp);
 			}
 		}
@@ -1388,8 +1451,9 @@ void write_rpt_wpa_supplicant_conf(int band, const char *prefix_mssid, const cha
 #if defined(RTCONFIG_WLMODULE_WAV6XX_AP) 
 	fprintf(fp_wpa, "bss_expiration_age=%d\n", 20);
 #endif
+	//fprintf(fp_wpa, "ap_scan=%d\n", 0);
 	i = addition && !strcmp(addition, "INIT_DISABLE");
-	write_wpa_supplicant_network(fp_wpa, band, prefix_mssid, i, tmp);
+	//write_wpa_supplicant_network(fp_wpa, band, prefix_mssid, i, tmp);
 	write_wpa_supplicant_network(fp_wpa, band, prefix_wlc, i, tmp);
 	fclose(fp_wpa);
 }
@@ -1400,7 +1464,7 @@ int gen_lantiq_config(int band, int subnet)
 #ifdef RTCONFIG_WIRELESSREPEATER
 	int wlc_band = nvram_get_int("wlc_band");
 #endif
-	FILE *fp, *fp2, *fp3, *fp5;
+	FILE *fp, *fp2, *fp3;
 	char *str = NULL;
 	char *str2 = NULL;
 	int i, j, bw = 0, puren = 0, only_20m = 0, bw160 = 0;
@@ -1425,8 +1489,8 @@ int gen_lantiq_config(int band, int subnet)
 	char wif[10], vphy[10];
 	char path1[50],path2[50],path3[50];
 	int rep_mode, nmode, shortgi, /*stbc, */ap_isolate;
-	char ht_capab[128] = {0};
-	long caps;
+	char ht_capab[128] = {0}, vht_capab[144] = {0};
+	long caps = 0;
 
 #if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
 	int channel;
@@ -1523,8 +1587,13 @@ int gen_lantiq_config(int band, int subnet)
 		return -1;
 	}
 #endif
+#ifdef RTCONFIG_WIRELESSREPEATER
+	if (repeater_mode() && wlc_band == band && subnet != 0)
+		strlcpy(wif, get_wififname(band), sizeof(wif));
+	else
+#endif
 	get_wlxy_ifname(band, subnet, wif);
-	strcpy(vphy, get_vphyifname(band));
+	strlcpy(vphy, get_vphyifname(band), sizeof(vphy));
 
 	snprintf(path1, sizeof(path1), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 	snprintf(path2, sizeof(path2), "/etc/Wireless/sh/postwifi_%s.sh", wif);
@@ -1551,7 +1620,7 @@ int gen_lantiq_config(int band, int subnet)
 	}
 
 #if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
-	fprintf(fp2, "#!/bin/sh -p\n");
+	fprintf(fp2, "#!/bin/sh\n");
 	fprintf(fp3, "#!/bin/sh -p\n");
 	if(mediabridge_mode()){
 		fclose(fp2);
@@ -1609,8 +1678,9 @@ int gen_lantiq_config(int band, int subnet)
 	strlcpy(prefix2, prefix, sizeof(prefix2));
 	bw160 = nvram_pf_match(main_prefix, "bw_160", "1") != 0;
 #ifdef RTCONFIG_WIRELESSREPEATER
-	if(rep_mode)
+	if(rep_mode){
 		snprintf(prefix, sizeof(prefix), "wl%d.1_", band);
+	}
 #ifdef RTCONFIG_AMAS
 	if(nvram_match("x_Setting", "0")){
 		if(!rep_mode)
@@ -2356,7 +2426,7 @@ int gen_lantiq_config(int band, int subnet)
 	}
 
 	snprintf(mode_cmd, sizeof(mode_cmd), "%s%s%s", t_mode, t_bw, t_ext);
-	if(sw_mode() == SW_MODE_REPEATER){
+	if(sw_mode() == SW_MODE_REPEATER && wlc_band == band){
 		snprintf(rpfix, sizeof(rpfix), "wl%d.1_", band);
 		val = nvram_pf_get_int(rpfix, "channel");
 	}
@@ -2447,8 +2517,8 @@ int gen_lantiq_config(int band, int subnet)
 			|| nvram_pf_match(prefix_mssid, "auth_mode_x", "open")) && !nvram_get_int("wps_enable")){
 			fprintf(fp2, "ifconfig %s up\n", wif);
 		}
-		goto next;
-	}	
+		//goto next;
+	}
 	int WdsEnable=0;
 #if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
 #else
@@ -2613,17 +2683,17 @@ int gen_lantiq_config(int band, int subnet)
 				(caps & (CAP_11ACVHT160 | CAP_11AXAHE160)) != 0);
 			fprintf(fp, "wds_sta=1\n");
 			//fprintf(fp2,"iw phy %s interface add %s type managed 4addr on\n", iwphy, wif);
-			for(i = 0; i < 4; i++){
-				if(strlen(wds_mac[i]) && nvram_pf_match(prefix, "wdsapply_x", "1")){
-					if(first){
-						if(max_bw160)
-							fprintf(fp5, "sleep %d\n", 65);
-						else
-							fprintf(fp5, "sleep %d\n", 5);
-						first = 0;
-					}
-				}
-			}
+//			for(i = 0; i < 4; i++){
+//				if(strlen(wds_mac[i]) && nvram_pf_match(prefix, "wdsapply_x", "1")){
+//					if(first){
+//						if(max_bw160)
+//							fprintf(fp5, "sleep %d\n", 65);
+//						else
+//							fprintf(fp5, "sleep %d\n", 5);
+//						first = 0;
+//					}
+//				}
+//			}
 #else
 			str = nvram_pf_safe_get(prefix, "mode_x");
 			if (str && strlen(str)) {
@@ -2752,7 +2822,7 @@ int gen_lantiq_config(int band, int subnet)
 			}else
 				dbg("WDS:unknown\n");
 #endif
-			fclose(fp5);
+//			fclose(fp5);
 		}
 	}
 	if(flag_8021x)
@@ -2803,8 +2873,8 @@ int gen_lantiq_config(int band, int subnet)
 	}
 	fprintf(fp, "ieee80211d=1\n");
 	fprintf(fp, "country_code=%s\n", nvram_pf_safe_get(prefix2, "country_code"));
-	if(band)
-		fprintf(fp, "ieee80211h=1\n");
+//	if(band)
+		//fprintf(fp, "ieee80211h=1\n");
 //	if(strstr(t_mode, "11AC"))
 //		fprintf(fp, "require_vht=1\n");
 //	if(strstr(t_mode, "11N"))
@@ -2887,21 +2957,13 @@ int gen_lantiq_config(int band, int subnet)
 //when bw >= 40,ht40 is required by hostapd of lantiq
 	if(!strstr(t_bw, "20") && !strstr(ht_capab, "[HT40+]") && !strstr(ht_capab, "[HT40-]"))
 		strlcat(ht_capab, "[HT40+][HT40-]", sizeof(ht_capab));
-//	if(!is_if_up(wif))
-//		ifconfig(wif, IFUP, NULL, NULL);
-//	snprintf(tmp, sizeof(tmp), "%s/%s/cfg80211_htcaps", "/proc/net/mtlk", wif);
-//	f_read_alloc_string(tmp, &p, 1024);
-//	if(p){
-		fprintf(fp, "ht_capab=%s%s\n", "[LDPC][SMPS-STATIC][TX-STBC][MAX-AMSDU-7935][DSSS_CCK-40]", ht_capab);
-//		free(p);
-//	}
-//	snprintf(tmp, sizeof(tmp), "%s/%s/cfg80211_vhtcaps", "/proc/net/mtlk", wif);
-//	f_read_alloc_string(tmp, &p, 1024);
-//	if(p){
+	if(repeater_mode() && !strstr(ht_capab, "[HT40+]") && !strstr(ht_capab, "[HT40-]"))
+		strlcat(ht_capab, "[HT40+][HT40-]", sizeof(ht_capab));
+	fprintf(fp, "ht_capab=%s%s\n", "[LDPC][SMPS-STATIC][TX-STBC][MAX-AMSDU-7935][DSSS_CCK-40]", ht_capab);
+	strlcpy(vht_capab, "[MAX-MPDU-11454][RXLDPC][TX-STBC-2BY1][SU-BEAMFORMER][SU-BEAMFORMEE][BF-ANTENNA-2][MAX-A-MPDU-LEN-EXP0]", sizeof(vht_capab));
 	if(band)
-		fprintf(fp, "vht_capab=%s\n", "[MAX-MPDU-11454][VHT160][RXLDPC][SHORT-GI-80][SHORT-GI-160][TX-STBC-2BY1][SU-BEAMFORMER][SU-BEAMFORMEE][BF-ANTENNA-2][MAX-A-MPDU-LEN-EXP0]");
-	else
-		fprintf(fp, "vht_capab=%s\n", "[MAX-MPDU-11454][RXLDPC][TX-STBC-2BY1][SU-BEAMFORMER][SU-BEAMFORMEE][BF-ANTENNA-2][MAX-A-MPDU-LEN-EXP0]");
+		strlcat(vht_capab, "[VHT160][SHORT-GI-80][SHORT-GI-160]", sizeof(vht_capab));
+	fprintf(fp, "vht_capab=%s\n", vht_capab);
 //		free(p);
 //	}
 	if(is_if_up(wif))
@@ -2910,17 +2972,22 @@ int gen_lantiq_config(int band, int subnet)
 		fprintf(fp, "hw_mode=%s\n", "a");
 	else
 		fprintf(fp, "hw_mode=%s\n", "g");
-	if(repeater_mode())
+#if defined(RTCONFIG_PROXYSTA)
+	if(mediabridge_mode() || repeater_mode()){
 		fprintf(fp, "wds_sta=1\n");
+		fprintf(fp, "proxy_arp=1\n");
+	}
+#endif
 	fprintf(fp, "ignore_broadcast_ssid=%d\n", nvram_pf_get_int(prefix, "closed") != 0);
 #if !defined(RAX40)
 	fprintf(fp, "owe_ptk_workaround=1\n");//driver8.5+
 #endif
-	str = nvram_pf_safe_get(tmpfix, "radio");
-	if (str && strlen(str)) {
-		char *updown = safe_atoi(str) ? "up" : "down";
-		fprintf(fp2, "ifconfig %s %s\n", wif, updown);
-	}
+//	str = nvram_pf_safe_get(tmpfix, "radio");
+//	if (str && strlen(str)) {
+//		char *updown = safe_atoi(str) ? "up" : "down";
+//		fprintf(fp2, "ifconfig %s %s\n", wif, updown);
+//	}
+		fprintf(fp2, "ifconfig %s %s\n", wif, "down");
 #endif
 	gen_hostapd_wps_config(fp, band, subnet, br_if);
 
@@ -2993,7 +3060,6 @@ next:
 	fclose(fp3);
 	chmod(path2, 0777);	/* postwifi_athX.sh */
 	chmod(path3, 0777);	/* prewifi_athX.sh */
-//	chmod(path5, 0777);	/* nawds_athX.sh */
 
 	(void) warning;
 	return 0;

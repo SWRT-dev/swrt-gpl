@@ -7,6 +7,8 @@ CONFIGURE_ARGS += \
 	--enable-kernelincl="$(LINUXDIR)/include/net/switch_api/" \
 	--enable-gswip --enable-printhelp
 
+CFLAGS += -DSWRT_PATCH
+
 all:
 	cd $(PKG_BUILD_DIR) && autoreconf -i -f && $(CONFIGURE) $(CONFIGURE_ARGS)
 	$(TARGET_MAKE) $(PARALLEL_BUILD) -C $(PKG_BUILD_DIR) $(TARGET_CONFIGURE_OPTS)

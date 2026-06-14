@@ -12,7 +12,11 @@
 #define _IFX_CLI_LIB_H
 typedef int (*command_fkt)(int argc, char *argv[], int fd, int numPar);
 
+#if defined(SWRT_PATCH)
+#define CONFIG_LTQ_TEST 1
+#else
 #define CONFIG_LTQ_TEST 0
+#endif
 
 typedef struct {
 	char *Name;

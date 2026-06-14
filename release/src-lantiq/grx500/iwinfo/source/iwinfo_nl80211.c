@@ -917,7 +917,11 @@ static int __nl80211_hostapd_query(const char *ifname, ...)
 	if (!phy)
 		return 0;
 
+#if defined(SWRT_PATCH)
+	snprintf(buf, sizeof(buf), "/etc/Wireless/conf/hostapd-%s.conf", ifname);
+#else
 	snprintf(buf, sizeof(buf), "/var/run/hostapd-%s.conf", phy);
+#endif
 	fp = fopen(buf, "r");
 
 	if (!fp)

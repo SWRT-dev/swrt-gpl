@@ -1824,6 +1824,15 @@ static int wpa_cli_cmd_interface_add(struct wpa_ctrl *ctrl, int argc,
 	 * INTERFACE_ADD <ifname>TAB<confname>TAB<driver>TAB<ctrl_interface>TAB
 	 * <driver_param>TAB<bridge_name>[TAB<create>[TAB<type>]]
 	 */
+#if defined(SWRT_PATCH)
+	//remove driver_param
+	res = os_snprintf(cmd, sizeof(cmd),
+			  "INTERFACE_ADD %s\t%s\t%s\t%s\t%s\t%s\t%s",
+			  argv[0],
+			  argc > 1 ? argv[1] : "", argc > 2 ? argv[2] : "",
+			  argc > 3 ? argv[3] : "", argc > 4 ? argv[4] : "",
+			  argc > 5 ? argv[5] : "", argc > 6 ? argv[6] : "");
+#else
 	res = os_snprintf(cmd, sizeof(cmd),
 			  "INTERFACE_ADD %s\t%s\t%s\t%s\t%s\t%s\t%s\t%s",
 			  argv[0],
@@ -1831,6 +1840,7 @@ static int wpa_cli_cmd_interface_add(struct wpa_ctrl *ctrl, int argc,
 			  argc > 3 ? argv[3] : "", argc > 4 ? argv[4] : "",
 			  argc > 5 ? argv[5] : "", argc > 6 ? argv[6] : "",
 			  argc > 7 ? argv[7] : "");
+#endif
 	if (os_snprintf_error(sizeof(cmd), res))
 		return -1;
 	cmd[sizeof(cmd) - 1] = '\0';
