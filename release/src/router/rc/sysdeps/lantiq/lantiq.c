@@ -1048,7 +1048,12 @@ next_mrate:
 			fprintf(fp, "ifconfig %s up\n", sta);
 			fprintf(fp, "sleep %d\n", 5);
 			fprintf(fp, "/usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s enable_network all&\n", sta, sta);
-			fprintf(fp, "/sbin/delay_exec 45 echo \"add %s\" > /proc/l2nat/dev\n", sta);
+#ifdef RTCONFIG_AMAS
+			if(!aimesh_re_node())
+#elif defined(RTCONFIG_WISP)
+			if(!wisp_mode())
+#endif
+				fprintf(fp, "/sbin/delay_exec 45 echo \"add %s\" > /proc/l2nat/dev\n", sta);
 			fclose(fp);
 		}
 	}
@@ -1126,14 +1131,27 @@ next_mrate:
 					fprintf(fp, "fi\n");
 				}
 				if(repeater_mode() && wlc_band == unit)
-					fprintf(fp, "sleep %d\n", 18);
+					fprintf(fp, "sleep %d\n", 10);
 				else
 					fprintf(fp, "sleep %d\n", 2);
+				if(repeater_mode() && wlc_band == unit){
+					fprintf(fp, "while [ -z \"$(hostapd_cli -i %s status |grep ENABLED)\" ]\n", vphy);
+					fprintf(fp, "do\n");
+					fprintf(fp, "	sleep %d\n", 5);
+				}
 				snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", vphy);
-				fprintf(fp, "/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, vphy, conf_path2);
-				fprintf(fp, "sleep %d\n", 2);
+				fprintf(fp, "	/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, vphy, conf_path2);
+				if(repeater_mode() && wlc_band == unit){
+					fprintf(fp, "done\n");
+					fprintf(fp, "while [ -z \"$(hostapd_cli -i %s status |grep ENABLED)\" ]\n", wif);
+					fprintf(fp, "do\n");
+					fprintf(fp, "	sleep %d\n", 5);
+				}
 				snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
-				fprintf(fp, "/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, wif, conf_path);
+				fprintf(fp, "	/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, wif, conf_path);
+				if(repeater_mode() && wlc_band == unit){
+					fprintf(fp, "done\n");
+				}
 				doSystem("cp %s %s", conf_path, conf_path2);
 				doSystem("sed -i 's/%s/%s/' %s", wif, vphy, conf_path2);
 				doSystem("touch /var/run/hostapd-%s.psk", vphy);
