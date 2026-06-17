@@ -113,6 +113,8 @@ else if(isSwMode("AP"))
 	sw_mode_orig = 3;
 else if(isSwMode("RP"))
 	sw_mode_orig = 2;
+else if(isSwMode("WISP"))
+	sw_mode_orig = 6;
 
 var current_page = window.location.pathname.split("/").pop();
 var faq_index_tmp = get_faq_index(FAQ_List, current_page, 1);

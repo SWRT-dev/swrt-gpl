@@ -1553,7 +1553,7 @@ var httpApi ={
 		},
 		port_forwarding : {
 			enabled : function(){
-				if(isSwMode("rt")){
+				if((isSwMode("RT") || isSwMode("WISP"))){
 					var vts_enable_x = httpApi.nvramGet(["vts_enable_x"], true).vts_enable_x;
 					if(vts_enable_x == "0")
 						return 0;
@@ -2741,3 +2741,4 @@ var httpApi ={
 		});
 	}
 }
+

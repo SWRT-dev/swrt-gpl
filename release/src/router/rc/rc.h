@@ -1652,9 +1652,7 @@ extern void set_et_qos_mode(void);
 extern void start_wl(void);
 extern void stop_wl(void);
 extern int add_lan_routes(char *lan_ifname);
-#if defined(RTCONFIG_QCA)||defined(RTCONFIG_RALINK)
 extern char *get_hwaddr(const char *ifname);
-#endif
 extern void set_hwaddr(const char *ifname, const char *mac);
 #ifdef RTCONFIG_REALTEK
 extern int wlconf_rtk(const char* ifname);

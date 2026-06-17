@@ -40479,6 +40479,9 @@ static int ej_get_operation_mode(int eid, webs_t wp, int argc, char **argv)
 	){
 		strlcpy(ui_sw_mode, "hs", sizeof(ui_sw_mode)); // Hotspot
 	}
+	else if (wisp_mode()) {
+		strlcpy(ui_sw_mode, "wisp", sizeof(ui_sw_mode));
+	}
 	else {
 		strlcpy(ui_sw_mode, "rt", sizeof(ui_sw_mode));
 	}

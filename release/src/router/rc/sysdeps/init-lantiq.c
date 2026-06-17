@@ -494,15 +494,15 @@ static void update_l2nat(int action, char *wif)
 static int create_node=0;
 void init_wl(void)
 {
-	int unit;
+	int unit, subunit = 0;
 	char *p, *ifname;
 	char *wl_ifnames;
 	char path_wifi[sizeof("/tmp/wifiXXXX.sh")];
 	char prefix[] = "wl1_1xxxxxxx";
-#ifdef RTCONFIG_WIRELESSREPEATER
 	char macaddr[] = "00:11:22:33:44:55";
 	unsigned char mac_binary[6];
-	int wlc_band;
+#ifdef RTCONFIG_WIRELESSREPEATER
+	int wlc_band = nvram_get_int("wlc_band");
 #endif
 	handle_location_code_for_wl();
 	if(!create_node)
@@ -531,19 +531,27 @@ void init_wl(void)
 #endif
 
 				//create ath00x & ath10x 
-				if (!strncmp(ifname, WIF_2G, strlen(WIF_2G)))
-					unit = 0;
-				else if (!strncmp(ifname, WIF_5G, strlen(WIF_5G)))
-					unit = 1;
-				else
-					unit=-99;	
+				if(get_wlif_unit(ifname, &unit, &subunit)){
+					if (!strncmp(ifname, WIF_2G, strlen(WIF_2G)))
+						unit = 0;
+					else if (!strncmp(ifname, WIF_5G, strlen(WIF_5G)))
+						unit = 1;
+					else
+						unit=-99;
+				}	
 
 				switch (unit) {
 				case WL_2G_BAND:	/* fall-through */
 				case WL_5G_BAND:	/* fall-through */
 					create_vap(ifname, unit, "ap");
 					snprintf(prefix, sizeof(prefix), "wl%d_", unit);
-					set_hwaddr(ifname, nvram_pf_safe_get(prefix, "hwaddr"));
+					strlcpy(macaddr, nvram_pf_safe_get(prefix, "hwaddr"), sizeof(macaddr));
+					if(subunit){
+						ether_atoe(macaddr, mac_binary);
+						mac_binary[5] += subunit;
+						ether_etoa(mac_binary, macaddr);
+					}
+					set_hwaddr(ifname, macaddr);
 					eval("ppacmd", "addlan", "-i", ifname);
 					sleep(1);
 #ifdef RTCONFIG_WIRELESSREPEATER
@@ -576,7 +584,6 @@ void init_wl(void)
 #ifdef RTCONFIG_WIRELESSREPEATER
 #if !defined(RTCONFIG_REPEATER_STAALLBAND)
 		if ((sw_mode() == SW_MODE_REPEATER || wisp_mode()) && nvram_get_int("x_Setting")) {
-			wlc_band=nvram_get_int("wlc_band");
 			create_vap(get_staifname(wlc_band), wlc_band, "sta");
 			eval("iw", get_staifname(wlc_band), "set", "power_save", "off");
 			snprintf(prefix, sizeof(prefix), "wl%d_", wlc_band);

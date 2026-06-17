@@ -21638,10 +21638,19 @@ _dprintf("%s: set autowan_ifnames to be \"eth0 eth1\"\n", __func__);
 		}
 		else
 #endif
+#if defined(RTCONFIG_WISP)
+		if (wisp_mode()) {
+			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wifi0 wifi1 eth1");
+			nvram_set("wan_ifnames", get_staifname(nvram_get_int("wlc_band")));
+		}
+		else
+#endif
 		if (sw_mode()==SW_MODE_AP) {
 			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wifi0 wifi1 eth1");
 			nvram_set("wan_ifnames", "");
 		}
+
+
 		else {
 			nvram_set("lan_ifnames", "eth0_1 eth0_2 eth0_3 eth0_4 wifi0 wifi1");
 			nvram_set("wan_ifnames", "eth1");

@@ -1803,7 +1803,7 @@ TRACE_PT("3g begin with %s.\n", wan_ifname);
 		ether_atoe((const char *) nvram_safe_get(strcat_r(prefix, "hwaddr", tmp)), (unsigned char *) eabuf);
 		if ((bcmp(eabuf, ifr.ifr_hwaddr.sa_data, ETHER_ADDR_LEN))
 #if defined(RTCONFIG_WISP) \
- && (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA))
+ && (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ))
 		 && !wisp_mode()
 #endif
 		) {
@@ -1818,7 +1818,12 @@ TRACE_PT("3g begin with %s.\n", wan_ifname);
 			return;
 		}
 
-		if (!(ifr.ifr_flags & IFF_UP)) {
+		if (!(ifr.ifr_flags & IFF_UP)
+#if defined(RTCONFIG_WISP) \
+ && (defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ))
+		 && !wisp_mode()
+#endif
+		) {
 			/* Sync connection nvram address and i/f hardware address */
 			memset(ifr.ifr_hwaddr.sa_data, 0, ETHER_ADDR_LEN);
 

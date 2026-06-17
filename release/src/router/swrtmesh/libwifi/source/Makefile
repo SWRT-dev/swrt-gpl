@@ -19,11 +19,7 @@ CFLAGS += -I$(TOP)/wireless_tools$(WTOOL_SUFFIX)/ -DWE_NOLIBM
 LIBWIFI_CFLAGS += -I.
 LIBWIFI_LDFLAGS += -L.
 
-ifeq ($(RTCONFIG_LANTIQ),y)
-# built into libshared.so
-else
 LIBS += -lnl-3 -lnl-route-3 -lnl-genl-3
-endif
 LIBS += -leasy
 
 ver=$(shell ./genversion.sh)

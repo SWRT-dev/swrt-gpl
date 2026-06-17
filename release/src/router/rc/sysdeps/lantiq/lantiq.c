@@ -1088,7 +1088,7 @@ next_mrate:
 					continue;
 				if (!(fp = fopen(path2, "a")))
 					continue;
-				if(repeater_mode() && wlc_band == unit){
+				if((repeater_mode() || wisp_mode()) && wlc_band == unit){
 					char *sta = get_staifname(wlc_band);
 					fprintf(fp, "while [ -n \"$(iwinfo %s info |grep ESSID |grep unknown)\" ]\n", sta);
 					fprintf(fp, "do\n");
@@ -1099,62 +1099,82 @@ next_mrate:
 					fprintf(fp, "MODE=$(echo \"$DATA\" | grep \"Channel:\" | awk '{print $9}')\n");
 					fprintf(fp, "SEG0=$(echo \"$DATA\" | grep Center | awk '{print $4}')\n");
 					fprintf(fp, "if [ \"$CHAN\" -gt 0 -a \"$CHAN\" -lt 15 ];then\n");
-					snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_2G);
-					snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_2G);
+					if(sunit == 0){
+						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_2G);
+						snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_2G);
+					}else
+						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path);
 					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path);
-					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
-					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
+					if(sunit == 0){
+						fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
+						fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
+					}
 					fprintf(fp, "else\n");
-					snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_5G);
-					snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_5G);
+					if(sunit == 0){
+						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_5G);
+						snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_5G);
+					}else
+						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path);
 					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path);
-					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
-					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
 					fprintf(fp, "	sed -i '/vht_oper_chwidth/d' %s\n", conf_path);
-					fprintf(fp, "	sed -i '/vht_oper_chwidth/d' %s\n", conf_path2);
+					if(sunit == 0){
+						fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
+						fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
+						fprintf(fp, "	sed -i '/vht_oper_chwidth/d' %s\n", conf_path2);
+					}
 					fprintf(fp, "	if echo \"$MODE\" | grep -q \"160\";then\n");
 					fprintf(fp, "		echo \"vht_oper_chwidth=2\" >> %s\n", conf_path);
-					fprintf(fp, "		echo \"vht_oper_chwidth=2\" >> %s\n", conf_path2);
+					if(sunit == 0)
+						fprintf(fp, "		echo \"vht_oper_chwidth=2\" >> %s\n", conf_path2);
 					fprintf(fp, "	elif echo \"$MODE\" | grep -q \"80\";then\n");
 					fprintf(fp, "		echo \"vht_oper_chwidth=1\" >> %s\n", conf_path);
-					fprintf(fp, "		echo \"vht_oper_chwidth=1\" >> %s\n", conf_path2);
+					if(sunit == 0)
+						fprintf(fp, "		echo \"vht_oper_chwidth=1\" >> %s\n", conf_path2);
 					fprintf(fp, "	else\n");
 					fprintf(fp, "		echo \"vht_oper_chwidth=0\" >> %s\n", conf_path);
-					fprintf(fp, "		echo \"vht_oper_chwidth=0\" >> %s\n", conf_path2);
+					if(sunit == 0)
+						fprintf(fp, "		echo \"vht_oper_chwidth=0\" >> %s\n", conf_path2);
 					fprintf(fp, "	fi\n");
 					fprintf(fp, "	sed -i '/vht_oper_centr_freq_seg0_idx/d' %s\n", conf_path);
 					fprintf(fp, "	echo \"vht_oper_centr_freq_seg0_idx=$SEG0\" >> %s\n", conf_path);
-					fprintf(fp, "	sed -i '/vht_oper_centr_freq_seg0_idx/d' %s\n", conf_path2);
-					fprintf(fp, "	echo \"vht_oper_centr_freq_seg0_idx=$SEG0\" >> %s\n", conf_path2);
+					if(sunit == 0){
+						fprintf(fp, "	sed -i '/vht_oper_centr_freq_seg0_idx/d' %s\n", conf_path2);
+						fprintf(fp, "	echo \"vht_oper_centr_freq_seg0_idx=$SEG0\" >> %s\n", conf_path2);
+					}
 					fprintf(fp, "fi\n");
 				}
-				if(repeater_mode() && wlc_band == unit)
+				if((repeater_mode() || wisp_mode()) && wlc_band == unit)
 					fprintf(fp, "sleep %d\n", 10);
 				else
 					fprintf(fp, "sleep %d\n", 2);
-				if(repeater_mode() && wlc_band == unit){
+				if((repeater_mode() || wisp_mode()) && wlc_band == unit){
 					fprintf(fp, "while [ -z \"$(hostapd_cli -i %s status |grep ENABLED)\" ]\n", vphy);
 					fprintf(fp, "do\n");
 					fprintf(fp, "	sleep %d\n", 5);
 				}
-				snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", vphy);
-				fprintf(fp, "	/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, vphy, conf_path2);
-				if(repeater_mode() && wlc_band == unit){
+				if(sunit == 0){
+					snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", vphy);
+					fprintf(fp, "	/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, vphy, conf_path2);
+				}
+				if((repeater_mode() || wisp_mode()) && wlc_band == unit){
 					fprintf(fp, "done\n");
 					fprintf(fp, "while [ -z \"$(hostapd_cli -i %s status |grep ENABLED)\" ]\n", wif);
 					fprintf(fp, "do\n");
 					fprintf(fp, "	sleep %d\n", 5);
-				}
+				}else
+					fprintf(fp, "sleep %d\n", 2);
 				snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 				fprintf(fp, "	/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, wif, conf_path);
-				if(repeater_mode() && wlc_band == unit){
+				if((repeater_mode() || wisp_mode()) && wlc_band == unit){
 					fprintf(fp, "done\n");
 				}
-				doSystem("cp %s %s", conf_path, conf_path2);
-				doSystem("sed -i 's/%s/%s/' %s", wif, vphy, conf_path2);
-				doSystem("touch /var/run/hostapd-%s.psk", vphy);
+				if(sunit == 0){
+					doSystem("cp %s %s", conf_path, conf_path2);
+					doSystem("sed -i 's/%s/%s/' %s", wif, vphy, conf_path2);
+					doSystem("touch /var/run/hostapd-%s.psk", vphy);
+				}
 				/* Hostapd will up VAP interface automatically.
 				 * So, down VAP interface if radio is not on and
 				 * not to up VAP interface anymore.
@@ -1646,7 +1666,8 @@ int gen_lantiq_config(int band, int subnet)
 			return 0;
 	}
 #endif
-	fprintf(fp3, "ifconfig %s down\n", vphy);
+	if(subnet == 0)
+		fprintf(fp3, "ifconfig %s down\n", vphy);
 #ifdef RTCONFIG_WIRELESSREPEATER
 	if (sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "")&& subnet==0)
 		rep_mode=1;
@@ -2890,7 +2911,7 @@ int gen_lantiq_config(int band, int subnet)
 		fprintf(fp, "ieee80211n=1\n");
 	}
 	fprintf(fp, "ieee80211d=1\n");
-	fprintf(fp, "country_code=%s\n", nvram_pf_safe_get(prefix2, "country_code"));
+	fprintf(fp, "country_code=%s\n", nvram_pf_safe_get(tmpfix, "country_code"));
 //	if(band)
 		//fprintf(fp, "ieee80211h=1\n");
 //	if(strstr(t_mode, "11AC"))
@@ -4665,7 +4686,7 @@ void config_mssid_isolate(char *ifname, int vif)
 {
 	char path[64] = {0}, prefix[16] = {0};
 	if(sw_mode() == SW_MODE_ROUTER && ifname){
-#if LINUX_KERNEL_VERSION > KERNEL_VERSION(5,4,0)
+#if LINUX_KERNEL_VERSION > KERNEL_VERSION(4,9,0)
 		snprintf(path, sizeof(path), "/sys/class/net/%s/brport/%s", ifname, "isolated");
 #else
 		snprintf(path, sizeof(path), "/sys/class/net/%s/brport/%s", ifname, "isolate_mode");

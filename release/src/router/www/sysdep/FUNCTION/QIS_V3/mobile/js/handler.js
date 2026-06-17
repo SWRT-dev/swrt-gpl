@@ -63,6 +63,26 @@ apply.welcome = function(){
 	}
 };
 
+apply.welcome_wisp = function(){
+	if(systemVariable.forceChangePw){
+		systemVariable.welcome_wisp = true;
+		goTo.Login();
+	}
+	else{
+		goTo.wispMode();
+	}
+}
+
+apply.welcome_rt = function(){
+	if(systemVariable.forceChangePw){
+		systemVariable.welcome_rt = true;
+		goTo.Login();
+	}
+	else{
+		goTo.rtMode();
+	}
+}
+
 apply.prelink = function(){
 	if(!systemVariable.forceChangePw){
 		if(isOriginSwMode("RP")){
@@ -228,6 +248,12 @@ apply.login = function(){
 		else{
 			if(systemVariable.advSetting){
 				goTo.loadPage("advanced_setting", false);
+			}
+			else if(systemVariable.welcome_wisp){
+				goTo.wispMode();
+			}
+			else if(systemVariable.welcome_rt){
+				goTo.rtMode();
 			}
 			else if(qisPostData.hasOwnProperty("sw_mode")){
 				goTo.opMode();
@@ -1805,6 +1831,8 @@ abort.backToStartQIS = function(){
 	}
 	else{
 		systemVariable.advSetting = false;
+		systemVariable.welcome_wisp = false;
+		systemVariable.welcome_rt = false;
 		goTo.loadPage("welcome", true);
 	}
 }
@@ -1856,6 +1884,9 @@ abort.login = function(){
 			postDataModel.remove(opModeObj);
 			if(isSupport("apMode_detwan") && isOriginSwMode("AP"))
 				abort.backToStartQIS();
+			else if(systemVariable.welcome_rt){
+				abort.backToStartQIS();
+			}
 			else
 				goTo.loadPage("advanced_setting", true);
 		}
@@ -1960,7 +1991,13 @@ abort.wan = function(){
 	else if(qisPostData.hasOwnProperty("sw_mode") && !systemVariable.meshRole){
 		if(!systemVariable.advSetting && isSupport("wisp")){
 			systemVariable.advSetting = false;
-			goTo.loadPage("welcome", true);
+			if(systemVariable.forceChangePw){
+				goTo.loadPage("login_name", true);
+			}
+			else{
+				systemVariable.welcome_rt = false;
+				goTo.loadPage("welcome", true);
+			}
 		}
 		else
 			goTo.loadPage("opMode_page", true);
@@ -2259,7 +2296,7 @@ abort.wlcKey = function(){
 }
 
 abort.siteSurvey = function(){
-	if(location.search == "?flag=sitesurvey_mb" || location.search == "?flag=sitesurvey_rep"){
+	if(location.search == "?flag=sitesurvey_mb" || location.search == "?flag=sitesurvey_rep" || location.search == "?flag=wispMode"){
 		window.history.back();
 	}
 	else if(systemVariable.advSetting){
@@ -2281,8 +2318,20 @@ abort.papList = function(){
 	postDataModel.remove(wispObj);
 
 	if(systemVariable.multiPAP.wlcOrder.length == 0) {
-		if(systemVariable.advSetting){
+		if(location.search == "?flag=wispMode"){
+			window.history.back();
+		}
+		else if(systemVariable.advSetting){
 			goTo.loadPage("opMode_page", true);
+		}
+		else if(systemVariable.welcome_wisp){
+			if(systemVariable.forceChangePw){
+				goTo.loadPage("login_name", true);
+			}
+			else{
+				systemVariable.welcome_wisp = false;
+				goTo.loadPage("welcome", true);
+			}
 		}
 		else{
 			if(isSupport("RPMesh")){
@@ -4209,11 +4258,11 @@ goTo.Wireless = function(){
 					$("#wireless_sync_checkbox").enableCheckBox(true);
 			});
 
-			if(systemVariable.multiPAP.wlcOrder.length > 0)
+			if(systemVariable.multiPAP.wlcOrder.length > 0 && !isSwMode("WISP"))
 				$("#wireless_sync_checkbox").enableCheckBox(false);
 		}
 		else{
-			if(systemVariable.multiPAP.wlcOrder.length > 0){
+			if(systemVariable.multiPAP.wlcOrder.length > 0 && !isSwMode("WISP")){
 				$("#wireless_sync_checkbox").enableCheckBox(false);
 				var wlArray = getAllWlArray();
 				var autoStr = false;
@@ -4236,7 +4285,7 @@ goTo.Wireless = function(){
 			var curStatus = $(this).prop("checked");
 			var wlArray = getAllWlArray();
 
-			if(systemVariable.multiPAP.wlcOrder.length > 0){
+			if(systemVariable.multiPAP.wlcOrder.length > 0 && !isSwMode("WISP")){
 				handleWirelessClientSSID(wlArray, curStatus);
 			}
 			else{
@@ -6185,3 +6234,4 @@ function webInterface(message) {
 	}
 	return (JSON.stringify(returnData));
 }
+

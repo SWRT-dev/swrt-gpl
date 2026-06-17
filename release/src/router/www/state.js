@@ -2459,13 +2459,9 @@ function show_top_status(){
 	// no_op_mode
 	if ((!dsl_support || support_site_modelid=="DSL-AX82U") && !lyra_hide_support){
 
-		if(isSwMode("RT"))  // Show operation mode in banner, Viz 2011.11
-		{
-			if(wisp_support && wlc_band != '')
-				document.getElementById("sw_mode_span").innerHTML = "<#OP_WISP_item#>";
-			else		
-				document.getElementById("sw_mode_span").innerHTML = "<#wireless_router#>";
-		}	
+		if(isSwMode("RT")){
+			document.getElementById("sw_mode_span").innerHTML = "<#wireless_router#>";
+		}
 		else if(isSwMode("RP")){
 			if(wlc_express == 1)
 				document.getElementById("sw_mode_span").innerHTML = "<#OP_RE2G_item#>";
@@ -2478,6 +2474,8 @@ function show_top_status(){
 			document.getElementById("sw_mode_span").innerHTML = "<#OP_AP_item#>";
 		else if(isSwMode("MB"))
 			document.getElementById("sw_mode_span").innerHTML = "<#OP_MB_item#>";
+		else if(isSwMode("WISP"))
+			document.getElementById("sw_mode_span").innerHTML = "<#OP_WISP_item#>";
 		else
 			document.getElementById("sw_mode_span").innerHTML = "Unknown";	
 
@@ -5268,3 +5266,4 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 	}, (parent.webWrapper ? 1000 : 300));
 });
+
