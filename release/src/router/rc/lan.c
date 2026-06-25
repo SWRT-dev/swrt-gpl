@@ -1177,10 +1177,8 @@ void start_lan(void)
 	wlconf_pre();
 #endif
 
-#if defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_REALTEK)
-#ifdef RTCONFIG_AMAS
+#if defined(RTCONFIG_LANTIQ)
 	wlconf_pre();
-#endif
 #endif
 
 	check_wps_enable();
@@ -1646,7 +1644,10 @@ void start_lan(void)
 	if (ioctl(sfd, SIOCGIFHWADDR, &ifr) == 0) nvram_set("lan_hwaddr", ether_etoa((const unsigned char *) ifr.ifr_hwaddr.sa_data, eabuf));
 #endif
 	close(sfd);
-
+#if defined(RTCONFIG_LANTIQ)
+	eval("ppacmd", "addlan", "-i", "br0");
+	eval("ppacmd", "setbr", "-f", "0");
+#endif
 	// bring up and configure LAN interface
 #ifdef RTCONFIG_DHCP_OVERRIDE
 #ifdef RTCONFIG_REALTEK

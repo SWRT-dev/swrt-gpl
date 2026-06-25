@@ -192,7 +192,7 @@ _wave_get_beacon_data_length(beacon_template_t *tmpl, int *part1_len, int *part2
 
     if (pos > last_pos)
     {
-      ELOG_D("Wrong IE length %d", ie_len);
+      //ELOG_D("Wrong IE length %d", ie_len);
       result = FALSE;
       break;
     }
@@ -211,7 +211,7 @@ _wave_get_beacon_data_length(beacon_template_t *tmpl, int *part1_len, int *part2
       break;
 #endif
     case IE_TIM:
-      ELOG_V("TIM IE must not be present in beacon template");
+      //ELOG_V("TIM IE must not be present in beacon template");
       /* Drop down */
     case IE_COUNTRY:
     case IE_FH_PATTRN_PARAMS:
@@ -231,7 +231,7 @@ _wave_get_beacon_data_length(beacon_template_t *tmpl, int *part1_len, int *part2
       *part3_len += ie_len;
       break;
     case IE_BSS_LOAD:
-      ELOG_V("BSS Load IE must not be present in beacon template");
+      //ELOG_V("BSS Load IE must not be present in beacon template");
       /* Drop down */
     case IE_EDCA_PARAM_SET:
     case IE_HT_CAPABILITIES:
@@ -318,7 +318,7 @@ static int _wave_beacon_man_template_push(mtlk_core_t *core, beacon_template_t *
   /* mtlk_dump(2, tmpl->ptr, tmpl->head_len + tmpl->tail_len, "dump of beacon template:"); */
 
   if (FALSE == _wave_get_beacon_data_length(tmpl, &part1_len, &part2_len, &part3_len, &part4_len, &part5_len)) {
-    ELOG_D("CID-%04x: Failed to parse template parts", oid);
+    //ELOG_D("CID-%04x: Failed to parse template parts", oid);
     return MTLK_ERR_PARAMS;
   }
 

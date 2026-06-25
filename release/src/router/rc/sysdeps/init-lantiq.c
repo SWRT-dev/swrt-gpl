@@ -55,7 +55,7 @@ static void __load_wifi_driver(int testmode)
 	eval("insmod", "/lib/modules/4.9.276/compat.ko");
 	eval("insmod", "/lib/modules/4.9.276/cfg80211.ko");
 	eval("insmod", "/lib/modules/4.9.276/mac80211.ko");
-	eval("insmod", "/lib/modules/4.9.276/mtlkroot.ko");
+	eval("insmod", "mtlkroot");
 	eval("rmmod", "mtlk");
 	eval("insmod", "mtlk", fastpath, "loggersid=255,255"/*, "ap=1,1", "ahb_off=1"*/);
 	setenv("PATH", "/bin:/sbin:/usr/bin:/usr/sbin:/opt/intel/sbin:/opt/intel/usr/sbin:/opt/intel/bin", 1);
@@ -107,7 +107,7 @@ static void __load_wifi_driver(int testmode)
 			fprintf(fp_wifi, "ifconfig %s hw ether %s\n", vphy, macaddr);
 			fprintf(fp_wifi, "ifconfig %s up\n", vphy);
 			fprintf(fp_wifi, "ifconfig %s down\n", vphy);
-			fprintf(fp_wifi, "ppacmd addlan -i %s", vphy);
+			//fprintf(fp_wifi, "ppacmd addlan -i %s", vphy);
 		}
 
 		fclose(fp_wifi);
@@ -259,7 +259,11 @@ void init_others(void)
 #if !defined(K3C)
 	system("ppacmd addlan -i eth0_4");
 #endif
-	system("ppacmd addlan -i br0");
+	//system("ppacmd addlan -i br0");
+	if(repeater_mode() || mediabridge_mode() || access_point_mode())
+		eval("ppacmd", "control", "--enable-lan --disable-wan");
+	else
+		eval("ppacmd", "control", "--enable-lan --enable-wan");
 	doSystem("ethtool -K eth1 gro off\n");
 #if defined(RTCONFIG_AMAS)
 	if(!aimesh_re_mode())
@@ -417,6 +421,51 @@ void set_uuid(void)
 	}
 }
 
+static void update_l2nat(int action, char *wif)
+{
+	char buf[128] = {0};
+	f_read_string("/proc/l2nat/dev", buf, sizeof(buf));
+	if(action && strlen(buf) < 10){
+		snprintf(buf, sizeof(buf), "%s %s", "add", wif);
+		f_write_string("/proc/l2nat/dev", buf, 0, 0);
+	}else if(action == 0 && strstr(buf, "aging_timeout")){//sw_mode() != SW_MODE_REPEATER when rp to others
+		snprintf(buf, sizeof(buf), "%s %s", "del", wif);
+		f_write_string("/proc/l2nat/dev", buf, 0, 0);
+	}
+}
+
+static void update_ppacmd(int action, char *wif)
+{
+	char buf[256] = {0};
+	snprintf(buf, sizeof(buf), "ppacmd %s > %s", "getlan", "/tmp/ppacmdlan");
+	doSystem(buf);
+	snprintf(buf, sizeof(buf), "ppacmd %s > %s", "getwan", "/tmp/ppacmdwan");
+	doSystem(buf);
+	if(action){
+#if defined(RTCONFIG_WISP)
+		if(wisp_mode() && !strncmp(wif, "sta", 3)){
+			f_read_string("/tmp/ppacmdwan", buf, sizeof(buf));
+			if(!strstr(buf, wif))
+				eval("ppacmd", "addwan", "-i", wif);
+		}else
+#endif
+		{
+			f_read_string("/tmp/ppacmdlan", buf, sizeof(buf));
+			if(!strstr(buf, wif))
+				eval("ppacmd", "addlan", "-i", wif);
+		}
+	}else if(action == 0){
+		f_read_string("/tmp/ppacmdlan", buf, sizeof(buf));
+		if(strstr(buf, wif))
+			eval("ppacmd", "dellan", "-i", wif);
+		f_read_string("/tmp/ppacmdwan", buf, sizeof(buf));
+		if(strstr(buf, wif))
+			eval("ppacmd", "delwan", "-i", wif);
+	}
+	unlink("/tmp/ppacmdlan");
+	unlink("/tmp/ppacmdwan");
+}
+
 /**
  * Down all VAP interfaces, kill all related hostapd instance and
  * delete VAP interface if @unregister_vap is true.
@@ -443,6 +492,7 @@ void deinit_all_vaps(const int unregister_vap)
 				unlink(hconf_path);
 			if (!iface_exist(wif))
 				continue;
+			update_ppacmd(0, wif);
 			ifconfig(wif, 0, NULL, NULL);
 		}
 	}
@@ -482,13 +532,6 @@ int rebuild_main_vap(void)
 	}
 
 	return 0;
-}
-
-static void update_l2nat(int action, char *wif)
-{
-	char cmd[128];
-	snprintf(cmd, sizeof(cmd), "echo \"%s %s\" > /proc/l2nat/dev", action ? "add" : "del", wif);
-	system(cmd);
 }
 
 static int create_node=0;
@@ -552,7 +595,7 @@ void init_wl(void)
 						ether_etoa(mac_binary, macaddr);
 					}
 					set_hwaddr(ifname, macaddr);
-					eval("ppacmd", "addlan", "-i", ifname);
+					//eval("ppacmd", "addlan", "-i", ifname);
 					sleep(1);
 #ifdef RTCONFIG_WIRELESSREPEATER
 #if defined(RTCONFIG_REPEATER_STAALLBAND)
@@ -565,8 +608,6 @@ void init_wl(void)
 						mac_binary[5] += 0xb;
 						ether_etoa(mac_binary, macaddr);
 						set_hwaddr(get_staifname(wlc_band), macaddr);
-						eval("ppacmd", "addlan", "-i", get_staifname(wlc_band));
-						//update_l2nat(1, get_staifname(wlc_band));
 						sleep(1);
 					}
 #endif
@@ -592,13 +633,6 @@ void init_wl(void)
 			mac_binary[5] += 0xb;
 			ether_etoa(mac_binary, macaddr);
 			set_hwaddr(get_staifname(wlc_band), macaddr);
-#if defined(RTCONFIG_WISP)
-			if(wisp_mode())
-				eval("ppacmd", "addwan", "-i", get_staifname(wlc_band));
-			else
-#endif
-				eval("ppacmd", "addlan", "-i", get_staifname(wlc_band));
-			//update_l2nat(1, get_staifname(wlc_band));
 		}
 #endif
 #endif
@@ -645,22 +679,16 @@ void fini_wl(void)
 		if (!iface_exist(ifname))
 			continue;
 
-		ifconfig(ifname, 0, NULL, NULL);
-#if defined(RTCONFIG_WISP)
-		if(wisp_mode() && nvram_get_int("wlc_band") == i)
-			eval("ppacmd", "delwan", "-i", ifname);
-		else
-#endif
-			eval("ppacmd", "dellan", "-i", ifname);
+		update_ppacmd(0, ifname);
 		update_l2nat(0, ifname);
-
+		ifconfig(ifname, 0, NULL, NULL);
 		destroy_vap(ifname);
 	}
 	//destroy vphy wlan0&wlan2
-	ifconfig(get_vphyifname(0), 0, NULL, NULL);
-	ifconfig(get_vphyifname(1), 0, NULL, NULL);
 	eval("ppacmd", "dellan", "-i", get_vphyifname(0));
 	eval("ppacmd", "dellan", "-i", get_vphyifname(1));
+	ifconfig(get_vphyifname(0), 0, NULL, NULL);
+	ifconfig(get_vphyifname(1), 0, NULL, NULL);
 	eval("iw", get_vphyifname(0), "del");
 	eval("iw", get_vphyifname(1), "del");
 	create_node=0;

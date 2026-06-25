@@ -31296,7 +31296,7 @@ static int ej_netdev(int eid, webs_t wp, int argc, char_t **argv)
 	char *nv_lan_ifname = NULL;
 	char *nv_lan_ifnames = NULL;
 #ifdef RTCONFIG_LANTIQ
-	char ifname_buf[10];
+	//char ifname_buf[10];
 #endif
 	struct desc_sum_s {
 		const int exact;

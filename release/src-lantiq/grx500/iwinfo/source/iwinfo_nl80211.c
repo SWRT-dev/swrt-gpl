@@ -918,7 +918,7 @@ static int __nl80211_hostapd_query(const char *ifname, ...)
 		return 0;
 
 #if defined(SWRT_PATCH)
-	snprintf(buf, sizeof(buf), "/etc/Wireless/conf/hostapd-%s.conf", ifname);
+	snprintf(buf, sizeof(buf), "/etc/Wireless/conf/hostapd_%s.conf", ifname);
 #else
 	snprintf(buf, sizeof(buf), "/var/run/hostapd-%s.conf", phy);
 #endif
@@ -1015,8 +1015,13 @@ static int nl80211_wpactl_connect(const char *ifname, struct sockaddr_un *local)
 		return sock;
 
 	remote.sun_family = AF_UNIX;
+#if defined(SWRT_PATCH)
+	remote_length = sizeof(remote.sun_family) +
+		sprintf(remote.sun_path, "/var/run/wpa_supplicant-%s", ifname);
+#else
 	remote_length = sizeof(remote.sun_family) +
 		sprintf(remote.sun_path, "/var/run/wpa_supplicant/%s", ifname);
+#endif
 
 	/* Set client socket file permissions so that bind() creates the client
 	* socket with these permissions and there is no need to try to change

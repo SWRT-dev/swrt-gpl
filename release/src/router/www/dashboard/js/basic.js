@@ -315,6 +315,13 @@ if(!isSupport("vpnc")){
         return (item.url != "vpnc");
     });
 }
+if(!isSupport("mtlancfg")){
+    menuList.forEach(function(item){
+        if(item.url === "sdn"){
+            item.url = "guestnetwork";
+        }
+    });
+}
 
 if(system.currentOPMode.id != "RT"){
 	var menuList = [
@@ -401,6 +408,13 @@ if(system.currentOPMode.id != "RT"){
 	if (!isSupport('entware')){
 		menuList = menuList.filter(function(item, index, array){
 			return (item.url != "entware");
+		});
+	}
+	if(!isSupport("mtlancfg")){
+		menuList.forEach(function(item){
+			if(item.url === "sdn"){
+				item.url = "guestnetwork";
+			}
 		});
 	}
 }

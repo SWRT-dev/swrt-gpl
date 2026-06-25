@@ -2707,31 +2707,32 @@ function show_popup_Wizard_Setting(_type){
 				"type_2":"text", "id_2":"bw_ul", "maxlength_2":12, "need_check_2":true};
 			Get_Component_Bandwidth_Setting(bw_parm).attr({"data-group":"wifi_settings"}).hide().appendTo($more_config_cntr);
 		}
-
-		let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
-		Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
-			e = e || event;
-			e.stopPropagation();
-			const $profile_setting = $(this).closest(".profile_setting");
-			$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
-			Set_AiMesh_List_CB(
-				$profile_setting.find("[data-container=AiMesh_List]"),
-				$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
-			);
-			if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
-				if($(this).hasClass("off")){
-					const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
-					$profile_setting.find("#adguard_enable_container").show();
-					if(adguard_enable)
-						$profile_setting.find("#container_adguard").show();
+		if(amesh_support){
+			let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
+			Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				const $profile_setting = $(this).closest(".profile_setting");
+				$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
+				Set_AiMesh_List_CB(
+					$profile_setting.find("[data-container=AiMesh_List]"),
+					$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
+				);
+				if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
+					if($(this).hasClass("off")){
+						const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
+						$profile_setting.find("#adguard_enable_container").show();
+						if(adguard_enable)
+							$profile_setting.find("#container_adguard").show();
+					}
+					else{
+						$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+					}
 				}
-				else{
-					$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
-				}
-			}
-			_set_apply_btn_status($profile_setting);
-			resize_iframe_height();
-		});
+				_set_apply_btn_status($profile_setting);
+				resize_iframe_height();
+			});
+		}
 
 		if(support_adguard_dns && !is_QIS_flow){
 			let wizard_adguard_parm = {"title":`AdGuard`, "type":"switch", "id":"adguard_enable", "set_value":"off", "container_id":"adguard_enable_container"};
@@ -3172,39 +3173,41 @@ function show_popup_Wizard_Setting(_type){
 			}
 		}
 
-		let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
-		Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
-			e = e || event;
-			e.stopPropagation();
-			const $profile_setting = $(this).closest(".profile_setting");
-			$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
-			Set_AiMesh_List_CB(
-				$profile_setting.find("[data-container=AiMesh_List]"),
-				$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
-			);
-			if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
-				if($(this).hasClass("off")){
-					const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
-					$profile_setting.find("#adguard_enable_container").show();
-					if(adguard_enable)
-						$profile_setting.find("#container_adguard").show();
+		if(amesh_support){
+			let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
+			Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				const $profile_setting = $(this).closest(".profile_setting");
+				$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
+				Set_AiMesh_List_CB(
+					$profile_setting.find("[data-container=AiMesh_List]"),
+					$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
+				);
+				if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
+					if($(this).hasClass("off")){
+						const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
+						$profile_setting.find("#adguard_enable_container").show();
+						if(adguard_enable)
+							$profile_setting.find("#container_adguard").show();
+					}
+					else{
+						$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+					}
 				}
-				else{
-					$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+				if(get_cp_type_support("4")){
+					if($(this).hasClass("off")){
+						const portal_type = $profile_setting.find("#portal_type_container").show().find("#select_portal_type").children(".selected").attr("value");
+						$profile_setting.find("[data-portal-type]").hide().filter("[data-portal-type='"+portal_type+"']").show();
+					}
+					else{
+						$profile_setting.find("#portal_type_container, [data-portal-type]").hide();
+					}
 				}
-			}
-			if(get_cp_type_support("4")){
-				if($(this).hasClass("off")){
-					const portal_type = $profile_setting.find("#portal_type_container").show().find("#select_portal_type").children(".selected").attr("value");
-					$profile_setting.find("[data-portal-type]").hide().filter("[data-portal-type='"+portal_type+"']").show();
-				}
-				else{
-					$profile_setting.find("#portal_type_container, [data-portal-type]").hide();
-				}
-			}
-			_set_apply_btn_status($profile_setting);
-			resize_iframe_height();
-		});
+				_set_apply_btn_status($profile_setting);
+				resize_iframe_height();
+			});
+		}
 
 		var $action_container = $("<div>").addClass("action_container").appendTo($content_container);
 		$("<div>").addClass("btn_container apply").html("<#CTL_apply#>").appendTo($action_container);
@@ -3546,30 +3549,32 @@ function show_popup_Wizard_Setting(_type){
 			"type_2":"text", "id_2":"bw_ul", "maxlength_2":12, "need_check_2":true};
 		Get_Component_Bandwidth_Setting(bw_parm).attr({"data-group":"wifi_settings"}).hide().appendTo($more_config_cntr);
 
-		let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
-		Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
-			e = e || event;
-			e.stopPropagation();
-			const $profile_setting = $(this).closest(".profile_setting");
-			$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
-			Set_AiMesh_List_CB(
-				$profile_setting.find("[data-container=AiMesh_List]"),
-				$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
-			);
-			if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
-				if($(this).hasClass("off")){
-					const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
-					$profile_setting.find("#adguard_enable_container").show();
-					if(adguard_enable)
-						$profile_setting.find("#container_adguard").show();
+		if(amesh_support){
+			let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
+			Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				const $profile_setting = $(this).closest(".profile_setting");
+				$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
+				Set_AiMesh_List_CB(
+					$profile_setting.find("[data-container=AiMesh_List]"),
+					$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
+				);
+				if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
+					if($(this).hasClass("off")){
+						const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
+						$profile_setting.find("#adguard_enable_container").show();
+						if(adguard_enable)
+							$profile_setting.find("#container_adguard").show();
+					}
+					else{
+						$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+					}
 				}
-				else{
-					$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
-				}
-			}
-			_set_apply_btn_status($profile_setting);
-			resize_iframe_height();
-		});
+				_set_apply_btn_status($profile_setting);
+				resize_iframe_height();
+			});
+		}
 
 		if(support_adguard_dns && !is_QIS_flow){
 			let wizard_adguard_parm = {"title":`AdGuard`, "type":"switch", "id":"adguard_enable", "set_value":"off", "container_id":"adguard_enable_container"};
@@ -3785,30 +3790,32 @@ function show_popup_Wizard_Setting(_type){
 			});
 		$("<div>").attr({"id":"sdn_pwd_strength", "data-group":"wifi_settings"}).append(Get_Component_PWD_Strength_Meter()).appendTo($content_container).hide();
 
-		let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":"on"};
-		Get_Component_Switch(use_main_subnet_parm).appendTo($content_container).find("#" + use_main_subnet_parm.id + "").click(function(e){
-			e = e || event;
-			e.stopPropagation();
-			const $profile_setting = $(this).closest(".profile_setting");
-			$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
-			Set_AiMesh_List_CB(
-				$profile_setting.find("[data-container=AiMesh_List]"),
-				$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
-			);
-			if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
-				if($(this).hasClass("off")){
-					const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
-					$profile_setting.find("#adguard_enable_container").show();
-					if(adguard_enable)
-						$profile_setting.find("#container_adguard").show();
+		if(amesh_support){
+			let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":"on"};
+			Get_Component_Switch(use_main_subnet_parm).appendTo($content_container).find("#" + use_main_subnet_parm.id + "").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				const $profile_setting = $(this).closest(".profile_setting");
+				$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
+				Set_AiMesh_List_CB(
+					$profile_setting.find("[data-container=AiMesh_List]"),
+					$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
+				);
+				if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
+					if($(this).hasClass("off")){
+						const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
+						$profile_setting.find("#adguard_enable_container").show();
+						if(adguard_enable)
+							$profile_setting.find("#container_adguard").show();
+					}
+					else{
+						$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+					}
 				}
-				else{
-					$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
-				}
-			}
-			_set_apply_btn_status($profile_setting);
-			resize_iframe_height();
-		});
+				_set_apply_btn_status($profile_setting);
+				resize_iframe_height();
+			});
+		}
 
 		var more_config_parm = {"title":"<#MoreConfig#>", "id":"more_config", "slide_target":"more_config_cntr"};
 		Get_Component_Slide_Title(more_config_parm).appendTo($content_container);
@@ -4292,30 +4299,32 @@ function show_popup_Wizard_Setting(_type){
 			Get_Component_Bandwidth_Setting(bw_parm).attr({"data-group":"wifi_settings"}).hide().appendTo($more_config_cntr);
 		}
 
-		let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
-		Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
-			e = e || event;
-			e.stopPropagation();
-			const $profile_setting = $(this).closest(".profile_setting");
-			$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
-			Set_AiMesh_List_CB(
-				$profile_setting.find("[data-container=AiMesh_List]"),
-				$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
-			);
-			if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
-				if($(this).hasClass("off")){
-					const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
-					$profile_setting.find("#adguard_enable_container").show();
-					if(adguard_enable)
-						$profile_setting.find("#container_adguard").show();
+		if(amesh_support){
+			let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
+			Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				const $profile_setting = $(this).closest(".profile_setting");
+				$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
+				Set_AiMesh_List_CB(
+					$profile_setting.find("[data-container=AiMesh_List]"),
+					$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
+				);
+				if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
+					if($(this).hasClass("off")){
+						const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
+						$profile_setting.find("#adguard_enable_container").show();
+						if(adguard_enable)
+							$profile_setting.find("#container_adguard").show();
+					}
+					else{
+						$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+					}
 				}
-				else{
-					$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
-				}
-			}
-			_set_apply_btn_status($profile_setting);
-			resize_iframe_height();
-		});
+				_set_apply_btn_status($profile_setting);
+				resize_iframe_height();
+			});
+		}
 
 		if(support_adguard_dns && !is_QIS_flow){
 			let wizard_adguard_parm = {"title":`AdGuard`, "type":"switch", "id":"adguard_enable", "set_value":"off", "container_id":"adguard_enable_container"};
@@ -4654,30 +4663,32 @@ function show_popup_Wizard_Setting(_type){
 			}
 		}
 
-		let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
-		Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
-			e = e || event;
-			e.stopPropagation();
-			const $profile_setting = $(this).closest(".profile_setting");
-			$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
-			Set_AiMesh_List_CB(
-				$profile_setting.find("[data-container=AiMesh_List]"),
-				$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
-			);
-			if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
-				if($(this).hasClass("off")){
-					const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
-					$profile_setting.find("#adguard_enable_container").show();
-					if(adguard_enable)
-						$profile_setting.find("#container_adguard").show();
+		if(amesh_support){
+			let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
+			Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
+				e = e || event;
+				e.stopPropagation();
+				const $profile_setting = $(this).closest(".profile_setting");
+				$profile_setting.find("[data-container=AiMesh_List]").next(".validate_hint").remove();
+				Set_AiMesh_List_CB(
+					$profile_setting.find("[data-container=AiMesh_List]"),
+					$profile_setting.find("#select_wifi_band").children(".selected").attr("value")
+				);
+				if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
+					if($(this).hasClass("off")){
+						const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
+						$profile_setting.find("#adguard_enable_container").show();
+						if(adguard_enable)
+							$profile_setting.find("#container_adguard").show();
+					}
+					else{
+						$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+					}
 				}
-				else{
-					$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
-				}
-			}
-			_set_apply_btn_status($profile_setting);
-			resize_iframe_height();
-		});
+				_set_apply_btn_status($profile_setting);
+				resize_iframe_height();
+			});
+		}
 
 		var $action_container = $("<div>").addClass("action_container").appendTo($content_container);
 		$("<div>").addClass("btn_container apply").html("<#CTL_apply#>").appendTo($action_container);
@@ -5811,25 +5822,27 @@ function Get_Wizard_MLO(view_mode){
 		Get_Component_Bandwidth_Setting(bw_parm).attr({"data-group":"wifi_settings"}).hide().appendTo($more_config_cntr);
 	}
 
-	let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
-	Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
-		e = e || event;
-		e.stopPropagation();
-		const $profile_setting = $(this).closest(".profile_setting");
-		if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
-			if($(this).hasClass("off")){
-				const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
-				$profile_setting.find("#adguard_enable_container").show();
-				if(adguard_enable)
-					$profile_setting.find("#container_adguard").show();
+	if(amesh_support){
+		let use_main_subnet_parm = {"title":`<#GuestNetwork_subnet_as_main#>`, "type":"switch", "id":"use_main_subnet", "set_value":isSwMode("ap") ? "on" : "off"};
+		Get_Component_Switch(use_main_subnet_parm).appendTo($more_config_cntr).find("#" + use_main_subnet_parm.id + "").click(function(e){
+			e = e || event;
+			e.stopPropagation();
+			const $profile_setting = $(this).closest(".profile_setting");
+			if(support_adguard_dns && $profile_setting.find("#adguard_enable").length > 0){
+				if($(this).hasClass("off")){
+					const adguard_enable = $profile_setting.find("#adguard_enable").hasClass("on");
+					$profile_setting.find("#adguard_enable_container").show();
+					if(adguard_enable)
+						$profile_setting.find("#container_adguard").show();
+				}
+				else{
+					$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
+				}
 			}
-			else{
-				$profile_setting.find("#adguard_enable_container, #container_adguard").hide();
-			}
-		}
-		_set_apply_btn_status($profile_setting);
-		resize_iframe_height();
-	});
+			_set_apply_btn_status($profile_setting);
+			resize_iframe_height();
+		});
+	}
 
 	if(support_adguard_dns && !is_QIS_flow){
 		let wizard_adguard_parm = {"title":`AdGuard`, "type":"switch", "id":"adguard_enable", "set_value":"off", "container_id":"adguard_enable_container"};
@@ -12477,16 +12490,18 @@ function Set_AiMesh_List_CB(_obj, _sel_wifi_bnad){
 		}
 		return result;
 	})();
-	const use_main_subnet = (()=>{
-		//check use_main_subnet for new mode, check vlan_id for edit mode
-		const is_edit_mode = ($(_obj).closest(".profile_setting").attr("data-profile-mode") == "edit") ? true : false;
-		if(is_edit_mode){
-			return ($(_obj).closest(".profile_setting").find("#vlan_id").length == 0) ? true : false;
-		}
-		else{
-			return ($(_obj).closest(".profile_setting").find("#use_main_subnet").hasClass("on")) ? true : false;
-		}
-	})();
+	if(amesh_support){
+		const use_main_subnet = (()=>{
+			//check use_main_subnet for new mode, check vlan_id for edit mode
+			const is_edit_mode = ($(_obj).closest(".profile_setting").attr("data-profile-mode") == "edit") ? true : false;
+			if(is_edit_mode){
+				return ($(_obj).closest(".profile_setting").find("#vlan_id").length == 0) ? true : false;
+			}
+			else{
+				return ($(_obj).closest(".profile_setting").find("#use_main_subnet").hasClass("on")) ? true : false;
+			}
+		})();
+	}
 	Object.keys(aimesh_wifi_band_info).forEach(function(dut_mac){
 		let band_2G_is_full = aimesh_wifi_band_full.node[dut_mac].band_2G;
 		let band_5G_is_full = aimesh_wifi_band_full.node[dut_mac].band_5G;

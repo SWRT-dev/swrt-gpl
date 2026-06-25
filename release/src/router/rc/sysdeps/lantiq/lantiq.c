@@ -1049,11 +1049,11 @@ next_mrate:
 			fprintf(fp, "sleep %d\n", 5);
 			fprintf(fp, "/usr/bin/wpa_cli -p /var/run/wpa_supplicant-%s -i %s enable_network all&\n", sta, sta);
 #ifdef RTCONFIG_AMAS
-			if(!aimesh_re_node())
+			//if(!aimesh_re_node())
 #elif defined(RTCONFIG_WISP)
-			if(!wisp_mode())
+			//if(!wisp_mode())
 #endif
-				fprintf(fp, "/sbin/delay_exec 45 echo \"add %s\" > /proc/l2nat/dev\n", sta);
+				//fprintf(fp, "/sbin/delay_exec 45 echo \"add %s\" > /proc/l2nat/dev\n", sta);
 			fclose(fp);
 		}
 	}
@@ -1777,6 +1777,19 @@ int gen_lantiq_config(int band, int subnet)
 	}
 #endif	/* RTCONFIG_WIRELESSREPEATER */
 
+	fprintf(fp3, "ppacmd addlan -i %s\n", wif);
+#ifdef RTCONFIG_WIRELESSREPEATER
+#if defined(RTCONFIG_WISP)
+	if(wisp_mode() && wlc_band == band && subnet == 0)
+		fprintf(fp3, "ppacmd addwan -i %s\n", get_staifname(wlc_band));
+	else
+#endif
+	if (sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "") && subnet == 0){
+		fprintf(fp3, "ppacmd addlan -i %s\n", get_staifname(wlc_band));
+		fprintf(fp3, "echo \"add %s\" > /proc/l2nat/dev\n", get_staifname(wlc_band));
+		fprintf(fp3, "echo enable > /proc/ppa/api/bridged_flow_learning");
+	}
+#endif
 #ifdef RTCONFIG_AMAS
 	if (!aimesh_re_node() && !nvram_pf_get_int(main_prefix, "radio"))
 		nvram_pf_set(main_prefix, "radio", "1");
@@ -3924,7 +3937,7 @@ enum {
 
 void set_pre_sysdep_config(int iftype)
 {
-	char word[256], *next = NULL, cmd[64], ifnames[128];
+	char word[16], *next = NULL, cmd[64], ifnames[128];
 	memset(cmd, 0, sizeof(cmd));
 	strcpy(ifnames, nvram_safe_get("sta_phy_ifnames"));
 	foreach(word, ifnames, next) {
@@ -3940,7 +3953,7 @@ void set_pre_sysdep_config(int iftype)
 
 void set_post_sysdep_config(int iftype)
 {
-	char word[256], *next = NULL, cmd[64], ifnames[128];
+	char word[16], *next = NULL, cmd[64], ifnames[128];
 	int result, i;
 	memset(cmd, 0, sizeof(cmd));
 	if(iftype == IFTYPE_WAN){

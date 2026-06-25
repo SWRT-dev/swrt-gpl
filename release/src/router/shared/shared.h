@@ -1875,7 +1875,7 @@ static inline int __absent_band(enum wl_band_id band)
 {
 	if (band < 0 || band >= WL_NR_BANDS)
 		return 1;
-#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA)
+#if defined(RTCONFIG_RALINK) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ)
 	if (band >= MAX_NR_WL_IF)
 		return 1;
 #if !defined(RTCONFIG_HAS_5G)
