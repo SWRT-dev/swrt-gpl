@@ -791,7 +791,6 @@ void do_entware_cgi(char *url, FILE *stream){
 	char arg[128], buf[128];
 	struct dirent **dl;
 	FILE *fp;
-	char *pwrite;
 	int i, n, ent_act = 0;
 
 	do_json_decode(&root);

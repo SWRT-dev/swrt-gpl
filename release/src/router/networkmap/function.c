@@ -254,11 +254,11 @@ int check_wrieless_mlo(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, cons
 				if(!strcmp(key2, macaddr)){
 					if(strstr(key2, "2G"))
 						bandtype = 1;
-					else if(strstr(key2, "5G1"))
+					else if(strstr(key2, "5G2"))
 						bandtype = 3;
 					else if(strstr(key2, "5G"))
 						bandtype = 2;
-					else if(strstr(key2, "6G1"))
+					else if(strstr(key2, "6G2"))
 						bandtype = 5;
 					else if(strstr(key2, "6G"))
 						bandtype = 4;

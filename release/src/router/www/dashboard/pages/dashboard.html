@@ -2388,7 +2388,8 @@
                     for (let item of Object.values(system.client.detail)) {
                         if (item.is_wireless > 0) {
                             let display_name = (item.nickName !== '') ? item.nickName : (item.name !== '') ? item.name : item.mac;
-                            if (checked === "D" && item.amesh_isReClient === "1") {
+                            //if (checked === "D" && item.amesh_isReClient === "1") {
+                            if (checked === "D") {
                                 code += `<option value="${item.mac}">${display_name}</option>`;
                             }
                         }

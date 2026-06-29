@@ -527,11 +527,11 @@ int check_wrieless_info(P_CLIENT_DETAIL_INFO_TABLE p_client_detail_info_tab, con
 			json_object_object_foreach(val, key2, val2){
 				if(strstr(key2, "2G"))
 					wireless = 1;
-				else if(strstr(key2, "5G1"))
+				else if(strstr(key2, "5G2"))
 					wireless = 3;
 				else if(strstr(key2, "5G"))
 					wireless = 2;
-				else if(strstr(key2, "6G1"))
+				else if(strstr(key2, "6G2"))
 					wireless = 5;
 				else if(strstr(key2, "6G"))
 					wireless = 4;

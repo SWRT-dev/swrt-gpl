@@ -143,6 +143,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					if(memcmp(p_client_tab->mac_addr[i], tmp->mac_addr, sizeof(p_client_tab->mac_addr[0])))
 						continue;
 					p_client_tab->wireless[i] = tmp->wireless;
+					p_client_tab->is_wireless[i] = tmp->wireless;
 					strlcpy(p_client_tab->txrate[i], tmp->txrate, sizeof(p_client_tab->txrate[0]));
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					p_client_tab->rssi[i] = tmp->rssi;
@@ -183,6 +184,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					if(tmp == NULL)
 						continue;
 					p_client_tab->wireless[i] = tmp->wireless;
+					p_client_tab->is_wireless[i] = tmp->wireless;
 					strlcpy(p_client_tab->txrate[i], tmp->txrate, sizeof(p_client_tab->txrate[0]));
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
