@@ -12,11 +12,14 @@ install:
 	[ -d $(INSTALLDIR)/usr/lib ] || install -d $(INSTALLDIR)/usr/lib
 ifneq ($(wildcard source/Makefile),)
 	install -m 755 $(PKG_BUILD_DIR)/swrtmesh $(INSTALLDIR)/usr/sbin/
+	install -m 755 $(PKG_BUILD_DIR)/swrtmeshd $(INSTALLDIR)/usr/sbin/
 	install -m 755 $(PKG_BUILD_DIR)/libswrtmesh.so $(INSTALLDIR)/usr/lib/
 	$(STRIP) $(INSTALLDIR)/usr/sbin/swrtmesh
+	$(STRIP) $(INSTALLDIR)/usr/sbin/swrtmeshd
 	$(STRIP) $(INSTALLDIR)/usr/lib/libswrtmesh.so
 else
 	install -m 755 prebuilt/$(BUILD_NAME)/swrtmesh $(INSTALLDIR)/usr/sbin/
+	install -m 755 prebuilt/$(BUILD_NAME)/swrtmeshd $(INSTALLDIR)/usr/sbin/
 	install -m 755 prebuilt/$(BUILD_NAME)/libswrtmesh.so $(INSTALLDIR)/usr/lib/
 endif
 
@@ -28,9 +31,15 @@ endif
 
 stage:
 ifneq ($(wildcard source/Makefile),)
+	install -m 644 $(PKG_BUILD_DIR)/cfg_param.h $(STAGEDIR)/usr/include/
+	install -m 644 $(PKG_BUILD_DIR)/cfg_slavelist.h $(STAGEDIR)/usr/include/
+	install -m 644 $(PKG_BUILD_DIR)/swrtmeshd.h $(STAGEDIR)/usr/include/
 	install -m 644 $(PKG_BUILD_DIR)/swrtmesh-utils.h $(STAGEDIR)/usr/include/
 	install -m 644 $(PKG_BUILD_DIR)/libswrtmesh.so $(STAGEDIR)/usr/lib
 else
+	install -m 644 prebuilt/cfg_param.h $(STAGEDIR)/usr/include/
+	install -m 644 prebuilt/cfg_slavelist.h $(STAGEDIR)/usr/include/
+	install -m 644 prebuilt/swrtmeshd.h $(STAGEDIR)/usr/include/
 	install -m 644 prebuilt/swrtmesh-utils.h $(STAGEDIR)/usr/include/
 	install -m 644 prebuilt/$(BUILD_NAME)/libswrtmesh.so $(STAGEDIR)/usr/lib
 endif

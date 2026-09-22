@@ -155,9 +155,9 @@ var menuList = [
 	},
 
 	{
-		name: `AiMesh`,
+		name: `SwrtMesh`,
 		icon: "icon-network",
-		url: "aimesh",
+		url: "swrtmesh",
 		clicked: false,
 		divide: false,
 	},
@@ -292,9 +292,9 @@ if (!isSupport('entware')){
         return (item.url != "entware");
     });
 }
-if (!isSupport('amas')){
+if (!isSupport('swrtmesh')){
     menuList = menuList.filter(function(item, index, array){
-        return (item.url != "aimesh");
+        return (item.url != "swrtmesh");
     });
 }
 
@@ -340,9 +340,9 @@ if(system.currentOPMode.id != "RT"){
 			divide: false,
 		},
 		{
-			name: `AiMesh`,
+			name: `SwrtMesh`,
 			icon: "icon-network",
-			url: "aimesh",
+			url: "swrtmesh",
 			clicked: false,
 			divide: false,
 		},
@@ -392,12 +392,12 @@ if(system.currentOPMode.id != "RT"){
 
 	if(system.currentOPMode.id != "AP"){
 		menuList = menuList.filter(function(item, index, array){
-			return (item.url != "aimesh");
+			return (item.url != "swrtmesh");
 		});
 	}
-	if (!isSupport('amas')){
+	if (!isSupport('swrtmesh')){
 		menuList = menuList.filter(function(item, index, array){
-			return (item.url != "aimesh");
+			return (item.url != "swrtmesh");
 		});
 	}
 	if (!isSupport('softcenter') || '<% nvram_get("sc_installed"); %>' != '1'){

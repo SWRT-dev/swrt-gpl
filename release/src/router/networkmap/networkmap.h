@@ -255,6 +255,7 @@ typedef struct {
 	unsigned char	is_wireless[MAX_NR_CLIENT_LIST];
 	int        		conn_ts[MAX_NR_CLIENT_LIST];		// connect  timestamp
 	int        		offline_time[MAX_NR_CLIENT_LIST];
+	char		pap_mac[MAX_NR_CLIENT_LIST][18];
 /* wireless log information
 */
 #ifdef RTCONFIG_LANTIQ

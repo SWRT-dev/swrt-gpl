@@ -5,22 +5,6 @@
 #include <pthread.h>
 
 #define DIAG_MAX_USB_HUB_PORT 6
-#define DIAG_MAX_MOCA_DEVICES 1
-
-#define DIAG_MAX_MOCA_NODES 16
-#define DIAG_MAX_MOCA_NUM_CHANNELS	5
-
-typedef struct _DIAG_MOCA_NODE_INFO
-{
-	int active;
-	int node_id;
-	char macaddr[18];
-	char moca_ver[8];
-	int phyrate[DIAG_MAX_MOCA_NODES];
-	char node_mac[DIAG_MAX_MOCA_NODES][18];
-	char node_moca_ver[DIAG_MAX_MOCA_NODES][8];
-	unsigned char rx_snr[DIAG_MAX_MOCA_NODES][DIAG_MAX_MOCA_NUM_CHANNELS];
-}DIAG_MOCA_NODE_INFO;
 
 struct swrt_eth_port {
 	char label_name[8];
@@ -37,13 +21,11 @@ struct swrt_eth_port {
 	int orange;
 	int orange_len;
 	usb_device_info_t usb_devices[DIAG_MAX_USB_HUB_PORT];
-	//DIAG_MOCA_NODE_INFO moca_devices[DIAG_MAX_MOCA_DEVICES];
 	struct swrt_eth_port *next;
 	int cable_diag_triger_link_st;
 	time_t cmd_time;
 	int seq_no;
 	char ui_display[32];
-	//POE_INFO poe_info;
 	int phy_port_id;
 	int ext_port_id;
 	char ifname[32];
@@ -114,8 +96,64 @@ enum {
 	DB_IPERF_CLIENT,
 	DB_WLC_EVENT,
 	DB_WIFI_CBP,
-        DB_PORT_STATUS_MOCA_CHANGE,
 	DB_MAX
+};
+
+enum {
+	//legacy,dont change
+	DIAGMODE_NONE = 0, 				//legacy,dont change
+	DIAGMODE_CHKSTA = 0x1,			//legacy,dont change
+	DIAGMODE_SYS_DETECT = 0x2,		//legacy,dont change
+	DIAGMODE_SYS_SETTING = 0x4,		//legacy,dont change
+	DIAGMODE_WIFI_DETECT = 0x8,		//legacy,dont change
+	DIAGMODE_WIFI_SETTING = 0x10,	//legacy,dont change
+	DIAGMODE_STAINFO = 0x20,		//legacy,dont change
+	DIAGMODE_NET_DETECT = 0x40,		//legacy,dont change
+	DIAGMODE_ETH_DETECT = 0x80,		//legacy,dont change
+	DIAGMODE_PORTINFO = 0x100,		//legacy,dont change
+	DIAGMODE_WIFI_DFS = 0x200,		//legacy,dont change
+	
+	//legacy,dont change
+
+	DIAGMODE_LEGACY_MAX = 0x0FFF,
+
+
+
+
+	//DIAGMODE_SITE_SURVEY = 0x400,
+	DIAGMODE_MODE = 0x1000,
+	DIAGMODE_STAINFO_STABLE = DIAGMODE_MODE+1,
+	//DIAGMODE_MODEXXX = DIAGMODE_MODE + x-;
+	DIAGMODE_ACTION = 0x2000,
+	DIAGMODE_ACTION_SITE_SURVEY 	= DIAGMODE_ACTION+1,
+	DIAGMODE_ACTION_SITE_SURVEY_2G 	= DIAGMODE_ACTION+2,
+	DIAGMODE_ACTION_SITE_SURVEY_5G1 = DIAGMODE_ACTION+3,
+	DIAGMODE_ACTION_SITE_SURVEY_5G2 = DIAGMODE_ACTION+4,
+	DIAGMODE_ACTION_CABLE_DIAG 		= DIAGMODE_ACTION+5,
+	DIAGMODE_ACTION_IPERF_SERVER	= DIAGMODE_ACTION+6,
+	DIAGMODE_ACTION_IPERF_CLIENT	= DIAGMODE_ACTION+7,
+	//DIAGMODE_ACTION
+	//DIAGMODE_ACTION
+	//DIAGMODE_ACTION
+	DIAGMODE_EVENT = 0x4000,
+	DIAGMODE_EVENT_CHANNEL_CHANGE 			= DIAGMODE_EVENT+1,
+	DIAGMODE_EVENT_PORT_STATUS_CHANGE 		= DIAGMODE_EVENT+2,
+	DIAGMODE_EVENT_ALL_CHAN_RADAR 			= DIAGMODE_EVENT+3,
+	DIAGMODE_EVENT_CHLIST_CHANGE 			= DIAGMODE_EVENT+4,
+	DIAGMODE_EVENT_PORT_STATUS_USB_CHANGE 	= DIAGMODE_EVENT+5,
+	DIAGMODE_EVENT_WLC 	                    = DIAGMODE_EVENT+6,
+	DIAGMODE_WIFI_CBP 	                    = DIAGMODE_EVENT+7,
+	DIAGMODE_EVENT_PORT_STATUS_MOCA_CHANGE  = DIAGMODE_EVENT+8,
+	//DIAGMODE_EVENT
+	//DIAGMODE_SITE_SURVEY_2G = 0x800, //need modify
+	//DIAGMODE_SITE_SURVEY_5G1 = 0x1000, //need modify
+	//DIAGMODE_SITE_SURVEY_5G2 = 0x2000, //need modify
+	//DIAGMODE_CHANNEL_CHANGE = 0x4000,
+	//DIAGMODE_PORT_STATUS_CHANGE = 0x8000,
+	//DIAGMODE_ALL_CHAN_RADAR = 0x10000,
+	//DIAGMODE_CHLIST_CHANGE = 0x20000,
+	DIAGMODE_MIX = 0xF000, // 0xF000, for indicating received pkt are mixed(multi-mode)
+	DIAGMODE_MAX
 };
 
 #define CABLEDIAG_STATUS_RUN -2
@@ -174,6 +212,14 @@ extern int get_eth_txrxbyte_avg(int is_bh,char *mac,double *txbyte,double *rxbyt
 extern int get_ethphy_txrxbyte_avg(int is_bh,char *mac,double *txbyte,double *rxbyte,int diff_range);
 extern int get_sta_txrxbyte_avg(char *sta_mac,char *mac,double *txbyte,double *rxbyte,int diff_range);
 extern int get_staphy_txrxbyte_avg(char *sta_mac,char *mac,double *txbyte,double *rxbyte,int diff_range);
+#elif defined(RTCONFIG_SWRTMESH)
+extern struct CONNDIAG_DB_t *find_db_profile_by_mode_and_version(int db_mode,char *version);
+extern struct CONNDIAG_DB_t *find_db_profile_by_type_and_version(int db_type,char *version);
+extern int get_wifi_txrxbyte_avg(char *bandmac,char *mac,double *txbyte,double *rxbyte,int diff_range);
+extern int get_eth_txrxbyte_avg(int is_bh,char *mac,double *txbyte,double *rxbyte,int diff_range);
+extern int get_ethphy_txrxbyte_avg(int is_bh,char *mac,double *txbyte,double *rxbyte,int diff_range);
+extern int get_sta_txrxbyte_avg(char *sta_mac,char *mac,double *txbyte,double *rxbyte,int diff_range);
+extern int get_staphy_txrxbyte_avg(char *sta_mac,char *mac,double *txbyte,double *rxbyte,int diff_range);
 #endif
 extern int exec_force_cable_diag(char *node_mac,char *label_name);
 extern int exec_wifi_dfs_diag(char *json_data);
@@ -181,6 +227,8 @@ extern int exec_wifi_dfs_diag(char *json_data);
 extern int exec_iperf(char* caller, char *server_mac,char *client_mac);
 #endif
 
+extern int get_node_eth_port_status(char *node_mac,char **buf);
+extern void free_node_eth_port_status(char **buf);
 extern int query_stainfo(char *sta_mac,char **buf);
 extern void free_stainfo(char **buf);
 

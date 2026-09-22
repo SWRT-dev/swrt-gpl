@@ -246,6 +246,7 @@ typedef unsigned long long u64;
 #include <comfw.h>
 #endif
 #if defined(RTCONFIG_SWRTMESH)
+#include <libswrt.h>
 #include <swrtmesh-utils.h>
 #endif
 
@@ -808,6 +809,8 @@ typedef enum AMAS_JSON_FORMAT_S
 	}
 static int get_client_bind_info(char *client_mac, char *node_mac, int node_mac_size, char *band_index, int band_index_size);
 #endif
+#elif defined(RTCONFIG_SWRTMESH)
+int get_swrtmesh_info(struct json_object *json_object_ptr);
 #endif
 
 static int
@@ -10418,6 +10421,9 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 	char node_mac[32]={0};
 	char band_index[4]={0};
 #endif
+#elif defined(RTCONFIG_SWRTMESH)
+	struct json_object *swrtmeshList = NULL;
+	int swrtmeshList_status = 0;
 #endif
 #ifdef RTCONFIG_MULTILAN_CFG
 	struct json_object *wirelessClientList = NULL, *wiredClientList = NULL;
@@ -10477,6 +10483,9 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 	wiredClientList = json_object_from_file(WIRED_CLIENT_LIST_JSON_PATH);
 	file_unlock(lock);
 #endif
+#elif defined(RTCONFIG_SWRTMESH)
+	swrtmeshList = json_object_new_object();
+	swrtmeshList_status = get_swrtmesh_info(swrtmeshList);
 #endif
 
 	// set check wireless offline
@@ -10867,7 +10876,66 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
                 json_object_object_add(client, "isOnline", json_object_new_string("1"));
                 json_object_array_add(macArray, json_object_new_string(mac_buf));
             }
+#elif defined(RTCONFIG_SWRTMESH)
+			if(is_amas_support()) {
+			if(swrtmeshList_status) {
+				json_object_object_get_ex(swrtmeshList, mac_buf, &custom_attr_get);
+				if(custom_attr_get != NULL) {
+					struct json_object *amas_get_pap2g = NULL, *amas_get_rssi2g = NULL, *amas_get_pap5g = NULL, *amas_get_rssi5g = NULL, *amas_get_type = NULL, *amas_get_online = NULL;
+					json_object_object_get_ex(custom_attr_get, "pap2g", &amas_get_pap2g);
+					json_object_object_get_ex(custom_attr_get, "rssi2g", &amas_get_rssi2g);
+					json_object_object_get_ex(custom_attr_get, "pap5g", &amas_get_pap5g);
+					json_object_object_get_ex(custom_attr_get, "rssi5g", &amas_get_rssi5g);
+					json_object_object_get_ex(custom_attr_get, "type", &amas_get_type);
+					json_object_object_get_ex(custom_attr_get, "online", &amas_get_online);
+					json_object_object_add(client, "amesh_isRe", json_object_new_string(!(strcmp(json_object_get_string(amas_get_type), "RE")) ? "1" : "0"));
+					if(strcmp(json_object_get_string(amas_get_pap2g), "") && strcmp(json_object_get_string(amas_get_rssi2g), "") && 
+						strcmp(json_object_get_string(amas_get_pap5g), "") && strcmp(json_object_get_string(amas_get_rssi5g), "")) {
+						if(atoi(json_object_get_string(amas_get_rssi2g)) > atoi(json_object_get_string(amas_get_rssi5g))) {
+							json_object_object_add(client, "isWL", json_object_new_string("1"));
+							json_object_object_add(client, "rssi", json_object_new_string(json_object_get_string(amas_get_rssi2g)));
+						}
+						else {
+							json_object_object_add(client, "isWL", json_object_new_string("2"));
+							json_object_object_add(client, "rssi", json_object_new_string(json_object_get_string(amas_get_rssi5g)));
+						}
+					}
+					else if(strcmp(json_object_get_string(amas_get_pap2g), "") && strcmp(json_object_get_string(amas_get_rssi2g), "")) {
+						json_object_object_add(client, "isWL", json_object_new_string("1"));
+						json_object_object_add(client, "rssi", json_object_new_string(json_object_get_string(amas_get_rssi2g)));
+					}
+					else if(strcmp(json_object_get_string(amas_get_pap5g), "") && strcmp(json_object_get_string(amas_get_rssi5g), "")) {
+						json_object_object_add(client, "isWL", json_object_new_string("2"));
+						json_object_object_add(client, "rssi", json_object_new_string(json_object_get_string(amas_get_rssi5g)));
+					}
+					else {
+						json_object_object_add(client, "isWL", json_object_new_string("0"));
+						json_object_object_add(client, "rssi", json_object_new_string(""));
+					}
+					json_object_object_add(client, "isOnline", json_object_new_string(json_object_get_string(amas_get_online)));
+				}
+			}
+			if((strlen(p_client_info_tab->pap_mac[i]) > 15) && (strcmp(wireless, "0") != 0) )  {
+				json_object_object_add(client, "amesh_isReClient", json_object_new_string("1"));
+				json_object_object_add(client, "amesh_papMac", json_object_new_string(p_client_info_tab->pap_mac[i]));
+			}
+			}
 
+			if(is_amas_support()) {
+				struct json_object *isOnline = NULL;
+				json_object_object_get_ex(client, "isOnline", &isOnline);
+				snprintf(online, sizeof(online), "%s", json_object_get_string(isOnline));
+
+				// _dprintf("WEB i = %2d, mac = %s, online = %s, wireless = %s, ip = %s\n", i, mac_buf, online, wireless, ipaddr);
+
+                if(strcmp(online, "1") == 0) {
+                    json_object_array_add(macArray, json_object_new_string(mac_buf));   
+                }
+
+            } else {
+                json_object_object_add(client, "isOnline", json_object_new_string("1"));
+                json_object_array_add(macArray, json_object_new_string(mac_buf));
+            }
 #endif
 
 			json_object_object_add(clients, mac_buf, client);
@@ -10904,6 +10972,9 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 	json_object_put(wirelessClientList);
 	json_object_put(wiredClientList);
 #endif
+#elif defined(RTCONFIG_SWRTMESH)
+	if(swrtmeshList)
+		json_object_put(swrtmeshList);
 #endif
 //	if(custom_attr_get)
 //		json_object_put(custom_attr_get);
@@ -25825,7 +25896,7 @@ FINISH:
 }
 #endif //RTCONFIG_TIME_QUOTA
 
-#if defined(RTCONFIG_CONNDIAG)
+#if defined(RTCONFIG_CONNDIAG) || defined(RTCONFIG_SWRTMESH)
 static void
 do_get_diag_wifi_traffic_cgi(char *url, FILE *stream) {
 
@@ -27270,6 +27341,10 @@ struct mime_handler mime_handlers[] =
     { "aimesh_system_settings.css", "text/css", cache_object_60, NULL, do_file, NULL },
     { "aimesh_topology.css", "text/css", cache_object_60, NULL, do_file, NULL },
     { "amesh.css", "text/css", cache_object_60, NULL, do_file, NULL },
+#if defined(RTCONFIG_SWRTMESH)
+    { "swrtmesh_system_settings.css", "text/css", cache_object_60, NULL, do_file, NULL },
+    { "swrtmesh_topology.css", "text/css", cache_object_60, NULL, do_file, NULL },
+#endif
     { "app_installation.css", "text/css", cache_object_60, NULL, do_file, NULL },
     { "basic.css", "text/css", cache_object_60, NULL, do_file, NULL },
     { "customize.css", "text/css", cache_object_60, NULL, do_file, NULL },
@@ -27598,7 +27673,7 @@ struct mime_handler mime_handlers[] =
 	{ "get_port_status.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_port_status_cgi, do_auth },
 	{ "exec_force_cable_diag.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_exec_force_cable_diag_cgi, do_auth },
 #endif
-#if defined(RTCONFIG_CONNDIAG)
+#if defined(RTCONFIG_CONNDIAG) || defined(RTCONFIG_SWRTMESH)
 	{ "get_diag_wifi_traffic.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_wifi_traffic_cgi, do_auth },
 	{ "get_diag_eth_traffic.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_eth_traffic_cgi, do_auth },
 	{ "get_diag_sta_traffic.cgi", "text/html", no_cache_IE7, do_html_post_and_get, do_get_diag_sta_traffic_cgi, do_auth },
@@ -38802,7 +38877,7 @@ static int ej_get_iperf3_state(int eid, webs_t wp, int argc, char **argv) {
 }
 #endif
 
-#ifdef RTCONFIG_CONNDIAG
+#if defined(RTCONFIG_CONNDIAG) || defined(RTCONFIG_SWRTMESH)
 static struct json_object *convert_to_kbps(char *event_name, char *str_result) {
 	struct json_object *json_result;
 	struct json_object *json_txrx;
@@ -41017,7 +41092,7 @@ struct ej_handler ej_handlers[] = {
 	{ "generate_trans_id", ej_generate_trans_id},
 #endif
 	{ "get_sw_mode", ej_get_sw_mode},
-#ifdef RTCONFIG_CONNDIAG
+#if defined(RTCONFIG_CONNDIAG) || defined(RTCONFIG_SWRTMESH)
 	{ "get_diag_db", ej_get_diag_db},
 #endif
 	{ "get_iptvSettings", ej_get_iptvSettings },

@@ -465,7 +465,7 @@ function genClientList(){
 			clientList[thisClientMacAddr].sdn_idx = parseInt(thisClient.sdn_idx);
 			clientList[thisClientMacAddr].sdn_type = (thisClient.sdn_type) || "DEFAULT";
 
-			if(isSupport("amas")){
+			if(isSupport("amas") || isSupport("swrtmesh")){
 				clientList[thisClientMacAddr].isGN = ((thisClient.isGN != "") ? parseInt(thisClient.isGN) : "");
 				if(isSupport("sdn_mainfh")){
 					if(clientList[thisClientMacAddr].sdn_type == "MAINFH"){
@@ -473,7 +473,7 @@ function genClientList(){
 					}
 				}
 			}
-			if(isSupport("amas") && isSupport("dualband") && clientList[thisClientMacAddr].isWL == 3)
+			if((isSupport("amas") || isSupport("swrtmesh")) && isSupport("dualband") && clientList[thisClientMacAddr].isWL == 3)
 				clientList[thisClientMacAddr].isWL = 2;
 			if(clientList[thisClientMacAddr].isOnline) {
 				if(clientList[thisClientMacAddr].isWL > 0) {
@@ -501,7 +501,7 @@ function genClientList(){
 				clientList[thisClientMacAddr].wlConnectTime = thisClient.wlConnectTime;
 			}
 
-			if(isSupport("amas")) {
+			if(isSupport("amas") || isSupport("swrtmesh")) {
 				if(thisClient.amesh_isRe != undefined) {
 					clientList[thisClientMacAddr].amesh_isRe = (thisClient.amesh_isRe == "1") ? true : false;
 					if(clientList[thisClientMacAddr].amesh_isRe && clientList[thisClientMacAddr].isOnline) { // re set amesh re device to offline
@@ -585,7 +585,7 @@ function genClientList(){
 				clientList[thisClientMacAddr].nickName = thisClientNickName;
 				clientList[thisClientMacAddr].vendor = thisClient.vendor.trim();
 				clientList[thisClientMacAddr].is_wireless = parseInt(thisClient.is_wireless);
-				if(isSupport("amas")) {
+				if(isSupport("amas") || isSupport("swrtmesh")) {
 					clientList[thisClientMacAddr].amesh_isRe = thisClientReNode;
 					if(isSupport("force_roaming") && isSupport("sta_ap_bind")) {
 						clientList[thisClientMacAddr].amesh_bind_mac = (typeof thisClient.amesh_bind_mac == "undefined") ? "" : thisClient.amesh_bind_mac;
@@ -605,7 +605,7 @@ function genClientList(){
 	}
 
 	//initial Gateway client
-	if(isSupport("amas")) {
+	if(isSupport("amas") || isSupport("swrtmesh")) {
 		var cap_mac = '<% nvram_get("lan_hwaddr"); %>';
 		if(typeof clientList[cap_mac] == "undefined"){
 			clientList.push(cap_mac);
@@ -2367,7 +2367,7 @@ var sorter = {
 				eval(""+_arrayName+".sort(sorter."+_Method+"_"+sorter.sortingMethod_sc+");");
 			else if(_arrayName.substr(0,2) == "wl")
 				eval("wl_list['"+_arrayName.substr(0,3)+"'].sort(sorter."+_Method+"_"+sorter["sortingMethod_"+_arrayName.substr(0,3)+""]+");");
-			else if(isSupport("amas")){
+			else if(isSupport("amas") || isSupport("swrtmesh")){
 				if(isSupport("mtlancfg") && _arrayName.substr(0,3) == "sdn")
 					eval("sdn_list['"+_arrayName.substr(0,4)+"'].sort(sorter."+_Method+"_"+sorter["sortingMethod_"+_arrayName.substr(0,4)+""]+");");
 				else if(_arrayName.substr(0,2) == "gn")
@@ -2400,7 +2400,7 @@ var sdn_rl_for_clientlist = [];
 if(smart_connect_version != ""){
 	var sc_list = [];
 }
-if(isSupport("amas")){
+if(isSupport("amas") || isSupport("swrtmesh")){
 	if(isSupport("mtlancfg")){
 		var sdn_list = [];
 		init_sdn_all_list_client();
@@ -2429,7 +2429,7 @@ function init_clientlist_listview_array(){
 		sorter["sc_display"] = true;
 		sorter["sortingMethod_sc"] = "increase";
 	}
-	if(isSupport("amas")){
+	if(isSupport("amas") || isSupport("swrtmesh")){
 			if(isSupport("mtlancfg")){
 				sdn_list = [];
 				$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
@@ -2552,7 +2552,7 @@ function changeClientListViewMode() {
 	if(smart_connect_version != ""){
 		sorter["sc_display"] = true;
 	}
-	if(isSupport("amas")){
+	if(isSupport("amas") || isSupport("swrtmesh")){
 		if(isSupport("mtlancfg")){
 			$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
 					if(sdn_all_rl.sdn_rl.idx == "0" || sdn_all_rl.sdn_rl.sdn_name == "MAINBH")
@@ -2662,7 +2662,7 @@ function exportClientListLog() {
 				else
 					setArray(wl_list["wl"+index+""]);
 			});
-			if(isSupport("amas")){
+			if(isSupport("amas") || isSupport("swrtmesh")){
 				if(isSupport("mtlancfg")){
 					$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
 							if(sdn_all_rl.sdn_rl.idx == "0" || sdn_all_rl.sdn_rl.sdn_name == "MAINBH")
@@ -2735,7 +2735,7 @@ function sorterClientList() {
 				if($("#clientlist_sc_list_Block").length > 0)
 					sorter.doSorter(sorter["sc_index"], indexMapType[sorter["sc_index"]], "sc_list");
 			}
-			if(isSupport("amas")){
+			if(isSupport("amas") || isSupport("swrtmesh")){
 				if(isSupport("mtlancfg")){
 					$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
 							if(sdn_all_rl.sdn_rl.idx == "0" || sdn_all_rl.sdn_rl.sdn_name == "MAINBH")
@@ -2786,7 +2786,7 @@ function create_clientlist_listview() {
 	if(smart_connect_version != ""){
 		sc_list = [];
 	}
-	if(isSupport("amas")){
+	if(isSupport("amas") || isSupport("swrtmesh")){
 		if(isSupport("mtlancfg")){
 			$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
 					if(sdn_all_rl.sdn_rl.idx == "0" || sdn_all_rl.sdn_rl.sdn_name == "MAINBH")
@@ -2851,7 +2851,7 @@ function create_clientlist_listview() {
 					else{
 						for(var i = 0; i < wl_nband_title.length; i += 1) {
 							var tr_title = wl_nband_title[i];
-							if(isSupport("amas") && isSupport("mtlancfg")){
+							if((isSupport("amas") || isSupport("swrtmesh")) && isSupport("mtlancfg")){
 								var wl_if = "";
 								switch(wl_map[wl_nband_title[i]]){
 									case "1":
@@ -2900,7 +2900,7 @@ function create_clientlist_listview() {
 				}
 			}
 
-			if(isSupport("amas")){
+			if(isSupport("amas") || isSupport("swrtmesh")){
 				if(isSupport("mtlancfg")){
 					$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
 						if(sdn_all_rl.sdn_rl.idx == "0" || sdn_all_rl.sdn_rl.sdn_name == "MAINBH")
@@ -2979,7 +2979,7 @@ function create_clientlist_listview() {
 					all_list.push(tempArray);
 					break;
 				case "ByInterface" :
-					if(isSupport("amas")){
+					if(isSupport("amas") || isSupport("swrtmesh")){
 						if(isSupport("mtlancfg")){
 								if(clientList[clientList[i]].sdn_idx > 0)
 									sdn_list["sdn"+clientList[clientList[i]].sdn_idx+""].push(tempArray);
@@ -3047,7 +3047,7 @@ function create_clientlist_listview() {
 				document.getElementById("sc_expander").innerHTML = "[ <#Clientlist_Show#> ]";
 			}
 		}
-		if(isSupport("amas")){
+		if(isSupport("amas") || isSupport("swrtmesh")){
 			if(isSupport("mtlancfg")){
 				$.each(sdn_rl_for_clientlist, function(index, sdn_all_rl){
 						if(sdn_all_rl.sdn_rl.idx == "0" || sdn_all_rl.sdn_rl.sdn_name == "MAINBH")
@@ -3127,7 +3127,7 @@ function drawClientListBlock(objID) {
 		if (objID.substr(0, 2) == "sc")
 			sortArray = sc_list;
 	}
-	if (sortArray == "" && isSupport("amas")) {
+	if (sortArray == "" && (isSupport("amas") || isSupport("swrtmesh"))) {
 		if (isSupport("mtlancfg")) {
 			if (objID.substr(0, 3) == "sdn")
 				sortArray = sdn_list[objID.substr(0, 4)];

@@ -48,6 +48,8 @@
 #ifdef RTCONFIG_ODMPID
 extern void replace_productid(char *GET_PID_STR, char *RP_PID_STR, int len);
 #endif
+extern char *get_cgi_json(char *name, json_object *root);
+extern int do_json_decode(struct json_object *root);
 
 //unlock all languages for cn
 int get_lang_num_swrt()
@@ -1009,6 +1011,8 @@ int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv)
 	char rssi2g_buf[8], rssi5g_buf[8], rssi6g_buf[8];
 	char model_name_buf[33] = {0}, product_id_buf[33] = {0}, frs_model_name_buf[33] = {0};
 	char ui_model_name_buf[33] = {0};
+	char fwver_buf[65] = {0};
+	char newfwver_buf[65] = {0};
 	char alias_conv_buf[65];
 	json_object *allBrMacListObj = NULL;
 	json_object *macEntryObj = NULL;
@@ -1217,7 +1221,8 @@ int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv)
 
 	/* product id */
 	strlcpy(product_id_buf, rt_buildname, sizeof(product_id_buf));
-
+	strlcpy(fwver_buf, nvram_safe_get("innerver"), sizeof(fwver_buf));
+	//strlcpy(newfwver_buf, p_client_tbl->newFwVer[i], sizeof(newfwver_buf));
 	if (allBrMacListObj) {
 		json_object_object_get_ex(allBrMacListObj, rmac_buf, &macEntryObj);
 		if (macEntryObj) {
@@ -1288,6 +1293,8 @@ int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv)
 	websWrite(wp, "\"ui_model_name\":\"%s\",", ui_model_name_buf);
 	websWrite(wp, "\"product_id\":\"%s\",", product_id_buf);
 	websWrite(wp, "\"frs_model_name\":\"%s\",", frs_model_name_buf);
+	websWrite(wp, "\"fwver\":\"%s\",", fwver_buf);
+	websWrite(wp, "\"newfwver\":\"%s\",", newfwver_buf);
 	websWrite(wp, "\"ip\":\"%s\",", ip_buf);
 	websWrite(wp, "\"mac\":\"%s\",", rmac_buf);
 	websWrite(wp, "\"online\":\"%d\",", online);
@@ -1330,5 +1337,74 @@ int ej_get_cfg_clientlist(int eid, webs_t wp, int argc, char **argv)
 	file_unlock(lock);
  
 	return 0;
+}
+#endif
+
+#if defined(RTCONFIG_SWRTMESH)
+int get_swrtmesh_info(struct json_object *json_object_ptr)
+{ //get cap and re info
+	int lock;
+	char ip_buf[16] = {0};
+	char alias_buf[33] = {0};
+	char rmac_buf[32] = {0};
+	char ap2g_buf[32] = {0};
+	char ap5g_buf[32] = {0};
+	char ap5g1_buf[32] = {0};
+	char pap2g_buf[32] = {0};
+	char pap5g_buf[32] = {0};
+	char rssi2g_buf[8] = {0};
+	char rssi5g_buf[8] = {0};
+	char model_name_buf[33] = {0};
+	char fwver_buf[33] = {0};
+	char newfwver_buf[33] = {0};
+	char macList[1024] = {0};
+	struct json_object *swrtmesh_client_attr = NULL;
+
+	lock = file_lock("cfg_clientlist");
+	memset(alias_buf, 0, sizeof(alias_buf));
+	memset(ip_buf, 0, sizeof(ip_buf));
+	memset(rmac_buf, 0, sizeof(rmac_buf));
+	memset(ap2g_buf, 0, sizeof(ap2g_buf));
+	memset(ap5g_buf, 0, sizeof(ap5g_buf));
+	memset(ap5g1_buf, 0, sizeof(ap5g1_buf));
+	memset(pap2g_buf, 0, sizeof(pap2g_buf));
+	memset(pap5g_buf, 0, sizeof(pap5g_buf));
+	memset(rssi2g_buf, 0, sizeof(rssi2g_buf));
+	memset(rssi5g_buf, 0, sizeof(rssi5g_buf));
+
+	//strlcpy(alias_buf, nvram_safe_get("cfg_alias"), sizeof(alias_buf));
+	strlcpy(ip_buf, nvram_safe_get("lan_ipaddr"), sizeof(ip_buf));
+#if defined(RTCONFIG_MULTILAN_CFG)
+	strlcpy(rmac_buf, get_own_mac(), sizeof(rmac_buf));
+#else
+	strlcpy(rmac_buf, get_lan_hwaddr(), sizeof(rmac_buf));
+#endif
+	strlcpy(ap2g_buf, nvram_safe_get("wl0_hwaddr"), sizeof(ap2g_buf));
+	strlcpy(ap5g_buf, nvram_safe_get("wl1_hwaddr"), sizeof(ap5g_buf));
+	strlcpy(ap5g1_buf, nvram_safe_get("wl2_hwaddr"), sizeof(ap5g1_buf));
+	strlcpy(model_name_buf, get_productid(), sizeof(model_name_buf));
+	strlcpy(fwver_buf, nvram_safe_get("innerver"), sizeof(fwver_buf));
+	//strlcpy(newfwver_buf, p_client_tbl->newFwVer[i], sizeof(newfwver_buf));
+	swrtmesh_client_attr = json_object_new_object();
+	json_object_object_add(swrtmesh_client_attr, "alias", json_object_new_string((strlen(alias_buf)) ? alias_buf : rmac_buf));
+	json_object_object_add(swrtmesh_client_attr, "model_name", json_object_new_string(model_name_buf));
+	json_object_object_add(swrtmesh_client_attr, "fwver", json_object_new_string(fwver_buf));
+	json_object_object_add(swrtmesh_client_attr, "newfwver", json_object_new_string(newfwver_buf));
+	json_object_object_add(swrtmesh_client_attr, "ip_buf", json_object_new_string(ip_buf));
+	json_object_object_add(swrtmesh_client_attr, "online", json_object_new_int(1));
+	json_object_object_add(swrtmesh_client_attr, "ap2g", json_object_new_string((strcmp(ap2g_buf, "00:00:00:00:00:00")) ? ap2g_buf : ""));
+	json_object_object_add(swrtmesh_client_attr, "ap5g", json_object_new_string((strcmp(ap5g_buf, "00:00:00:00:00:00")) ? ap5g_buf : ""));
+	json_object_object_add(swrtmesh_client_attr, "ap5g1", json_object_new_string((strcmp(ap5g1_buf, "00:00:00:00:00:00")) ? ap5g1_buf : ""));
+	json_object_object_add(swrtmesh_client_attr, "wired_mac", json_object_new_string((strlen(macList)) ? macList : "[]"));
+	json_object_object_add(swrtmesh_client_attr, "pap2g", json_object_new_string((strlen(pap2g_buf)) ? pap2g_buf : ""));
+	json_object_object_add(swrtmesh_client_attr, "rssi2g", json_object_new_string((strlen(rssi2g_buf)) ? rssi2g_buf : ""));
+	json_object_object_add(swrtmesh_client_attr, "pap5g", json_object_new_string((strlen(pap5g_buf)) ? pap5g_buf : ""));
+	json_object_object_add(swrtmesh_client_attr, "rssi5g", json_object_new_string((strlen(rssi5g_buf)) ? rssi5g_buf : ""));
+	json_object_object_add(swrtmesh_client_attr, "type", json_object_new_string("CAP"));
+	json_object_object_add(json_object_ptr, rmac_buf, swrtmesh_client_attr);
+
+	file_unlock(lock);
+
+	return 1;
 }
 #endif

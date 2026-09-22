@@ -71,6 +71,7 @@ struct sta_info_table{
 	char rxrate[10];
 	unsigned int rssi;
 	char conn_time[12];
+	char pap_mac[18];
 	STA_INFO_TABLE *next;
 };
 int g_show_sta_info = 0;
@@ -148,6 +149,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					p_client_tab->rssi[i] = tmp->rssi;
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
+					strlcpy(p_client_tab->pap_mac[i], tmp->pap_mac, sizeof(p_client_tab->pap_mac[0]));
 					p_client_tab->online[i] = 1;
 					if(g_show_sta_info){
 						_dprintf("###%d client wl: %d, rx %s tx %s rssi %d conn_time %s \n", i, p_client_tab->wireless[i], 
@@ -188,6 +190,7 @@ void nmp_wl_offline_check(CLIENT_DETAIL_INFO_TABLE *p_client_tab, int offline)
 					strlcpy(p_client_tab->txrate[i], tmp->txrate, sizeof(p_client_tab->txrate[0]));
 					strlcpy(p_client_tab->rxrate[i], tmp->rxrate, sizeof(p_client_tab->rxrate[0]));
 					strlcpy(p_client_tab->conn_time[i], tmp->conn_time, sizeof(p_client_tab->conn_time[0]));
+					strlcpy(p_client_tab->pap_mac[i], tmp->pap_mac, sizeof(p_client_tab->pap_mac[0]));
 					if(g_show_sta_info)
 						_dprintf("### check: %d client wireless: %d, type = %d\n", i, p_client_tab->wireless[i], p_client_tab->type[i]);
 					p_client_tab->device_flag[i] |= (1<<FLAG_EXIST);

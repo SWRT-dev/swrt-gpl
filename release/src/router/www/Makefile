@@ -869,6 +869,12 @@ endif
 	rm -rf $(INSTALLDIR)/www/AiMesh.asp
 	rm -rf $(INSTALLDIR)/www/aimesh
 endif
+ifneq ($(RTCONFIG_SWRTMESH), y)
+	rm -rf $(INSTALLDIR)/www/require/modules/smesh.js
+	rm -rf $(INSTALLDIR)/www/SwrtMesh_Node_FirmwareUpgrade.asp
+	rm -rf $(INSTALLDIR)/www/SwrtMesh.asp
+	rm -rf $(INSTALLDIR)/www/swrtmesh
+endif
 	rm -rf $(INSTALLDIR)/www/Main_ChkSta_Content.asp
 	rm -rf $(INSTALLDIR)/www/ajax_chk_sta.asp
 ifeq ($(RTCONFIG_TCPDUMP),y)

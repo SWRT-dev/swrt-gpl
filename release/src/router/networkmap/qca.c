@@ -7,7 +7,7 @@ struct get_stainfo_priv_s {
 static int handle_QCA_stainfo(const WLANCONFIG_LIST *src, void *arg)
 {
 	struct get_stainfo_priv_s *priv = arg;
-	char buffer[18];
+	char buffer[18], prefix[] = "wlXXXXXXXXXX_";
 	unsigned char macaddr[6];
 	STA_INFO_TABLE *sta_info_tab = NULL;
 
@@ -16,6 +16,7 @@ static int handle_QCA_stainfo(const WLANCONFIG_LIST *src, void *arg)
 
 	sta_info_tab = (STA_INFO_TABLE *)calloc(1, sizeof(STA_INFO_TABLE));
 	if(sta_info_tab){
+		snprintf(prefix, sizeof(prefix), "wl%d_", priv->unit);
 		strlcpy(sta_info_tab->txrate, src->txrate, sizeof(sta_info_tab->txrate));
 		strlcpy(sta_info_tab->rxrate, src->rxrate, sizeof(sta_info_tab->rxrate));
 		sta_info_tab->rssi = (unsigned int)src->rssi;
@@ -24,6 +25,7 @@ static int handle_QCA_stainfo(const WLANCONFIG_LIST *src, void *arg)
 		ether_atoe(buffer, macaddr);
 		memcpy(sta_info_tab->mac_addr, macaddr, sizeof(sta_info_tab->mac_addr));
 		sta_info_tab->wireless = priv->unit + 1;
+		strlcpy(sta_info_tab->pap_mac, nvram_pf_safe_get(prefix, "hwaddr"), sizeof(sta_info_tab->pap_mac));
 		if(g_show_sta_info){
 			_dprintf("unit=%d,ifname=%s\n",priv->unit, priv->wlif_name);
 			_dprintf("%s[QCA] %02X%02X%02X%02X%02X%02X %s wl:%d %d, rx %s tx %s rssi %d conn_time %s\n", "[connection log]", sta_info_tab->mac_addr[0],

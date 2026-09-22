@@ -85,6 +85,7 @@ int BCM_stainfo(void)
 								min = (sta->in) % 3600 / 60;
 								sec = sta->in - hr * 3600 - min * 60;
 								snprintf(sta_info_tab->conn_time, sizeof(sta_info_tab->conn_time), "%02d:%02d:%02d", hr, min, sec);
+								strlcpy(sta_info_tab->pap_mac, nvram_pf_safe_get(prefix, "hwaddr"), sizeof(sta_info_tab->pap_mac));
 								if(g_show_sta_info)
 									printf("%s[%3d,BCM] %02X%02X%02X%02X%02X%02Xwl:%d %d, rx %s tx %s rssi %d conn_time %s\n", "[connection log]", count,
 										sta_info_tab->mac_addr[0], sta_info_tab->mac_addr[1], sta_info_tab->mac_addr[2], sta_info_tab->mac_addr[3],

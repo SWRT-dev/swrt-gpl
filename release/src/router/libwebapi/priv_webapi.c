@@ -370,7 +370,8 @@ int is_wlopmode(void)
 
 int is_11AC(void)
 {
-	if(nvram_contains_word("rc_support", "rawifi") || nvram_contains_word("rc_support", "qcawifi"))
+	if(nvram_contains_word("rc_support", "rawifi") || nvram_contains_word("rc_support", "qcawifi")
+		|| nvram_contains_word("rc_support", "lantiq"))
 		return nvram_contains_word("rc_support", "11AC");
 	else
 		return nvram_match("wl1_phytype", "v");
@@ -590,6 +591,8 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	int i, version = 0;
 #if defined(RTCONFIG_AMAS)
 	int amasmode, amasRouter, cfgsync;
+#elif defined(RTCONFIG_SWRTMESH)
+	int swrtmeshmode, swrtmeshRouter;
 #endif
 	struct json_object *ax_support = NULL;
 	struct ASUS_PP_table *p_pp;
@@ -770,6 +773,19 @@ noamas:
 			cfgsync = 0;
 		json_object_object_add(ui_support_obj, "cfg_sync", json_object_new_int(cfgsync));
 		json_object_object_add(ui_support_obj, "cfg_pause", json_object_new_int(1));
+	}
+#elif defined(RTCONFIG_SWRTMESH)
+	if (nvram_contains_word("rc_support", "swrtmesh"))
+	{
+		swrtmeshmode = getAmasSupportMode();
+		if(swrtmeshmode > 0)
+			json_object_object_add(ui_support_obj, "swrtmesh", json_object_new_int(1));
+		else
+			json_object_object_add(ui_support_obj, "swrtmesh", json_object_new_int(0));
+		if((swrtmeshmode & AMAS_CAP) == 1)
+			json_object_object_add(ui_support_obj, "swrtmeshRouter", json_object_new_int(1));
+		else if((swrtmeshmode & AMAS_RE) == 2)
+			json_object_object_add(ui_support_obj, "swrtmeshNode", json_object_new_int(1));
 	}
 #endif
 #if defined(RTCONFIG_INADYN)

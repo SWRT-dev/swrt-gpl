@@ -271,9 +271,9 @@ int calculate_bw_of_each_5g_channel(int band)
 {
 	char chList[256], word[128];
 	char *next;
-	int i, j;
+	int i, j, n;
 	int bw160_1 = 0, bw160_2 = 0/*, bw160_3 = 0*/;
-	struct chlist_s chlist40[] = {{36, 0}, {44, 0}, {52, 0}, {60, 0}, {100, 0}, {108, 0}, {116, 0}, {124, 0}, {132, 0}, {140, 0}, {149, 0}, {157, 0}};
+	struct chlist_s chlist40[] = {{36, 0}, {44, 0}, {52, 0}, {60, 0}, {100, 0}, {108, 0}, {116, 0}, {124, 0}, {132, 0}, {140, 0}, {149, 0}, {157, 0}, {165, 0}};
 	struct chlist_s chlist80[] = {{36, 0}, {52, 0}, {100, 0}, {116, 0}, {132, 0}, {149, 0}};
 
 	if(band > WL_5G_BAND)
@@ -284,11 +284,13 @@ int calculate_bw_of_each_5g_channel(int band)
 		foreach_44(word, chList, next){
 			i = safe_atoi(word);
 			for(j = 0; j < (sizeof(chlist40)/sizeof(struct chlist_s)); j++){
-				if(i - chlist40[j].channel < 5)
+				n = i - chlist40[j].channel;
+				if(n >=0 && n < 5)
 					chlist40[j].bw_mask += 1;
 			}
 			for(j = 0; j < (sizeof(chlist80)/sizeof(struct chlist_s)); j++){
-				if((i - chlist80[j].channel) < 13)
+				n = i - chlist80[j].channel;
+				if(n >=0 && n < 13)
 					chlist80[j].bw_mask += 1;
 			}
 			if(i >= 36 && i <= 64)
@@ -510,7 +512,7 @@ int bw40_channel_check(int band,char *ext)
 }
 
 #if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
-int get_bw_via_channel(int band, int channel, struct chattr_s *pchattr, int max_subnet, int bw160)
+int get_bw_via_channel(int band, int channel, struct chattr_s *pchattr, int bw80, int bw160)
 #else
 int get_bw_via_channel(int band, int channel)
 #endif
@@ -550,7 +552,7 @@ int get_bw_via_channel(int band, int channel)
 					wl_bw = 5;
 				else
 					wl_bw = 1;
-				if(max_subnet <= 1)
+				if(bw80 <= 1)
 					wl_bw = 3;
 				if(pchattr->bw80cap != 1)
 					wl_bw = 2;
@@ -1071,6 +1073,9 @@ next_mrate:
 		for(unit = 0; unit < ARRAY_SIZE(wl_mask); ++unit){
 			snprintf(main_prefix, sizeof(main_prefix), "wl%d_", unit);
 			m = wl_mask[unit];
+			snprintf(vphy, sizeof(vphy), "%s", get_vphyifname(unit));
+			if(!is_if_up(vphy))
+				ifconfig(vphy, IFUP, NULL, NULL);
 			for(sunit = 0, sidx = 0; m > 0; ++sunit, ++sidx, m >>= 1){
 				snprintf(prefix, sizeof(prefix), "wl%d.%d_", unit, sunit);
 				if(sidx > 0 && !nvram_match(wl_nvname("bss_enabled", unit, sunit), "1")){
@@ -1079,7 +1084,6 @@ next_mrate:
 				}
 
 				get_wlxy_ifname(unit, sidx, wif);
-				snprintf(vphy, sizeof(vphy), "%s", get_vphyifname(unit));
 				snprintf(path2, sizeof(path2), "/etc/Wireless/sh/postwifi_%s.sh", wif);
 				if(nvram_match("skip_gen_lantiq_config", "1") && f_exists(path2))
 					continue;
@@ -1101,80 +1105,36 @@ next_mrate:
 					fprintf(fp, "if [ \"$CHAN\" -gt 0 -a \"$CHAN\" -lt 15 ];then\n");
 					if(sunit == 0){
 						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_2G);
-						snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_2G);
 					}else
 						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path);
 					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path);
-					if(sunit == 0){
-						fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
-						fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
-					}
 					fprintf(fp, "else\n");
 					if(sunit == 0){
 						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", WIF_5G);
-						snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", VPHY_5G);
 					}else
 						snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 					fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path);
 					fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path);
 					fprintf(fp, "	sed -i '/vht_oper_chwidth/d' %s\n", conf_path);
-					if(sunit == 0){
-						fprintf(fp, "	sed -i '/channel\\>/d' %s\n", conf_path2);
-						fprintf(fp, "	echo \"channel=$CHAN\" >> %s\n", conf_path2);
-						fprintf(fp, "	sed -i '/vht_oper_chwidth/d' %s\n", conf_path2);
-					}
 					fprintf(fp, "	if echo \"$MODE\" | grep -q \"160\";then\n");
 					fprintf(fp, "		echo \"vht_oper_chwidth=2\" >> %s\n", conf_path);
-					if(sunit == 0)
-						fprintf(fp, "		echo \"vht_oper_chwidth=2\" >> %s\n", conf_path2);
 					fprintf(fp, "	elif echo \"$MODE\" | grep -q \"80\";then\n");
 					fprintf(fp, "		echo \"vht_oper_chwidth=1\" >> %s\n", conf_path);
-					if(sunit == 0)
-						fprintf(fp, "		echo \"vht_oper_chwidth=1\" >> %s\n", conf_path2);
 					fprintf(fp, "	else\n");
 					fprintf(fp, "		echo \"vht_oper_chwidth=0\" >> %s\n", conf_path);
-					if(sunit == 0)
-						fprintf(fp, "		echo \"vht_oper_chwidth=0\" >> %s\n", conf_path2);
 					fprintf(fp, "	fi\n");
 					fprintf(fp, "	sed -i '/vht_oper_centr_freq_seg0_idx/d' %s\n", conf_path);
 					fprintf(fp, "	echo \"vht_oper_centr_freq_seg0_idx=$SEG0\" >> %s\n", conf_path);
-					if(sunit == 0){
-						fprintf(fp, "	sed -i '/vht_oper_centr_freq_seg0_idx/d' %s\n", conf_path2);
-						fprintf(fp, "	echo \"vht_oper_centr_freq_seg0_idx=$SEG0\" >> %s\n", conf_path2);
-					}
 					fprintf(fp, "fi\n");
 				}
 				if((repeater_mode() || wisp_mode()) && wlc_band == unit)
 					fprintf(fp, "sleep %d\n", 10);
 				else
 					fprintf(fp, "sleep %d\n", 2);
-				if((repeater_mode() || wisp_mode()) && wlc_band == unit){
-					fprintf(fp, "while [ -z \"$(hostapd_cli -i %s status |grep ENABLED)\" ]\n", vphy);
-					fprintf(fp, "do\n");
-					fprintf(fp, "	sleep %d\n", 5);
-				}
-				if(sunit == 0){
-					snprintf(conf_path2, sizeof(conf_path2), "/etc/Wireless/conf/hostapd_%s.conf", vphy);
-					fprintf(fp, "	/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, vphy, conf_path2);
-				}
-				if((repeater_mode() || wisp_mode()) && wlc_band == unit){
-					fprintf(fp, "done\n");
-					fprintf(fp, "while [ -z \"$(hostapd_cli -i %s status |grep ENABLED)\" ]\n", wif);
-					fprintf(fp, "do\n");
-					fprintf(fp, "	sleep %d\n", 5);
-				}else
-					fprintf(fp, "sleep %d\n", 2);
 				snprintf(conf_path, sizeof(conf_path), "/etc/Wireless/conf/hostapd_%s.conf", wif);
 				fprintf(fp, "	/usr/bin/wpa_cli -g %s raw ADD bss_config=%s:%s\n", QHOSTAPD_CTRL_IFACE, wif, conf_path);
-				if((repeater_mode() || wisp_mode()) && wlc_band == unit){
-					fprintf(fp, "done\n");
-				}
-				if(sunit == 0){
-					doSystem("cp %s %s", conf_path, conf_path2);
-					doSystem("sed -i 's/%s/%s/' %s", wif, vphy, conf_path2);
-					doSystem("touch /var/run/hostapd-%s.psk", vphy);
-				}
+
 				/* Hostapd will up VAP interface automatically.
 				 * So, down VAP interface if radio is not on and
 				 * not to up VAP interface anymore.
@@ -1542,7 +1502,7 @@ int gen_lantiq_config(int band, int subnet)
 	int vhtsubfer = 0;
 	int vhtmubfer = 0;
 	int isax = 0;
-	int max_band = 0, max_bw160 = 0, ofdma;
+	int max_bw80 = 0, max_bw160 = 0, ofdma;
 	int bfPeriod = 0;//defalut=0
 #endif
 	char iwphy[16];
@@ -1666,8 +1626,8 @@ int gen_lantiq_config(int band, int subnet)
 			return 0;
 	}
 #endif
-	if(subnet == 0)
-		fprintf(fp3, "ifconfig %s down\n", vphy);
+//	if(subnet == 0)
+//		fprintf(fp3, "ifconfig %s down\n", vphy);
 #ifdef RTCONFIG_WIRELESSREPEATER
 	if (sw_mode == SW_MODE_REPEATER && wlc_band == band && nvram_invmatch("wlc_ssid", "")&& subnet==0)
 		rep_mode=1;
@@ -1842,6 +1802,7 @@ int gen_lantiq_config(int band, int subnet)
 #endif
 	fprintf(fp, "eapol_key_index_workaround=0\n");
 	fprintf(fp, "disassoc_low_ack=1\n");
+	fprintf(fp, "mbo=1\n");
 	flag_8021x=0;
 
 	str = nvram_pf_get(prefix, "auth_mode_x");
@@ -2341,7 +2302,7 @@ int gen_lantiq_config(int band, int subnet)
 		if(band){
 			for(i = 0; i < 7; i++){
 				if(bw80cap[i] == 1)
-					max_band++;
+					max_bw80++;
 			}
 			if(find_word(nvram_safe_get("rc_support"), "vht160")){
 				max_bw160 = bw160cap[0] == 1;
@@ -2351,7 +2312,7 @@ int gen_lantiq_config(int band, int subnet)
 					max_bw160++;
 			}
 		}
-		bw = get_bw_via_channel(band, channel, pchattr, max_band, max_bw160);
+		bw = get_bw_via_channel(band, channel, pchattr, max_bw80, max_bw160);
 #else
 		bw = get_bw_via_channel(band, nvram_pf_get_int(tmpfix, "channel"));
 #endif
@@ -2365,12 +2326,12 @@ int gen_lantiq_config(int band, int subnet)
 						if(max_bw160 && channel | acs_dfs){
 							if(bw160)
 								strlcpy(t_bw, bw160_tbl[isax], sizeof(t_bw));
-							else if(max_band)
+							else if(max_bw80)
 								strlcpy(t_bw, bw80[isax], sizeof(t_bw));
 							else
 								strlcpy(t_bw, bw40[isax], sizeof(t_bw));
 						}else{
-							if(max_band)
+							if(max_bw80)
 								strlcpy(t_bw, bw80[isax], sizeof(t_bw));
 							else
 								strlcpy(t_bw, bw40[isax], sizeof(t_bw));
@@ -2383,7 +2344,7 @@ int gen_lantiq_config(int band, int subnet)
 					case 5:
 						if(bw160)
 							strlcpy(t_bw, bw160_tbl[isax], sizeof(t_bw));
-						else if(max_band)
+						else if(max_bw80)
 							strlcpy(t_bw, bw80[isax], sizeof(t_bw));
 						else
 							strlcpy(t_bw, bw40[isax], sizeof(t_bw));
@@ -2510,6 +2471,8 @@ int gen_lantiq_config(int band, int subnet)
 			fprintf(fp, "op_class=%d\n", 82);
 		if(strstr(t_mode, "11GHE"))
 			fprintf(fp, "he_phy_channel_width_set=%d\n", 1);
+		if(strstr(t_mode, "11GHE") || strstr(t_mode, "11NG"))
+			fprintf(fp, "vendor_vht=%d\n", 1);
 	}
 #if defined(RTCONFIG_WLMODULE_WAV6XX_AP)
 //	if(strstr(t_mode, "11NG") || strstr(t_mode, "11GHE") || strstr(t_mode, "11GEHT"))
@@ -2662,7 +2625,7 @@ int gen_lantiq_config(int band, int subnet)
 									max_bw160 = 1;
 									caps |= (wds_ax << 30) | (wds_ac << 13);
 									if(find_word(nvram_safe_get("rc_support"), "vht160")){
-										if(max_band > 1 && (!channel || (pchattr && pchattr->bw80cap == 1))){
+										if(max_bw80 > 1 && (!channel || (pchattr && pchattr->bw80cap == 1))){
 											max_bw160++;
 											caps |= (wds_ax << 29) | (wds_ac << 14);
 										}
@@ -2682,7 +2645,7 @@ int gen_lantiq_config(int band, int subnet)
 								}
 							}else{
 								if(find_word(nvram_safe_get("rc_support"), "vht160")){
-									if(max_band > 1 && (!channel || (pchattr && pchattr->bw80cap == 1))){
+									if(max_bw80 > 1 && (!channel || (pchattr && pchattr->bw80cap == 1))){
 										max_bw160++;
 										caps |= (wds_ax << 29) | (wds_ac << 14);
 									}
@@ -2703,7 +2666,7 @@ int gen_lantiq_config(int band, int subnet)
 						}else{
 							max_bw160 = 0;
 							if(find_word(nvram_safe_get("rc_support"), "vht160")){
-								if(max_band > 1 && (!channel || (pchattr && pchattr->bw80cap == 1))){
+								if(max_bw80 > 1 && (!channel || (pchattr && pchattr->bw80cap == 1))){
 									max_bw160++;
 									caps |= (wds_ax << 29) | (wds_ac << 14);
 								}
@@ -2925,8 +2888,9 @@ int gen_lantiq_config(int band, int subnet)
 	}
 	fprintf(fp, "ieee80211d=1\n");
 	fprintf(fp, "country_code=%s\n", nvram_pf_safe_get(tmpfix, "country_code"));
-//	if(band)
-		//fprintf(fp, "ieee80211h=1\n");
+	if(band){
+		fprintf(fp, "ieee80211h=1\n");
+	}
 //	if(strstr(t_mode, "11AC"))
 //		fprintf(fp, "require_vht=1\n");
 //	if(strstr(t_mode, "11N"))
@@ -3072,12 +3036,12 @@ int gen_lantiq_config(int band, int subnet)
 	else
 		fprintf(fp, "multi_ap_backhaul_wpa_passphrase=%s\n", wpa_key_mgmt);
 #endif
-/*
-v
-	fprintf(fp, "time_advertisement=%d\n", 0);
+
+	//fprintf(fp, "time_advertisement=%d\n", 0);
 	//fprintf(fp, "time_zone=%s\n", "UTC");
-	fprintf(fp, "wnm_sleep_mode=%d\n", 0);
-	fprintf(fp, "bss_transition=%d\n", 0);
+	//fprintf(fp, "wnm_sleep_mode=%d\n", 0);
+	fprintf(fp, "bss_transition=%d\n", 1);
+/*
 k
 	fprintf(fp, "rrm_neighbor_report=%d\n", 1);
 	fprintf(fp, "rrm_beacon_report=%d\n", 1);
@@ -3106,6 +3070,10 @@ r
 	}
 		fprintf(fp, "config_id=%s\n", wif);
 */
+	if(band){
+		fprintf(fp, "acs_bg_scan_do_switch=1\n");
+		fprintf(fp, "allow_scan_during_cac=1\n");
+	}
 next:
 	fclose(fp);
 	fclose(fp2);

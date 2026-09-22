@@ -90,6 +90,8 @@ static void __load_wifi_driver(int testmode)
 			strlcpy(country, nvram_pf_safe_get(prefix, "country_code"), sizeof(country));
 			fprintf(fp_wifi, "iw reg set %s\n", country);
 			nvram_set_int("wl_country_changed", 7);
+			//create master ap/vphy and initial data
+			fprintf(fp_wifi, "iw phy %s interface add %s type __ap\n", get_realphyifname(unit), vphy);
 			/* TX power adjustment. */
 			if (find_word(nvram_safe_get("rc_support"), "pwrctrl")) {
 				if(nvram_pf_get_int(prefix, "txpower") > 100 || nvram_pf_get_int(prefix, "txpower") <= 0)
@@ -98,8 +100,6 @@ static void __load_wifi_driver(int testmode)
 					fprintf(fp_wifi, "iw phy %s set txpower fixed %d\n",
 						vphy, nvram_pf_get_int(prefix, "txpower") * 30);//0-3000mBm
 			}
-			//create master ap/vphy and initial data
-			fprintf(fp_wifi, "iw phy %s interface add %s type __ap\n", get_realphyifname(unit), vphy);
 			strlcpy(macaddr, nvram_pf_safe_get(prefix, "hwaddr"), sizeof(macaddr));
 			ether_atoe(macaddr, mac_binary);
 			mac_binary[5] += 0xa;
@@ -107,7 +107,6 @@ static void __load_wifi_driver(int testmode)
 			fprintf(fp_wifi, "ifconfig %s hw ether %s\n", vphy, macaddr);
 			fprintf(fp_wifi, "ifconfig %s up\n", vphy);
 			fprintf(fp_wifi, "ifconfig %s down\n", vphy);
-			//fprintf(fp_wifi, "ppacmd addlan -i %s", vphy);
 		}
 
 		fclose(fp_wifi);
@@ -684,12 +683,12 @@ void fini_wl(void)
 		destroy_vap(ifname);
 	}
 	//destroy vphy wlan0&wlan2
-	eval("ppacmd", "dellan", "-i", get_vphyifname(0));
-	eval("ppacmd", "dellan", "-i", get_vphyifname(1));
-	ifconfig(get_vphyifname(0), 0, NULL, NULL);
-	ifconfig(get_vphyifname(1), 0, NULL, NULL);
-	eval("iw", get_vphyifname(0), "del");
-	eval("iw", get_vphyifname(1), "del");
+	strlcpy(ifname, get_vphyifname(0), sizeof(ifname));
+	ifconfig(ifname, 0, NULL, NULL);
+	eval("iw", ifname, "del");
+	strlcpy(ifname, get_vphyifname(1), sizeof(ifname));
+	ifconfig(ifname, 0, NULL, NULL);
+	eval("iw", ifname, "del");
 	create_node=0;
 }
 

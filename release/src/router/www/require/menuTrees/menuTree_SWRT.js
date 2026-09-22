@@ -95,10 +95,10 @@ define(function(){
 				]
 			}, 
 			{
-				menuName: "AiMesh",
-				index: "menu_AiMesh", 
+				menuName: "SwrtMesh",
+				index: "menu_SwrtMesh", 
 				tab: [
-					{url: "AiMesh.asp", tabName: "AiMesh"},
+					{url: "SwrtMesh.asp", tabName: "SwrtMesh"},
 					{url: "NULL", tabName: "__INHERIT__"}
 				]
 			},
@@ -476,15 +476,15 @@ define(function(){
 					retArray.push("menu_UU");
 				}
 
-				if(!amesh_support)
-					retArray.push("menu_AiMesh");
+				if(!swrtmesh_support)
+					retArray.push("menu_SwrtMesh");
 				else{
-					if(ameshRouter_support){
+					if(smeshRouter_support){
 						if(!isSwMode("rt") && !isSwMode("ap"))
-							retArray.push("menu_AiMesh");
+							retArray.push("menu_SwrtMesh");
 					}
-					else if(ameshNode_support)
-						retArray.push("menu_AiMesh");
+					else if(smeshNode_support)
+						retArray.push("menu_SwrtMesh");
 				}
 
 				/* Operation Mode */

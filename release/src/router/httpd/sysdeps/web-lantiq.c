@@ -469,14 +469,14 @@ static int getVAPCAC(int unit)
 {
 	FILE *fp;
 	int r = 0;
-	char cmd[64], line[64];
-	snprintf(cmd, sizeof(cmd), "hostapd_cli status");
+	char cmd[64], line[256];
+	snprintf(cmd, sizeof(cmd), "hostapd_cli -i %s status", get_wififname(unit));
 	fp = popen(cmd, "r");
 	if (!fp)
 		return r;
 	while (fgets(line, sizeof(line), fp)) {
-		if (strstr(line, "state=")){
-			if (strstr(line, "state=DFS"))
+		if (strstr(line, "cac_time_left_seconds")){
+			if (!strstr(line, "cac_time_left_seconds=N/A"))
 				r = 1;
 			break;
 		}
@@ -606,6 +606,7 @@ static int
 show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 {
 	int i, ret = 0, cac = 0, radar_cnt = 0, radar_list[32];
+	unsigned int chan = 0;
 	uint64_t m = 0;
 	FILE *fp;
 	unsigned char mac_addr[ETHER_ADDR_LEN];
@@ -665,7 +666,8 @@ show_wliface_info(webs_t wp, int unit, char *ifname, char *op_mode)
 	if (*tmpstr != '\0')
 		ret += websWrite(wp, ", %sMHz", tmpstr);
 	ret += websWrite(wp, "\n");
-	ret += websWrite(wp, "Channel		: %u", getAPChannel(unit));
+	chan = getAPChannel(unit);
+	ret += websWrite(wp, "Channel		: %u", chan);
 	if (m) {
 		ret += websWrite(wp, " (Radar: %s)", bitmask2chlist5g(m, ","));
 	}
