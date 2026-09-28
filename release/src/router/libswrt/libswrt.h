@@ -212,7 +212,7 @@ extern int get_eth_txrxbyte_avg(int is_bh,char *mac,double *txbyte,double *rxbyt
 extern int get_ethphy_txrxbyte_avg(int is_bh,char *mac,double *txbyte,double *rxbyte,int diff_range);
 extern int get_sta_txrxbyte_avg(char *sta_mac,char *mac,double *txbyte,double *rxbyte,int diff_range);
 extern int get_staphy_txrxbyte_avg(char *sta_mac,char *mac,double *txbyte,double *rxbyte,int diff_range);
-#elif defined(RTCONFIG_SWRTMESH)
+#else
 extern struct CONNDIAG_DB_t *find_db_profile_by_mode_and_version(int db_mode,char *version);
 extern struct CONNDIAG_DB_t *find_db_profile_by_type_and_version(int db_type,char *version);
 extern int get_wifi_txrxbyte_avg(char *bandmac,char *mac,double *txbyte,double *rxbyte,int diff_range);

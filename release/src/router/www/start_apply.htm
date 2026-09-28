@@ -13,6 +13,7 @@ var rc_support = '<% nvram_get("rc_support"); %>';
 var dsl_support = (rc_support.search("dsl") == -1) ? false : true;
 var tmo_support = (rc_support.search("tmo") == -1) ? false : true;
 var amesh_support = (rc_support.search("amas") == -1) ? false : true;
+var lantiq_support = (rc_support.search("lantiq") == -1) ? false : true;
 var current_page = '<% get_parameter("current_page"); %>';
 var next_page = '<% get_parameter("next_page"); %>';
 var action_script = '<% get_parameter("action_script"); %>';

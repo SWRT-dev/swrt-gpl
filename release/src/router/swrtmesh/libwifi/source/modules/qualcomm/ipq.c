@@ -1,8 +1,8 @@
 /*
  * ipq.c -implements for Qualcomm drivers.
  *
- * Copyright (C) 2023 SWRTdev. All rights reserved.
- * Copyright (C) 2023 paldier <paldier@hotmail.com>.
+ * Copyright (C) 2023-2026 SWRTdev. All rights reserved.
+ * Copyright (C) 2023-2026 paldier <paldier@hotmail.com>.
  *
  *
  * This program is free software; you can redistribute it and/or
@@ -302,16 +302,34 @@ static int radio_get_curr_opclass(const char *name, struct wifi_opclass *o)
 	return wifi_get_opclass(netdev, o);
 }
 
-extern int get_bw_by_mode_str(char *mode);
+/*
+/$ iw ath0 info
+Interface ath0
+	ifindex 40
+	wdev 0x400000002
+	addr 88:c3:97:17:1a:ce
+	ssid ASUS_5G
+	type AP
+	wiphy 4
+	channel 36 (5180 MHz), width: 80 MHz, center1: 5210 MHz
+	txpower 23.00 dBm
+*/
+extern int exec_and_parse(const char *cmd, const char *keyword, const char *fmt, int cnt, ...);
 
 static int radio_get_bandwidth(const char *name, enum wifi_bw *bw)
 {
 	int bandwidth = 0;
-	char orig_mode[32] = {0};
+	char buf[128] = {0}, cmd[] = "iw athxxxxxxxxx info", *p;
 	libwifi_dbg("[%s] %s called\n", name, __func__);
 
-	strlcpy(orig_mode, iwpriv_get(name, "get_mode")? : "", sizeof(orig_mode));
-	bandwidth = get_bw_by_mode_str(orig_mode);
+//high cpu usage
+//	strlcpy(orig_mode, iwpriv_get(name, "get_mode")? : "", sizeof(orig_mode));
+//	bandwidth = get_bw_by_mode_str(orig_mode);
+	snprintf(cmd, sizeof(cmd), "iw %s info", name);
+	exec_and_parse(cmd, "width:", "%s", 1, buf);
+	p = strstr(buf, "width:");
+	if(p != NULL)
+		sscanf(p, "width: %d MHz", &bandwidth);
 
 	switch (bandwidth) {
 		case 20:

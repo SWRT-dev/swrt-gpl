@@ -1,8 +1,8 @@
 /*
  * Copyright 2021, ASUS
- * Copyright 2021-2025, SWRTdev
- * Copyright 2021-2025, paldier <paldier@hotmail.com>.
- * Copyright 2021-2025, lostlonger<lostlonger.g@gmail.com>.
+ * Copyright 2021-2026, SWRTdev
+ * Copyright 2021-2026, paldier <paldier@hotmail.com>.
+ * Copyright 2021-2026, lostlonger<lostlonger.g@gmail.com>.
  * All Rights Reserved.
  */
 
@@ -5452,7 +5452,14 @@ int gen_hostapd_config(int band, int subunit)
 		}
 		free(nv);
 	}
-
+#if defined(RTCONFIG_SWRTMESH)
+	//kvr is not yet fully supported in hostapd(mt7986)
+	//kvr is fully supported in hostapd(mt7988)
+	//add to upgrade plan.
+	//fprintf(fp_h, "bss_transition=%d\n", 1);
+	fprintf(fp_h, "rrm_neighbor_report=%d\n", 1);
+	fprintf(fp_h, "rrm_beacon_report=%d\n", 1);
+#endif
 	if (rep_mode)
 		goto next;
 

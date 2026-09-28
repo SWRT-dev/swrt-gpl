@@ -4465,7 +4465,10 @@ int validate_apply(webs_t wp, json_object *root)
 				if (ret & NVRAM_MODIFIED_SDN_BIT) {
 					nvram_modified_sdn = nvram_modified = 1;
 				}
-#endif	// RTCONFIG_MULTILAN_CFG				
+#endif	// RTCONFIG_MULTILAN_CFG
+#if defined(RTCONFIG_SWRTMESH)
+				if(ret&NVRAM_MODIFIED_WL_BIT) nvram_modified_uci = 1;
+#endif
 			}
 		}
 		else {

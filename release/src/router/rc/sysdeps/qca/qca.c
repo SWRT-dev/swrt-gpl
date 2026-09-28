@@ -4445,6 +4445,11 @@ next_mrate:
 	if (band && mcast_phy == 1)
 		goto next_mrate;
 #endif
+#if defined(RTCONFIG_SWRTMESH)
+	fprintf(fp, "bss_transition=%d\n", 1);
+	fprintf(fp, "rrm_neighbor_report=%d\n", 1);
+	fprintf(fp, "rrm_beacon_report=%d\n", 1);
+#endif
 	gen_hostapd_wps_config(fp, band, subnet, br_if);
 
 #if RTCONFIG_AIR_TIME_FAIRNESS
@@ -4497,6 +4502,10 @@ next_mrate:
 #if defined(RTCONFIG_SOC_IPQ40XX)
 	if (!subnet)
 		fprintf(fp2, "%s wifi%d dl_loglevel 5\n", IWPRIV,band);	// disable log from target firmware
+#if defined(RTCONFIG_SWRTMESH)
+	if(is_router_mode() || access_point_mode() || mesh_re_node())
+		fprintf(fp2, "iwpriv %s rrm 1\n", wif);
+#endif
 #endif
 #if defined(RTCONFIG_WIFI_QCN5024_QCN5054) || defined(RTCONFIG_QCA_AXCHIP) || defined(RTCONFIG_QCA_BECHIP)
 	if(nvram_pf_match(prefix2, "auth_mode_x", "sae") || nvram_pf_match(prefix2, "auth_mode_x", "wpa3")
@@ -4515,6 +4524,7 @@ next_mrate:
 			nvram_pf_set_int(prefix2, "mfp", 0);
 		fprintf(fp, "ieee80211w=%d\n", 0);
 	}
+
 	if(!subnet)
 		fprintf(fp4, "ifconfig %s up\n", vphy);
 	fclose(fp4);

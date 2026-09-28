@@ -1,7 +1,7 @@
 export LINUXDIR := $(SRCBASE)/linux/linux-4.9.x
 
 ifeq ($(EXTRACFLAGS),)
-EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign -DLINUX30 -mno-branch-likely -march=mips32r2 -mtune=24kc -DPIC -fpic -mabicalls
+EXTRACFLAGS := -DCONFIG_LANTIQ -DDEBUG_NOISY -DDEBUG_RCTEST -pipe -funit-at-a-time -DLINUX30 -mno-branch-likely -march=mips32r2 -mtune=24kc -DPIC -fpic -mabicalls
 endif
 export BUILD := $(shell (gcc -dumpmachine))
 export KERNEL_BINARY=$(LINUXDIR)/vmlinux

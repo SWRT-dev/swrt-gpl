@@ -3040,11 +3040,12 @@ int gen_lantiq_config(int band, int subnet)
 	//fprintf(fp, "time_advertisement=%d\n", 0);
 	//fprintf(fp, "time_zone=%s\n", "UTC");
 	//fprintf(fp, "wnm_sleep_mode=%d\n", 0);
+#if defined(RTCONFIG_SWRTMESH)
 	fprintf(fp, "bss_transition=%d\n", 1);
-/*
-k
 	fprintf(fp, "rrm_neighbor_report=%d\n", 1);
 	fprintf(fp, "rrm_beacon_report=%d\n", 1);
+#endif
+/*
 r
 	if(wpapsk){
 		fprintf(fp, "mobility_domain=%s\n", "ac51");

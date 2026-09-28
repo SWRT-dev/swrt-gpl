@@ -4,7 +4,7 @@ else
 MARCH := -marm
 endif
 
-EXTRACFLAGS := -DLINUX26 -DCONFIG_QCA -DDEBUG_NOISY -D_GNU_SOURCE -DDEBUG_RCTEST -pipe -funit-at-a-time -Wno-pointer-sign $(MARCH)
+EXTRACFLAGS := -DLINUX26 -DCONFIG_QCA -DDEBUG_NOISY -D_GNU_SOURCE -DDEBUG_RCTEST -pipe -funit-at-a-time $(MARCH)
 
 ifneq ($(findstring linux-3,$(LINUXDIR)),)
 EXTRACFLAGS += -DLINUX30
