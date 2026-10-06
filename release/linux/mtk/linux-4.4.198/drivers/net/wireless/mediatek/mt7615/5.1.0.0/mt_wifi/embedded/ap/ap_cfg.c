@@ -17500,20 +17500,34 @@ INT RTMP_AP_IoctlHandle(
 				UINT8 bandwidth;
 				UINT8 extrach;
 			};
+			UINT8 BW;
 			struct channel_info info;
+			HTTRANSMIT_SETTING HtPhyMode;
 			POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
 			struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
 			INT i = 0;
 			info.bandwidth = 0;
 			info.channel = wdev->channel;
 			info.extrach = 0;
-			for (i = 0; VALID_UCAST_ENTRY_WCID(pAd, i); i++) {
-				PMAC_TABLE_ENTRY pEntry = &pAd->MacTab.Content[i];
-				if(pEntry->wdev == wdev){
-					info.bandwidth = pEntry->MaxHTPhyMode.field.BW;
-					break;
-				}
-			}
+
+			HtPhyMode = pAd->ApCfg.MBSSID[pObj->ioctl_if].wdev.HTPhyMode;
+#ifdef DOT11_VHT_AC
+			if ((HtPhyMode.field.MODE >= MODE_VHT) && (wdev != NULL)) {
+				BW = wlan_operate_get_vht_bw(wdev);
+
+				if (BW == 0 && wlan_operate_get_ht_bw(wdev)) /* VHT40 */
+					BW = 1;
+				else if (BW == 1) /* VHT80 */
+					BW = 2;
+				else if (BW >= 2) /* VHT80-80,VHT160 */
+					BW = 3;
+			} else
+#endif /*DOT11_VHT_AC*/
+			if ((HtPhyMode.field.MODE >= MODE_HTMIX) && (wdev != NULL))
+				BW = wlan_operate_get_ht_bw(wdev);
+			else
+				BW = HtPhyMode.field.BW;
+			info.bandwidth = BW;
 			wrq->u.data.length = sizeof(info);
 			if (copy_to_user(wrq->u.data.pointer, &info, wrq->u.data.length))
 				Status = -EFAULT;

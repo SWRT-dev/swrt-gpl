@@ -81,10 +81,8 @@
 #endif
 
 #if defined(RTCONFIG_PTHSAFE_POPEN)
-#if defined(RTCONFIG_QCA) || defined(RTCONFIG_SWRTMESH)
 #define	popen	PS_popen
 #define	pclose	PS_pclose
-#endif
 #define	PS_SOCK	"/tmp/ps_sock"
 extern FILE *PS_popen(const char *, const char *);
 extern int PS_pclose(FILE *);

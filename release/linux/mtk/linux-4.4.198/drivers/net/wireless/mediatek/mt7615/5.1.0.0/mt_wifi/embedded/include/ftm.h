@@ -47,7 +47,7 @@ BOOLEAN FtmConvertTodToa(
 	IN UINT64 * pTOD,
 	IN UINT64 * pTOA);
 
-inline UINT8 FtmGetNewPid(
+UINT8 FtmGetNewPid(
 	IN PRTMP_ADAPTER    pAd);
 
 VOID FtmAddPidPendingNode(

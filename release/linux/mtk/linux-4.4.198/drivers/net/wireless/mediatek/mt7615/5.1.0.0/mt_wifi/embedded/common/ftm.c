@@ -681,7 +681,7 @@ FtmGetTargetAddr(
 *
 *========================================================================
 */
-inline UINT8
+UINT8
 FtmGetNewPid(
 	IN PRTMP_ADAPTER	pAd
 )

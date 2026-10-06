@@ -429,6 +429,44 @@ int get_ra_sta_info_by_unit(int unit, int subunit, unsigned char *data, int data
 	return wrq3.u.data.length;
 }
 
+static void getVAPBandwidth(int unit, char *buf, size_t buf_len)
+{
+	int channel, bw = 0, nctrlsb;
+	char *ifname, prefix[16];
+
+	if (!buf || !buf_len)
+		return;
+	memset(buf, 0, buf_len);
+	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
+	ifname = nvram_pf_safe_get(prefix, "ifname");
+	get_channel_info(ifname, &channel, &bw, &nctrlsb);
+	if(bw)
+		snprintf(buf, buf_len, "%d", bw);
+}
+
+static void getVAPBitRate(int unit, char *ifname, char *buf, size_t buf_len)
+{
+	unsigned long long bitrate = 0;
+	if (!buf || !buf_len)
+		return;
+
+	switch (unit) {
+	case WL_2G_BAND:	/* fall-through */
+	case WL_5G_BAND:	/* fall-through */
+	case WL_5G_2_BAND:
+		bitrate = get_bitrate(ifname);
+#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
+		snprintf(buf, buf_len, "%lld %s", bitrate / 500, "Mb/s");//Kbps -> Mbps
+#else
+		snprintf(buf, buf_len, "%lld %s", bitrate / 1000, "Mb/s");
+#endif
+		break;
+	default:
+		snprintf(buf, buf_len, "%lld %s", bitrate, "Mb/s");
+		dbg("%s: Unknown wl%d band!\n", __func__, unit);
+	}
+}
+
 static int
 wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 {
@@ -440,7 +478,7 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 	struct iwreq wrq1;
 	struct iwreq wrq2;
 	unsigned long phy_mode;
-	char tmp[128], prefix[] = "wlXXXXXXXXXX_", *ifname;
+	char tmp[128], tmpstr[1024], prefix[] = "wlXXXXXXXXXX_", *ifname;
 	int wl_mode_x;
 	int r;
 
@@ -652,18 +690,15 @@ wl_status(int eid, webs_t wp, int argc, char_t **argv, int unit)
 				ret+=websWrite(wp, "Phy Mode	: unknown[%lu]\n", phy_mode);
 		}
 	}
-#if defined(RTCONFIG_MT798X) || defined(RTCONFIG_MT799X)
-	unsigned long long bitrate;
-	int bw;
-	bitrate = get_bitrate(ifname);
-	ret += websWrite(wp, "Bit Rate	: %llu", bitrate);
-	if ((get_ch_cch_bw(ifname, NULL, NULL, &bw)) == 1) {
-		ret += websWrite(wp, ", %dMHz", bw);
-	}
+	getVAPBitRate(unit, ifname, tmpstr, sizeof(tmpstr));
+	ret += websWrite(wp, "Bit Rate	: %s", tmpstr);
+	getVAPBandwidth(unit, tmpstr, sizeof(tmpstr));
+	if (tmpstr[0] != '\0')
+		ret += websWrite(wp, ", %sMHz", tmpstr);
 	ret += websWrite(wp, "\n");
-#endif
 
 	ret+=websWrite(wp, "Channel		: %d", channel);
+
 	if (unit == WL_5G_BAND || unit == WL_5G_2_BAND) {
 		radar_cnt = get_radar_channel_list(unit, radar_list, ARRAY_SIZE(radar_list));
 		for (i = 0; i < radar_cnt; ++i) {

@@ -4897,7 +4897,7 @@ define RouterOptions
 		echo "# RTCONFIG_OPENSSL11 is not set" >>$(1); \
 		echo "RTCONFIG_OPENSSL3=y" >>$(1); \
 	fi;
-	if [ "$(LANTIQ)" = "y" ]; then \
+	if [ "$(SWRT)" = "y" ]; then \
 		sed -i "/RTCONFIG_PTHSAFE_POPEN/d" $(1); \
 		echo "RTCONFIG_PTHSAFE_POPEN=y" >>$(1); \
 		sed -i "/RTCONFIG_OPENSSL11/d" $(1); \

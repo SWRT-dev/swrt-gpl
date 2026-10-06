@@ -393,6 +393,19 @@ VOID SendBSS2040CoexistMgmtAction(
 	BSS_2040_INTOLERANT_CH_REPORT BssIntolerantInfo;
 	UCHAR *pAddr1;
 	struct wifi_dev *wdev = &pAd->ApCfg.MBSSID[apidx].wdev;
+
+	if (wdev) {
+		if (WDEV_BSS_STATE(wdev) < BSS_READY) {
+			MTWF_LOG(DBG_CAT_CFG, DBG_SUBCAT_ALL, DBG_LVL_TRACE,
+					 ("%s, wdev(%d) bss(%d) not ready (state:%d)!!\n",
+					 __func__, wdev->wdev_idx, apidx, WDEV_BSS_STATE(wdev)));
+			return;
+		}
+
+		if (!WMODE_CAP_2G(wdev->PhyMode))
+			return;
+	}
+
 	MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("SendBSS2040CoexistMgmtAction(): Wcid=%d, apidx=%d, InfoReq=%d!\n", Wcid, apidx, InfoReq));
 	NdisZeroMemory((PUCHAR)&BssCoexistInfo, sizeof(BSS_2040_COEXIST_ELEMENT));
 	NdisZeroMemory((PUCHAR)&BssIntolerantInfo, sizeof(BSS_2040_INTOLERANT_CH_REPORT));
@@ -421,7 +434,7 @@ VOID SendBSS2040CoexistMgmtAction(
 					  END_OF_ARGS);
 	MiniportMMRequest(pAd, QID_AC_BE, pOutBuffer, FrameLen);
 	MlmeFreeMemory(pOutBuffer);
-	MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_ERROR, ("ACT - SendBSS2040CoexistMgmtAction(BSSCoexist2040=0x%x)\n", BssCoexistInfo.BssCoexistIe.word));
+	MTWF_LOG(DBG_CAT_PROTO, DBG_SUBCAT_ALL, DBG_LVL_TRACE, ("ACT - SendBSS2040CoexistMgmtAction(BSSCoexist2040=0x%x)\n", BssCoexistInfo.BssCoexistIe.word));
 }
 #endif /* CONFIG_AP_SUPPORT */
 

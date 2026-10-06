@@ -221,7 +221,6 @@ static int un_tcpsock_connect(char *path, int nodelay)
 	return sock;
 }
 
-#if defined(RTCONFIG_QCA) || defined(CONFIG_BCMWL5) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_SWRTMESH)
 static int not_in_thread(void)
 {
 	struct stat task_stat;
@@ -232,17 +231,6 @@ static int not_in_thread(void)
 	if (task_stat.st_nlink <= 3) return 1;
 	else return 0;
 }
-#else
-#warning WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-#warning WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-#warning WWWWWWW implement your own pthread detection mechanism WWWWWWW
-#warning WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-#warning WWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWWW
-static int not_in_thread(void)
-{
-	return 0; // assume always in pthread
-}
-#endif
 
 #ifdef popen
 #undef popen

@@ -2647,10 +2647,12 @@ VOID WrapDfsRddReportHandle(/*handle the event of EXT_EVENT_ID_RDD_REPORT*/
 				 __func__,
 				 BssIdx));
 #ifdef WAPP_SUPPORT
+#ifdef CONFIG_MAP_SUPPORT
 		if (first_wdev && IS_MAP_TURNKEY_ENABLE(pAd)) {
 			wapp_send_radar_detect_notif(pAd, wdev, wdev->channel, 0);
 			first_wdev = FALSE;
 		}
+#endif
 #endif
 #ifdef CONFIG_MAP_SUPPORT
 /*On radar detect let AP stop start happen without apcli disconnect at AP stop*/

@@ -15606,6 +15606,25 @@ INT RTMP_AP_IoctlHandle(
 				pCurrState = pApCliEntry->CtrlCurrState;
 				wrq->u.data.length = sizeof(UINT32);
 				Status = copy_to_user(wrq->u.data.pointer, &pCurrState, wrq->u.data.length);
+			} else if ( subcmd == ASUS_SUBCMD_GCHANNELINFO ) {
+				struct channel_info {
+					UINT8 channel;
+					UINT8 bandwidth;
+					UINT8 extrach;
+				};
+				struct channel_info info;
+				HTTRANSMIT_SETTING HtPhyMode;
+				POS_COOKIE pObj = (POS_COOKIE) pAd->OS_Cookie;
+				struct wifi_dev *wdev = get_wdev_by_ioctl_idx_and_iftype(pAd, pObj->ioctl_if, pObj->ioctl_if_type);
+				info.bandwidth = 0;
+				info.channel = wdev->channel;
+				info.extrach = 0;
+
+				HtPhyMode = pAd->ApCfg.MBSSID[pObj->ioctl_if].wdev.HTPhyMode;
+				info.bandwidth = HtPhyMode.field.BW;
+				wrq->u.data.length = sizeof(info);
+				if (copy_to_user(wrq->u.data.pointer, &info, wrq->u.data.length))
+					Status = -EFAULT;
 			}
 			break;
 
