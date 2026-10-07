@@ -773,7 +773,7 @@ OPENSSL := openssl-1.1
 else ifeq ($(RTCONFIG_OPENSSL10),y)
 OPENSSL := openssl-1.0
 else ifeq ($(RTCONFIG_OPENSSL3),y)
-OPENSSL := openssl-3.0.11
+OPENSSL := openssl-3.6.4
 else
 $(error OpenSSL is not defined)
 endif
@@ -3308,8 +3308,8 @@ endif
 openssl-1.1-stage:
 	$(MAKE) -C openssl-1.1 install_sw DESTDIR=$(STAGEDIR)
 
-openssl-3.0.11/Makefile:
-	cd openssl-3.0.11 && \
+openssl-3.6.4/Makefile:
+	cd openssl-3.6.4 && \
 	./Configure $(HOSTCONFIG)-swrt --prefix=/usr --openssldir=/etc --cross-compile-prefix=' ' \
 	$(if $(filter y,$(RTCONFIG_SFP) $(RTCONFIG_4M_SFP) $(RTCONFIG_8M_SFP)),-Os,-O3) \
 	-ffunction-sections -fdata-sections -Wl,--gc-sections \
@@ -3318,39 +3318,39 @@ openssl-3.0.11/Makefile:
 	    $(if $(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),enable-devcryptoeng -I$(TOP)/cryptodev-linux/src) \
 	    $(if $(filter y,$(RTCONFIG_WTFAST)),-DRTCONFIG_WTFAST,) \
 	    $(if $(filter y,$(HND_ROUTER)),,-DOPENSSL_PREFER_CHACHA_OVER_GCM)
-	@$(MAKE) -C openssl-3.0.11 depend
-	@$(MAKE) -C openssl-3.0.11 clean
+	@$(MAKE) -C openssl-3.6.4 depend
+	@$(MAKE) -C openssl-3.6.4 clean
 	@touch $@
 
-openssl-3.0.11: openssl-3.0.11/Makefile
+openssl-3.6.4: openssl-3.6.4/Makefile
 	if [ ! -f $@/stamp-h1 ];then \
-		$(MAKE) $(PARALLEL_BUILD) -C openssl-3.0.11 && $(MAKE) $@-stage && touch $@/stamp-h1 ; \
+		$(MAKE) $(PARALLEL_BUILD) -C openssl-3.6.4 && $(MAKE) $@-stage && touch $@/stamp-h1 ; \
 	fi
 
-openssl-3.0.11-clean:
-	[ ! -f openssl-3.0.11/Makefile ] || $(MAKE) -C openssl-3.0.11 clean
-	@rm -f openssl-3.0.11/Makefile
+openssl-3.6.4-clean:
+	[ ! -f openssl-3.6.4/Makefile ] || $(MAKE) -C openssl-3.6.4 clean
+	@rm -f openssl-3.6.4/Makefile
 
-openssl-3.0.11-install:
-	install -D openssl-3.0.11/libcrypto.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.3
+openssl-3.6.4-install:
+	install -D openssl-3.6.4/libcrypto.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.3
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.3
 ifeq ($(or $(RTCONFIG_WEBDAV),$(RTCONFIG_FTP_SSL),$(RTCONFIG_OPENVPN),$(RTCONFIG_HTTPS)),y)
-	install -D openssl-3.0.11/libssl.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
+	install -D openssl-3.6.4/libssl.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
 endif
-	install -D openssl-3.0.11/engines/devcrypto.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/engines-3/devcrypto.so
+	install -D openssl-3.6.4/engines/devcrypto.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/engines-3/devcrypto.so
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/engines-3/devcrypto.so
-	install -D openssl-3.0.11/providers/legacy.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/ossl-modules/legacy.so
+	install -D openssl-3.6.4/providers/legacy.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/ossl-modules/legacy.so
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/ossl-modules/legacy.so
 	cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libcrypto.so && ln -sf libcrypto.so.3 libcrypto.so.1.1 && ln -sf libcrypto.so.3 libcrypto.so
 	[ ! -f $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3 ] || \
 		cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libssl.so && ln -sf libssl.so.3 libssl.so.1.1 && ln -sf libssl.so.3 libssl.so
-	install -D openssl-3.0.11/apps/openssl $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
+	install -D openssl-3.6.4/apps/openssl $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
 	chmod 0500 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/sbin/openssl
 
-openssl-3.0.11-stage:
-	$(MAKE) -C openssl-3.0.11 install_sw DESTDIR=$(STAGEDIR)
+openssl-3.6.4-stage:
+	$(MAKE) -C openssl-3.6.4 install_sw DESTDIR=$(STAGEDIR)
 
 mbedtls:
 	$(MAKE) -C $@ SHARED=1 no_test && $(MAKE) $@-stage
