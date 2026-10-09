@@ -455,11 +455,7 @@ static void getVAPBitRate(int unit, char *ifname, char *buf, size_t buf_len)
 	case WL_5G_BAND:	/* fall-through */
 	case WL_5G_2_BAND:
 		bitrate = get_bitrate(ifname);
-#if defined(RTCONFIG_WLMODULE_MT7615E_AP)
-		snprintf(buf, buf_len, "%lld %s", bitrate / 500, "Mb/s");//Kbps -> Mbps
-#else
-		snprintf(buf, buf_len, "%lld %s", bitrate / 1000, "Mb/s");
-#endif
+		snprintf(buf, buf_len, "%lld %s", bitrate / 1000, "Mb/s");//Kbps -> Mbps
 		break;
 	default:
 		snprintf(buf, buf_len, "%lld %s", bitrate, "Mb/s");

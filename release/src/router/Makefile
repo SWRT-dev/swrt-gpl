@@ -3334,12 +3334,12 @@ openssl-3.6.4-clean:
 openssl-3.6.4-install:
 	install -D openssl-3.6.4/libcrypto.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.3
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libcrypto.so.3
-ifeq ($(or $(RTCONFIG_WEBDAV),$(RTCONFIG_FTP_SSL),$(RTCONFIG_OPENVPN),$(RTCONFIG_HTTPS)),y)
 	install -D openssl-3.6.4/libssl.so.3 $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/libssl.so.3
-endif
+ifeq ($(or $(RTCONFIG_RALINK),$(RTCONFIG_QCA),$(RTCONFIG_LANTIQ),$(RTCONFIG_HND_ROUTER)),y)
 	install -D openssl-3.6.4/engines/devcrypto.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/engines-3/devcrypto.so
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/engines-3/devcrypto.so
+endif
 	install -D openssl-3.6.4/providers/legacy.so $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/ossl-modules/legacy.so
 	$(STRIP) $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib/ossl-modules/legacy.so
 	cd $(INSTALLDIR)$(INSTALLSUBDIR)/usr/lib && rm -f libcrypto.so && ln -sf libcrypto.so.3 libcrypto.so.1.1 && ln -sf libcrypto.so.3 libcrypto.so

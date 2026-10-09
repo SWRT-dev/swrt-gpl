@@ -1427,6 +1427,10 @@ void init_wl(void)
 #elif defined (RTCONFIG_WLMODULE_MT7603E_AP)
 	if (!module_loaded("rlt_wifi_7603e"))
 		modprobe("rlt_wifi_7603e");
+#if defined (RMAC2100)
+	if (!module_loaded("mt_wifi_7615E"))
+		modprobe("mt_wifi_7615E");
+#endif
 #elif defined (RTCONFIG_WLMODULE_MT7615E_AP)
 	if (!module_loaded("mt_wifi_7615E"))
 		//modprobe("mt_wifi_7615E", tmpStr1, tmpStr2, tmpStr3);
