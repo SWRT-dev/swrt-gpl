@@ -10550,7 +10550,7 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 		else
 			strlcpy(dev_name, (const char *)p_client_info_tab->device_name[i], sizeof(dev_name));
 
-#if !defined(RTCONFIG_AMAS) || defined(SWRT_VER_MAJOR_B)
+#if (!defined(RTCONFIG_AMAS) || defined(SWRT_VER_MAJOR_B)) && !defined(RTCONFIG_SWRTMESH)
 		if(p_client_info_tab->device_flag[i]&(1<<FLAG_EXIST)) {
 #endif
 			len = strlen(dev_name);
@@ -10630,7 +10630,7 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 			json_object_object_add(client, "vendor", json_object_new_string((const char *) p_client_info_tab->vendor_name[i]));
 			json_object_object_add(client, "isWL", json_object_new_string(wireless));
 			json_object_object_add(client, "isGN", json_object_new_string(""));
-#ifndef RTCONFIG_AMAS
+#if !defined(RTCONFIG_AMAS) && !defined(RTCONFIG_SWRTMESH)
  			json_object_object_add(client, "isOnline", json_object_new_string("1"));
 			json_object_array_add(macArray, json_object_new_string(mac_buf));
 #else
@@ -10942,7 +10942,7 @@ static int get_client_detail_info(struct json_object *clients, struct json_objec
 #endif
 
 			json_object_object_add(clients, mac_buf, client);
-#if !defined(RTCONFIG_AMAS) || defined(SWRT_VER_MAJOR_B)
+#if (!defined(RTCONFIG_AMAS) || defined(SWRT_VER_MAJOR_B)) && !defined(RTCONFIG_SWRTMESH)
 		}
 #endif
 	}
