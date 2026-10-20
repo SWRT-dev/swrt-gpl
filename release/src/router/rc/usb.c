@@ -2568,12 +2568,12 @@ void remove_storage_main(int shutdn)
 	exec_for_host(-1, 0x02, shutdn ? EFH_SHUTDN : 0, umount_partition);
 }
 
-#if defined(RTCONFIG_REALTEK) || (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X)) || (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER))
+#if (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X)) || (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)) || defined(RTCONFIG_LANTIQ)
 static const char *path_to_name(const char *path) {
 	const char *s = path, *tmp;
 	//_dprintf("%s(1)\n", __func__);
 
-	if (path == NULL) return 0;
+	if (path == NULL) return NULL;
 
 	while ((tmp = strchr(s, '/'))!= 0) {
 		//_dprintf("%s(2 %s)\n", __func__, tmp);
@@ -2584,7 +2584,7 @@ static const char *path_to_name(const char *path) {
 	if (strlen(s))
 		return s;
 
-	return 0;
+	return NULL;
 }
 #endif /* RTCONFIG_REALTEK */
 
@@ -2715,21 +2715,12 @@ void hotplug_usb(void)
 	}
 	//_dprintf("device: %s\n", device);
 #endif /* RTCONFIG_REALTEK */
-#if (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X))
+#if (defined(RTCONFIG_RALINK) && !defined(RTCONFIG_MT798X) && !defined(RTCONFIG_MT799X)) \
+	|| (defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)) || defined(RTCONFIG_LANTIQ)
 	char *devpath = getenv("DEVPATH");
-	//_dprintf("devpath: %s\n", devpath);
-
 	device = path_to_name(devpath);
-	if (strncmp(device, "sd", 2) != 0 && strncmp(device, "sg", 2) != 0
-#ifdef RTCONFIG_USB_CDROM
-	    && strncmp(device, "sr", 2) != 0
-#endif
-	    ){
+	if (!device)
 		return;
-	}
-#elif defined(RTCONFIG_BCMARM) && !defined(RTCONFIG_HND_ROUTER)
-	char *devpath = getenv("DEVPATH");
-	device = path_to_name(devpath);
 	if (strncmp(device, "sd", 2) != 0 && strncmp(device, "sg", 2) != 0
 #ifdef RTCONFIG_USB_CDROM
 	    && strncmp(device, "sr", 2) != 0

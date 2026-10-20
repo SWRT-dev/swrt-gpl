@@ -1,6 +1,6 @@
 /*
- * Copyright 2023-2025, SWRTdev
- * Copyright 2023-2025, paldier <paldier@hotmail.com>.
+ * Copyright 2023-2026, SWRTdev
+ * Copyright 2023-2026, paldier <paldier@hotmail.com>.
  * All Rights Reserved.
  */
 
@@ -68,7 +68,7 @@ int start_swrtmesh(void)
 	char *ieee1905_argv[] = { "ieee1905d", NULL, NULL, NULL, NULL, NULL, NULL };
 	char *cntl_argv[] = { "mapcontroller", NULL, NULL, NULL, NULL, NULL, NULL };
 	char *tp_argv[] = { "topologyd", NULL };
-//	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
+	char *swrtmeshd_argv[] = { "swrtmeshd", NULL };
 
 	if (getpid() != 1) {
 		notify_rc("start_swrtmesh");
@@ -144,7 +144,7 @@ int start_swrtmesh(void)
 		chmod("/tmp/agent.sh",0777);
 		_eval(argv, NULL, 0, &pid);
 	}
-	//_eval(swrtmeshd_argv, NULL, 0, &pid);
+	_eval(swrtmeshd_argv, NULL, 0, &pid);
 	return 0;
 }
 

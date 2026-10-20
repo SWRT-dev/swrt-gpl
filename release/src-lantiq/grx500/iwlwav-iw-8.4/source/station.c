@@ -248,7 +248,7 @@ static void swrt_get_rate(char *ifname, char *macaddr, char *buf, size_t buflen,
 				while(fgets(line, sizeof(line), fp)){
 					if(strstr(line, rate_str)){
 						sscanf(line, "%d.%*d :", &rate);
-						snprintf(buf, buflen, "%d MBit/s", rate / 100);
+						snprintf(buf, buflen, "%d MBit/s", rate);
 						fclose(fp);
 						return;
 					}

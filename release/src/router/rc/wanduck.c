@@ -402,7 +402,9 @@ static void wan_led_control(int sig) {
 
 		update_wan_leds(unit, !rule_setup);
 	}
-#elif defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) || defined(RTCONFIG_BCM_7114) || defined(DSL_AC68U) || defined(HND_ROUTER) || defined(RTCONFIG_RALINK)
+#elif defined(RTAC68U) ||  defined(RTAC87U) || defined(RTAC3200) || defined(SBRAC3200P) \
+	|| defined(RTCONFIG_BCM_7114) || defined(DSL_AC68U) || defined(HND_ROUTER) \
+	|| defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 	if(nvram_match("AllLED", "1")
 #if defined(RTAC68U) && !defined(DIR868L) && !defined(F9K1118) && !defined(EA6700)
 		&& (is_ac66u_v2_series() || is_ac68u_v3_series())
@@ -420,7 +422,7 @@ static void wan_led_control(int sig) {
 		} else {
 			led_control(LED_WAN, LED_ON);
 		}
-#elif defined(RTCONFIG_RALINK)
+#elif defined(RTCONFIG_RALINK) || defined(RTCONFIG_LANTIQ)
 		int unit;
 		update_wan_leds(unit, link_wan[unit]);
 #endif

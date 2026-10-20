@@ -15,8 +15,17 @@ else ifeq ($(or $(RTCONFIG_BCM_7114),$(RTCONFIG_BCM7),$(RTCONFIG_BCM4708)),y)
 SC_ARCH=arm
 endif
 
+CFLAGS += -I$(TOP)/shared -I$(SRCBASE)/include
+ifeq ($(RTCONFIG_BCMARM),y)
+CFLAGS += -I$(SRCBASE)/shared/bcmwifi/include
+endif
+CFLAGS += -I$(TOP)/openssl/include
+LDFLAGS = -L$(TOP)/nvram${BCMEX} -lnvram -L$(TOP)/shared -lshared -lcrypt -ldl
+LDFLAGS += -L$(TOP)/openssl -lcrypto -lssl $(if $(or $(RTCONFIG_OPENSSL11),$(RTCONFIG_OPENSSL3)),-lpthread,) $(if $(RTCONFIG_OPENSSL3),-latomic,)
+LDFLAGS += $(EXTRA_LDFLAGS)
+
 #export SC_BUILD=y
-all: versioncmp base64_encode resolveip
+all: versioncmp base64_encode resolveip sc_auth
 
 versioncmp:
 	$(CC) versioncmp.c -o versioncmp
@@ -29,6 +38,10 @@ base64_encode:
 resolveip:
 	$(CC) resolveip.c -o resolveip
 	$(STRIP) resolveip
+
+sc_auth:
+	@$(CC) $(LDFLAGS) $(CFLAGS) sc_auth.c -o sc_auth
+	$(STRIP) sc_auth
 
 install:
 	install -d $(INSTALLDIR)/usr/sbin
@@ -65,9 +78,10 @@ endif
 	install -m 0755 versioncmp $(INSTALLDIR)/usr/sbin
 	install -m 0755 base64_encode $(INSTALLDIR)/usr/sbin
 	install -m 0755 resolveip $(INSTALLDIR)/usr/sbin
+	install -m 0755 sc_auth $(INSTALLDIR)/usr/sbin
 	install -m 0755 softcenter/automount.sh $(INSTALLDIR)/rom/etc/softcenter
 #	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/jq $(INSTALLDIR)/rom/etc/softcenter/bin
-	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
+#	install -m 0755 softcenter/bin_arch/$(SC_ARCH)/sc_auth $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter.sh $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter-mount.sh $(INSTALLDIR)/rom/etc/softcenter/bin
 	install -m 0755 softcenter/bin/softcenter-net.sh $(INSTALLDIR)/rom/etc/softcenter/bin

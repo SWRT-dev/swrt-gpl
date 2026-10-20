@@ -38,7 +38,7 @@
 #include <httpd.h>
 #include <swrt.h>
 #include <shared.h>
-#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
+#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRTMESH)
 #include <amas_apg_shared.h>
 #endif
 #if defined(RTCONFIG_SOFTCENTER)
@@ -944,7 +944,7 @@ void get_traffic_hook(char *mode, char *name, char *dura, char *date, int *retva
 }
 #endif
 
-#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
+#if defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRTMESH)
 void escape_json_char(char *orig, char *conv, int percent_only)
 {
 	int i = 0, j = 0;

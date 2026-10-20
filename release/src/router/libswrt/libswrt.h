@@ -179,6 +179,7 @@ struct _json_result {
 	json_result_t *next;
 };
 
+extern void db_size_check(void);
 extern void diag_log_status();
 extern int get_ts_from_db_name(char *str, unsigned long *ts1, unsigned long *ts2);
 extern int save_data_in_sql(const char *event, char *raw,int db_type);
@@ -254,13 +255,33 @@ void get_usb_devices(usb_device_info_t **device_list);
 void free_usb_devices(usb_device_info_t **device_list);
 #endif
 #endif
+extern int get_wifi_chip(char *ifname, char *output, int size);
+extern int get_wifi_temp(char *ifname, unsigned int *temp);
+extern int get_wifi_country(char *ifname, char *output, int len);
+extern int get_wifi_noise(char *ifname, char *output, int len);
+extern int get_wifi_mcs(char *ifname, char *output, int len);
+extern int check_wifi_channel_by_idx(char *output, int len, int i, char *node, char *lan_ipaddr, char *lan_hwaddr);
+extern int get_wifi_ssid(int idx, char *output, int outputlen);
+extern int get_subif_count(char *ifname, int *count);
+extern int get_subif_ssid(char *ifname, char *output, int outputlen);
+extern int get_wifi_txop(char *ifname,int *txop, int outputlen);
+extern int get_wifi_glitch(char *ifname,int *glitch, int outputlen);
+extern int get_wifi_chanim(char *ifname, char *output, int outputlen);
+extern int get_wifi_subif_info(int idx, char *output, int outputlen);
+extern int get_wifi_status(char *ifname, char *output, int len);
+extern int get_wifi_dfs_status(char *output, int len, char *node, char *lan_ipaddr, char *lan_hwaddr);
+extern void init_check_wifi_channel(void);
 extern int libswrt_get_cpu_temp();
 extern int libswrt_get_wifi_temp(int unit);
 extern void get_sys_detect();
 extern void libswrt_get_stainfo();
 extern void libswrt_eth_detect();
+extern void libswrt_wifi_detect();
 extern int lantiq_getSTAInfo(int unit, struct stainfo **sta_info);
 extern int qca_getSTAInfo(int unit, struct stainfo **sta_info);
 extern int mtk_getSTAInfo(int unit, struct stainfo **sta_info);
 extern int brcm_getSTAInfo(int unit, struct stainfo **sta_info);
+#if defined(RTCONFIG_LANTIQ)
+extern int get_lantiqwifi_stats(const char *wif, uint64_t *tx, uint64_t *rx);
+#endif
 #endif

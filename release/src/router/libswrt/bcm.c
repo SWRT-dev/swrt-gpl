@@ -29,7 +29,7 @@ int brcm_getSTAInfo(int unit, struct stainfo **sta_info)
 	char prefix[] = "wlXXXXXXXXXX_", subifname[] = "wlX.Y_XXXXXXXXXX", tmp[128];
 	char *ifname;
 	struct maclist *clientlist;
-	struct stainfo *info;
+	struct stainfo *info, *last = NULL;
 	int max_sta_count, maclist_size;
 	sta_info_t *sta = NULL;
 	scb_val_t scb_val;
@@ -38,7 +38,7 @@ int brcm_getSTAInfo(int unit, struct stainfo **sta_info)
 	ifname = subifname;
 	snprintf(prefix, sizeof(prefix), "wl%d_", unit);
 	strlcpy(subifname, nvram_pf_safe_get(prefix, "ifname"), sizeof(subifname));
-	if(nvram_get_int("sw_mode") == 2 && nvram_get_int("wlc_band") == unit)
+	if(nvram_get_int("sw_mode") == SW_MODE_REPEATER && nvram_get_int("wlc_band") == unit)
 		snprintf(subifname, sizeof(subifname), "wl%d.%d", unit, 1);
 
 	if(*ifname){
@@ -58,12 +58,21 @@ int brcm_getSTAInfo(int unit, struct stainfo **sta_info)
 								info = (struct stainfo *)malloc(sizeof(struct stainfo));
 								*sta_info = info;
 							}else{
-								info->next = (struct stainfo *)malloc(sizeof(struct stainfo));
-								info = info->next;
+								if(last == NULL){
+									last = *sta_info;
+									while(last->next != NULL){
+										info = last->next;
+										last = info;
+									}
+								}
+								last->next = (struct stainfo *)malloc(sizeof(struct stainfo));
+								info = last->next;
+								last = info;
 							}
 							if(info == NULL)
 								break;
 							memset(info, 0, sizeof(struct stainfo));
+							info->next = NULL;
 							memset(tmp, 0, sizeof(tmp));
 							ether_etoa(&clientlist->ea[0], tmp);
 							strlcpy(info->sta_mac, tmp, sizeof(info->sta_mac));
@@ -86,5 +95,59 @@ int brcm_getSTAInfo(int unit, struct stainfo **sta_info)
 			free(clientlist);
 		}
 	}
+	return 0;
+}
+
+int get_wifi_noise(char *ifname, char *output, int len)
+{
+	if(!output || !len)
+		return -1;
+	snprintf(output, len, "%d", 0);
+	return 0;
+}
+
+int get_wifi_mcs(char *ifname, char *output, int len)
+{
+	if(!output || !len)
+		return -1;
+	snprintf(output, len, "%d", -1);
+	return 0;
+}
+
+int get_wifi_subif_info(int idx, char *output, int outputlen)
+{
+#if defined(RTCONFIG_HAS_5G_2) || defined(RTCONFIG_WIFI6E)
+	if(idx > WL_5G_2_BAND)
+#else
+	if(idx > WL_5G_BAND)
+#endif
+		return -1;
+	if(!output || !outputlen)
+		return -1;
+	snprintf(output, outputlen, "%d", -1);
+	return 0;
+}
+
+int get_wifi_chanim(char *ifname, char *output, int outputlen)
+{
+	if(!output || !outputlen)
+		return -1;
+	snprintf(output, outputlen, "%d", -1);
+	return 0;
+}
+
+int get_wifi_txop(char *ifname,int *txop, int outputlen)
+{
+	if(!txop)
+		return -1;
+	*txop = 0;
+	return 0;
+}
+
+int get_wifi_glitch(char *ifname,int *glitch, int outputlen)
+{
+	if(!glitch)
+		return -1;
+	*glitch = 0;
 	return 0;
 }

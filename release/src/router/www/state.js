@@ -855,10 +855,7 @@ var gn_array_2g = <% wl_get_guestnetwork("0"); %>;
 var gn_array_5g = <% wl_get_guestnetwork("1"); %>;
 var gn_array_5g_2 = <% wl_get_guestnetwork("2"); %>;
 var gn_array_60g = <% wl_get_guestnetwork("3"); %>;
-if(lyra_hide_support){
-	gn_array_5g = [];
-	gn_array_5g_2 = [];
-}
+
 //short term solution for interface over 3
 if(based_modelid != "BRT-AC828"){
 	gn_array_2g = gn_array_2g.slice(0,3);
@@ -1873,10 +1870,7 @@ function showMenuTree(menuList, menuExclude){
 				tab_code += '<td><div class="';
 	
 				//-----Fine tune tab icon start-----------				
-				if( dsl_support && (current_url.indexOf("Advanced_DSL_Content") == 0 || current_url.indexOf("Advanced_VDSL_Content") == 0 || current_url.indexOf("Advanced_WAN_Content") == 0 || current_url.indexOf("Advanced_Modem_Content") == 0)){
-					tab_code += (j == 1 || j == 3) ? 'tabClicked' : 'tab';	//show 1st tab css as class 'tabClicked'
-				}
-				else if(current_url.indexOf("Advanced_VLAN_Profile_Content") == 0){
+				if(current_url.indexOf("Advanced_VLAN_Profile_Content") == 0){
 					tab_code += (j == 6) ? 'tabClicked' : 'tab';	// Show 6th tab css as class 'tabClicked'
 				}
 				else{
@@ -2092,11 +2086,6 @@ function reset_NM_height(){
 function show_footer(){
 	var href_lang = get_supportsite_lang();
 	var href_reg_url = get_registersite_url();
-	if(based_modelid == "RT-N56UB1" || based_modelid == "RT-N56UB2" ||
-			based_modelid == "DSL-AC68U" || based_modelid == "DSL-AC68R" || 
-			based_modelid == "DSL-N55U" || based_modelid == "DSL-N55U-B" || 
-			based_modelid == "RT-N11P" || based_modelid == "RT-N300")
-			href_lang = "/";	//global only
 			
 	footer_code = '<div align="center" class="bottom-image"></div>\n';
 	footer_code +='<div align="center" class="copyright"><#footer_copyright_desc#></div><br>';
@@ -2971,13 +2960,7 @@ var concurrent_pap = false;
 var pap_flag = 0;
 var pap_click_flag = 0;
 if(isSwMode("RP") || isSwMode("MB")){
-	if(productid == "RP-AC1900") {
-		if(isSwMode("RP")) {
-			concurrent_pap = true;
-			pap_flag = 1;
-		}
-	}
-	else if(wlc0_ssid != "" && wlc1_ssid != "" && concurrep_support){
+	if(wlc0_ssid != "" && wlc1_ssid != "" && concurrep_support){
 		concurrent_pap = true;
 		pap_flag = 1;
 	}

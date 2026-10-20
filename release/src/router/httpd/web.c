@@ -41049,7 +41049,7 @@ struct ej_handler ej_handlers[] = {
 #ifdef RTCONFIG_AMAS_CENTRAL_OPTMZ
 	{ "get_opt_status", ej_get_opt_status},
 #endif
-#elif defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRT_UI)
+#elif defined(RTCONFIG_MULTILAN_CFG) || defined(RTCONFIG_SWRTMESH)
 	{ "get_cfg_clientlist", ej_get_cfg_clientlist},
 #endif
 #ifdef RTCONFIG_NOTIFICATION_CENTER

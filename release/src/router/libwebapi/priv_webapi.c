@@ -706,7 +706,7 @@ int get_ui_support_info(struct json_object *ui_support_obj)
 	json_object_object_add(ui_support_obj, "PC_SCHED_V2", json_object_new_int(1));
 #endif
 	json_object_object_add(ui_support_obj, "wpa3rp", json_object_new_int(is_wpa3rp()));
-#if defined(RTCONFIG_AMAS)
+#if defined(RTCONFIG_AMAS) || defined(RTCONFIG_SWRTMESH)
 	json_object_object_add(ui_support_obj, "led_ctrl_cap", json_object_new_int(nvram_get_int("led_ctrl_cap")));
 #if defined(RTCONFIG_AMAS_CENTRAL_CONTROL)
 	json_object_object_add(ui_support_obj, "amas_centrl", json_object_new_int(1));

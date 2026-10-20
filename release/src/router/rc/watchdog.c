@@ -3041,6 +3041,8 @@ static inline void __handle_led_onoff_button(int led_onoff)
 		/* To load latest led_val and update to CAP's UI, restart cfg_client. */
 		_eval(restart_cfgsync, NULL, 0, &pid);
 	}
+#elif defined(RTCONFIG_SWRTMESH) && defined(RTCONFIG_SW_CTRL_ALLLED)
+	nvram_set_int("led_val", !!led_onoff);
 #endif
 }
 #elif ((defined(RTCONFIG_LED_BTN) || defined(RTCONFIG_TURBO_BTN)) && (defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_HND_ROUTER_AX)))
