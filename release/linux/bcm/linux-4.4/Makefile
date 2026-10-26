@@ -398,7 +398,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs \
 
 MODEL = $(subst -,,$(BUILD_NAME))
 KBUILD_CFLAGS += -D$(MODEL)
-KBUILD_CFLAGS += -D$(SWRT_NAME)
+KBUILD_CFLAGS += -D$(SWRT_NAME) -DSWRT_PATCH
 ifneq ($(wildcard ./net/swrt_fastpath/*.c),)
 KBUILD_CFLAGS += -DPGB_QUICK_PATH
 export PGB_QUICK_PATH=y

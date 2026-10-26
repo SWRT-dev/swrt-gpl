@@ -451,7 +451,6 @@ export CONFIG_DHDAP=y
 export CFLAGS += -D__CONFIG_DHDAP__
 ifeq ($(RTCONFIG_BCM_7114),y)
 export SRCBASE_DHD := $(LINUXDIR)/brcm/arm/dhd/src
-export SRCBASE_DHD24 := $(SRCBASE)/../dhd24/src
 export SRCBASE_FW := $(SRCBASE)/../4365/src
 export SRCBASE_SYS := $(SRCBASE_DHD)
 include Makefile.fw
