@@ -222,7 +222,7 @@ static char *defenv[] = {
 #endif
 
 extern int set_tcode_misc();
-extern void gen_conntrack_conf(void)
+extern void gen_conntrack_conf(void);
 extern int g_upgrade;
 int def_boot = 0;
 
