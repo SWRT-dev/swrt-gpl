@@ -4823,6 +4823,13 @@ start_ddns(char *caller)
 #ifdef RTCONFIG_INADYN
 	if (wan_public) { // private WAN IP
 #ifdef RTCONFIG_GETREALIP
+#ifdef RTCONFIG_IPV6
+		//NAT444(CGNAT), use ipv6 only, ddns server will discard private IP
+		//In China, if wan_ip is 10.x.x.x/100.x.x.x, there is a 95% probability that NAT444 is in use.
+		if(!strncmp(nvram_safe_get("territory_code"), "CN", 2) && nvram_get_int("ddns_ipv6_update") && nvram_pf_match(prefix, "proto", "pppoe"))
+			;
+		else
+#endif
 		if (nvram_get_int(strcat_r(prefix, "realip_state", tmp)) == 2) {
 			wan_ip = nvram_safe_get(strcat_r(prefix, "realip_ip", tmp));
 			/* use External WAN IP */

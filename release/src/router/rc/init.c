@@ -222,6 +222,7 @@ static char *defenv[] = {
 #endif
 
 extern int set_tcode_misc();
+extern void gen_conntrack_conf(void)
 extern int g_upgrade;
 int def_boot = 0;
 
@@ -2520,33 +2521,11 @@ restore_defaults(void)
 	}
 #endif
 
-#if LINUX26
 	//Expand ct_expect_max if ram size is bigger than 512MB and device is in default state.
 	if(restore_defaults)
 	{
-		fp = fopen("/proc/meminfo", "r");
-		if(fp)
-		{
-			char str[64], buf[512];
-			int val;
-			while(fgets(buf, sizeof(buf), fp))
-			{
-				if(sscanf(buf, "%s %d", str, &val) == 2)
-				{
-					if(!strncmp(str, "MemTotal:", 9))
-					{
-						if(val > 512*1024)
-						{
-							nvram_set("ct_expect_max", "4096");
-						}
-						break;
-					}
-				}
-			}
-			fclose(fp);
-		}
+		gen_conntrack_conf();
 	}
-#endif
 
 	wl_defaults();
 #if defined(RTCONFIG_MSSID_PRELINK)

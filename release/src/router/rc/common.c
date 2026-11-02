@@ -680,7 +680,6 @@ void setup_ct_timeout(int connflag)
 	}
 }
 
-#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 void gen_conntrack_conf(void)
 {
 #define RAM_1GB 1024 *1024 *1024
@@ -693,18 +692,21 @@ void gen_conntrack_conf(void)
 	if(sys.totalram >= RAM_1GB){
 		nvram_set("ct_hashsize", "65536");
 		nvram_set("ct_expect_max", "16384");
+		nvram_set("ct_max", "300000");
 	}else if(sys.totalram >= RAM_512M && sys.freeram >= RAM_128M){
 		nvram_set("ct_hashsize", "32768");
 		nvram_set("ct_expect_max", "16384");
+		nvram_set("ct_max", "300000");
 	}else if(sys.totalram >= RAM_256M && sys.freeram >= RAM_128M){
 		nvram_set("ct_hashsize", "16384");
 		nvram_set("ct_expect_max", "16384");
+		nvram_set("ct_max", "150000");
 	}else{
 		nvram_set("ct_hashsize", "16384");
 		nvram_set("ct_expect_max", "8192");
+		nvram_set("ct_max", "100000");
 	}
 }
-#endif
 
 void setup_conntrack(void)
 {
@@ -716,9 +718,7 @@ void setup_conntrack(void)
 #ifdef RTCONFIG_CONCURRENTREPEATER
 	return;		/* don't need it for concurrent repeater */
 #endif
-#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
 	gen_conntrack_conf();
-#endif
 	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_tcp_timeout"));
 	if (strcmp(p,"0 0 0 0 0 0 0 0 0 0") && sscanf(p, "%u%u%u%u%u%u%u%u%u%u",
 		&v[0], &v[1], &v[2], &v[3], &v[4], &v[5], &v[6], &v[7], &v[8], &v[9]) == 10) {	// lightly verify
@@ -759,7 +759,6 @@ void setup_conntrack(void)
 		nvram_set("ct_timeout", buf);
 	}
 
-#ifdef LINUX26
 	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_hashsize"));
 	i = atoi(p);
 	if (i >= 127) {
@@ -769,66 +768,24 @@ void setup_conntrack(void)
 		if (buf[strlen(buf)-1] == '\n') buf[strlen(buf)-1] = '\0';	
 		if (atoi(buf) > 0) nvram_set("ct_hashsize", buf);
 	}
-#endif
-#ifdef LINUX26
 	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_max"));
 	i = atoi(p);
 	if (i >= 128) {
-		f_write_string("/proc/sys/net/nf_conntrack_max", p, 0, 0);
+		if(f_exists("/proc/sys/net/nf_conntrack_max"))
+			f_write_string("/proc/sys/net/nf_conntrack_max", p, 0, 0);
+		else
+			f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_max", p, 0, 0);
 	}
-	else if (f_read_string("/proc/sys/net/nf_conntrack_max", buf, sizeof(buf)) > 0) {
-		if (atoi(buf) > 0) nvram_set("ct_max", buf);
-	}
-#else
-	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_max"));
+
+	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_expect_max"));
 	i = atoi(p);
-	if (i >= 128) {
-		f_write_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_max", p, 0, 0);
+	if (i >= 1) {
+		f_write_string("/proc/sys/net/netfilter/nf_conntrack_expect_max", p, 0, 0);
 	}
-	else if (f_read_string("/proc/sys/net/ipv4/netfilter/ip_conntrack_max", buf, sizeof(buf)) > 0) {
-		if (atoi(buf) > 0) nvram_set("ct_max", buf);
-	}
-#endif
-#ifdef LINUX26
-	if (f_exists("/proc/sys/net/netfilter/nf_conntrack_expect_max")) {
-		snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_expect_max"));
-		i = atoi(p);
-		if (i >= 1) {
-			f_write_string("/proc/sys/net/netfilter/nf_conntrack_expect_max", p, 0, 0);
-		}
-		else if (f_read_string("/proc/sys/net/netfilter/nf_conntrack_expect_max", buf, sizeof(buf)) > 0) {
-			if (atoi(buf) > 0) nvram_set("ct_expect_max", buf);
-		}
-	}
-#endif
-#if defined(RTCONFIG_HND_ROUTER) || defined(RTCONFIG_QCA) || defined(RTCONFIG_LANTIQ) || defined(RTCONFIG_RALINK)
+
 	snprintf(p, sizeof(p), "%s", nvram_safe_get("ct_hashsize"));
 	f_write_string("/proc/sys/net/netfilter/nf_conntrack_buckets", p, 0, 0);
-#endif
-#if 0
-	if (!nvram_match("nf_rtsp", "0")) {
-		ct_modprobe("rtsp");
-	}
-	else {
-		ct_modprobe_r("rtsp");
-	}
 
-	if (!nvram_match("nf_h323", "0")) {
-		ct_modprobe("h323");
-	}
-	else {
-		ct_modprobe_r("h323");
-	}
-
-#ifdef LINUX26
-	if (!nvram_match("nf_sip", "0")) {
-		ct_modprobe("sip");
-	}
-	else {
-		ct_modprobe_r("sip");
-	}
-#endif
-#endif
 	// !!TB - FTP Server
 #ifdef RTCONFIG_FTP
 	i = nvram_get_int("ftp_port");
