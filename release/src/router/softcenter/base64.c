@@ -1,4 +1,5 @@
 /*base64.c*/  
+#include <stdio.h>
 #include "base64.h"  
   
 unsigned char *base64_encode(unsigned char *str)  
@@ -82,8 +83,9 @@ int main(int argc,char **argv)
 	char *base;
 	if (argc < 2 )
 	{
-		char string[4096];
-		gets(string);
+		char string[4096] = {0};
+		fgets(string, sizeof(string), stdin);
+		string[strcspn(string, "\n")] = '\0';
 		base = strrchr(argv[0], '/');
 		base = base ? base + 1 : argv[0];
 		if(!strcmp(base, "base64_decode")){
